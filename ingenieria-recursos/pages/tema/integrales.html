@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tema</title>
+    <link rel="stylesheet" href="../../styles/app.css" />
+  </head>
+
+  <body>
+    <header class="topbar">
+      <a class="brand" href="../../">
+        <span class="brand__mark" aria-hidden="true">∑</span>
+        <span class="brand__text">
+          Ingeniería <span class="brand__text--muted">Recursos</span>
+        </span>
+      </a>
+
+      <nav class="topbar__nav" aria-label="Navegación">
+        <a class="topbar__link" href="../../about.html">Acerca de</a>
+      </nav>
+    </header>
+
+    <main class="container">
+      <div class="breadcrumbs" id="breadcrumbs"></div>
+
+      <section class="panel">
+        <div class="topic-page-head">
+          <div>
+            <h1 id="topicTitle">Tema</h1>
+            <p id="topicDesc" class="muted"></p>
+          </div>
+          <div class="muted" style="max-width:420px">
+            Secciones listas para completar cuando tengas recursos.
+          </div>
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="sections">
+          <div class="empty-section">
+            <div class="empty-section__title">
+              <span>🎥 Videos</span>
+              <span class="badge">Vacío</span>
+            </div>
+            <div class="empty-section__body">Agrega enlaces a videos o playlists aquí.</div>
+          </div>
+
+          <div class="empty-section">
+            <div class="empty-section__title">
+              <span>📄 PDFs</span>
+              <span class="badge">Vacío</span>
+            </div>
+            <div class="empty-section__body">Sube o enlaza apuntes, hojas, guías, etc.</div>
+          </div>
+
+          <div class="empty-section">
+            <div class="empty-section__title">
+              <span>🧠 Ejercicios</span>
+              <span class="badge">Vacío</span>
+            </div>
+            <div class="empty-section__body">Lista de ejercicios por dificultad/tema.</div>
+          </div>
+
+          <div class="empty-section">
+            <div class="empty-section__title">
+              <span>🧩 Herramientas interactivas</span>
+              <span class="badge">Vacío</span>
+            </div>
+            <div class="empty-section__body">Apps, simuladores o herramientas externas.</div>
+          </div>
+
+          <div class="empty-section">
+            <div class="empty-section__title">
+              <span>➕ Material adicional</span>
+              <span class="badge">Vacío</span>
+            </div>
+            <div class="empty-section__body">Links extra, lecturas recomendadas y más.</div>
+          </div>
+        </div>
+
+        <div class="hr"></div>
+
+        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+          <a class="btn" id="backToMateriaBtn" href="#">← Volver a la materia</a>
+          <a class="btn" href="../../">← Volver a materias</a>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const materias = [
+        {
+          slug: "analisis-matematico-1",
+          title: "Análisis Matemático I",
+          description: "Límites, continuidad, derivadas e integrales.",
+          topics: [
+            { slug: "limites", title: "Límites", meta: "Base para cálculo" },
+            { slug: "continuidad", title: "Continuidad", meta: "Propiedades y ejemplos" },
+            { slug: "derivadas", title: "Derivadas", meta: "Tasa de cambio" },
+            { slug: "aplicaciones-derivadas", title: "Aplicaciones de derivadas", meta: "Optimización y más" },
+            { slug: "integrales", title: "Integrales", meta: "Acumulación" },
+            { slug: "sucesiones", title: "Sucesiones", meta: "Convergencia" },
+            { slug: "series", title: "Series", meta: "Sumatorias y aproximación" }
+          ]
+        }
+      ];
+
+      const pathParts = location.pathname.split("/").filter(Boolean);
+      const maybeSlug = pathParts[pathParts.length - 1]; // <slug>.html
+      const topicSlug = maybeSlug.replace(".html", "");
+
+      const params = new URLSearchParams(location.search);
+      const materiaSlug = params.get("materia");
+
+      const materia = materias.find(m => m.slug === materiaSlug);
+      const topic = materia?.topics.find(t => t.slug === topicSlug);
+
+      if (!materia || !topic) {
+        document.body.innerHTML = `
+          <main class="container">
+            <section class="panel">
+              <h1>Tema no encontrado</h1>
+              <p class="muted">Verifica la URL.</p>
+              <a class="btn" href="../../">Volver a materias</a>
+            </section>
+          </main>
+        `;
+      } else {
+        document.getElementById("topicTitle").textContent = topic.title;
+        document.getElementById("topicDesc").textContent = topic.meta;
+
+        const breadcrumbs = document.getElementById("breadcrumbs");
+        breadcrumbs.innerHTML = `
+          <a href="../../">Materias</a>
+          <span class="sep">/</span>
+          <a href="../materia/${materia.slug}.html">${materia.title}</a>
+          <span class="sep">/</span>
+          <span>${topic.title}</span>
+        `;
+
+        document.getElementById("backToMateriaBtn").href = `../materia/${materia.slug}.html`;
+      }
+    </script>
+  </body>
+</html>

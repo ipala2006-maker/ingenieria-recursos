@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ingeniería Recursos — Materias</title>
+    <link rel="stylesheet" href="./styles/app.css" />
+  </head>
+
+  <body>
+    <header class="topbar">
+      <a class="brand" href="./">
+        <span class="brand__mark" aria-hidden="true">∑</span>
+        <span class="brand__text">
+          Ingeniería <span class="brand__text--muted">Recursos</span>
+        </span>
+      </a>
+
+      <nav class="topbar__nav" aria-label="Navegación">
+        <a class="topbar__link" href="./about.html">Acerca de</a>
+      </nav>
+    </header>
+
+    <main class="container">
+      <section class="hero">
+        <div class="hero__text">
+          <h1>Encuentra lo que necesitas, sin perder tiempo.</h1>
+          <p>
+            Todo organizado por materia y tema. Primera versión: estructura lista
+            para crecer.
+          </p>
+        </div>
+      </section>
+
+      <!-- Grid de materias -->
+      <section class="section">
+        <div class="section__head">
+          <h2>Materias</h2>
+          <p class="section__hint">Haz clic para ver los temas.</p>
+        </div>
+
+        <div id="materiasGrid" class="cards-grid" role="list" aria-label="Materias">
+          <!-- JS insertará tarjetas aquí -->
+        </div>
+      </section>
+
+      <footer class="footer">
+        <span>© <span id="year"></span> Ingeniería Recursos</span>
+        <span class="footer__dot" aria-hidden="true">•</span>
+        <span class="muted">Primera versión (estática)</span>
+      </footer>
+    </main>
+
+    <script>
+      // Datos iniciales (lista para expandir)
+      const data = [
+        {
+          slug: "analisis-matematico-1",
+          title: "Análisis Matemático I",
+          description: "Límites, continuidad, derivadas e integrales.",
+          // Puedes cambiar imagen luego
+          icon: "./assets/img/math-01.svg"
+        }
+      ];
+
+      // Render materias
+      const grid = document.getElementById("materiasGrid");
+      grid.innerHTML = data.map((m) => {
+        return `
+          <a class="card" role="listitem" href="./pages/materia/${m.slug}.html">
+            <div class="card__media">
+              <img class="card__icon" src="${m.icon}" alt="" />
+            </div>
+            <div class="card__body">
+              <h3 class="card__title">${m.title}</h3>
+              <p class="card__desc">${m.description}</p>
+            </div>
+            <div class="card__arrow" aria-hidden="true">→</div>
+          </a>
+        `;
+      }).join("");
+    </script>
+
+    <script>
+      document.getElementById("year").textContent = new Date().getFullYear();
+    </script>
+  </body>
+</html>

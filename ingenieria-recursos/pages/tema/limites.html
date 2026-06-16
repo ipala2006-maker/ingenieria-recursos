@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tema</title>
+    <link rel="stylesheet" href="../../styles/app.css" />
+  </head>
+
+  <body>
+    <header class="topbar">
+      <a class="brand" href="../../">
+        <span class="brand__mark" aria-hidden="true">∑</span>
+        <span class="brand__text">
+          Ingeniería <span class="brand__text--muted">Recursos</span>
+        </span>
+      </a>
+
+      <nav class="topbar__nav" aria-label="Navegación">
+        <a class="topbar__link" href="../../about.html">Acerca de</a>
+      </nav>
+    </header>
+
+    <main class="container">
+      <div class="breadcrumbs" id="breadcrumbs"></div>
+
+      <section class="panel">
+        <div class="topic-page-head">
+          <div>
+            <h1 id="topicTitle">Tema</h1>
+            <p id="topicDesc" class="muted"></p>
+          </div>
+          <div class="muted" style="max-width:420px">
+            Secciones listas para completar cuando tengas recursos.
+          </div>
+        </div>
+
+        <div class="hr"></div>
+
+        <div id="categoriesView" class="resource-categories">
+
+  <div class="resource-card" onclick="showVideos()">
+    <div>
+      <h3>🎥 Videos</h3>
+      <p>Explicaciones, clases y ejercicios resueltos.</p>
+    </div>
+    <span>→</span>
+  </div>
+
+  <div class="resource-card" onclick="showPDFs()">
+  <div>
+    <h3>📚 Material</h3>
+    <p>Apuntes, guías, ejercicios, parciales y resúmenes.</p>
+  </div>
+  <span>→</span>
+</div>
+
+
+
+  <div class="resource-card" onclick="showTools()">
+  <div>
+    <h3>🧩 Herramientas</h3>
+    <p>Simuladores y recursos interactivos.</p>
+  </div>
+  <span>→</span>
+</div>
+
+
+
+</div>
+<div id="videosView" style="display:none;">
+
+  <button class="btn" onclick="showCategories()">
+    ← Volver
+  </button>
+
+  <div class="hr"></div>
+
+  <h2>🎥 Videos</h2>
+
+  <div class="video-grid">
+
+    <a
+      class="video-card"
+      href="https://www.youtube.com/watch?v=pYVVPqphPS0"
+      target="_blank"
+    >
+      <img
+        src="https://img.youtube.com/vi/pYVVPqphPS0/maxresdefault.jpg"
+        alt="Introducción a los límites"
+      >
+
+      <div class="video-card__content">
+        <h3>Título del video</h3>
+<p>Duración • Canal</p>
+      </div>
+    </a>
+
+    <a
+      class="video-card"
+      href="https://www.youtube.com/watch?v=pYVVPqphPS0"
+      target="_blank"
+    >
+      <img
+        src="https://img.youtube.com/vi/pYVVPqphPS0/maxresdefault.jpg"
+        alt="Propiedades de límites"
+      >
+
+      <div class="video-card__content">
+       <h3>Título del video</h3>
+<p>Duración • Canal</p>
+      </div>
+    </a>
+
+    <a
+      class="video-card"
+      href="https://www.youtube.com/watch?v=pYVVPqphPS0"
+      target="_blank"
+    >
+      <img
+        src="https://img.youtube.com/vi/pYVVPqphPS0/maxresdefault.jpg"
+        alt="Ejercicios de límites"
+      >
+
+      <div class="video-card__content">
+       <h3>Título del video</h3>
+<p>Duración • Canal</p>
+      </div>
+    </a>
+
+  </div>
+
+</div>
+<div id="pdfsView" style="display:none;">
+
+  <button class="btn" onclick="showCategories()">
+    ← Volver
+  </button>
+
+  <div class="hr"></div>
+
+  <h2>📚 Material</h2>
+<div class="pdf-grid">
+
+  <a class="pdf-card" href="#" target="_blank">
+
+    <div class="pdf-preview">
+      📄 PDF
+    </div>
+
+    <div class="pdf-card__content">
+  <h3>Título del material</h3>
+<p>Cantidad de páginas • Autor/Bibliografía</p>
+    </div>
+
+  </a>
+
+  <a class="pdf-card" href="#" target="_blank">
+
+    <div class="pdf-preview">
+      📄 PDF
+    </div>
+
+    <div class="pdf-card__content">
+<h3>Título del material</h3>
+<p>Cantidad de páginas • Autor/Bibliografía</p>
+    </div>
+
+  </a>
+
+</div>
+
+</div>
+<div id="toolsView" style="display:none;">
+
+  <button class="btn" onclick="showCategories()">
+    ← Volver
+  </button>
+
+  <div class="hr"></div>
+
+  <h2>🧩 Herramientas</h2>
+
+  <div class="tool-grid">
+
+    <a
+  class="tool-card"
+  href="https://www.geogebra.org/graphing"
+  target="_blank"
+>
+      <div class="tool-preview">
+        🧩
+      </div>
+
+      <div class="tool-card__content">
+        <h3>GeoGebra</h3>
+        <p>Geometría y gráficos interactivos.</p>
+      </div>
+    </a>
+
+    <a
+      class="tool-card"
+      href="https://www.desmos.com"
+      target="_blank"
+    >
+      <div class="tool-preview">
+        📈
+      </div>
+
+      <div class="tool-card__content">
+        <h3>Desmos</h3>
+        <p>Graficadora matemática online.</p>
+      </div>
+    </a>
+
+
+
+</div>
+
+</div>
+
+        <div class="hr"></div>
+
+        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+          <a class="btn" id="backToMateriaBtn" href="#">← Volver a la materia</a>
+          <a class="btn" href="../../">← Volver a materias</a>
+        </div>
+      </section>
+    </main>
+
+<script>
+
+function showVideos(push = true) {
+  hideAll();
+  document.getElementById("videosView").style.display = "block";
+
+  if (push) history.pushState({ view: "videos" }, "");
+}
+function showCategories(push = true) {
+  hideAll();
+  document.getElementById("categoriesView").style.display = "grid";
+
+  if (push) history.pushState({ view: "categories" }, "");
+}
+function showPDFs(push = true) {
+  hideAll();
+  document.getElementById("pdfsView").style.display = "block";
+
+  if (push) history.pushState({ view: "pdfs" }, "");
+}
+function showTools(push = true) {
+  hideAll();
+  document.getElementById("toolsView").style.display = "block";
+
+  if (push) history.pushState({ view: "tools" }, "");
+}
+function hideAll() {
+  document.getElementById("categoriesView").style.display = "none";
+  document.getElementById("videosView").style.display = "none";
+  document.getElementById("pdfsView").style.display = "none";
+  document.getElementById("toolsView").style.display = "none";
+}
+
+      const materias = [
+        {
+          slug: "analisis-matematico-1",
+          title: "Análisis Matemático I",
+          description: "Límites, continuidad, derivadas e integrales.",
+          topics: [
+            { slug: "limites", title: "Límites", meta: "Base para cálculo" },
+            { slug: "continuidad", title: "Continuidad", meta: "Propiedades y ejemplos" },
+            { slug: "derivadas", title: "Derivadas", meta: "Tasa de cambio" },
+            { slug: "aplicaciones-derivadas", title: "Aplicaciones de derivadas", meta: "Optimización y más" },
+            { slug: "integrales", title: "Integrales", meta: "Acumulación" },
+            { slug: "sucesiones", title: "Sucesiones", meta: "Convergencia" },
+            { slug: "series", title: "Series", meta: "Sumatorias y aproximación" }
+          ]
+        }
+      ];
+
+      const pathParts = location.pathname.split("/").filter(Boolean);
+      const maybeSlug = pathParts[pathParts.length - 1]; // <slug>.html
+      const topicSlug = maybeSlug.replace(".html", "");
+
+      const params = new URLSearchParams(location.search);
+      const materiaSlug = params.get("materia");
+
+      const materia = materias.find(m => m.slug === materiaSlug);
+      const topic = materia?.topics.find(t => t.slug === topicSlug);
+
+      if (!materia || !topic) {
+        document.body.innerHTML = `
+          <main class="container">
+            <section class="panel">
+              <h1>Tema no encontrado</h1>
+              <p class="muted">Verifica la URL.</p>
+              <a class="btn" href="../../">Volver a materias</a>
+            </section>
+          </main>
+        `;
+      } else {
+        document.getElementById("topicTitle").textContent = topic.title;
+        document.getElementById("topicDesc").textContent = topic.meta;
+
+        const breadcrumbs = document.getElementById("breadcrumbs");
+        breadcrumbs.innerHTML = `
+          <a href="../../">Materias</a>
+          <span class="sep">/</span>
+          <a href="../materia/${materia.slug}.html">${materia.title}</a>
+          <span class="sep">/</span>
+          <span>${topic.title}</span>
+        `;
+
+        document.getElementById("backToMateriaBtn").href = `../materia/${materia.slug}.html`;
+      }
+      window.addEventListener("popstate", (event) => {
+  const view = event.state?.view || "categories";
+
+  if (view === "videos") showVideos(false);
+  else if (view === "pdfs") showPDFs(false);
+  else if (view === "tools") showTools(false);
+  else showCategories(false);
+});
+history.replaceState({ view: "categories" }, "");
+    </script>
+  </body>
+</html>
