@@ -37,47 +37,91 @@
 
         <div class="hr"></div>
 
-        <div class="sections">
-          <div class="empty-section">
-            <div class="empty-section__title">
-              <span>🎥 Videos</span>
-              <span class="badge">Vacío</span>
-            </div>
-            <div class="empty-section__body">Agrega enlaces a videos o playlists aquí.</div>
-          </div>
+        <div id="categoriesView" class="resource-categories">
 
-          <div class="empty-section">
-            <div class="empty-section__title">
-              <span>📄 PDFs</span>
-              <span class="badge">Vacío</span>
-            </div>
-            <div class="empty-section__body">Sube o enlaza apuntes, hojas, guías, etc.</div>
-          </div>
+  <div class="resource-card" onclick="showVideos()">
+    <div>
+      <h3>🎥 Videos</h3>
+      <p>Explicaciones, clases y ejercicios resueltos.</p>
+    </div>
+    <span>→</span>
+  </div>
 
-          <div class="empty-section">
-            <div class="empty-section__title">
-              <span>🧠 Ejercicios</span>
-              <span class="badge">Vacío</span>
-            </div>
-            <div class="empty-section__body">Lista de ejercicios por dificultad/tema.</div>
-          </div>
+  <div class="resource-card" onclick="showPDFs()">
+  <div>
+    <h3>📚 Material</h3>
+    <p>Apuntes, guías, ejercicios, parciales y resúmenes.</p>
+  </div>
+  <span>→</span>
+</div>
 
-          <div class="empty-section">
-            <div class="empty-section__title">
-              <span>🧩 Herramientas interactivas</span>
-              <span class="badge">Vacío</span>
-            </div>
-            <div class="empty-section__body">Apps, simuladores o herramientas externas.</div>
-          </div>
 
-          <div class="empty-section">
-            <div class="empty-section__title">
-              <span>➕ Material adicional</span>
-              <span class="badge">Vacío</span>
-            </div>
-            <div class="empty-section__body">Links extra, lecturas recomendadas y más.</div>
-          </div>
-        </div>
+
+  <div class="resource-card" onclick="showTools()">
+  <div>
+    <h3>🧩 Herramientas</h3>
+    <p>Simuladores y recursos interactivos.</p>
+  </div>
+  <span>→</span>
+</div>
+
+
+
+</div>
+<div id="videosView" style="display:none;">
+
+  <button class="btn" onclick="showCategories()">
+    ← Volver
+  </button>
+
+  <div class="hr"></div>
+
+  <h2>🎥 Videos</h2>
+
+  <div class="video-grid">
+
+  <!-- Videos -->
+
+</div>
+
+</div>
+<div id="pdfsView" style="display:none;">
+
+  <button class="btn" onclick="showCategories()">
+    ← Volver
+  </button>
+
+  <div class="hr"></div>
+
+  <h2>📚 Material</h2>
+
+
+<div class="pdf-grid">
+
+  <!-- Material -->
+
+</div>
+
+</div>
+<div id="toolsView" style="display:none;">
+
+  <button class="btn" onclick="showCategories()">
+    ← Volver
+  </button>
+
+  <div class="hr"></div>
+
+  <h2>🧩 Herramientas</h2>
+
+  <div class="tool-grid">
+
+  <!-- Herramientas -->
+
+</div>
+
+</div>
+
+</div>
 
         <div class="hr"></div>
 
@@ -88,7 +132,39 @@
       </section>
     </main>
 
-    <script>
+<script>
+
+function showVideos(push = true) {
+  hideAll();
+  document.getElementById("videosView").style.display = "block";
+
+  if (push) history.pushState({ view: "videos" }, "");
+}
+
+function showCategories(push = true) {
+  hideAll();
+  document.getElementById("categoriesView").style.display = "grid";
+
+  if (push) history.pushState({ view: "categories" }, "", location.href.split("#")[0]);
+}
+function showPDFs(push = true) {
+  hideAll();
+  document.getElementById("pdfsView").style.display = "block";
+
+  if (push) history.pushState({ view: "pdfs" }, "");
+}
+function showTools(push = true) {
+  hideAll();
+  document.getElementById("toolsView").style.display = "block";
+
+  if (push) history.pushState({ view: "tools" }, "");
+}
+function hideAll() {
+  document.getElementById("categoriesView").style.display = "none";
+  document.getElementById("videosView").style.display = "none";
+  document.getElementById("pdfsView").style.display = "none";
+  document.getElementById("toolsView").style.display = "none";
+}
       const materias = [
         {
           slug: "analisis-matematico-1",
@@ -141,6 +217,15 @@
 
         document.getElementById("backToMateriaBtn").href = `../materia/${materia.slug}.html`;
       }
+window.addEventListener("popstate", (event) => {
+  const view = event.state?.view || "categories";
+
+  if (view === "videos") showVideos(false);
+  else if (view === "pdfs") showPDFs(false);
+  else if (view === "tools") showTools(false);
+  else showCategories(false);
+});
+history.replaceState({ view: "categories" }, "");
     </script>
   </body>
 </html>
