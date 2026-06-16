@@ -38,7 +38,7 @@
         <div class="hr"></div>
 
         <div class="section__head">
-          <h2>Temas</h2>
+          <h2>Materias</h2>
           <p class="section__hint">Haz clic para ver la página del tema.</p>
         </div>
 
@@ -50,107 +50,25 @@
 
     <script>
       // ✅ Datos iniciales
-      const temas = {
-  "limites": {
-    title: "Límites",
-    meta: "Base para cálculo"
-  },
-
-  "continuidad": {
-    title: "Continuidad",
-    meta: "Propiedades y ejemplos"
-  },
-
-  "derivadas": {
-    title: "Derivadas",
-    meta: "Tasa de cambio"
-  },
-
-  "integrales": {
-    title: "Integrales",
-    meta: "Acumulación"
-  },
-
-  "sucesiones": {
-    title: "Sucesiones",
-    meta: "Convergencia"
-  },
-
-  "series": {
-    title: "Series",
-    meta: "Sumatorias y aproximación"
-  },
-
-  "mediciones": {
-    title: "Mediciones",
-    meta: "Magnitudes, unidades e incertidumbre"
-  },
-
-  "estatica": {
-    title: "Estática",
-    meta: "Equilibrio de fuerzas"
-  },
-
-  "cinematica": {
-    title: "Cinemática",
-    meta: "Movimiento sin fuerzas"
-  },
-
-  "dinamica": {
-    title: "Dinámica",
-    meta: "Leyes de Newton"
-  },
-
-  "trabajo-energia": {
-    title: "Trabajo y energía",
-    meta: "Energía mecánica y conservación"
-  },
-
-  "cantidad-movimiento-choques": {
-    title: "Cantidad de movimiento / choques",
-    meta: "Impulso y colisiones"
-  },
-
-  "rotaciones": {
-    title: "Rotaciones",
-    meta: "Movimiento angular y torque"
-  },
-
-  "moas": {
-    title: "Movimiento oscilatorio (MOAS)",
-    meta: "Oscilaciones y M.A.S."
-  },
-
-  "elasticidad": {
-    title: "Elasticidad",
-    meta: "Deformaciones y Ley de Hooke"
-  },
-
-  "fluidos": {
-    title: "Fluidos",
-    meta: "Presión, densidad y Bernoulli"
-  },
-
-  "calorimetria": {
-    title: "Calorimetría",
-    meta: "Transferencia de calor"
-  },
-
-  "termodinamica": {
-    title: "Termodinámica",
-    meta: "Calor, trabajo y leyes"
-  },
-
-  "ondas": {
-    title: "Ondas",
-    meta: "Propagación de ondas"
-  },
-
-  "sonido": {
-    title: "Sonido",
-    meta: "Ondas sonoras y acústica"
+      const materias = [
+  {
+    slug: "ingenieria",
+    title: "Ingeniería",
+    description: "Materias disponibles de Ingeniería.",
+    topics: [
+      {
+        slug: "analisis-matematico-1",
+        title: "Análisis Matemático I",
+        meta: "Límites, derivadas e integrales"
+      },
+      {
+        slug: "fisica-1",
+        title: "Física I",
+        meta: "Mecánica, fluidos y termodinámica"
+      }
+    ]
   }
-};
+];
 
       // Obtén slug desde el path:
       // Si estás en pages/materia/<slug>.html, entonces:
@@ -158,10 +76,10 @@
       const maybeSlug = pathParts[pathParts.length - 1]; // <slug>.html
       const slug = maybeSlug.replace(".html", "");
 
-      const topic = temas[topicSlug];
+      const materia = materias.find(m => m.slug === slug);
 
       // Manejo básico si el slug no existe
-      if (!topic) {
+      if (!materia) {
         document.body.innerHTML = `
           <main class="container">
             <section class="panel">
@@ -179,13 +97,13 @@
         breadcrumbs.innerHTML = `
           <a href="../../">Materias</a>
           <span class="sep">/</span>
-          <span>${materia.title}</span> 
+          <span>${materia.title}</span>
         `;
 
         const grid = document.getElementById("topicsGrid");
         grid.innerHTML = materia.topics.map(t => {
           return `
-            <a class="topic-card" href="../tema/${t.slug}.html?materia=${encodeURIComponent(materia.slug)}">
+            <a class="topic-card" href="../materia/${t.slug}.html">
               <div>
                 <p class="topic-card__title">${t.title}</p>
                 <div class="topic-card__meta">${t.meta}</div>

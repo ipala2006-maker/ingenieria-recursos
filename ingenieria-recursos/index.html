@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Ingeniería Recursos — Materias</title>
+    <title>Estudiemos</title>
     <link rel="stylesheet" href="./styles/app.css" />
   </head>
 
@@ -12,8 +12,8 @@
       <a class="brand" href="./">
         <span class="brand__mark" aria-hidden="true">∑</span>
         <span class="brand__text">
-          Ingeniería <span class="brand__text--muted">Recursos</span>
-        </span>
+  Estudiemos
+</span>
       </a>
 
       <nav class="topbar__nav" aria-label="Navegación">
@@ -23,20 +23,16 @@
 
     <main class="container">
       <section class="hero">
-        <div class="hero__text">
-          <h1>Encuentra lo que necesitas, sin perder tiempo.</h1>
-          <p>
-            Todo organizado por materia y tema. Primera versión: estructura lista
-            para crecer.
-          </p>
-        </div>
-      </section>
+  <div class="hero__text">
+    <h1>Estudiemos</h1>
+  </div>
+</section>
 
       <!-- Grid de materias -->
       <section class="section">
         <div class="section__head">
-          <h2>Materias</h2>
-          <p class="section__hint">Haz clic para ver los temas.</p>
+          <h2>Carreras</h2>
+          <p class="section__hint">Haz clic para ver las materias.</p>
         </div>
 
         <div id="materiasGrid" class="cards-grid" role="list" aria-label="Materias">
@@ -45,7 +41,7 @@
       </section>
 
       <footer class="footer">
-        <span>© <span id="year"></span> Ingeniería Recursos</span>
+        <span>© <span id="year"></span> Estudiemos</span>
         <span class="footer__dot" aria-hidden="true">•</span>
         <span class="muted">Primera versión (estática)</span>
       </footer>
@@ -55,16 +51,9 @@
       // Datos iniciales (lista para expandir)
       const data = [
   {
-    slug: "analisis-matematico-1",
-    title: "Análisis Matemático I",
-    description: "Límites, continuidad, derivadas e integrales.",
-    icon: "./assets/img/math-01.svg"
-  },
-
-  {
-    slug: "fisica-1",
-    title: "Física I",
-    description: "Mecánica, fluidos, termodinámica y ondas.",
+    slug: "ingenieria",
+    title: "Ingeniería",
+    description: "Materias de ingeniería.",
     icon: "./assets/img/math-01.svg"
   }
 ];
@@ -73,7 +62,7 @@
       const grid = document.getElementById("materiasGrid");
       grid.innerHTML = data.map((m) => {
         return `
-          <a class="card" role="listitem" href="./pages/materia/${m.slug}.html">
+          <a class="card" role="listitem" href="./pages/carrera/${m.slug}.html">
             <div class="card__media">
               <img class="card__icon" src="${m.icon}" alt="" />
             </div>

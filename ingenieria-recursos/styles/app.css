@@ -89,8 +89,8 @@ img{ max-width: 100%; display:block; }
 }
 
 .hero{
-  margin: 20px 0 26px;
-  padding: 22px;
+  margin: 12px 0 18px;
+  padding: 14px 18px;
   border: 1px solid rgba(255,255,255,.10);
   border-radius: var(--radius);
   background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
