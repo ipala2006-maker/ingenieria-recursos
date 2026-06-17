@@ -180,11 +180,25 @@ if (topic.videos?.length) {
 
   videoList.innerHTML = topic.videos.map(video => {
 
-  const videoId =
-    video.url.split("v=")[1]?.split("&")[0];
+  let videoId = "";
 
-  const thumbnail =
-    `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+// youtube.com/watch?v=
+if (video.url.includes("watch?v=")) {
+  videoId = video.url.split("watch?v=")[1].split("&")[0];
+}
+
+// youtu.be/
+else if (video.url.includes("youtu.be/")) {
+  videoId = video.url.split("youtu.be/")[1].split("?")[0];
+}
+
+// youtube.com/live/
+else if (video.url.includes("/live/")) {
+  videoId = video.url.split("/live/")[1].split("?")[0];
+}
+
+const thumbnail =
+  `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
 
   return `
     <a class="video-card" href="${video.url}" target="_blank">

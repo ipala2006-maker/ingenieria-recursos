@@ -23,31 +23,39 @@ const DATA = {
           title: "Física I",
           description: "Mecánica y termodinámica.",
           temas: [
-            {   
+            {
   slug: "mediciones",
   title: "Mediciones",
   meta: "Unidades e incertidumbre",
 
   videos: [
-  {
-    title: "Clase 1 - Mediciones",
-    url: "https://www.youtube.com/watch?v=XXXXXXXXXXX"
-  }
-],
-
-  pdfs: [
     {
-      title: "Apunte de Mediciones",
-      url: "../../pdfs/fisica/mediciones/apunte.pdf"
+      title: "Mediciones - Video 1",
+      url: "https://youtu.be/SeczOCvlmco?si=fIQn32HnFPimpQCL"
+    },
+    {
+      title: "Mediciones - Video 2",
+      url: "https://youtu.be/gzX1U0fH07U?si=VXD7Z-5n_-_WMx9d"
+    },
+    {
+      title: "Mediciones - Video 3",
+      url: "https://youtu.be/emNCC0aSz9A?si=y4ExdfAWY9_1BAaV"
     }
   ],
 
-  herramientas: [
+  pdfs: [
   {
-    title: "GeoGebra",
-    url: "https://www.geogebra.org/"
+    title: "Prueba PDF",
+    url: "../../pdfs/fisica-1/mediciones/mediciones.pdf.pdf"
   }
-]
+],
+
+  herramientas: [
+    {
+      title: "Simulador de Magnitudes",
+      url: "https://www.educaplus.org/games/magnitudes"
+    }
+  ]
 },
             { slug: "estatica", title: "Estática", meta: "Equilibrio de fuerzas" },
             { slug: "cinematica", title: "Cinemática", meta: "Movimiento sin fuerzas" },
