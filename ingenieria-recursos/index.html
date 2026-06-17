@@ -10,74 +10,56 @@
   <body>
     <header class="topbar">
       <a class="brand" href="./">
-        <span class="brand__mark" aria-hidden="true">∑</span>
-        <span class="brand__text">
-  Estudiemos
-</span>
+        <span class="brand__text">Estudiemos</span>
       </a>
 
-      <nav class="topbar__nav" aria-label="Navegación">
+      <nav class="topbar__nav">
         <a class="topbar__link" href="./about.html">Acerca de</a>
       </nav>
     </header>
 
     <main class="container">
-      <section class="hero">
-  <div class="hero__text">
-    <h1>Estudiemos</h1>
-  </div>
-</section>
 
-      <!-- Grid de materias -->
+      <section class="hero">
+        <h1>Estudiemos</h1>
+      </section>
+
       <section class="section">
         <div class="section__head">
           <h2>Carreras</h2>
           <p class="section__hint">Haz clic para ver las materias.</p>
         </div>
 
-        <div id="materiasGrid" class="cards-grid" role="list" aria-label="Materias">
-          <!-- JS insertará tarjetas aquí -->
-        </div>
+        <div id="materiasGrid" class="cards-grid"></div>
       </section>
 
       <footer class="footer">
         <span>© <span id="year"></span> Estudiemos</span>
-        <span class="footer__dot" aria-hidden="true">•</span>
-        <span class="muted">Primera versión (estática)</span>
       </footer>
+
     </main>
 
-    <script>
-      // Datos iniciales (lista para expandir)
-      const data = [
-  {
-    slug: "ingenieria",
-    title: "Ingeniería",
-    description: "Materias de ingeniería.",
-    icon: "./assets/img/math-01.svg"
-  }
-];
+    <!-- DATA SIEMPRE PRIMERO -->
+    <script src="./data/data.js"></script>
 
-      // Render materias
+    <script>
       const grid = document.getElementById("materiasGrid");
-      grid.innerHTML = data.map((m) => {
-        return `
-          <a class="card" role="listitem" href="./pages/carrera/${m.slug}.html">
-            <div class="card__media">
-              <img class="card__icon" src="${m.icon}" alt="" />
-            </div>
-            <div class="card__body">
-              <h3 class="card__title">${m.title}</h3>
-              <p class="card__desc">${m.description}</p>
-            </div>
-            <div class="card__arrow" aria-hidden="true">→</div>
-          </a>
-        `;
-      }).join("");
+
+      const data = DATA.carreras;
+
+      grid.innerHTML = data.map(m => `
+        <a class="card" href="./pages/carrera/${m.slug}.html">
+          <div class="card__body">
+            <h3 class="card__title">${m.title}</h3>
+            <p class="card__desc">${m.description}</p>
+          </div>
+        </a>
+      `).join("");
     </script>
 
     <script>
       document.getElementById("year").textContent = new Date().getFullYear();
     </script>
+
   </body>
 </html>

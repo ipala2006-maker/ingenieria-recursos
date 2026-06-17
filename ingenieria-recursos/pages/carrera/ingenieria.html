@@ -3,116 +3,64 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Materia — Temas</title>
+    <title>Carrera</title>
     <link rel="stylesheet" href="../../styles/app.css" />
   </head>
 
   <body>
+
     <header class="topbar">
       <a class="brand" href="../../">
-        <span class="brand__mark" aria-hidden="true">∑</span>
-        <span class="brand__text">
-          Ingeniería <span class="brand__text--muted">Recursos</span>
-        </span>
+        <span class="brand__text">Estudiemos</span>
       </a>
-
-      <nav class="topbar__nav" aria-label="Navegación">
-        <a class="topbar__link" href="../../about.html">Acerca de</a>
-      </nav>
     </header>
 
     <main class="container">
+
       <div class="breadcrumbs" id="breadcrumbs"></div>
 
-      <section class="panel">
-        <div class="topic-page-head">
-          <div>
-            <h1 id="materiaTitle">Materia</h1>
-            <p id="materiaDesc" class="muted"></p>
-          </div>
-          <div class="muted" style="max-width:420px">
-            Estructura lista. Completa con contenido cuando lo tengas.
-          </div>
-        </div>
-
-        <div class="hr"></div>
+      <section class="section">
 
         <div class="section__head">
-          <h2>Materias</h2>
-          <p class="section__hint">Haz clic para ver la página del tema.</p>
+          <h2 id="carreraTitle">Carrera</h2>
+          <p id="carreraDesc" class="section__hint"></p>
         </div>
 
-        <div id="topicsGrid" class="topic-grid" aria-label="Temas">
-          <!-- JS insertará -->
-        </div>
+        <div id="materiasGrid" class="cards-grid"></div>
+
       </section>
+
     </main>
 
+    <!-- DATA -->
+    <script src="../../data/data.js"></script>
+
     <script>
-      // ✅ Datos iniciales
-      const materias = [
-  {
-    slug: "ingenieria",
-    title: "Ingeniería",
-    description: "Materias disponibles de Ingeniería.",
-    topics: [
-      {
-        slug: "analisis-matematico-1",
-        title: "Análisis Matemático I",
-        meta: "Límites, derivadas e integrales"
-      },
-      {
-        slug: "fisica-1",
-        title: "Física I",
-        meta: "Mecánica, fluidos y termodinámica"
-      }
-    ]
-  }
-];
-
-      // Obtén slug desde el path:
-      // Si estás en pages/materia/<slug>.html, entonces:
       const pathParts = location.pathname.split("/").filter(Boolean);
-      const maybeSlug = pathParts[pathParts.length - 1]; // <slug>.html
-      const slug = maybeSlug.replace(".html", "");
+      const slug = pathParts[pathParts.length - 1].replace(".html", "");
 
-      const materia = materias.find(m => m.slug === slug);
+      const carrera = DATA.carreras.find(c => c.slug === slug);
 
-      // Manejo básico si el slug no existe
-      if (!materia) {
-        document.body.innerHTML = `
-          <main class="container">
-            <section class="panel">
-              <h1>Materia no encontrada</h1>
-              <p class="muted">Verifica la URL.</p>
-              <a class="btn" href="../../">Volver a materias</a>
-            </section>
-          </main>
-        `;
+      if (!carrera) {
+        document.body.innerHTML = "<h1>Carrera no encontrada</h1>";
       } else {
-        document.getElementById("materiaTitle").textContent = materia.title;
-        document.getElementById("materiaDesc").textContent = materia.description;
 
-        const breadcrumbs = document.getElementById("breadcrumbs");
-        breadcrumbs.innerHTML = `
-          <a href="../../">Materias</a>
-          <span class="sep">/</span>
-          <span>${materia.title}</span>
-        `;
+        document.getElementById("carreraTitle").textContent = carrera.title;
+        document.getElementById("carreraDesc").textContent = carrera.description;
 
-        const grid = document.getElementById("topicsGrid");
-        grid.innerHTML = materia.topics.map(t => {
-          return `
-            <a class="topic-card" href="../materia/${t.slug}.html">
-              <div>
-                <p class="topic-card__title">${t.title}</p>
-                <div class="topic-card__meta">${t.meta}</div>
-              </div>
-              <div class="topic-card__go" aria-hidden="true">→</div>
-            </a>
-          `;
-        }).join("");
+        const grid = document.getElementById("materiasGrid");
+
+        grid.innerHTML = carrera.materias.map(m => `
+          <a class="card" href="../materia/${m.slug}.html">
+            <div class="card__body">
+              <h3 class="card__title">${m.title}</h3>
+              <p class="card__desc">${m.description}</p>
+            </div>
+          </a>
+        `).join("");
+
       }
     </script>
+
   </body>
 </html>

@@ -3,120 +3,73 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Materia — Temas</title>
+    <title>Materia</title>
     <link rel="stylesheet" href="../../styles/app.css" />
   </head>
 
   <body>
+
     <header class="topbar">
       <a class="brand" href="../../">
-        <span class="brand__mark" aria-hidden="true">∑</span>
-        <span class="brand__text">
-          Ingeniería <span class="brand__text--muted">Recursos</span>
-        </span>
+        <span class="brand__text">Estudiemos</span>
       </a>
-
-      <nav class="topbar__nav" aria-label="Navegación">
-        <a class="topbar__link" href="../../about.html">Acerca de</a>
-      </nav>
     </header>
 
     <main class="container">
+
       <div class="breadcrumbs" id="breadcrumbs"></div>
 
-      <section class="panel">
-        <div class="topic-page-head">
-          <div>
-            <h1 id="materiaTitle">Materia</h1>
-            <p id="materiaDesc" class="muted"></p>
-          </div>
-          <div class="muted" style="max-width:420px">
-            Estructura lista. Completa con contenido cuando lo tengas.
-          </div>
-        </div>
-
-        <div class="hr"></div>
+      <section class="section">
 
         <div class="section__head">
-          <h2>Temas</h2>
-          <p class="section__hint">Haz clic para ver la página del tema.</p>
+          <h2 id="materiaTitle">Materia</h2>
+          <p id="materiaDesc" class="section__hint"></p>
         </div>
 
-        <div id="topicsGrid" class="topic-grid" aria-label="Temas">
-          <!-- JS insertará -->
-        </div>
+        <div id="topicsGrid" class="topic-grid"></div>
+
       </section>
+
     </main>
 
+    <!-- DATA -->
+    <script src="../../data/data.js"></script>
+
     <script>
-      // ✅ Datos iniciales
-      const materias = [
-        {
-  slug: "fisica-1",
-  title: "Física I",
-  description: "Temas principales de física",
-  topics: [
-    { slug: "mediciones", title: "Mediciones", meta: "Magnitudes, unidades e incertidumbre" },
-    { slug: "estatica", title: "Estática", meta: "Equilibrio de fuerzas" },
-    { slug: "cinematica", title: "Cinemática", meta: "Movimiento sin fuerzas" },
-    { slug: "dinamica", title: "Dinámica", meta: "Leyes de Newton" },
-    { slug: "trabajo-energia", title: "Trabajo y energía", meta: "Energía mecánica y conservación" },
-    { slug: "cantidad-movimiento-choques", title: "Cantidad de movimiento / choques", meta: "Impulso y colisiones" },
-    { slug: "rotaciones", title: "Rotaciones", meta: "Movimiento angular y torque" },
-    { slug: "moas", title: "Movimiento oscilatorio (MOAS)", meta: "Oscilaciones y M.A.S." },
-    { slug: "elasticidad", title: "Elasticidad", meta: "Deformaciones y leyes de Hooke" },
-    { slug: "fluidos", title: "Fluidos", meta: "Presión, densidad y Bernoulli" },
-    { slug: "calorimetria", title: "Calorimetría", meta: "Transferencia de calor" },
-    { slug: "termodinamica", title: "Termodinámica", meta: "Calor, trabajo y leyes" },
-    { slug: "ondas", title: "Ondas", meta: "Propagación de ondas" },
-    { slug: "sonido", title: "Sonido", meta: "Ondas sonoras y acústica" }
-  ]
-}
-      ];
-
-      // Obtén slug desde el path:
-      // Si estás en pages/materia/<slug>.html, entonces:
       const pathParts = location.pathname.split("/").filter(Boolean);
-      const maybeSlug = pathParts[pathParts.length - 1]; // <slug>.html
-      const slug = maybeSlug.replace(".html", "");
+      const slug = pathParts[pathParts.length - 1].replace(".html", "");
 
-      const materia = materias.find(m => m.slug === slug);
+      let materiaFound = null;
 
-      // Manejo básico si el slug no existe
-      if (!materia) {
-        document.body.innerHTML = `
-          <main class="container">
-            <section class="panel">
-              <h1>Materia no encontrada</h1>
-              <p class="muted">Verifica la URL.</p>
-              <a class="btn" href="../../">Volver a materias</a>
-            </section>
-          </main>
-        `;
+      for (const carrera of DATA.carreras) {
+        for (const materia of carrera.materias) {
+          if (materia.slug === slug) {
+            materiaFound = materia;
+            break;
+          }
+        }
+      }
+
+      if (!materiaFound) {
+        document.body.innerHTML = "<h1>Materia no encontrada</h1>";
       } else {
-        document.getElementById("materiaTitle").textContent = materia.title;
-        document.getElementById("materiaDesc").textContent = materia.description;
 
-        const breadcrumbs = document.getElementById("breadcrumbs");
-        breadcrumbs.innerHTML = `
-          <a href="../../">Materias</a>
-          <span class="sep">/</span>
-          <span>${materia.title}</span>
-        `;
+        document.getElementById("materiaTitle").textContent = materiaFound.title;
+        document.getElementById("materiaDesc").textContent = materiaFound.description;
 
         const grid = document.getElementById("topicsGrid");
-        grid.innerHTML = materia.topics.map(t => {
-          return `
-            <a class="topic-card" href="../tema/${t.slug}.html?materia=${encodeURIComponent(materia.slug)}">
-              <div>
-                <p class="topic-card__title">${t.title}</p>
-                <div class="topic-card__meta">${t.meta}</div>
-              </div>
-              <div class="topic-card__go" aria-hidden="true">→</div>
-            </a>
-          `;
-        }).join("");
+
+        grid.innerHTML = materiaFound.temas.map(t => `
+          <a class="topic-card" href="../tema/${t.slug}.html">
+            <div>
+              <p class="topic-card__title">${t.title}</p>
+              <div class="topic-card__meta">${t.meta}</div>
+            </div>
+          </a>
+        `).join("");
+
       }
     </script>
+
   </body>
 </html>
