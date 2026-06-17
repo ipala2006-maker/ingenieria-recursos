@@ -410,7 +410,7 @@ kbd{
 }
 .video-grid{
   display:grid;
-  grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 320px));
   gap:20px;
 }
 
@@ -553,4 +553,35 @@ kbd{
 .tool-card__content p{
   margin:0;
   color:var(--muted);
+}
+.video-card{
+  display:block;
+  overflow:hidden;
+  text-decoration:none;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.10);
+  background:rgba(255,255,255,.04);
+  transition:.2s;
+}
+
+.video-card:hover{
+  transform:translateY(-3px);
+  border-color:rgba(255,255,255,.25);
+}
+
+.video-card img{
+  width:100%;
+  display:block;
+  aspect-ratio:16/9;
+  object-fit:cover;
+}
+
+.video-card__body{
+  padding:14px;
+}
+
+.video-card__title{
+  margin:0;
+  font-size:1rem;
+  font-weight:600;
 }

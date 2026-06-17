@@ -23,7 +23,32 @@ const DATA = {
           title: "Física I",
           description: "Mecánica y termodinámica.",
           temas: [
-            { slug: "mediciones", title: "Mediciones", meta: "Unidades e incertidumbre" },
+            {   
+  slug: "mediciones",
+  title: "Mediciones",
+  meta: "Unidades e incertidumbre",
+
+  videos: [
+  {
+    title: "Clase 1 - Mediciones",
+    url: "https://www.youtube.com/watch?v=XXXXXXXXXXX"
+  }
+],
+
+  pdfs: [
+    {
+      title: "Apunte de Mediciones",
+      url: "../../pdfs/fisica/mediciones/apunte.pdf"
+    }
+  ],
+
+  herramientas: [
+  {
+    title: "GeoGebra",
+    url: "https://www.geogebra.org/"
+  }
+]
+},
             { slug: "estatica", title: "Estática", meta: "Equilibrio de fuerzas" },
             { slug: "cinematica", title: "Cinemática", meta: "Movimiento sin fuerzas" },
             { slug: "dinamica", title: "Dinámica", meta: "Leyes de Newton" },
