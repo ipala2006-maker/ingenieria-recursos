@@ -80,6 +80,7 @@
 
     <!-- DATA -->
     <script src="../../data/data.js"></script>
+    <script src="../../scripts/global-search.js"></script>
 
     <script>
       // navegaciÃ³n UI
@@ -203,10 +204,10 @@ const thumbnail =
   return `
     <a class="video-card" href="${video.url}" target="_blank">
 
-      <img src="${thumbnail}" alt="${video.title}">
+      <img src="${thumbnail}" alt="${video.title || "Video sin título"}">
 
       <div class="video-card__body">
-        <p class="video-card__title">${video.title}</p>
+        <p class="video-card__title">${video.title || "Video sin título"}</p>
       </div>
 
     </a>
