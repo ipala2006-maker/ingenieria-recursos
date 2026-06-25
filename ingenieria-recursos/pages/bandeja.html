@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Panel de recursos</title>
+    <link rel="stylesheet" href="../styles/app.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="../">
+        <span class="brand__text">Estudiemos</span>
+      </a>
+      <nav class="topbar__nav">
+        <a class="topbar__link" href="../about.html">Acerca de</a>
+      </nav>
+    </header>
+
+    <main class="container">
+      <section class="panel">
+        <h1>Recursos</h1>
+        <p class="muted">Usa el panel lateral para acceder rapidamente a tus recursos.</p>
+        <button class="btn tray-trigger" type="button" data-bandeja-trigger aria-label="Abrir recursos">
+          <span class="tray-trigger__bar"></span>
+          <span class="tray-trigger__bar"></span>
+          <span class="tray-trigger__bar"></span>
+        </button>
+      </section>
+    </main>
+
+    <script src="../data/data.js"></script>
+    <script src="../scripts/global-search.js"></script>
+  </body>
+</html>

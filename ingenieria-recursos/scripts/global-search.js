@@ -4,8 +4,10 @@
   const topbar = document.querySelector(".topbar");
   if (!topbar || document.querySelector(".global-search")) return;
 
-  const rootPath = location.pathname.includes("/pages/") ? "../../" : "./";
+  const rootPath = getRootPath();
   const resources = buildResources();
+  applyInitialBandejaState();
+  loadBandejaScript();
 
   const search = document.createElement("div");
   search.className = "global-search";
@@ -43,7 +45,6 @@
 
           items.push({
             type: "Tema",
-            icon: "📚",
             title: tema.title,
             searchable: [tema.title, tema.meta, ...(tema.tags || [])],
             topic: tema.title,
@@ -55,7 +56,6 @@
           (tema.videos || []).forEach((video) => {
             items.push({
               type: "Video",
-              icon: "📹",
               title: video.title || `Video de ${tema.title}`,
               searchable: [video.title, tema.title, tema.meta],
               topic: tema.title,
@@ -69,7 +69,6 @@
           (tema.pdfs || []).forEach((pdf) => {
             items.push({
               type: "PDF",
-              icon: "📄",
               title: pdf.title,
               searchable: [pdf.title],
               topic: tema.title,
@@ -82,7 +81,6 @@
           (tema.herramientas || []).forEach((tool) => {
             items.push({
               type: "Herramienta",
-              icon: "🛠",
               title: tool.title,
               searchable: [tool.title],
               topic: tema.title,
@@ -96,6 +94,23 @@
     });
 
     return items;
+  }
+
+  function loadBandejaScript() {
+    if (document.querySelector('script[src$="scripts/bandeja.js"]')) return;
+
+    const script = document.createElement("script");
+    script.src = `${rootPath}scripts/bandeja.js`;
+    document.head.appendChild(script);
+  }
+
+  function applyInitialBandejaState() {
+    try {
+      document.body.classList.toggle("tray-open", localStorage.getItem("bandeja_abierta") === "true");
+      document.body.classList.remove("tray-transition-enabled");
+    } catch (error) {
+      document.body.classList.remove("tray-open", "tray-transition-enabled");
+    }
   }
 
   function renderResults(value) {
@@ -123,12 +138,12 @@
     results.innerHTML = matches.map(({ item, match }) => `
       <a class="topic-card global-search__card" href="${escapeAttr(item.url)}" target="${item.target}" rel="noopener">
         <div>
-          <p class="topic-card__title">${item.icon} ${highlight(item.title, value)}</p>
+          <p class="topic-card__title">${highlight(item.title, value)}</p>
           ${match.text && normalize(match.text) !== normalize(item.title) ? `<p class="global-search__meta">Coincidencia: ${highlight(match.text, value)}</p>` : ""}
           <p class="global-search__meta">Tema: ${escapeHtml(item.topic)}</p>
           <p class="global-search__meta">Materia: ${escapeHtml(item.subject)}</p>
         </div>
-        <span class="global-search__tag">${escapeHtml(item.subject)}</span>
+        <span class="global-search__tag">${escapeHtml(item.type)}</span>
       </a>
     `).join("");
   }
@@ -205,5 +220,13 @@
 
   function escapeRegExp(value) {
     return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  function getRootPath() {
+    if (location.pathname.includes("/pages/tema/")) return "../../";
+    if (location.pathname.includes("/pages/materia/")) return "../../";
+    if (location.pathname.includes("/pages/carrera/")) return "../../";
+    if (location.pathname.includes("/pages/")) return "../";
+    return "./";
   }
 })();

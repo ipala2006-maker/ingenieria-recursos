@@ -48,21 +48,21 @@
 
         <!-- VIEWS -->
         <div id="videosView" style="display:none;">
-          <button class="btn" onclick="showCategories()">← Volver</button>
+          <button class="btn" onclick="showCategories()">Volver</button>
           <div class="hr"></div>
           <h2>Videos</h2>
           <div id="videoList" class="video-grid"></div>
         </div>
 
         <div id="pdfsView" style="display:none;">
-          <button class="btn" onclick="showCategories()">← Volver</button>
+          <button class="btn" onclick="showCategories()">Volver</button>
           <div class="hr"></div>
           <h2>Material</h2>
           <div id="pdfList" class="pdf-grid"></div>
         </div>
 
         <div id="toolsView" style="display:none;">
-          <button class="btn" onclick="showCategories()">← Volver</button>
+          <button class="btn" onclick="showCategories()">Volver</button>
           <div class="hr"></div>
           <h2>Herramientas</h2>
           <div id="toolList" class="tool-grid"></div>
@@ -70,7 +70,7 @@
 
         <div class="hr"></div>
 
-        <a class="btn" id="backToMateriaBtn">← Volver a la materia</a>
+        <a class="btn" id="backToMateriaBtn">Volver a la materia</a>
 
       </section>
 
@@ -142,7 +142,7 @@
           pdfList.innerHTML = topic.pdfs.map(pdf => `
             <a class="topic-card" href="${pdf.url}" target="_blank">
               <div>
-                <p class="topic-card__title">📄 ${pdf.title}</p>
+                <p class="topic-card__title">${pdf.title}</p>
               </div>
             </a>
           `).join("");
@@ -189,7 +189,7 @@
               <a class="video-card" href="${video.url}" target="_blank">
                 <img src="${thumbnail}">
                 <div class="video-card__body">
-                 <p class="video-card__title">${data.title || video.title || "Video sin titulo"}</p>
+                 <p class="video-card__title">${data.title || video.title || "Video sin título"}</p>
                 </div>
               </a>
             `;
@@ -207,7 +207,7 @@
           toolList.innerHTML = topic.herramientas.map(tool => `
             <a class="topic-card" href="${tool.url}" target="_blank">
               <div>
-                <p class="topic-card__title">🛠 ${tool.title}</p>
+                <p class="topic-card__title">${tool.title}</p>
               </div>
             </a>
           `).join("");
