@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tema</title>
+    <link rel="stylesheet" href="../../styles/app.css" />
+  </head>
+
+  <body>
+
+    <header class="topbar">
+      <a class="brand" href="../../">
+        <span class="brand__text">Estudiemos</span>
+      </a>
+    </header>
+
+    <main class="container">
+
+      <div class="breadcrumbs" id="breadcrumbs"></div>
+
+      <section class="panel">
+
+        <h1 id="topicTitle">Tema</h1>
+        <p id="topicDesc" class="muted"></p>
+
+        <div class="hr"></div>
+
+        <!-- MENU -->
+        <div id="categoriesView" class="resource-categories">
+
+          <div class="resource-card" onclick="showVideos()">
+            <h3>Videos</h3>
+            <p>Explicaciones y clases</p>
+          </div>
+
+          <div class="resource-card" onclick="showPDFs()">
+            <h3>Material</h3>
+            <p>Apuntes y guías</p>
+          </div>
+
+          <div class="resource-card" onclick="showTools()">
+            <h3>Herramientas</h3>
+            <p>Simuladores</p>
+          </div>
+
+        </div>
+
+        <!-- VIEWS -->
+        <div id="videosView" style="display:none;">
+          <button class="btn" onclick="showCategories()">Volver</button>
+          <div class="hr"></div>
+          <h2>Videos</h2>
+          <div id="videoList" class="video-grid"></div>
+        </div>
+
+        <div id="pdfsView" style="display:none;">
+          <button class="btn" onclick="showCategories()">Volver</button>
+          <div class="hr"></div>
+          <h2>Material</h2>
+          <div id="pdfList" class="pdf-grid"></div>
+        </div>
+
+        <div id="toolsView" style="display:none;">
+          <button class="btn" onclick="showCategories()">Volver</button>
+          <div class="hr"></div>
+          <h2>Herramientas</h2>
+          <div id="toolList" class="tool-grid"></div>
+        </div>
+
+        <div class="hr"></div>
+
+        <a class="btn" id="backToMateriaBtn">Volver a la materia</a>
+
+      </section>
+
+    </main>
+
+    <script src="../../data/data.js"></script>
+    <script src="../../scripts/global-search.js"></script>
+
+    <script>
+      function hideAll() {
+        document.getElementById("categoriesView").style.display = "none";
+        document.getElementById("videosView").style.display = "none";
+        document.getElementById("pdfsView").style.display = "none";
+        document.getElementById("toolsView").style.display = "none";
+      }
+
+      function showCategories(push = true) {
+        hideAll();
+        document.getElementById("categoriesView").style.display = "grid";
+        if (push) history.pushState({ view: "categories" }, "");
+      }
+
+      function showVideos(push = true) {
+        hideAll();
+        document.getElementById("videosView").style.display = "block";
+        if (push) history.pushState({ view: "videos" }, "");
+      }
+
+      function showPDFs(push = true) {
+        hideAll();
+        document.getElementById("pdfsView").style.display = "block";
+        if (push) history.pushState({ view: "pdfs" }, "");
+      }
+
+      function showTools(push = true) {
+        hideAll();
+        document.getElementById("toolsView").style.display = "block";
+        if (push) history.pushState({ view: "tools" }, "");
+      }
+
+      const pathParts = location.pathname.split("/").filter(Boolean);
+      const topicSlug = pathParts[pathParts.length - 1].replace(".html", "");
+
+      let materia = null;
+      let topic = null;
+
+      for (const carrera of DATA.carreras) {
+        for (const m of carrera.materias) {
+          for (const t of m.temas) {
+            if (t.slug === topicSlug) {
+              materia = m;
+              topic = t;
+            }
+          }
+        }
+      }
+
+      if (!materia || !topic) {
+        document.body.innerHTML = "<h1>Tema no encontrado</h1>";
+      } else {
+
+        document.getElementById("topicTitle").textContent = topic.title;
+        document.getElementById("topicDesc").textContent = topic.meta;
+
+        // PDFS
+        const pdfList = document.getElementById("pdfList");
+
+        if (topic.pdfs?.length) {
+          pdfList.innerHTML = topic.pdfs.map(pdf => `
+            <a class="topic-card" href="${pdf.url}" target="_blank">
+              <div>
+                <p class="topic-card__title">${pdf.title}</p>
+              </div>
+            </a>
+          `).join("");
+        } else {
+          pdfList.innerHTML = "<p class='muted'>No hay material disponible todavía.</p>";
+        }
+
+        // VIDEOS
+        async function renderVideos() {
+          const container = document.getElementById("videoList");
+          const videos = topic.videos || [];
+
+          if (videos.length === 0) {
+            container.innerHTML = "<p class='muted'>No hay videos disponibles todavía.</p>";
+            return;
+          }
+
+          container.innerHTML = "Cargando...";
+
+          const html = await Promise.all(videos.map(async video => {
+
+            let data = {};
+
+            try {
+              const res = await fetch(`https://noembed.com/embed?url=${video.url}`);
+              data = await res.json();
+            } catch (error) {
+              data = {};
+            }
+
+            let videoId = "";
+
+            if (video.url.includes("watch?v=")) {
+              videoId = video.url.split("watch?v=")[1].split("&")[0];
+            } else if (video.url.includes("youtu.be/")) {
+              videoId = video.url.split("youtu.be/")[1].split("?")[0];
+            } else if (video.url.includes("/live/")) {
+              videoId = video.url.split("/live/")[1].split("?")[0];
+            }
+
+            const thumbnail = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+
+            return `
+              <a class="video-card" href="${video.url}" target="_blank">
+                <img src="${thumbnail}">
+                <div class="video-card__body">
+                 <p class="video-card__title">${data.title || video.title || "Video sin título"}</p>
+                </div>
+              </a>
+            `;
+          }));
+
+          container.innerHTML = html.join("");
+        }
+
+        renderVideos();
+
+        // TOOLS
+        const toolList = document.getElementById("toolList");
+
+        if (topic.herramientas?.length) {
+          toolList.innerHTML = topic.herramientas.map(tool => `
+            <a class="topic-card" href="${tool.url}" target="_blank">
+              <div>
+                <p class="topic-card__title">${tool.title}</p>
+              </div>
+            </a>
+          `).join("");
+        } else {
+          toolList.innerHTML = "<p class='muted'>No hay herramientas disponibles todavía.</p>";
+        }
+
+        document.getElementById("backToMateriaBtn").href =
+          "../materia/" + materia.slug + ".html";
+
+        document.getElementById("breadcrumbs").innerHTML = `
+          <a href="../../">Carreras</a>
+          <span>/</span>
+          <span>${materia.title}</span>
+          <span>/</span>
+          <span>${topic.title}</span>
+        `;
+
+        window.addEventListener("popstate", (event) => {
+          const view = event.state?.view || "categories";
+
+          if (view === "videos") showVideos(false);
+          else if (view === "pdfs") showPDFs(false);
+          else if (view === "tools") showTools(false);
+          else showCategories(false);
+        });
+
+        history.replaceState({ view: "categories" }, "");
+        showCategories(false);
+      }
+    </script>
+
+  </body>
+</html>
