@@ -53,9 +53,9 @@ Comportamiento observado
 
 Actualmente ocurre lo siguiente:
 
-* El usuario selecciona el modo oscuro.
-* Navega normalmente por el sitio.
-* Al regresar a la página principal, el sitio vuelve automáticamente al modo claro.
+* El usuario selecciona el modo oscuro o claro en la pagina principal.
+* Navega normalmente por el sitio con el color contrario.
+* Al regresar a la página principal, el sitio vuelve automáticamente al modo que lo dejaste.
 
 Este comportamiento sigue ocurriendo.
 
@@ -78,6 +78,7 @@ Las cards del listado de Carreras y del listado de Materias siguen sintiéndose 
 No quiero simplemente reducir su tamaño.
 
 El problema es que el contenido, especialmente los títulos, no aprovecha bien el espacio disponible.
+(en la parte de carreras es a lo ancho y a lo largo, en la parte de materias solo a lo largo)
 
 Como consecuencia:
 
