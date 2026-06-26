@@ -7,8 +7,7 @@
   const rootPath = getRootPath();
   const resources = buildResources();
   loadProfessionalStyle();
-  applyInitialBandejaState();
-  runWhenPageIsReady(loadBandejaScript);
+  addLightTrayButton();
 
   const search = document.createElement("div");
   search.className = "global-search";
@@ -104,6 +103,27 @@
     document.head.appendChild(link);
   }
 
+  function addLightTrayButton() {
+    if (topbar.querySelector("[data-bandeja-trigger]")) return;
+
+    const button = document.createElement("button");
+    button.className = "topbar__link tray-trigger";
+    button.type = "button";
+    button.dataset.bandejaTrigger = "true";
+    button.setAttribute("aria-label", "Abrir recursos");
+    button.innerHTML = '<span class="tray-trigger__bar"></span><span class="tray-trigger__bar"></span><span class="tray-trigger__bar"></span>';
+
+    const brand = topbar.querySelector(".brand");
+    topbar.insertBefore(button, brand || topbar.firstChild);
+
+    button.addEventListener("click", () => {
+      try {
+        localStorage.setItem("bandeja_abierta", "true");
+      } catch (error) {}
+      loadBandejaScript();
+    }, { once: true });
+  }
+
   function loadBandejaScript() {
     if (document.querySelector('script[src$="scripts/bandeja.js"]')) return;
 
@@ -111,24 +131,6 @@
     script.src = `${rootPath}scripts/bandeja.js`;
     script.defer = true;
     document.head.appendChild(script);
-  }
-
-  function runWhenPageIsReady(callback) {
-    if ("requestIdleCallback" in window) {
-      requestIdleCallback(callback, { timeout: 900 });
-      return;
-    }
-
-    setTimeout(callback, 80);
-  }
-
-  function applyInitialBandejaState() {
-    try {
-      document.body.classList.toggle("tray-open", localStorage.getItem("bandeja_abierta") === "true");
-      document.body.classList.remove("tray-transition-enabled");
-    } catch (error) {
-      document.body.classList.remove("tray-open", "tray-transition-enabled");
-    }
   }
 
   function renderResults(value) {
