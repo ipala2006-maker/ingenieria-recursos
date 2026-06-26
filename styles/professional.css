@@ -123,7 +123,20 @@ html.theme-dark .subject-toggle:hover{
 }
 
 .container{
-  padding-top:26px;
+  padding-top:22px;
+}
+
+.cards-grid,
+.topic-grid{
+  gap:12px;
+}
+
+.section{
+  margin-top:16px;
+}
+
+.section__head{
+  margin-bottom:12px;
 }
 
 .hero,
@@ -142,7 +155,7 @@ html.theme-dark .subject-toggle:hover{
 }
 
 .hero{
-  padding:22px 24px;
+  padding:18px 22px;
 }
 
 .hero h1,
@@ -180,9 +193,39 @@ html.theme-dark .subject-toggle:hover{
 .video-card,
 .pdf-card,
 .tool-card{
-  border-radius:18px;
+  border-radius:16px;
   background:var(--panel);
   transform:none;
+}
+
+.card{
+  min-height:96px;
+  padding:14px;
+  gap:8px;
+}
+
+.card__title{
+  margin-bottom:4px;
+  font-size:15.5px;
+}
+
+.card__desc{
+  font-size:13px;
+  line-height:1.35;
+}
+
+.topic-card{
+  min-height:68px;
+  padding:12px 14px;
+}
+
+.topic-card__title{
+  font-size:15px;
+}
+
+.topic-card__meta{
+  font-size:12.5px;
+  line-height:1.35;
 }
 
 .card:hover,
@@ -498,6 +541,14 @@ html.theme-dark .theme-switcher__btn.is-active{
 }
 
 @media(max-width:760px){
+  .container{
+    padding-top:18px;
+  }
+
+  .card{
+    min-height:88px;
+  }
+
   .tray-panel{
     box-shadow:10px 0 28px rgba(15,23,42,.14);
   }
