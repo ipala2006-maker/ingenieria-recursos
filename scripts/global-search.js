@@ -6,6 +6,7 @@
 
   const rootPath = getRootPath();
   const resources = buildResources();
+  loadProfessionalStyle();
   applyInitialBandejaState();
   loadBandejaScript();
 
@@ -94,6 +95,15 @@
     });
 
     return items;
+  }
+
+  function loadProfessionalStyle() {
+    if (document.querySelector('link[href$="styles/professional.css"]')) return;
+
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = `${rootPath}styles/professional.css`;
+    document.head.appendChild(link);
   }
 
   function loadBandejaScript() {
