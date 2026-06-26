@@ -17,6 +17,7 @@
   addSubjectButtons();
   addResourceButtons();
   observeResourceCards();
+  syncAfterBrowserNavigation();
 
   function addTray() {
     if (document.querySelector(".tray-shell")) return;
@@ -135,7 +136,7 @@
         const section = button.closest(".tray-accordion");
         const isOpen = section.classList.toggle("is-open");
         button.setAttribute("aria-expanded", String(isOpen));
-        section.querySelector(".tray-chevron").textContent = isOpen ? "-" : "+";
+        section.querySelector(".tray-chevron").textContent = isOpen ? "−" : "+";
       });
     });
 
@@ -183,6 +184,22 @@
     document.body.classList.add("tray-transition-enabled");
   }
 
+  function syncAfterBrowserNavigation() {
+    window.addEventListener("pageshow", () => {
+      renderTray();
+      updateAllActionButtons();
+      updateSubjectButtons();
+      restoreTrayState();
+    });
+
+    window.addEventListener("storage", (event) => {
+      if (!Object.values(STORAGE_KEYS).includes(event.key)) return;
+      renderTray();
+      updateAllActionButtons();
+      updateSubjectButtons();
+    });
+  }
+
   function renderTray() {
     renderSubjects();
     renderList("favoritesList", readList(STORAGE_KEYS.favorites), "Todavía no agregaste favoritos.", STORAGE_KEYS.favorites);
@@ -228,6 +245,8 @@
       card.classList.add("bandeja-card-wrap");
       card.appendChild(createMiniActions(item));
     });
+
+    updateAllActionButtons();
   }
 
   function observeResourceCards() {
@@ -251,15 +270,24 @@
       const button = document.createElement("button");
       button.type = "button";
       button.className = "subject-toggle";
+      button.dataset.subjectSlug = slug;
       button.textContent = isSubjectSelected(slug) ? "Elegida" : "Agregar";
       button.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
         toggleSubject(slug);
-        button.textContent = isSubjectSelected(slug) ? "Elegida" : "Agregar";
+        updateSubjectButtons();
         renderTray();
       });
       card.appendChild(button);
+    });
+
+    updateSubjectButtons();
+  }
+
+  function updateSubjectButtons() {
+    document.querySelectorAll(".subject-toggle[data-subject-slug]").forEach((button) => {
+      button.textContent = isSubjectSelected(button.dataset.subjectSlug) ? "Elegida" : "Agregar";
     });
   }
 
@@ -296,7 +324,7 @@
           ${item.subject ? `<p class="global-search__meta">Materia: ${escapeHtml(item.subject)}</p>` : ""}
         </div>
         <span class="global-search__tag">${escapeHtml(item.type)}</span>
-        ${key ? `<button class="bandeja-remove-btn" type="button" data-bandeja-remove="${escapeAttr(key)}" data-bandeja-remove-id="${escapeAttr(item.id)}" aria-label="Quitar ${escapeAttr(item.title)}">×</button>` : ""}
+        ${key ? `<button class="bandeja-remove-btn" type="button" data-bandeja-remove="${escapeAttr(key)}" data-bandeja-remove-id="${escapeAttr(item.id)}" aria-label="Quitar ${escapeAttr(item.title)}">${icon("close")}</button>` : ""}
       </a>
     `).join("");
 
@@ -312,24 +340,25 @@
   function createActions(item) {
     const wrapper = document.createElement("div");
     wrapper.className = "bandeja-actions";
-    wrapper.appendChild(createButton("Favorito", STORAGE_KEYS.favorites, item));
-    wrapper.appendChild(createButton("Guardar", STORAGE_KEYS.saved, item));
+    wrapper.appendChild(createButton("Favorito", STORAGE_KEYS.favorites, item, "Marcar como favorito", "star", true));
+    wrapper.appendChild(createButton("Guardar", STORAGE_KEYS.saved, item, "Guardar para después", "bookmark", true));
     return wrapper;
   }
 
   function createMiniActions(item) {
     const wrapper = document.createElement("div");
     wrapper.className = "bandeja-mini-actions";
-    wrapper.appendChild(createButton("*", STORAGE_KEYS.favorites, item, "Marcar favorito"));
-    wrapper.appendChild(createButton("+", STORAGE_KEYS.saved, item, "Guardar para después"));
+    wrapper.appendChild(createButton("Favorito", STORAGE_KEYS.favorites, item, "Marcar como favorito", "star", false));
+    wrapper.appendChild(createButton("Guardar", STORAGE_KEYS.saved, item, "Guardar para después", "bookmark", false));
     return wrapper;
   }
 
-  function createButton(label, key, item, title) {
+  function createButton(label, key, item, title, iconName, showLabel) {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "bandeja-action-btn";
-    button.textContent = label;
+    button.className = showLabel ? "bandeja-action-btn bandeja-action-btn--text" : "bandeja-action-btn bandeja-action-btn--icon";
+    button.innerHTML = `${icon(iconName)}${showLabel ? `<span>${label}</span>` : `<span class="sr-only">${label}</span>`}`;
+    button.setAttribute("aria-label", title || label);
     if (title) button.title = title;
     button.addEventListener("click", (event) => {
       event.preventDefault();
@@ -409,6 +438,7 @@
   function removeItem(key, id) {
     if (key === STORAGE_KEYS.subjects) {
       writeList(key, readList(key).filter((slug) => `materia:${slug}` !== id));
+      updateSubjectButtons();
     } else {
       writeList(key, readList(key).filter((item) => item.id !== id));
     }
@@ -419,9 +449,10 @@
 
   function toggleItem(key, item) {
     const list = readList(key);
-    const exists = list.some((saved) => saved.id === item.id);
-    const next = exists ? list.filter((saved) => saved.id !== item.id) : [item, ...list];
-    writeList(key, next);
+    const normalizedItem = normalizeItem(item) || item;
+    const exists = list.some((saved) => saved.id === normalizedItem.id);
+    const next = exists ? list.filter((saved) => saved.id !== normalizedItem.id) : [normalizedItem, ...list];
+    writeList(key, dedupeItems(next));
   }
 
   function hasItem(key, id) {
@@ -432,9 +463,9 @@
     try {
       const list = JSON.parse(localStorage.getItem(key)) || [];
 
-      if (key === STORAGE_KEYS.subjects) return list;
+      if (key === STORAGE_KEYS.subjects) return Array.isArray(list) ? list : [];
 
-      const normalized = dedupeItems(list.map(normalizeItem).filter(Boolean));
+      const normalized = dedupeItems((Array.isArray(list) ? list : []).map(normalizeItem).filter(Boolean));
 
       if (key === STORAGE_KEYS.favorites || key === STORAGE_KEYS.saved || key === STORAGE_KEYS.recent) {
         writeList(key, normalized);
@@ -550,6 +581,12 @@
     });
   }
 
+  function updateAllActionButtons() {
+    document.querySelectorAll("[data-bandeja-key][data-bandeja-id]").forEach((button) => {
+      button.classList.toggle("is-active", hasItem(button.dataset.bandejaKey, button.dataset.bandejaId));
+    });
+  }
+
   function findTopicBySlug(slug) {
     for (const carrera of DATA.carreras) {
       for (const materia of carrera.materias || []) {
@@ -626,6 +663,16 @@
     } catch (error) {
       return true;
     }
+  }
+
+  function icon(name) {
+    const icons = {
+      star: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.9l2.5 5.1 5.6.8-4 3.9.9 5.5-5-2.6-5 2.6.9-5.5-4-3.9 5.6-.8L12 3.9z"/></svg>',
+      bookmark: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.8c0-.5.4-.8.8-.8h8.4c.4 0 .8.3.8.8v15l-5-3-5 3v-15z"/></svg>',
+      close: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.7 5.3 12 10.6l5.3-5.3 1.4 1.4-5.3 5.3 5.3 5.3-1.4 1.4-5.3-5.3-5.3 5.3-1.4-1.4 5.3-5.3-5.3-5.3 1.4-1.4z"/></svg>'
+    };
+
+    return icons[name] || "";
   }
 
   function getBasePath() {
