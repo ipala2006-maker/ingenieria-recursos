@@ -21,6 +21,7 @@
   refreshPageActions();
   renderTray();
   restoreTrayState();
+  markActiveTheme();
   observeLateCards();
 
   function addTray() {
@@ -51,6 +52,13 @@
               <a id="suggestionLink" class="btn tray-submit" href="${GOOGLE_FORM_URL}" target="_blank" rel="noopener">Enviar sugerencia</a>
             </div>
           </section>
+        </div>
+        <div class="tray-footer">
+          <p class="tray-footer__label">Tema</p>
+          <div class="theme-switcher" aria-label="Cambiar tema">
+            <button class="theme-switcher__btn" type="button" data-theme-choice="light" aria-label="Tema claro" title="Tema claro">${icon("sun")}</button>
+            <button class="theme-switcher__btn" type="button" data-theme-choice="dark" aria-label="Tema oscuro" title="Tema oscuro">${icon("moon")}</button>
+          </div>
         </div>
       </div>
     `;
@@ -110,12 +118,18 @@
     document.querySelector(".tray-shell")?.addEventListener("click", (event) => {
       const trigger = event.target.closest(".tray-accordion__trigger");
       const remove = event.target.closest("[data-bandeja-remove]");
+      const theme = event.target.closest("[data-theme-choice]");
 
       if (trigger) {
         const section = trigger.closest(".tray-accordion");
         const isOpen = section.classList.toggle("is-open");
         trigger.setAttribute("aria-expanded", String(isOpen));
         section.querySelector(".tray-chevron").textContent = isOpen ? "−" : "+";
+        return;
+      }
+
+      if (theme) {
+        setTheme(theme.dataset.themeChoice, true);
         return;
       }
 
@@ -153,6 +167,7 @@
       syncSubjectButtons();
       renderTray();
       restoreTrayState();
+      markActiveTheme();
     });
   }
 
@@ -165,6 +180,21 @@
   function restoreTrayState() {
     document.body.classList.remove("tray-transition-enabled");
     setTrayOpen(localStorage.getItem(STORAGE_KEYS.open) === "true", false);
+  }
+
+  function setTheme(theme, save) {
+    const next = theme === "dark" ? "dark" : "light";
+    document.documentElement.classList.toggle("theme-dark", next === "dark");
+    document.documentElement.classList.toggle("theme-light", next === "light");
+    if (save) localStorage.setItem("estudiemos_theme", next);
+    markActiveTheme();
+  }
+
+  function markActiveTheme() {
+    const isDark = document.documentElement.classList.contains("theme-dark");
+    document.querySelectorAll("[data-theme-choice]").forEach((button) => {
+      button.classList.toggle("is-active", button.dataset.themeChoice === (isDark ? "dark" : "light"));
+    });
   }
 
   function refreshPageActions() {
@@ -531,7 +561,9 @@
     const icons = {
       star: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.9l2.5 5.1 5.6.8-4 3.9.9 5.5-5-2.6-5 2.6.9-5.5-4-3.9 5.6-.8L12 3.9z"/></svg>',
       bookmark: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.8c0-.5.4-.8.8-.8h8.4c.4 0 .8.3.8.8v15l-5-3-5 3v-15z"/></svg>',
-      close: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.7 5.3 12 10.6l5.3-5.3 1.4 1.4-5.3 5.3 5.3 5.3-1.4 1.4-5.3-5.3-5.3 5.3-1.4-1.4 5.3-5.3-5.3-5.3 1.4-1.4z"/></svg>'
+      close: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.7 5.3 12 10.6l5.3-5.3 1.4 1.4-5.3 5.3 5.3 5.3-1.4 1.4-5.3-5.3-5.3 5.3-1.4-1.4 5.3-5.3-5.3-5.3 1.4-1.4z"/></svg>',
+      sun: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5.2a1 1 0 0 1-1-1V2.8a1 1 0 1 1 2 0v1.4a1 1 0 0 1-1 1Zm0 16a1 1 0 0 1-1-1v-1.4a1 1 0 1 1 2 0v1.4a1 1 0 0 1-1 1Zm6.8-8.2a1 1 0 1 1 0-2h1.4a1 1 0 1 1 0 2h-1.4ZM3.8 13a1 1 0 1 1 0-2h1.4a1 1 0 1 1 0 2H3.8Zm13-5.8a1 1 0 0 1 0-1.4l1-1a1 1 0 1 1 1.4 1.4l-1 1a1 1 0 0 1-1.4 0ZM4.8 19.2a1 1 0 0 1 0-1.4l1-1a1 1 0 0 1 1.4 1.4l-1 1a1 1 0 0 1-1.4 0Zm13 0-1-1a1 1 0 0 1 1.4-1.4l1 1a1 1 0 1 1-1.4 1.4ZM5.8 7.2l-1-1a1 1 0 1 1 1.4-1.4l1 1a1 1 0 0 1-1.4 1.4ZM12 16.5a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9Z"/></svg>',
+      moon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.3 14.7a8.3 8.3 0 0 1-11-11 1 1 0 0 0-1.1-1.4A10.2 10.2 0 1 0 21.7 15.8a1 1 0 0 0-1.4-1.1ZM12 20.1a8.2 8.2 0 0 1-5.6-14.2 10.3 10.3 0 0 0 11.7 11.7 8.1 8.1 0 0 1-6.1 2.5Z"/></svg>'
     };
     return icons[name] || "";
   }
