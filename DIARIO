@@ -35,5 +35,129 @@ Siempre priorizás el aprendizaje del estudiante por encima de cualquier decisi�
 
 # TAREAS
 
+Tarea: Resolver definitivamente tres problemas de UX pendientes
+
+Esta tarea tiene como objetivo resolver tres problemas de experiencia de usuario que siguen presentes después de varios intentos de implementación.
+
+En los intentos anteriores se realizaron cambios en el código, pero el comportamiento observable del sitio continúa siendo el mismo. Por ese motivo, el enfoque cambia.
+
+No quiero una nueva implementación basada en hipótesis. Quiero que primero investigues el proyecto hasta identificar la causa real de cada problema y recién después implementes la solución que consideres correcta.
+
+El éxito de esta tarea no se mide por la cantidad de archivos modificados ni por el código escrito, sino porque los tres problemas de UX desaparezcan realmente.
+
+⸻
+
+Problema 1 — El tema no persiste correctamente
+
+Comportamiento observado
+
+Actualmente ocurre lo siguiente:
+
+* El usuario selecciona el modo oscuro.
+* Navega normalmente por el sitio.
+* Al regresar a la página principal, el sitio vuelve automáticamente al modo claro.
+
+Este comportamiento sigue ocurriendo.
+
+Resultado esperado
+
+La preferencia del usuario debe mantenerse durante toda la navegación.
+
+Si el usuario eligió modo oscuro, ninguna página debe volver automáticamente al modo claro.
+
+La experiencia debe ser completamente consistente entre todas las páginas del sitio.
+
+No importa cuál sea la causa técnica; lo importante es que el comportamiento observado desaparezca.
+
+⸻
+
+Problema 2 — Las cards desperdician espacio
+
+Las cards del listado de Carreras y del listado de Materias siguen sintiéndose demasiado grandes para el contenido que muestran.
+
+No quiero simplemente reducir su tamaño.
+
+El problema es que el contenido, especialmente los títulos, no aprovecha bien el espacio disponible.
+
+Como consecuencia:
+
+* entra menos contenido en pantalla del necesario;
+* las cards se sienten visualmente infladas;
+* existe demasiado espacio libre alrededor del contenido.
+
+Resultado esperado
+
+Quiero mantener la identidad visual actual.
+
+No busco cards apretadas.
+
+Busco un mejor equilibrio entre espacio en blanco y contenido para que los títulos encajen de forma más natural y la interfaz resulte más eficiente.
+
+⸻
+
+Problema 3 — La navegación hacia páginas internas sigue sintiéndose como una recarga
+
+Actualmente existe una diferencia muy clara entre dos situaciones.
+
+Cuando el usuario utiliza el botón “Atrás”, la navegación se siente rápida y fluida.
+
+Sin embargo, cuando entra desde una Carrera hacia una Materia o hacia un recurso, la interfaz transmite la sensación de que toda la página vuelve a cargarse.
+
+Esa diferencia rompe la sensación de continuidad del sitio.
+
+Resultado esperado
+
+Quiero que la navegación hacia adelante se perciba tan fluida como la navegación hacia atrás.
+
+No estoy solicitando cambiar la arquitectura del proyecto.
+
+Si la mejor solución implica únicamente optimizar el comportamiento actual, prefiero esa opción antes que introducir una complejidad innecesaria.
+
+⸻
+
+Forma de trabajo
+
+Antes de implementar cualquier cambio:
+
+1. Reproducí los tres problemas.
+2. Investigá el proyecto completo relacionado con cada uno.
+3. Identificá la causa real.
+4. No des por válida una hipótesis sin comprobarla.
+
+Si durante la investigación descubrís que la causa es distinta de la que imaginabas inicialmente, seguí investigando hasta encontrar el verdadero origen.
+
+No quiero soluciones basadas en suposiciones.
+
+Quiero soluciones basadas en evidencia obtenida del proyecto.
+
+⸻
+
+Implementación
+
+Una vez identificada la causa real de cada problema:
+
+* proponé la solución técnica que consideres más adecuada;
+* respetá la arquitectura existente;
+* evitá cambios innecesarios;
+* priorizá estabilidad, simplicidad y mantenibilidad.
+
+No implementes soluciones temporales ni parches.
+
+⸻
+
+Validación obligatoria
+
+No des la tarea por finalizada hasta comprobar que los tres problemas dejaron de reproducirse.
+
+Al finalizar, informá:
+
+* cuál era la causa real de cada problema;
+* qué archivos modificaste;
+* por qué esos cambios resuelven el problema;
+* cómo verificaste que el comportamiento ahora es el esperado.
+
+Si alguno de los tres problemas continúa ocurriendo, considerá la tarea incompleta y continuá investigando hasta resolverlo.
+
+El criterio de éxito no es haber modificado el código. El criterio de éxito es que el usuario deje de experimentar los tres problemas descritos.
 (Dejo este apartado vacío. Yo iré agregando aquí las tareas que quiero que realices. Si no hay una tarea especifica simplemente optimizá la pagina para que sea mas rapida, busca bugs/errores y no modifiques nada grande)
 
