@@ -8,7 +8,7 @@
   const resources = buildResources();
   loadProfessionalStyle();
   applyInitialBandejaState();
-  loadBandejaScript();
+  runWhenPageIsReady(loadBandejaScript);
 
   const search = document.createElement("div");
   search.className = "global-search";
@@ -30,7 +30,6 @@
 
   input.addEventListener("input", () => renderResults(input.value));
   input.addEventListener("focus", () => renderResults(input.value));
-  loadMissingVideoTitles();
 
   document.addEventListener("click", (event) => {
     if (!search.contains(event.target)) results.hidden = true;
@@ -62,8 +61,7 @@
               topic: tema.title,
               subject: materia.title,
               url: video.url,
-              target: "_blank",
-              needsTitle: !video.title
+              target: "_blank"
             });
           });
 
@@ -111,7 +109,17 @@
 
     const script = document.createElement("script");
     script.src = `${rootPath}scripts/bandeja.js`;
+    script.defer = true;
     document.head.appendChild(script);
+  }
+
+  function runWhenPageIsReady(callback) {
+    if ("requestIdleCallback" in window) {
+      requestIdleCallback(callback, { timeout: 900 });
+      return;
+    }
+
+    setTimeout(callback, 80);
   }
 
   function applyInitialBandejaState() {
@@ -156,27 +164,6 @@
         <span class="global-search__tag">${escapeHtml(item.type)}</span>
       </a>
     `).join("");
-  }
-
-  function loadMissingVideoTitles() {
-    const videosWithoutTitle = resources.filter((item) => item.type === "Video" && item.needsTitle);
-
-    videosWithoutTitle.forEach(async (item) => {
-      try {
-        const response = await fetch(`https://noembed.com/embed?url=${encodeURIComponent(item.url)}`);
-        const data = await response.json();
-
-        if (!data.title) return;
-
-        item.title = data.title;
-        item.searchable = [data.title, item.topic];
-        item.needsTitle = false;
-
-        if (input.value.trim()) renderResults(input.value);
-      } catch (error) {
-        item.needsTitle = false;
-      }
-    });
   }
 
   function scoreItem(item, query) {
