@@ -35,10 +35,10 @@
         </div>
 
         <div class="tray-content">
-          <section class="tray-accordion is-open" data-tray-section="favorites">
-            <button class="tray-accordion__trigger" type="button" aria-expanded="true">
+          <section class="tray-accordion" data-tray-section="favorites">
+            <button class="tray-accordion__trigger" type="button" aria-expanded="false">
               <span>Favoritos</span>
-              <span class="tray-chevron">-</span>
+              <span class="tray-chevron">+</span>
             </button>
             <div class="tray-accordion__body">
               <p class="tray-help">Recursos marcados para volver rápido.</p>
@@ -169,7 +169,7 @@
   }
 
   function setTrayOpen(isOpen, shouldSave) {
-    renderTray();
+    if (isOpen && shouldSave) renderTray();
 
     document.body.classList.toggle("tray-open", isOpen);
     document.querySelector(".tray-shell")?.setAttribute("aria-hidden", String(!isOpen));
@@ -185,9 +185,9 @@
 
   function renderTray() {
     renderSubjects();
-    renderList("favoritesList", readList(STORAGE_KEYS.favorites), "Todavía no agregaste favoritos.");
-    renderList("savedList", readList(STORAGE_KEYS.saved), "Todavía no guardaste recursos para después.");
-    renderList("recentList", readList(STORAGE_KEYS.recent), "Todavía no hay temas recientes.");
+    renderList("favoritesList", readList(STORAGE_KEYS.favorites), "Todavía no agregaste favoritos.", STORAGE_KEYS.favorites);
+    renderList("savedList", readList(STORAGE_KEYS.saved), "Todavía no guardaste recursos para después.", STORAGE_KEYS.saved);
+    renderList("recentList", readList(STORAGE_KEYS.recent), "Todavía no hay temas recientes.", STORAGE_KEYS.recent);
     updateSuggestionLink();
   }
 
@@ -276,10 +276,10 @@
       subject: subject.title,
       url: createMateriaUrl(subject.slug),
       target: "_self"
-    })), "Todavía no seleccionaste materias.");
+    })), "Todavía no seleccionaste materias.", STORAGE_KEYS.subjects);
   }
 
-  function renderList(elementId, items, emptyText) {
+  function renderList(elementId, items, emptyText, key) {
     const container = document.getElementById(elementId);
     if (!container) return;
 
@@ -296,8 +296,17 @@
           ${item.subject ? `<p class="global-search__meta">Materia: ${escapeHtml(item.subject)}</p>` : ""}
         </div>
         <span class="global-search__tag">${escapeHtml(item.type)}</span>
+        ${key ? `<button class="bandeja-remove-btn" type="button" data-bandeja-remove="${escapeAttr(key)}" data-bandeja-remove-id="${escapeAttr(item.id)}" aria-label="Quitar ${escapeAttr(item.title)}">×</button>` : ""}
       </a>
     `).join("");
+
+    container.querySelectorAll("[data-bandeja-remove]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        removeItem(button.dataset.bandejaRemove, button.dataset.bandejaRemoveId);
+      });
+    });
   }
 
   function createActions(item) {
@@ -395,6 +404,17 @@
       ? selected.filter((item) => item !== slug)
       : [...selected, slug];
     writeList(STORAGE_KEYS.subjects, next);
+  }
+
+  function removeItem(key, id) {
+    if (key === STORAGE_KEYS.subjects) {
+      writeList(key, readList(key).filter((slug) => `materia:${slug}` !== id));
+    } else {
+      writeList(key, readList(key).filter((item) => item.id !== id));
+    }
+
+    updateButtonsForItem(key, id);
+    renderTray();
   }
 
   function toggleItem(key, item) {
