@@ -130,11 +130,16 @@
   }
 
   function loadProfessionalStyle() {
-    if (document.querySelector('link[href*="styles/professional.css"]')) return;
+    loadStylesheet(`${rootPath}styles/professional.css?v=20260626-5`, "professional.css");
+    loadStylesheet(`${rootPath}styles/compact-cards.css?v=20260626-1`, "compact-cards.css");
+  }
+
+  function loadStylesheet(href, marker) {
+    if (document.querySelector(`link[href*="${marker}"]`)) return;
 
     const link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = `${rootPath}styles/professional.css?v=20260626-5`;
+    link.href = href;
     document.head.appendChild(link);
   }
 
