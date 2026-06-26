@@ -53,9 +53,9 @@ Comportamiento observado
 
 Actualmente ocurre lo siguiente:
 
-* El usuario selecciona el modo oscuro o claro en la pagina principal.
-* Navega normalmente por el sitio con el color contrario.
-* Al regresar a la página principal, el sitio vuelve automáticamente al modo que lo dejaste.
+* El usuario selecciona el modo oscuro o claro en cualquier instancia de la pagina.
+* Navega normalmente por el sitio con color distinto a la instancia anterior.
+* Al regresar a la página, el sitio vuelve automáticamente al modo que lo dejaste en esa instancia.
 
 Este comportamiento sigue ocurriendo.
 
