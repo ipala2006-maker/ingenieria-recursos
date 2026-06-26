@@ -7,6 +7,7 @@
   const rootPath = getRootPath();
   let resources = null;
 
+  preserveNavigationState();
   applySavedTheme();
   loadProfessionalStyle();
   addLightTrayButton();
@@ -33,6 +34,35 @@
   document.addEventListener("click", (event) => {
     if (!search.contains(event.target)) results.hidden = true;
   });
+
+  function preserveNavigationState() {
+    if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+
+    const key = `estudiemos_scroll:${location.pathname}`;
+    const restore = () => {
+      const saved = sessionStorage.getItem(key);
+      if (!saved) return;
+      const y = Number(saved);
+      if (Number.isFinite(y)) requestAnimationFrame(() => scrollTo(0, y));
+    };
+
+    addEventListener("pagehide", () => {
+      sessionStorage.setItem(key, String(scrollY));
+    });
+
+    addEventListener("beforeunload", () => {
+      sessionStorage.setItem(key, String(scrollY));
+    });
+
+    addEventListener("pageshow", restore);
+
+    document.addEventListener("click", (event) => {
+      const link = event.target.closest("a[href]");
+      if (!link) return;
+      const url = new URL(link.href, location.href);
+      if (url.origin === location.origin) sessionStorage.setItem(key, String(scrollY));
+    }, { capture: true });
+  }
 
   function getResources() {
     if (!resources) resources = buildResources();
@@ -104,7 +134,7 @@
 
     const link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = `${rootPath}styles/professional.css?v=20260626-4`;
+    link.href = `${rootPath}styles/professional.css?v=20260626-5`;
     document.head.appendChild(link);
   }
 
@@ -148,7 +178,7 @@
     if (document.querySelector('script[src*="scripts/bandeja.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/bandeja.js?v=20260626-4`;
+    script.src = `${rootPath}scripts/bandeja.js?v=20260626-5`;
     script.defer = true;
     document.head.appendChild(script);
   }
