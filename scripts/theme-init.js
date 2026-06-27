@@ -36,7 +36,7 @@
     var src = currentScript ? currentScript.getAttribute("src") || "" : "";
     var rootPath = src.replace(/scripts\/theme-init\.js(?:\?.*)?$/, "");
     var script = document.createElement("script");
-    script.src = rootPath + "scripts/smooth-nav.js?v=20260627-2";
+    script.src = rootPath + "scripts/smooth-nav.js?v=20260627-3";
     script.defer = true;
     document.head.appendChild(script);
   }
