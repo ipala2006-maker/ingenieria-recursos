@@ -1,10 +1,10 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Tema</title>
-    <script src="../../scripts/theme-init.js?v=20260627-2"></script>
+    <script src="../../scripts/theme-init.js?v=20260627-3"></script>
     <link rel="stylesheet" href="../../styles/app.css" />
   </head>
 
@@ -36,7 +36,7 @@
 
           <div class="resource-card" onclick="showPDFs()">
             <h3>Material</h3>
-            <p>Apuntes y guías</p>
+            <p>Apuntes y guÃ­as</p>
           </div>
 
           <div class="resource-card" onclick="showTools()">
@@ -145,7 +145,7 @@
             </a>
           `).join("");
         } else {
-          pdfList.innerHTML = "<p class='muted'>No hay material disponible todavía.</p>";
+          pdfList.innerHTML = "<p class='muted'>No hay material disponible todavÃ­a.</p>";
         }
 
         async function renderVideos() {
@@ -153,7 +153,7 @@
           const videos = topic.videos || [];
 
           if (videos.length === 0) {
-            container.innerHTML = "<p class='muted'>No hay videos disponibles todavía.</p>";
+            container.innerHTML = "<p class='muted'>No hay videos disponibles todavÃ­a.</p>";
             return;
           }
 
@@ -184,9 +184,9 @@
 
             return `
               <a class="video-card" href="${video.url}" target="_blank">
-                <img src="${thumbnail}" alt="${video.title || "Video sin título"}">
+                <img src="${thumbnail}" alt="${video.title || "Video sin tÃ­tulo"}">
                 <div class="video-card__body">
-                  <p class="video-card__title">${data.title || video.title || "Video sin título"}</p>
+                  <p class="video-card__title">${data.title || video.title || "Video sin tÃ­tulo"}</p>
                 </div>
               </a>
             `;
@@ -208,7 +208,7 @@
             </a>
           `).join("");
         } else {
-          toolList.innerHTML = "<p class='muted'>No hay herramientas disponibles todavía.</p>";
+          toolList.innerHTML = "<p class='muted'>No hay herramientas disponibles todavÃ­a.</p>";
         }
 
         document.getElementById("backToMateriaBtn").href =
