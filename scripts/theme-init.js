@@ -29,7 +29,20 @@
     applyTheme(next, true);
   }
 
+  function loadSmoothNavigation() {
+    if (document.querySelector('script[src*="scripts/smooth-nav.js"]')) return;
+
+    var currentScript = document.currentScript;
+    var src = currentScript ? currentScript.getAttribute("src") || "" : "";
+    var rootPath = src.replace(/scripts\/theme-init\.js(?:\?.*)?$/, "");
+    var script = document.createElement("script");
+    script.src = rootPath + "scripts/smooth-nav.js?v=20260627-1";
+    script.defer = true;
+    document.head.appendChild(script);
+  }
+
   applyTheme(readTheme(), false);
+  loadSmoothNavigation();
 
   window.EstudiemosTheme = {
     key: STORAGE_KEY,
