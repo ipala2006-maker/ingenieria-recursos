@@ -14,8 +14,6 @@ GitHub Actions completa automáticamente el comentario oculto `codex-task` para 
 ## Pendientes
 
 - [ ] Cambiar el texto del botón principal de la página de inicio por "Prueba Codex". <!-- codex-task:id=dca1e2f2436b estado=error branch=codex/task-dca1e2f2436b pr=https://github.com/ipala2006-maker/ingenieria-recursos/pull/10 updated=2026-06-27T22:20:01.865Z error=codex_action_failed -->
-- [ ] Prueba automatica Codex: cambiar temporalmente el texto del boton Diario por "Diario prueba".
-- [ ] Prueba automatica Codex mini: cambiar temporalmente el texto del boton Diario por "Diario mini".
 
 ## Estados
 

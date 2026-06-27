@@ -218,5 +218,5 @@ jobs:
       - name: Fail when Codex task failed
         if: steps.select.outputs.has_task == 'true' && steps.result.outputs.state == 'error'
         run: |
-          echo "::error::La tarea fue seleccionada, pero Codex no pudo completarla. Revisar el paso 'Run Codex' y el secret OPENAI_API_KEY."
+          echo "::error::La tarea fue seleccionada, pero Codex no pudo completarla. Revisar el paso 'Run Codex'. Si aparece 'Quota exceeded', revisar cuota/billing de la API de OpenAI."
           exit 1
