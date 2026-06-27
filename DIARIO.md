@@ -15,4 +15,4 @@ Codex debe leer este archivo en cada automatización.
 
 ## Tareas
 
-[quiero que se vea mejor la card de las carreras, sobra mucho espacio en la card ya que los titulos no suelen ser muy grandes]
+- Mejorar la card de las carreras: sobra mucho espacio en la card porque los títulos no suelen ser muy grandes.

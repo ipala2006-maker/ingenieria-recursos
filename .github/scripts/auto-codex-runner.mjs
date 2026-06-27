@@ -84,11 +84,22 @@ function markTask() {
 }
 
 function readTasks() {
-  return fs
-    .readFileSync(TASKS_FILE, "utf8")
-    .split(/\r?\n/)
-    .map(parseTaskLine)
-    .filter(Boolean);
+  const tasks = [];
+  let inFence = false;
+
+  for (const line of fs.readFileSync(TASKS_FILE, "utf8").split(/\r?\n/)) {
+    if (/^\s*```/.test(line)) {
+      inFence = !inFence;
+      continue;
+    }
+
+    if (inFence) continue;
+
+    const task = parseTaskLine(line);
+    if (task) tasks.push(task);
+  }
+
+  return tasks;
 }
 
 function parseTaskLine(line) {
@@ -155,18 +166,18 @@ function buildPrompt(task) {
     `Rama de trabajo esperada: ${task.branch}`,
     "",
     "Reglas obligatorias:",
-    "- Implementa solamente esta tarea; no amplíes alcance.",
+    "- Implementa solamente esta tarea; no amplias alcance.",
     "- Haz cambios chicos, seguros y reversibles.",
     "- No borres archivos o carpetas masivamente.",
     "- No leas, imprimas ni modifiques secrets, tokens, credenciales ni variables sensibles.",
-    "- No modifiques autenticación, base de datos, dependencias, configuración crítica ni workflows salvo que la tarea lo pida explícitamente.",
+    "- No modifiques autenticacion, base de datos, dependencias, configuracion critica ni workflows salvo que la tarea lo pida explicitamente.",
     "- No hagas commit, push ni abras PR; GitHub Actions se encarga de eso.",
-    "- Si la tarea es ambigua, peligrosa o demasiado grande, no hagas cambios de código y deja una explicación breve en tu respuesta final.",
+    "- Si la tarea es ambigua, peligrosa o demasiado grande, no hagas cambios de codigo y deja una explicacion breve en tu respuesta final.",
     "- Ejecuta los checks disponibles si existen.",
     "",
     "Entrega esperada:",
     "- Cambios aplicados en el workspace.",
-    "- Respuesta final corta con qué cambiaste y cómo lo verificaste.",
+    "- Respuesta final corta con que cambiaste y como lo verificaste.",
   ].join("\n");
 }
 
@@ -246,3 +257,4 @@ async function github(path, options) {
 
   return { status: response.status, data };
 }
+
