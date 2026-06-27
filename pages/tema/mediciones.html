@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Tema</title>
+    <script src="../../scripts/theme-init.js"></script>
     <link rel="stylesheet" href="../../styles/app.css" />
   </head>
 
@@ -26,7 +27,6 @@
 
         <div class="hr"></div>
 
-        <!-- MENU -->
         <div id="categoriesView" class="resource-categories">
 
           <div class="resource-card" onclick="showVideos()">
@@ -46,7 +46,6 @@
 
         </div>
 
-        <!-- VIEWS -->
         <div id="videosView" style="display:none;">
           <button class="btn" onclick="showCategories()">Volver</button>
           <div class="hr"></div>
@@ -77,7 +76,7 @@
     </main>
 
     <script src="../../data/data.js"></script>
-    <script src="../../scripts/global-search.js"></script>
+    <script src="../../scripts/global-search.js?v=20260627-theme"></script>
 
     <script>
       function hideAll() {
@@ -135,7 +134,6 @@
         document.getElementById("topicTitle").textContent = topic.title;
         document.getElementById("topicDesc").textContent = topic.meta;
 
-        // PDFS
         const pdfList = document.getElementById("pdfList");
 
         if (topic.pdfs?.length) {
@@ -150,7 +148,6 @@
           pdfList.innerHTML = "<p class='muted'>No hay material disponible todavía.</p>";
         }
 
-        // VIDEOS
         async function renderVideos() {
           const container = document.getElementById("videoList");
           const videos = topic.videos || [];
@@ -187,9 +184,9 @@
 
             return `
               <a class="video-card" href="${video.url}" target="_blank">
-                <img src="${thumbnail}">
+                <img src="${thumbnail}" alt="${video.title || "Video sin título"}">
                 <div class="video-card__body">
-                 <p class="video-card__title">${data.title || video.title || "Video sin título"}</p>
+                  <p class="video-card__title">${data.title || video.title || "Video sin título"}</p>
                 </div>
               </a>
             `;
@@ -200,7 +197,6 @@
 
         renderVideos();
 
-        // TOOLS
         const toolList = document.getElementById("toolList");
 
         if (topic.herramientas?.length) {
