@@ -6,7 +6,7 @@ Formato simple:
 
 ```md
 - [ ] Agregar boton "Diario" en la home <!-- codex-task:id=33d7ef30dd90 estado=error branch=codex/task-33d7ef30dd90 pr=https://github.com/ipala2006-maker/ingenieria-recursos/pull/7 updated=2026-06-27T20:29:27.282Z error=codex_action_failed -->
-- [ ] Revisar errores del README
+- [ ] Revisar errores del README <!-- codex-task:id=445def4e8d7b estado=error branch=codex/task-445def4e8d7b updated=2026-06-27T21:57:56.564Z error=codex_action_failed -->
 ```
 
 GitHub Actions completa automaticamente el comentario oculto `codex-task` para guardar estado, rama, PR y trazabilidad.
