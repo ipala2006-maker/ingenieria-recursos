@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Carrera</title>
+    <title>Ingeniería</title>
     <script src="../../scripts/theme-init.js?v=20260627-tray-stable"></script>
     <link rel="stylesheet" href="../../styles/app.css?v=20260627-tray-stable" />
   </head>
@@ -23,12 +23,23 @@
       <section class="section">
 
         <div class="section__head">
-          <h2 id="carreraTitle">Carrera</h2>
-          <p id="carreraDesc" class="section__hint"></p>
+          <h2 id="carreraTitle">Ingeniería</h2>
+          <p id="carreraDesc" class="section__hint">Carrera de ingeniería.</p>
         </div>
 
         <div id="materiasGrid" class="cards-grid">
-          <div class="loading-placeholder">Cargando materias...</div>
+          <a class="card" href="../materia/analisis-matematico-1.html">
+            <div class="card__body">
+              <h3 class="card__title">Análisis Matemático I</h3>
+              <p class="card__desc">Límites, derivadas e integrales.</p>
+            </div>
+          </a>
+          <a class="card" href="../materia/fisica-1.html">
+            <div class="card__body">
+              <h3 class="card__title">Física I</h3>
+              <p class="card__desc">Mecánica y termodinámica.</p>
+            </div>
+          </a>
         </div>
 
       </section>
@@ -49,19 +60,23 @@
         document.body.innerHTML = "<h1>Carrera no encontrada</h1>";
       } else {
 
-        document.getElementById("carreraTitle").textContent = carrera.title;
-        document.getElementById("carreraDesc").textContent = carrera.description;
+        const title = document.getElementById("carreraTitle");
+        const desc = document.getElementById("carreraDesc");
+        if (title.textContent.trim() === "Carrera") title.textContent = carrera.title;
+        if (!desc.textContent.trim()) desc.textContent = carrera.description;
 
         const grid = document.getElementById("materiasGrid");
 
-        grid.innerHTML = carrera.materias.map(m => `
-          <a class="card" href="../materia/${m.slug}.html">
-            <div class="card__body">
-              <h3 class="card__title">${m.title}</h3>
-              <p class="card__desc">${m.description}</p>
-            </div>
-          </a>
-        `).join("");
+        if (!grid.querySelector(".card")) {
+          grid.innerHTML = carrera.materias.map(m => `
+            <a class="card" href="../materia/${m.slug}.html">
+              <div class="card__body">
+                <h3 class="card__title">${m.title}</h3>
+                <p class="card__desc">${m.description}</p>
+              </div>
+            </a>
+          `).join("");
+        }
 
       }
     </script>

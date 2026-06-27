@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Materia</title>
+    <title>Análisis Matemático I</title>
     <script src="../../scripts/theme-init.js?v=20260627-tray-stable"></script>
     <link rel="stylesheet" href="../../styles/app.css?v=20260627-tray-stable" />
   </head>
@@ -23,12 +23,17 @@
       <section class="section">
 
         <div class="section__head">
-          <h2 id="materiaTitle">Materia</h2>
-          <p id="materiaDesc" class="section__hint"></p>
+          <h2 id="materiaTitle">Análisis Matemático I</h2>
+          <p id="materiaDesc" class="section__hint">Límites, derivadas e integrales.</p>
         </div>
 
         <div id="topicsGrid" class="topic-grid">
-          <div class="loading-placeholder">Cargando temas...</div>
+          <a class="topic-card" href="../tema/limites.html"><div><p class="topic-card__title">Límites</p><div class="topic-card__meta">Base para cálculo</div></div></a>
+          <a class="topic-card" href="../tema/continuidad.html"><div><p class="topic-card__title">Continuidad</p><div class="topic-card__meta">Propiedades</div></div></a>
+          <a class="topic-card" href="../tema/derivadas.html"><div><p class="topic-card__title">Derivadas</p><div class="topic-card__meta">Tasa de cambio</div></div></a>
+          <a class="topic-card" href="../tema/integrales.html"><div><p class="topic-card__title">Integrales</p><div class="topic-card__meta">Acumulación</div></div></a>
+          <a class="topic-card" href="../tema/sucesiones.html"><div><p class="topic-card__title">Sucesiones</p><div class="topic-card__meta">Convergencia</div></div></a>
+          <a class="topic-card" href="../tema/series.html"><div><p class="topic-card__title">Series</p><div class="topic-card__meta">Sumatorias</div></div></a>
         </div>
 
       </section>
@@ -58,19 +63,23 @@
         document.body.innerHTML = "<h1>Materia no encontrada</h1>";
       } else {
 
-        document.getElementById("materiaTitle").textContent = materiaFound.title;
-        document.getElementById("materiaDesc").textContent = materiaFound.description;
+        const title = document.getElementById("materiaTitle");
+        const desc = document.getElementById("materiaDesc");
+        if (title.textContent.trim() === "Materia") title.textContent = materiaFound.title;
+        if (!desc.textContent.trim()) desc.textContent = materiaFound.description;
 
         const grid = document.getElementById("topicsGrid");
 
-        grid.innerHTML = materiaFound.temas.map(t => `
-          <a class="topic-card" href="../tema/${t.slug}.html">
-            <div>
-              <p class="topic-card__title">${t.title}</p>
-              <div class="topic-card__meta">${t.meta}</div>
-            </div>
-          </a>
-        `).join("");
+        if (!grid.querySelector(".topic-card")) {
+          grid.innerHTML = materiaFound.temas.map(t => `
+            <a class="topic-card" href="../tema/${t.slug}.html">
+              <div>
+                <p class="topic-card__title">${t.title}</p>
+                <div class="topic-card__meta">${t.meta}</div>
+              </div>
+            </a>
+          `).join("");
+        }
 
       }
     </script>

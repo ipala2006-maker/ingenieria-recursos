@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Materia</title>
+    <title>Física I</title>
     <script src="../../scripts/theme-init.js?v=20260627-tray-stable"></script>
     <link rel="stylesheet" href="../../styles/app.css?v=20260627-tray-stable" />
   </head>
@@ -23,12 +23,25 @@
       <section class="section">
 
         <div class="section__head">
-          <h2 id="materiaTitle">Materia</h2>
-          <p id="materiaDesc" class="section__hint"></p>
+          <h2 id="materiaTitle">Física I</h2>
+          <p id="materiaDesc" class="section__hint">Mecánica y termodinámica.</p>
         </div>
 
         <div id="topicsGrid" class="topic-grid">
-          <div class="loading-placeholder">Cargando temas...</div>
+          <a class="topic-card" href="../tema/mediciones.html"><div><p class="topic-card__title">Mediciones</p><div class="topic-card__meta">Unidades e incertidumbre</div></div></a>
+          <a class="topic-card" href="../tema/estatica.html"><div><p class="topic-card__title">Estática</p><div class="topic-card__meta">Equilibrio de fuerzas</div></div></a>
+          <a class="topic-card" href="../tema/cinematica.html"><div><p class="topic-card__title">Cinemática</p><div class="topic-card__meta">Movimiento sin fuerzas</div></div></a>
+          <a class="topic-card" href="../tema/dinamica.html"><div><p class="topic-card__title">Dinámica</p><div class="topic-card__meta">Leyes de Newton</div></div></a>
+          <a class="topic-card" href="../tema/trabajo-energia.html"><div><p class="topic-card__title">Trabajo y energía</p><div class="topic-card__meta">Energía mecánica</div></div></a>
+          <a class="topic-card" href="../tema/cantidad-movimiento.html"><div><p class="topic-card__title">Cantidad de movimiento</p><div class="topic-card__meta">Choques e impulso</div></div></a>
+          <a class="topic-card" href="../tema/rotaciones.html"><div><p class="topic-card__title">Rotaciones</p><div class="topic-card__meta">Movimiento angular</div></div></a>
+          <a class="topic-card" href="../tema/moas.html"><div><p class="topic-card__title">Movimiento oscilatorio</p><div class="topic-card__meta">Oscilaciones</div></div></a>
+          <a class="topic-card" href="../tema/elasticidad.html"><div><p class="topic-card__title">Elasticidad</p><div class="topic-card__meta">Deformaciones</div></div></a>
+          <a class="topic-card" href="../tema/fluidos.html"><div><p class="topic-card__title">Fluidos</p><div class="topic-card__meta">Presión y Bernoulli</div></div></a>
+          <a class="topic-card" href="../tema/calorimetria.html"><div><p class="topic-card__title">Calorimetría</p><div class="topic-card__meta">Transferencia de calor</div></div></a>
+          <a class="topic-card" href="../tema/termodinamica.html"><div><p class="topic-card__title">Termodinámica</p><div class="topic-card__meta">Leyes térmicas</div></div></a>
+          <a class="topic-card" href="../tema/ondas.html"><div><p class="topic-card__title">Ondas</p><div class="topic-card__meta">Propagación</div></div></a>
+          <a class="topic-card" href="../tema/sonido.html"><div><p class="topic-card__title">Sonido</p><div class="topic-card__meta">Acústica</div></div></a>
         </div>
 
       </section>
@@ -58,19 +71,23 @@
         document.body.innerHTML = "<h1>Materia no encontrada</h1>";
       } else {
 
-        document.getElementById("materiaTitle").textContent = materiaFound.title;
-        document.getElementById("materiaDesc").textContent = materiaFound.description;
+        const title = document.getElementById("materiaTitle");
+        const desc = document.getElementById("materiaDesc");
+        if (title.textContent.trim() === "Materia") title.textContent = materiaFound.title;
+        if (!desc.textContent.trim()) desc.textContent = materiaFound.description;
 
         const grid = document.getElementById("topicsGrid");
 
-        grid.innerHTML = materiaFound.temas.map(t => `
-          <a class="topic-card" href="../tema/${t.slug}.html">
-            <div>
-              <p class="topic-card__title">${t.title}</p>
-              <div class="topic-card__meta">${t.meta}</div>
-            </div>
-          </a>
-        `).join("");
+        if (!grid.querySelector(".topic-card")) {
+          grid.innerHTML = materiaFound.temas.map(t => `
+            <a class="topic-card" href="../tema/${t.slug}.html">
+              <div>
+                <p class="topic-card__title">${t.title}</p>
+                <div class="topic-card__meta">${t.meta}</div>
+              </div>
+            </a>
+          `).join("");
+        }
 
       }
     </script>
