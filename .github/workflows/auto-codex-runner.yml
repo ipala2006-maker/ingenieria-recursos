@@ -2,6 +2,14 @@ name: Auto Codex Runner
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "TASKS.md"
+      - ".github/workflows/auto-codex-runner.yml"
+      - ".github/scripts/auto-codex-runner.mjs"
+      - ".github/scripts/guard-codex-changes.mjs"
   schedule:
     # 09:00, 12:00, 16:00 y 20:00 de Argentina (UTC-3)
     - cron: "0 12,15,19,23 * * *"
