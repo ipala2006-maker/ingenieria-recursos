@@ -3,6 +3,56 @@
   var DEFAULT_THEME = "light";
   var root = document.documentElement;
 
+  function installEarlyThemeStyles() {
+    if (document.getElementById("earlyThemeStyles")) return;
+
+    var style = document.createElement("style");
+    style.id = "earlyThemeStyles";
+    style.textContent = "\n" +
+      "html.theme-light{\n" +
+      "  --bg:#f8fafc;\n" +
+      "  --panel:#ffffff;\n" +
+      "  --panel-2:#f1f5f9;\n" +
+      "  --border:#dfe5ef;\n" +
+      "  --text:#1f2937;\n" +
+      "  --muted:#64748b;\n" +
+      "  --muted-2:#94a3b8;\n" +
+      "  --accent:#1a73e8;\n" +
+      "  --accent-2:#34a853;\n" +
+      "  --accent-3:#fbbc04;\n" +
+      "  --danger:#d93025;\n" +
+      "  --shadow:0 10px 30px rgba(15,23,42,.08);\n" +
+      "  --ring:0 0 0 4px rgba(26,115,232,.14);\n" +
+      "  color-scheme:light;\n" +
+      "}\n" +
+      "html.theme-light body{\n" +
+      "  background:radial-gradient(900px 420px at 15% -15%, rgba(26,115,232,.10), transparent 60%), radial-gradient(760px 360px at 95% -10%, rgba(52,168,83,.08), transparent 55%), var(--bg);\n" +
+      "}\n" +
+      "html.theme-light .topbar{\n" +
+      "  background:rgba(255,255,255,.86);\n" +
+      "  border-bottom-color:rgba(203,213,225,.9);\n" +
+      "}\n" +
+      "html.theme-dark{color-scheme:dark;}\n";
+    document.head.appendChild(style);
+  }
+
+  function installSpeculationRules() {
+    if (document.getElementById("estudiemosSpeculationRules")) return;
+    if (!HTMLScriptElement.supports || !HTMLScriptElement.supports("speculationrules")) return;
+
+    var script = document.createElement("script");
+    script.id = "estudiemosSpeculationRules";
+    script.type = "speculationrules";
+    script.textContent = JSON.stringify({
+      prefetch: [{
+        source: "document",
+        where: { href_matches: "/*" },
+        eagerness: "moderate"
+      }]
+    });
+    document.head.appendChild(script);
+  }
+
   function readTheme() {
     var theme = DEFAULT_THEME;
     try {
@@ -41,7 +91,9 @@
     document.head.appendChild(script);
   }
 
+  installEarlyThemeStyles();
   applyTheme(readTheme(), false);
+  installSpeculationRules();
   loadSmoothNavigation();
 
   window.EstudiemosTheme = {
