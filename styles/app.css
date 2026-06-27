@@ -142,12 +142,12 @@ img{ max-width: 100%; display:block; }
   position: relative;
   display:flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   border-radius: var(--radius);
   background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
   border: 1px solid rgba(255,255,255,.10);
-  padding: 16px;
-  min-height: 128px;
+  padding: 14px 15px;
+  min-height: 96px;
   box-shadow: 0 16px 50px rgba(0,0,0,.25);
   transition: transform .15s ease, border-color .15s ease, background .15s ease;
 }
@@ -167,17 +167,23 @@ img{ max-width: 100%; display:block; }
   height: 42px;
   opacity: .95;
 }
-.card__body{ flex: 1; }
+.card__body{
+  flex: 1;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
 .card__title{
-  margin: 0 0 6px;
+  margin: 0 0 4px;
   font-size: 16px;
   letter-spacing: -0.2px;
+  line-height:1.25;
 }
 .card__desc{
   margin: 0;
   color: var(--muted);
   font-size: 13.5px;
-  line-height: 1.4;
+  line-height: 1.35;
 }
 .card__arrow{
   position: absolute;
