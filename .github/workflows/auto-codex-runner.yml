@@ -140,7 +140,7 @@ jobs:
           ## Seguridad
 
           - No se hizo push directo a \`main\`.
-          - Los cambios quedan en PR para revision humana.
+          - Los cambios pasan por PR antes del merge automatico.
           - La corrida procesa una sola tarea.
 
           ## Codex
@@ -169,4 +169,28 @@ jobs:
           node .github/scripts/auto-codex-runner.mjs mark
           git add TASKS.md
           git commit -m "Registrar PR de tarea Codex ${{ steps.select.outputs.task_id }}" || exit 0
+          git push origin "${{ steps.select.outputs.branch_name }}"
+
+      - name: Auto merge successful task
+        if: steps.select.outputs.has_task == 'true' && steps.pr.outputs.url != '' && steps.result.outputs.state == 'ejecutada'
+        id: merge
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ steps.pr.outputs.url }}
+        run: |
+          gh pr merge "$PR_URL" --squash --delete-branch
+
+      - name: Mark merge failure
+        if: steps.select.outputs.has_task == 'true' && steps.pr.outputs.url != '' && steps.result.outputs.state == 'ejecutada' && steps.merge.outcome != 'success'
+        env:
+          TASK_ID: ${{ steps.select.outputs.task_id }}
+          TASK_STATE: error
+          TASK_BRANCH: ${{ steps.select.outputs.branch_name }}
+          TASK_PR: ${{ steps.pr.outputs.url }}
+          TASK_ERROR: auto_merge_failed
+        run: |
+          node .github/scripts/auto-codex-runner.mjs mark
+          git add TASKS.md
+          git commit -m "Marcar error de merge automatico ${{ steps.select.outputs.task_id }}" || exit 0
           git push origin "${{ steps.select.outputs.branch_name }}"
