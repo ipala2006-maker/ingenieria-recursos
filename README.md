@@ -4,22 +4,24 @@ Sitio estatico de recursos de estudio.
 
 ## Mobile Tasks Runner
 
-Este repositorio incluye una automatizacion simple para capturar tareas desde el celular sin depender de que la PC este prendida.
+Este repositorio incluye una automatizacion para capturar tareas desde el celular y ejecutarlas en la nube con GitHub Actions + Codex.
 
 ### Que puede y que no puede hacer
 
-GitHub Actions si puede correr en la nube, leer `TASKS.md`, crear Issues y actualizar el estado del archivo.
+GitHub Actions corre en la nube, lee `TASKS.md`, crea una rama por tarea, invoca `openai/codex-action@v1`, commitea los cambios en esa rama y abre un Pull Request.
 
-Codex no queda invocado automaticamente desde GitHub Actions con la integracion actual de este proyecto. La alternativa implementada es la mas cercana y segura:
+Para que funcione, el repositorio necesita el secret `OPENAI_API_KEY` configurado en GitHub Actions.
 
 1. Ian escribe tareas en `TASKS.md` desde GitHub mobile o el navegador del celular.
 2. GitHub Actions corre cada 4 horas en la nube.
-3. El workflow crea un Issue por cada tarea pendiente.
-4. La tarea queda marcada como `en_proceso` en `TASKS.md`.
-5. Codex toma el Issue y hace el trabajo en una rama + Pull Request.
-6. Cuando el Issue se cierra como completado, el siguiente workflow marca la tarea como `ejecutada`.
-7. Si el Issue se cierra como no planificado, el workflow marca la tarea como `descartada`.
-8. Si algo falla al crear o sincronizar el Issue, la tarea queda como `error`.
+3. El workflow toma una sola tarea `pendiente`.
+4. Crea una rama `codex/task-...`.
+5. Marca la tarea como `en_proceso` en esa rama.
+6. Ejecuta Codex con `openai/codex-action@v1`.
+7. Revisa protecciones basicas contra cambios riesgosos.
+8. Commita los cambios en la rama.
+9. Abre un Pull Request contra `main`.
+10. Marca la tarea como `ejecutada` o `error` en la rama del PR.
 
 ### Usarlo desde el celular
 
@@ -32,33 +34,56 @@ Codex no queda invocado automaticamente desde GitHub Actions con la integracion 
 ```
 
 4. Guardar el commit desde GitHub.
-5. Esperar la proxima corrida del workflow o ejecutarlo manualmente desde Actions > `Mobile Tasks Runner`.
+5. Esperar la proxima corrida del workflow o ejecutarlo manualmente desde Actions > `Auto Codex Runner`.
 
 No edites el comentario oculto `<!-- codex-task:... -->` que agrega la automatizacion.
 
 ### Estados
 
 - `pendiente`: tarea nueva escrita por Ian.
-- `en_proceso`: GitHub Actions ya creo un Issue para que Codex la trabaje.
-- `ejecutada`: el Issue fue cerrado como completado.
-- `error`: GitHub Actions encontro un problema.
-- `descartada`: el Issue fue cerrado como no planificado.
+- `en_proceso`: GitHub Actions creo una rama y empezo a ejecutar Codex.
+- `ejecutada`: Codex termino y se abrio un Pull Request.
+- `error`: GitHub Actions o Codex fallo, o una proteccion bloqueo cambios riesgosos.
+- `descartada`: tarea descartada manualmente.
+
+### Configurar GitHub antes de usar
+
+1. Ir al repositorio en GitHub.
+2. Abrir Settings > Secrets and variables > Actions.
+3. Crear un repository secret:
+
+```text
+OPENAI_API_KEY=tu_api_key_de_openai
+```
+
+4. Verificar en Settings > Actions > General:
+
+- Workflow permissions: `Read and write permissions`.
+- Allow GitHub Actions to create and approve pull requests: activado.
+
+Sin estos permisos, el workflow puede fallar al pushear la rama o crear el PR.
 
 ### Como trabaja Codex
 
-Codex debe tomar los Issues con labels `mobile-task` y `codex`.
+Codex corre dentro de GitHub Actions mediante `openai/codex-action@v1`.
 
-Reglas para Codex:
+Reglas incluidas en el prompt automatico:
 
-- Crear una rama nueva por tarea.
-- Abrir Pull Request contra `main`.
-- No hacer push directo a `main`.
-- No ejecutar tareas peligrosas automaticamente.
-- Si la tarea es ambigua, grande o riesgosa, comentar el bloqueo en el Issue.
+- implementar solo la tarea seleccionada;
+- no hacer commit, push ni abrir PR manualmente;
+- no borrar archivos masivamente;
+- no tocar secrets, tokens ni credenciales;
+- no modificar autenticacion, base de datos, dependencias, configuracion critica ni workflows salvo pedido explicito;
+- dejar los cambios en el workspace para que GitHub Actions los commitee en una rama.
+
+El workflow tambien ejecuta una proteccion antes de commitear:
+
+- bloquea mas de 3 archivos borrados;
+- bloquea cambios sobre archivos tipicos de secrets o credenciales.
 
 ### Workflow
 
-Archivo: `.github/workflows/mobile-tasks-runner.yml`
+Archivo: `.github/workflows/auto-codex-runner.yml`
 
 Frecuencia:
 
@@ -66,26 +91,40 @@ Frecuencia:
 Cada 4 horas
 ```
 
-Tambien se puede ejecutar manualmente desde GitHub Actions.
+Tambien se puede ejecutar manualmente desde GitHub Actions:
+
+1. Abrir Actions.
+2. Elegir `Auto Codex Runner`.
+3. Tocar `Run workflow`.
+
+### Ver el PR generado
+
+1. Abrir la pestana Pull requests.
+2. Buscar un PR con titulo `[codex] ...`.
+3. Revisar los cambios.
+4. Si esta bien, mergear.
+5. Si esta mal, cerrar el PR o pedir correcciones.
 
 ### Script
 
-Archivo: `.github/scripts/mobile-tasks-runner.mjs`
+Archivo principal: `.github/scripts/auto-codex-runner.mjs`
+
+Proteccion de cambios: `.github/scripts/guard-codex-changes.mjs`
 
 Responsabilidades:
 
 - leer `TASKS.md`;
-- detectar tareas checklist sin metadata;
-- crear labels si faltan;
-- crear un Issue por cada tarea pendiente;
-- escribir metadata oculta para evitar duplicados;
-- sincronizar tareas `en_proceso` con el estado del Issue;
-- marcar `error` si falla una operacion.
+- detectar una tarea checklist pendiente;
+- evitar repetir tareas que ya tienen rama remota;
+- generar el prompt para Codex;
+- marcar `en_proceso`, `ejecutada` o `error`;
+- guardar en `TASKS.md` la rama y URL del PR.
 
 ### Checks locales
 
 No hay build configurado. Para validar sintaxis del runner:
 
 ```bash
-node --check .github/scripts/mobile-tasks-runner.mjs
+node --check .github/scripts/auto-codex-runner.mjs
+node --check .github/scripts/guard-codex-changes.mjs
 ```
