@@ -1,0 +1,172 @@
+name: Auto Codex Runner
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 */4 * * *"
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: auto-codex-runner
+  cancel-in-progress: false
+
+jobs:
+  run-task:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Select one pending task
+        id: select
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: node .github/scripts/auto-codex-runner.mjs select
+
+      - name: Stop when there is no task
+        if: steps.select.outputs.has_task != 'true'
+        run: echo "No pending task found in TASKS.md."
+
+      - name: Create task branch
+        if: steps.select.outputs.has_task == 'true'
+        run: |
+          git switch -c "${{ steps.select.outputs.branch_name }}"
+
+      - name: Mark task as in progress
+        if: steps.select.outputs.has_task == 'true'
+        env:
+          TASK_ID: ${{ steps.select.outputs.task_id }}
+          TASK_STATE: en_proceso
+          TASK_BRANCH: ${{ steps.select.outputs.branch_name }}
+        run: node .github/scripts/auto-codex-runner.mjs mark
+
+      - name: Run Codex
+        if: steps.select.outputs.has_task == 'true'
+        id: codex
+        continue-on-error: true
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          prompt: ${{ steps.select.outputs.prompt }}
+          sandbox: workspace-write
+          safety-strategy: drop-sudo
+          output-file: codex-output.md
+
+      - name: Guard Codex changes
+        if: steps.select.outputs.has_task == 'true'
+        id: guard
+        continue-on-error: true
+        run: node .github/scripts/guard-codex-changes.mjs
+
+      - name: Revert blocked Codex changes
+        if: steps.select.outputs.has_task == 'true' && steps.guard.outcome != 'success'
+        run: |
+          git checkout -- .
+          git clean -fd
+
+      - name: Compute task result
+        if: steps.select.outputs.has_task == 'true'
+        id: result
+        run: |
+          if [ "${{ steps.codex.outcome }}" != "success" ]; then
+            echo "state=error" >> "$GITHUB_OUTPUT"
+            echo "error=codex_action_failed" >> "$GITHUB_OUTPUT"
+          elif [ "${{ steps.guard.outcome }}" != "success" ]; then
+            echo "state=error" >> "$GITHUB_OUTPUT"
+            echo "error=guard_blocked_changes" >> "$GITHUB_OUTPUT"
+          else
+            echo "state=ejecutada" >> "$GITHUB_OUTPUT"
+            echo "error=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Mark task result
+        if: steps.select.outputs.has_task == 'true'
+        env:
+          TASK_ID: ${{ steps.select.outputs.task_id }}
+          TASK_STATE: ${{ steps.result.outputs.state }}
+          TASK_BRANCH: ${{ steps.select.outputs.branch_name }}
+          TASK_ERROR: ${{ steps.result.outputs.error }}
+        run: node .github/scripts/auto-codex-runner.mjs mark
+
+      - name: Commit task branch changes
+        if: steps.select.outputs.has_task == 'true'
+        id: commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f codex-output.md
+
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          git commit -m "Ejecutar tarea Codex ${{ steps.select.outputs.task_id }}"
+          git push -u origin "${{ steps.select.outputs.branch_name }}"
+          echo "has_changes=true" >> "$GITHUB_OUTPUT"
+
+      - name: Open pull request
+        if: steps.select.outputs.has_task == 'true' && steps.commit.outputs.has_changes == 'true'
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TASK_TEXT: ${{ steps.select.outputs.task_text }}
+          TASK_ID: ${{ steps.select.outputs.task_id }}
+          BRANCH_NAME: ${{ steps.select.outputs.branch_name }}
+        run: |
+          body_file="$(mktemp)"
+          cat > "$body_file" <<EOF
+          ## Tarea
+
+          $TASK_TEXT
+
+          ## Origen
+
+          - Archivo: \`TASKS.md\`
+          - Task ID: \`$TASK_ID\`
+          - Rama: \`$BRANCH_NAME\`
+
+          ## Seguridad
+
+          - No se hizo push directo a \`main\`.
+          - Los cambios quedan en PR para revision humana.
+          - La corrida procesa una sola tarea.
+
+          ## Codex
+
+          Resultado de la accion: \`${{ steps.codex.outcome }}\`
+          Resultado de seguridad: \`${{ steps.guard.outcome }}\`
+          EOF
+
+          pr_url="$(gh pr create \
+            --base main \
+            --head "$BRANCH_NAME" \
+            --title "[codex] $TASK_TEXT" \
+            --body-file "$body_file")"
+
+          echo "url=$pr_url" >> "$GITHUB_OUTPUT"
+
+      - name: Store PR URL in TASKS.md
+        if: steps.select.outputs.has_task == 'true' && steps.pr.outputs.url != ''
+        env:
+          TASK_ID: ${{ steps.select.outputs.task_id }}
+          TASK_STATE: ${{ steps.result.outputs.state }}
+          TASK_BRANCH: ${{ steps.select.outputs.branch_name }}
+          TASK_PR: ${{ steps.pr.outputs.url }}
+          TASK_ERROR: ${{ steps.result.outputs.error }}
+        run: |
+          node .github/scripts/auto-codex-runner.mjs mark
+          git add TASKS.md
+          git commit -m "Registrar PR de tarea Codex ${{ steps.select.outputs.task_id }}" || exit 0
+          git push origin "${{ steps.select.outputs.branch_name }}"
