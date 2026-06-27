@@ -12,8 +12,7 @@ Formato simple:
 GitHub Actions completa automaticamente el comentario oculto `codex-task` para guardar estado, rama, PR y trazabilidad.
 
 ## Pendientes
-Ajusta el tamaño de la card clickeable de "carreras" para que se vea mas uniforme y no sobre espacio en la card
-
+Cambiar el texto del botón principal de la página de inicio por "Prueba Codex".
 ## Estados
 
 - `pendiente`: tarea nueva, todavia no procesada por GitHub Actions.
