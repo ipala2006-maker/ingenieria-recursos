@@ -180,6 +180,7 @@
   function restoreTrayState() {
     document.body.classList.remove("tray-transition-enabled");
     setTrayOpen(localStorage.getItem(STORAGE_KEYS.open) === "true", false);
+    document.documentElement.classList.remove("tray-preopen");
   }
 
   function setTheme(theme, save) {

@@ -158,6 +158,13 @@
   }
 
   function loadTrayAfterPageSettles() {
+    try {
+      if (localStorage.getItem("bandeja_abierta") === "true") {
+        loadBandejaScript();
+        return;
+      }
+    } catch (error) {}
+
     const load = () => loadBandejaScript();
     if ("requestIdleCallback" in window) {
       requestIdleCallback(load, { timeout: 1200 });
@@ -183,7 +190,7 @@
     if (document.querySelector('script[src*="scripts/bandeja.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/bandeja.js?v=20260627-theme`;
+    script.src = `${rootPath}scripts/bandeja.js?v=20260627-tray-stable`;
     script.defer = true;
     document.head.appendChild(script);
   }

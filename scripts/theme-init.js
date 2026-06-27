@@ -1,5 +1,6 @@
 (function () {
   var STORAGE_KEY = "estudiemos_theme";
+  var TRAY_OPEN_KEY = "bandeja_abierta";
   var DEFAULT_THEME = "light";
   var root = document.documentElement;
 
@@ -61,6 +62,12 @@
     return theme === "dark" ? "dark" : "light";
   }
 
+  function applyEarlyTrayState() {
+    try {
+      root.classList.toggle("tray-preopen", localStorage.getItem(TRAY_OPEN_KEY) === "true");
+    } catch (error) {}
+  }
+
   function applyTheme(theme, notify) {
     var next = theme === "dark" ? "dark" : "light";
     root.classList.toggle("theme-dark", next === "dark");
@@ -86,12 +93,13 @@
     var src = currentScript ? currentScript.getAttribute("src") || "" : "";
     var rootPath = src.replace(/scripts\/theme-init\.js(?:\?.*)?$/, "");
     var script = document.createElement("script");
-    script.src = rootPath + "scripts/smooth-nav.js?v=20260627-3";
+    script.src = rootPath + "scripts/smooth-nav.js?v=20260627-tray-stable";
     script.defer = true;
     document.head.appendChild(script);
   }
 
   installEarlyThemeStyles();
+  applyEarlyTrayState();
   applyTheme(readTheme(), false);
   installSpeculationRules();
   loadSmoothNavigation();
