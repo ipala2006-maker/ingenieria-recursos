@@ -167,6 +167,11 @@
   }
 
   function applySavedTheme() {
+    if (window.EstudiemosTheme) {
+      window.EstudiemosTheme.sync();
+      return;
+    }
+
     let theme = "light";
     try { theme = localStorage.getItem("estudiemos_theme") || "light"; } catch (error) {}
     const dark = theme === "dark";
@@ -178,7 +183,7 @@
     if (document.querySelector('script[src*="scripts/bandeja.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/bandeja.js?v=20260626-5`;
+    script.src = `${rootPath}scripts/bandeja.js?v=20260627-theme`;
     script.defer = true;
     document.head.appendChild(script);
   }
