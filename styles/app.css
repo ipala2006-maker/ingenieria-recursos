@@ -1042,6 +1042,207 @@ kbd{
   }
 }
 
+.diario-shell{
+  display:grid;
+  grid-template-columns:minmax(0, 420px) minmax(0, 1fr);
+  gap:18px;
+  align-items:start;
+}
+
+.diario-capture,
+.diario-inbox{
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:16px;
+  background:linear-gradient(180deg, rgba(255,255,255,.065), rgba(255,255,255,.028));
+  box-shadow:0 12px 34px rgba(0,0,0,.20);
+  padding:16px;
+}
+
+.diario-capture{
+  position:sticky;
+  top:82px;
+}
+
+.diario-capture__head h1,
+.diario-inbox__head h2{
+  margin:0;
+  font-size:24px;
+}
+
+.diario-capture__head p,
+.diario-inbox__head p,
+.diario-status,
+.diario-empty{
+  margin:6px 0 0;
+  color:var(--muted);
+  line-height:1.45;
+}
+
+.diario-form{
+  display:grid;
+  gap:12px;
+  margin-top:14px;
+}
+
+.diario-field{
+  display:grid;
+  gap:7px;
+  color:var(--muted);
+  font-size:13px;
+  font-weight:800;
+}
+
+.diario-field textarea,
+.diario-field select,
+.diario-field input{
+  width:100%;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:14px;
+  background:rgba(255,255,255,.06);
+  color:var(--text);
+  padding:12px;
+  font:inherit;
+  outline:none;
+}
+
+.diario-field textarea{
+  min-height:132px;
+  resize:vertical;
+}
+
+.diario-field textarea:focus,
+.diario-field select:focus,
+.diario-field input:focus{
+  border-color:rgba(110,231,255,.42);
+  box-shadow:var(--ring);
+}
+
+.diario-config{
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:14px;
+  padding:10px 12px;
+  background:rgba(255,255,255,.035);
+}
+
+.diario-config summary{
+  cursor:pointer;
+  color:var(--muted);
+  font-weight:800;
+}
+
+.diario-config .diario-field{
+  margin-top:10px;
+}
+
+.diario-submit{
+  justify-content:center;
+  min-height:46px;
+}
+
+.diario-inbox__head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+}
+
+.diario-tabs{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin:14px 0;
+}
+
+.diario-tab,
+.diario-action{
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.06);
+  color:var(--text);
+  border-radius:999px;
+  padding:9px 12px;
+  font:inherit;
+  font-size:13px;
+  font-weight:800;
+  cursor:pointer;
+}
+
+.diario-tab.is-active,
+.diario-action.is-active{
+  border-color:rgba(110,231,255,.45);
+  background:rgba(110,231,255,.14);
+}
+
+.diario-list{
+  display:grid;
+  gap:10px;
+}
+
+.diario-item{
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:14px;
+  background:rgba(255,255,255,.04);
+  padding:14px;
+}
+
+.diario-item__meta{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  color:var(--muted-2);
+  font-size:12px;
+  font-weight:800;
+}
+
+.diario-item p{
+  margin:10px 0 0;
+  white-space:pre-wrap;
+  line-height:1.5;
+}
+
+.diario-item__actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:12px;
+}
+
+.diario-item__link{
+  padding:9px 12px;
+  min-height:auto;
+  font-size:13px;
+}
+
+@media(max-width:820px){
+  .diario-shell{
+    grid-template-columns:1fr;
+  }
+
+  .diario-capture{
+    position:static;
+  }
+}
+
+@media(max-width:520px){
+  .diario-capture,
+  .diario-inbox{
+    padding:14px;
+  }
+
+  .diario-inbox__head{
+    flex-direction:column;
+  }
+
+  .diario-inbox__head .btn,
+  .diario-submit{
+    width:100%;
+  }
+
+  .diario-tab,
+  .diario-action{
+    flex:1 1 auto;
+  }
+}
+
 /* ===== Anti-flash tema claro =====
    El CSS base original nace oscuro. Estas reglas fuerzan que el tema claro
    pinte claro desde el primer CSS cargado, antes de cualquier script tardio. */
@@ -1086,7 +1287,11 @@ html.theme-light .pdf-card,
 html.theme-light .tool-card,
 html.theme-light .empty-section,
 html.theme-light .global-search__results,
-html.theme-light .bandeja-check{
+html.theme-light .bandeja-check,
+html.theme-light .diario-capture,
+html.theme-light .diario-inbox,
+html.theme-light .diario-item,
+html.theme-light .diario-config{
   color:var(--text) !important;
   background:var(--panel) !important;
   border-color:var(--border) !important;
@@ -1105,7 +1310,11 @@ html.theme-light .pdf-card__content h3,
 html.theme-light .tool-card__content h3,
 html.theme-light .brand,
 html.theme-light .topbar__link,
-html.theme-light .btn{
+html.theme-light .btn,
+html.theme-light .diario-capture__head h1,
+html.theme-light .diario-inbox__head h2,
+html.theme-light .diario-tab,
+html.theme-light .diario-action{
   color:var(--text) !important;
 }
 
@@ -1122,13 +1331,23 @@ html.theme-light .video-card__content p,
 html.theme-light .pdf-card__content p,
 html.theme-light .tool-card__content p,
 html.theme-light .breadcrumbs,
-html.theme-light .breadcrumbs a{
+html.theme-light .breadcrumbs a,
+html.theme-light .diario-capture__head p,
+html.theme-light .diario-inbox__head p,
+html.theme-light .diario-status,
+html.theme-light .diario-empty,
+html.theme-light .diario-field,
+html.theme-light .diario-config summary,
+html.theme-light .diario-item__meta{
   color:var(--muted) !important;
 }
 
 html.theme-light .global-search__input,
 html.theme-light .tray-field input,
-html.theme-light .tray-field textarea{
+html.theme-light .tray-field textarea,
+html.theme-light .diario-field input,
+html.theme-light .diario-field select,
+html.theme-light .diario-field textarea{
   background:var(--panel-2) !important;
   border-color:transparent !important;
   color:var(--text) !important;
@@ -1138,7 +1357,9 @@ html.theme-light .tray-panel,
 html.theme-light .bandeja-mini-actions,
 html.theme-light .subject-toggle,
 html.theme-light .bandeja-action-btn,
-html.theme-light .tray-close{
+html.theme-light .tray-close,
+html.theme-light .diario-tab,
+html.theme-light .diario-action{
   background:var(--panel) !important;
   border-color:var(--border) !important;
   color:var(--text) !important;

@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Diario / Inbox</title>
+    <script src="../scripts/theme-init.js?v=20260627-3"></script>
+    <link rel="stylesheet" href="../styles/app.css?v=20260627-diario" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="../">
+        <span class="brand__text">Estudiemos</span>
+      </a>
+      <nav class="topbar__nav" aria-label="Navegacion">
+        <a class="topbar__link" href="../">Carreras</a>
+        <a class="topbar__link" href="../about.html">Acerca de</a>
+      </nav>
+    </header>
+
+    <main class="container diario-shell">
+      <section class="diario-capture">
+        <div class="diario-capture__head">
+          <h1>Diario</h1>
+          <p>Captura una tarea, idea, pendiente o nota rapida.</p>
+        </div>
+
+        <form class="diario-form" data-diario-form>
+          <label class="diario-field">
+            <span>Entrada</span>
+            <textarea data-diario-text rows="4" placeholder="Escribi algo..." required></textarea>
+          </label>
+
+          <label class="diario-field">
+            <span>Categoria</span>
+            <select data-diario-category>
+              <option value="">Sin categoria</option>
+              <option>Facultad</option>
+              <option>Estudiemos</option>
+              <option>Finanzas</option>
+              <option>Proyectos</option>
+              <option>Personal</option>
+            </select>
+          </label>
+
+          <details class="diario-config">
+            <summary>Configuracion</summary>
+            <label class="diario-field">
+              <span>Clave opcional</span>
+              <input data-diario-key type="password" autocomplete="current-password" placeholder="DIARIO_SHARED_KEY" />
+            </label>
+          </details>
+
+          <button class="btn diario-submit" type="submit">Guardar entrada</button>
+          <p class="diario-status" data-diario-status aria-live="polite">Listo.</p>
+        </form>
+      </section>
+
+      <section class="diario-inbox">
+        <div class="diario-inbox__head">
+          <div>
+            <h2>Inbox</h2>
+            <p>Revisa lo capturado y marca cada entrada.</p>
+          </div>
+          <button class="btn" type="button" data-diario-refresh>Actualizar</button>
+        </div>
+
+        <div class="diario-tabs" role="tablist" aria-label="Filtro de estado">
+          <button class="diario-tab is-active" type="button" data-diario-filter="inbox">Inbox</button>
+          <button class="diario-tab" type="button" data-diario-filter="procesado">Procesado</button>
+          <button class="diario-tab" type="button" data-diario-filter="descartado">Descartado</button>
+          <button class="diario-tab" type="button" data-diario-filter="todos">Todos</button>
+        </div>
+
+        <div class="diario-list" data-diario-list>
+          <p class="diario-empty">Cargando...</p>
+        </div>
+      </section>
+    </main>
+
+    <script src="../scripts/diario-inbox.js?v=20260627-1"></script>
+  </body>
+</html>
