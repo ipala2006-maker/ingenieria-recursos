@@ -8,7 +8,7 @@ Este repositorio incluye una automatizacion para capturar tareas desde el celula
 
 ### Que puede y que no puede hacer
 
-GitHub Actions corre en la nube, lee `TASKS.md`, crea una rama por tarea, invoca `openai/codex-action@v1`, commitea los cambios en esa rama y abre un Pull Request.
+GitHub Actions corre en la nube, lee `TASKS.md`, crea una rama por tarea, invoca `openai/codex-action@v1`, commitea los cambios en esa rama, abre un Pull Request y lo mergea automaticamente si la tarea termina bien.
 
 Para que funcione, el repositorio necesita el secret `OPENAI_API_KEY` configurado en GitHub Actions.
 
@@ -21,7 +21,8 @@ Para que funcione, el repositorio necesita el secret `OPENAI_API_KEY` configurad
 7. Revisa protecciones basicas contra cambios riesgosos.
 8. Commita los cambios en la rama.
 9. Abre un Pull Request contra `main`.
-10. Marca la tarea como `ejecutada` o `error` en la rama del PR.
+10. Si la tarea termino bien, mergea automaticamente el PR a `main`.
+11. Si falla Codex, el guard o el merge, deja la tarea en `error` y no mergea.
 
 ### Usarlo desde el celular
 
@@ -42,7 +43,7 @@ No edites el comentario oculto `<!-- codex-task:... -->` que agrega la automatiz
 
 - `pendiente`: tarea nueva escrita por Ian.
 - `en_proceso`: GitHub Actions creo una rama y empezo a ejecutar Codex.
-- `ejecutada`: Codex termino y se abrio un Pull Request.
+- `ejecutada`: Codex termino y el Pull Request se mergeo automaticamente.
 - `error`: GitHub Actions o Codex fallo, o una proteccion bloqueo cambios riesgosos.
 - `descartada`: tarea descartada manualmente.
 
@@ -101,9 +102,8 @@ Tambien se puede ejecutar manualmente desde GitHub Actions:
 
 1. Abrir la pestana Pull requests.
 2. Buscar un PR con titulo `[codex] ...`.
-3. Revisar los cambios.
-4. Si esta bien, mergear.
-5. Si esta mal, cerrar el PR o pedir correcciones.
+3. Si la tarea termino bien, el PR deberia aparecer mergeado.
+4. Si algo fallo, el PR queda abierto y `TASKS.md` queda con estado `error`.
 
 ### Script
 
