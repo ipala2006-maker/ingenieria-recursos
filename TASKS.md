@@ -14,7 +14,7 @@ GitHub Actions completa automaticamente el comentario oculto `codex-task` para g
 ## Pendientes
 
 Agrega tareas reales debajo de este texto.
-
+ajustar card de carreras para que se vea mas estetico y no sobre tanto espacio en la card.
 ## Estados
 
 - `pendiente`: tarea nueva, todavia no procesada por GitHub Actions.
