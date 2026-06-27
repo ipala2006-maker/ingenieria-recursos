@@ -1041,3 +1041,106 @@ kbd{
     text-align:right;
   }
 }
+
+/* ===== Anti-flash tema claro =====
+   El CSS base original nace oscuro. Estas reglas fuerzan que el tema claro
+   pinte claro desde el primer CSS cargado, antes de cualquier script tardio. */
+html.theme-light{
+  --bg:#f8fafc !important;
+  --panel:#ffffff !important;
+  --panel-2:#f1f5f9 !important;
+  --border:#dfe5ef !important;
+  --text:#1f2937 !important;
+  --muted:#64748b !important;
+  --muted-2:#94a3b8 !important;
+  --accent:#1a73e8 !important;
+  --accent-2:#34a853 !important;
+  --accent-3:#fbbc04 !important;
+  --danger:#d93025 !important;
+  --shadow:0 10px 30px rgba(15,23,42,.08) !important;
+  --ring:0 0 0 4px rgba(26,115,232,.14) !important;
+  color-scheme:light;
+}
+
+html.theme-light body{
+  color:var(--text) !important;
+  background:
+    radial-gradient(900px 420px at 15% -15%, rgba(26,115,232,.10), transparent 60%),
+    radial-gradient(760px 360px at 95% -10%, rgba(52,168,83,.08), transparent 55%),
+    var(--bg) !important;
+}
+
+html.theme-light .topbar{
+  background:rgba(255,255,255,.92) !important;
+  border-bottom-color:rgba(203,213,225,.9) !important;
+  box-shadow:0 1px 2px rgba(15,23,42,.04) !important;
+}
+
+html.theme-light .hero,
+html.theme-light .panel,
+html.theme-light .card,
+html.theme-light .topic-card,
+html.theme-light .resource-card,
+html.theme-light .video-card,
+html.theme-light .pdf-card,
+html.theme-light .tool-card,
+html.theme-light .empty-section,
+html.theme-light .global-search__results,
+html.theme-light .bandeja-check{
+  color:var(--text) !important;
+  background:var(--panel) !important;
+  border-color:var(--border) !important;
+  box-shadow:var(--shadow) !important;
+}
+
+html.theme-light .hero h1,
+html.theme-light .panel h1,
+html.theme-light .section__head h2,
+html.theme-light .topic-page-head h1,
+html.theme-light .card__title,
+html.theme-light .topic-card__title,
+html.theme-light .video-card__title,
+html.theme-light .resource-card h3,
+html.theme-light .pdf-card__content h3,
+html.theme-light .tool-card__content h3,
+html.theme-light .brand,
+html.theme-light .topbar__link,
+html.theme-light .btn{
+  color:var(--text) !important;
+}
+
+html.theme-light .hero p,
+html.theme-light .section__hint,
+html.theme-light .muted,
+html.theme-light .card__desc,
+html.theme-light .topic-card__meta,
+html.theme-light .global-search__meta,
+html.theme-light .tray-help,
+html.theme-light .tray-empty,
+html.theme-light .resource-card p,
+html.theme-light .video-card__content p,
+html.theme-light .pdf-card__content p,
+html.theme-light .tool-card__content p,
+html.theme-light .breadcrumbs,
+html.theme-light .breadcrumbs a{
+  color:var(--muted) !important;
+}
+
+html.theme-light .global-search__input,
+html.theme-light .tray-field input,
+html.theme-light .tray-field textarea{
+  background:var(--panel-2) !important;
+  border-color:transparent !important;
+  color:var(--text) !important;
+}
+
+html.theme-light .tray-panel,
+html.theme-light .bandeja-mini-actions,
+html.theme-light .subject-toggle,
+html.theme-light .bandeja-action-btn,
+html.theme-light .tray-close{
+  background:var(--panel) !important;
+  border-color:var(--border) !important;
+  color:var(--text) !important;
+  box-shadow:var(--shadow) !important;
+}
