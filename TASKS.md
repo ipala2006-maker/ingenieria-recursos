@@ -5,7 +5,7 @@ Escribi tareas desde GitHub mobile o desde el navegador del celular.
 Formato simple:
 
 ```md
-- [ ] Agregar boton "Diario" en la home <!-- codex-task:id=33d7ef30dd90 estado=error branch=codex/task-33d7ef30dd90 updated=2026-06-27T20:29:23.013Z error=codex_action_failed -->
+- [ ] Agregar boton "Diario" en la home <!-- codex-task:id=33d7ef30dd90 estado=error branch=codex/task-33d7ef30dd90 pr=https://github.com/ipala2006-maker/ingenieria-recursos/pull/7 updated=2026-06-27T20:29:27.282Z error=codex_action_failed -->
 - [ ] Revisar errores del README
 ```
 
