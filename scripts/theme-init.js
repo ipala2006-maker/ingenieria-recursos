@@ -33,7 +33,8 @@
       "  background:rgba(255,255,255,.86);\n" +
       "  border-bottom-color:rgba(203,213,225,.9);\n" +
       "}\n" +
-      "html.theme-dark{color-scheme:dark;}\n";
+      "html.theme-dark{color-scheme:dark;}\n" +
+      "html.theme-syncing,html.theme-syncing *{transition:none!important;}\n";
     document.head.appendChild(style);
   }
 
@@ -68,11 +69,19 @@
     } catch (error) {}
   }
 
-  function applyTheme(theme, notify) {
+  function applyTheme(theme, notify, instant) {
     var next = theme === "dark" ? "dark" : "light";
+    if (instant) root.classList.add("theme-syncing");
     root.classList.toggle("theme-dark", next === "dark");
     root.classList.toggle("theme-light", next === "light");
     root.dataset.theme = next;
+    if (instant) {
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          root.classList.remove("theme-syncing");
+        });
+      });
+    }
     if (notify) {
       window.dispatchEvent(new CustomEvent("estudiemos:theme-change", { detail: { theme: next } }));
     }
@@ -109,19 +118,23 @@
     get: readTheme,
     set: saveTheme,
     sync: function () {
-      applyTheme(readTheme(), true);
+      applyTheme(readTheme(), true, true);
     }
   };
 
-  window.addEventListener("pageshow", function () {
-    applyTheme(readTheme(), true);
-  });
+  function syncThemeInstantly() {
+    applyTheme(readTheme(), true, true);
+  }
+
+  window.addEventListener("pageshow", syncThemeInstantly);
+  window.addEventListener("pagereveal", syncThemeInstantly);
+  window.addEventListener("popstate", syncThemeInstantly, true);
 
   document.addEventListener("visibilitychange", function () {
-    if (!document.hidden) applyTheme(readTheme(), true);
+    if (!document.hidden) syncThemeInstantly();
   });
 
   window.addEventListener("storage", function (event) {
-    if (event.key === STORAGE_KEY) applyTheme(readTheme(), true);
+    if (event.key === STORAGE_KEY) syncThemeInstantly();
   });
 })();

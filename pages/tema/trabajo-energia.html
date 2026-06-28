@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Tema</title>
-    <script src="../../scripts/theme-init.js?v=20260628-fluid-nav"></script>
+    <script src="../../scripts/theme-init.js?v=20260628-history-theme"></script>
     <link rel="stylesheet" href="../../styles/app.css?v=20260628-mobile-tray" />
   </head>
 
@@ -89,25 +89,21 @@
       function showCategories(push = true) {
         hideAll();
         document.getElementById("categoriesView").style.display = "grid";
-        if (push) history.pushState({ view: "categories" }, "");
       }
 
       function showVideos(push = true) {
         hideAll();
         document.getElementById("videosView").style.display = "block";
-        if (push) history.pushState({ view: "videos" }, "");
       }
 
       function showPDFs(push = true) {
         hideAll();
         document.getElementById("pdfsView").style.display = "block";
-        if (push) history.pushState({ view: "pdfs" }, "");
       }
 
       function showTools(push = true) {
         hideAll();
         document.getElementById("toolsView").style.display = "block";
-        if (push) history.pushState({ view: "tools" }, "");
       }
 
       const pathParts = location.pathname.split("/").filter(Boolean);
@@ -211,8 +207,14 @@
           toolList.innerHTML = "<p class='muted'>No hay herramientas disponibles todavÃ­a.</p>";
         }
 
-        document.getElementById("backToMateriaBtn").href =
-          "../materia/" + materia.slug + ".html";
+        const backToMateriaBtn = document.getElementById("backToMateriaBtn");
+        backToMateriaBtn.href = "../materia/" + materia.slug + ".html";
+        backToMateriaBtn.addEventListener("click", (event) => {
+          if (document.referrer.includes("/pages/materia/")) {
+            event.preventDefault();
+            history.back();
+          }
+        });
 
         document.getElementById("breadcrumbs").innerHTML = `
           <a href="../../">Carreras</a>
@@ -221,17 +223,6 @@
           <span>/</span>
           <span>${topic.title}</span>
         `;
-
-        window.addEventListener("popstate", (event) => {
-          const view = event.state?.view || "categories";
-
-          if (view === "videos") showVideos(false);
-          else if (view === "pdfs") showPDFs(false);
-          else if (view === "tools") showTools(false);
-          else showCategories(false);
-        });
-
-        history.replaceState({ view: "categories" }, "");
         showCategories(false);
       }
     </script>
