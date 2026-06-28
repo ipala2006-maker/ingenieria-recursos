@@ -93,7 +93,7 @@
     var src = currentScript ? currentScript.getAttribute("src") || "" : "";
     var rootPath = src.replace(/scripts\/theme-init\.js(?:\?.*)?$/, "");
     var script = document.createElement("script");
-    script.src = rootPath + "scripts/smooth-nav.js?v=20260627-tray-stable";
+    script.src = rootPath + "scripts/smooth-nav.js?v=20260628-fluid-nav";
     script.defer = true;
     document.head.appendChild(script);
   }

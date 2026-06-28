@@ -30,6 +30,10 @@
 
   input.addEventListener("input", () => renderResults(input.value));
   input.addEventListener("focus", () => renderResults(input.value));
+  document.addEventListener("estudiemos:navigation", () => {
+    resources = null;
+    results.hidden = true;
+  });
 
   document.addEventListener("click", (event) => {
     if (!search.contains(event.target)) results.hidden = true;
@@ -75,7 +79,7 @@
     DATA.carreras.forEach((carrera) => {
       (carrera.materias || []).forEach((materia) => {
         (materia.temas || []).forEach((tema) => {
-          const topicUrl = `${rootPath}pages/tema/${tema.slug}.html`;
+          const topicUrl = `${getRootPath()}pages/tema/${tema.slug}.html`;
 
           items.push({
             type: "Tema",
@@ -190,7 +194,7 @@
     if (document.querySelector('script[src*="scripts/bandeja.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/bandeja.js?v=20260627-tray-stable`;
+    script.src = `${rootPath}scripts/bandeja.js?v=20260628-fluid-nav`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -246,9 +250,9 @@
   function resolveUrl(url) {
     if (!url) return "#";
     if (url.startsWith("http")) return url;
-    if (url.startsWith("../../")) return rootPath + url.replace(/^(\.\.\/)+/, "");
-    if (url.startsWith("./")) return rootPath + url.replace("./", "");
-    return rootPath + url;
+    if (url.startsWith("../../")) return getRootPath() + url.replace(/^(\.\.\/)+/, "");
+    if (url.startsWith("./")) return getRootPath() + url.replace("./", "");
+    return getRootPath() + url;
   }
 
   function highlight(text, query) {

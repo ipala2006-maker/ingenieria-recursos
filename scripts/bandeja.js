@@ -11,7 +11,6 @@
   };
 
   const GOOGLE_FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSc8KLH9N0kcYRryZa0tNtLSRIMe0ol_wKWVUwBt9T-3m9WD1A/viewform?usp=header";
-  const rootPath = getRootPath();
   let refreshQueued = false;
 
   addTray();
@@ -162,6 +161,15 @@
     });
 
     window.addEventListener("pageshow", () => {
+      refreshPageActions();
+      syncActionButtons();
+      syncSubjectButtons();
+      renderTray();
+      restoreTrayState();
+      markActiveTheme();
+    });
+
+    document.addEventListener("estudiemos:navigation", () => {
       refreshPageActions();
       syncActionButtons();
       syncSubjectButtons();
@@ -493,7 +501,7 @@
   function createInternalUrl(url) {
     if (!url) return "#";
     if (isExternalUrl(url)) return url;
-    return rootPath + normalizeStoredUrl(url);
+    return getRootPath() + normalizeStoredUrl(url);
   }
 
   function normalizeStoredUrl(url) {
