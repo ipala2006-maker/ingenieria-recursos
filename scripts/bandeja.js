@@ -140,6 +140,14 @@
     });
 
     document.addEventListener("click", (event) => {
+      if (shouldCloseMobileTray(event)) {
+        event.preventDefault();
+        event.stopPropagation();
+        document.body.classList.add("tray-transition-enabled");
+        setTrayOpen(false, true);
+        return;
+      }
+
       const action = event.target.closest("[data-bandeja-action]");
       const subject = event.target.closest("[data-subject-toggle]");
 
@@ -177,6 +185,14 @@
       restoreTrayState();
       markActiveTheme();
     });
+  }
+
+  function shouldCloseMobileTray(event) {
+    if (!document.body.classList.contains("tray-open")) return false;
+    if (!window.matchMedia("(max-width: 760px)").matches) return false;
+    if (event.target.closest(".tray-shell")) return false;
+    if (event.target.closest("[data-bandeja-trigger]")) return false;
+    return true;
   }
 
   function setTrayOpen(isOpen, shouldSave) {

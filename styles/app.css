@@ -573,7 +573,7 @@ img{ max-width: 100%; display:block; }
     grid-template-columns:1fr;
   }
   .tray-shell{
-    width:min(320px, calc(100vw - 28px));
+    width:min(320px, 80vw);
   }
   .tray-open{
     padding-left:0;
