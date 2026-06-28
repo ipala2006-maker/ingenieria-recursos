@@ -101,10 +101,22 @@
     var currentScript = document.currentScript;
     var src = currentScript ? currentScript.getAttribute("src") || "" : "";
     var rootPath = src.replace(/scripts\/theme-init\.js(?:\?.*)?$/, "");
+    try {
+      window.EstudiemosRoot = new URL(rootPath || "./", location.href).pathname;
+    } catch (error) {
+      window.EstudiemosRoot = rootPath || "./";
+    }
     var script = document.createElement("script");
-    script.src = rootPath + "scripts/smooth-nav.js?v=20260628-fluid-nav";
+    script.src = rootPath + "scripts/smooth-nav.js?v=20260628-root-history";
     script.defer = true;
     document.head.appendChild(script);
+  }
+
+  function syncHomeLinks() {
+    var href = window.EstudiemosRoot || "./";
+    document.querySelectorAll(".brand").forEach(function (link) {
+      link.setAttribute("href", href);
+    });
   }
 
   installEarlyThemeStyles();
@@ -112,6 +124,12 @@
   applyTheme(readTheme(), false);
   installSpeculationRules();
   loadSmoothNavigation();
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", syncHomeLinks);
+  } else {
+    syncHomeLinks();
+  }
 
   window.EstudiemosTheme = {
     key: STORAGE_KEY,
@@ -127,6 +145,7 @@
   }
 
   window.addEventListener("pageshow", syncThemeInstantly);
+  window.addEventListener("pageshow", syncHomeLinks);
   window.addEventListener("pagereveal", syncThemeInstantly);
   window.addEventListener("popstate", syncThemeInstantly, true);
 

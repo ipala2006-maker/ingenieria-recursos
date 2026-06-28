@@ -6,9 +6,9 @@
   const pending = new Map();
   const MAX_IDLE_PREFETCH = 12;
   const MAIN_SELECTOR = "main.container";
-  let currentStateSaved = false;
   let navigating = false;
 
+  saveCurrentHistoryState();
   bindNavigationHints();
   prefetchVisibleLinksSoon();
 
@@ -23,7 +23,10 @@
       const url = event.state?.url || location.href;
       if (canSwapUrl(url)) {
         swapTo(url, { push: false, restoreScroll: true });
+        return;
       }
+
+      if (event.state?.url && url === location.href) location.reload();
     });
 
     window.addEventListener("pageshow", () => {
@@ -67,11 +70,6 @@
       const next = parsePage(html);
       if (!next.main) throw new Error("Pagina sin contenido principal");
 
-      if (!currentStateSaved) {
-        history.replaceState({ url: location.href, scroll: scrollY }, "", location.href);
-        currentStateSaved = true;
-      }
-
       const currentMain = document.querySelector(MAIN_SELECTOR);
       if (!currentMain) throw new Error("Pagina sin main");
 
@@ -79,6 +77,7 @@
       currentMain.replaceWith(next.main);
 
       if (options.push) history.pushState({ url, scroll: 0 }, "", url);
+      else saveCurrentHistoryState();
 
       if (options.restoreScroll) {
         requestAnimationFrame(() => scrollTo(0, Number(history.state?.scroll || 0)));
@@ -101,8 +100,7 @@
   }
 
   function refreshPersistentShell() {
-    const rootPath = getRootPath();
-    document.querySelector(".brand")?.setAttribute("href", rootPath);
+    document.querySelector(".brand")?.setAttribute("href", getAppRootPath());
   }
 
   function parsePage(html) {
@@ -180,9 +178,16 @@
       sessionStorage.setItem(`estudiemos_scroll:${location.pathname}`, String(scrollY));
     } catch (error) {}
 
-    if (history.state?.url) {
-      history.replaceState({ ...history.state, scroll: scrollY }, "", location.href);
-    }
+    saveCurrentHistoryState();
+  }
+
+  function saveCurrentHistoryState() {
+    const state = {
+      ...(history.state || {}),
+      url: location.href,
+      scroll: scrollY
+    };
+    history.replaceState(state, "", location.href);
   }
 
   function getInternalPageUrl(link) {
@@ -223,5 +228,14 @@
     if (location.pathname.includes("/pages/carrera/")) return "../../";
     if (location.pathname.includes("/pages/")) return "../";
     return "./";
+  }
+
+  function getAppRootPath() {
+    if (window.EstudiemosRoot) return window.EstudiemosRoot;
+
+    const script = document.querySelector('script[src*="scripts/theme-init.js"], script[src*="scripts/smooth-nav.js"]');
+    const src = script?.getAttribute("src") || "";
+    const root = src.replace(/scripts\/(?:theme-init|smooth-nav)\.js(?:\?.*)?$/, "");
+    return root || getRootPath();
   }
 })();
