@@ -21,71 +21,18 @@ jobs:
           set -euo pipefail
           python - <<'PY'
           from pathlib import Path
-
-          index = Path('index.html')
-          html = index.read_text(encoding='utf-8')
-          html = html.replace('./styles/app.css?v=20260714-focus-mode-soft', './styles/app.css?v=20260714-focus-mode-native')
-          html = html.replace(
-              '<a class="topbar__focus-link" href="https://ipala2006-maker.github.io/estudiemos-room/" target="_blank" rel="noopener noreferrer">modo enfoque</a>',
-              '<a class="topbar__link" href="https://ipala2006-maker.github.io/estudiemos-room/" target="_blank" rel="noopener noreferrer">modo enfoque</a>'
-          )
-          index.write_text(html, encoding='utf-8')
-
-          css_path = Path('styles/app.css')
-          css = css_path.read_text(encoding='utf-8')
-          blocks = [
-              '''.topbar__focus-link{
-  min-height: 40px;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  padding: 9px 14px;
-  border-radius: 999px;
-  border: 1px solid rgba(110,231,255,.22);
-  background: rgba(110,231,255,.075);
-  color: rgba(214,248,255,.9);
-  font-weight: 800;
-  letter-spacing: .01em;
-  white-space: nowrap;
-  box-shadow: 0 10px 26px rgba(0,0,0,.12);
-  transition: transform .15s ease, border-color .15s ease, background .15s ease, color .15s ease;
-}
-.topbar__focus-link:hover{
-  transform: translateY(-1px);
-  border-color: rgba(110,231,255,.34);
-  background: rgba(110,231,255,.12);
-  color: var(--text);
-}
-.topbar__focus-link:focus-visible{
-  outline: none;
-  box-shadow: var(--ring), 0 10px 26px rgba(0,0,0,.12);
-}
-
-''',
-              '''  .topbar__focus-link{
-    min-height:38px;
-    padding:9px 12px;
-  }
-
-''',
-              '''html.theme-light .topbar__focus-link{
-  color:#1f5f78 !important;
-  background:rgba(26,115,232,.06) !important;
-  border-color:rgba(26,115,232,.16) !important;
-  box-shadow:none !important;
-}
-
-html.theme-light .topbar__focus-link:hover{
-  color:#123b4f !important;
-  background:rgba(26,115,232,.10) !important;
-  border-color:rgba(26,115,232,.24) !important;
-}
-
-'''
-          ]
-          for block in blocks:
-              css = css.replace(block, '')
-          css_path.write_text(css, encoding='utf-8')
+          import re
+          index = Path("index.html")
+          html = index.read_text(encoding="utf-8")
+          html = html.replace("./styles/app.css?v=20260714-focus-mode-soft", "./styles/app.css?v=20260714-focus-mode-native")
+          html = html.replace("<a class=\"topbar__focus-link\" href=\"https://ipala2006-maker.github.io/estudiemos-room/\" target=\"_blank\" rel=\"noopener noreferrer\">modo enfoque</a>", "<a class=\"topbar__link\" href=\"https://ipala2006-maker.github.io/estudiemos-room/\" target=\"_blank\" rel=\"noopener noreferrer\">modo enfoque</a>")
+          index.write_text(html, encoding="utf-8")
+          css_path = Path("styles/app.css")
+          css = css_path.read_text(encoding="utf-8")
+          css = re.sub(r"\.topbar__focus-link\{.*?\}\n\.topbar__focus-link:hover\{.*?\}\n\.topbar__focus-link:focus-visible\{.*?\}\n\n", "", css, flags=re.S)
+          css = css.replace("  .topbar__focus-link{\n    min-height:38px;\n    padding:9px 12px;\n  }\n\n", "")
+          css = re.sub(r"html\.theme-light \.topbar__focus-link\{.*?\}\n\nhtml\.theme-light \.topbar__focus-link:hover\{.*?\}\n\n", "", css, flags=re.S)
+          css_path.write_text(css, encoding="utf-8")
           PY
           git config user.name "codex-agent"
           git config user.email "codex-agent@users.noreply.github.com"
