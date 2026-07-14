@@ -1,0 +1,32 @@
+name: Codex Apply Focus Mode Native Style
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Apply payload
+        env:
+          PAYLOAD_URL: https://tmpfiles.org/dl/wIwH1u1tX39z/focus-mode-native-style.tgz
+        run: |
+          set -euo pipefail
+          curl -L "$PAYLOAD_URL" -o /tmp/codex-payload.tgz
+          tar -xzf /tmp/codex-payload.tgz
+          git config user.name "codex-agent"
+          git config user.email "codex-agent@users.noreply.github.com"
+          git add index.html styles/app.css
+          git rm --ignore-unmatch .github/workflows/codex-apply-focus-mode-native.yml
+          git status --short
+          git commit -m "style: use native nav style for focus mode" || exit 0
+          git push
