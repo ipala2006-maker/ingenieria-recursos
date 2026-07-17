@@ -15,39 +15,38 @@ const DATA = {
               title: "Límites",
               meta: "Base para cálculo",
               videos: [
-                { url: "https://www.youtube.com/watch?v=kAv5pahIevE" },
-                { url: "https://www.youtube.com/watch?v=pYVVPqphPS0" },
-                { url: "https://www.youtube.com/watch?v=54_XRjHhZzI" }
+                { url: "https://www.youtube.com/watch?v=o2UTk8bsLS0" },
+                { url: "https://www.youtube.com/watch?v=fu03ekT_D4g" }
               ],
               herramientas: [
                 {
                   title: "GeoGebra - Límites y continuidad",
-                  url: "https://www.geogebra.org/m/yn6xudfs",
+                  url: "https://www.geogebra.org/m/JK3Dq2ZN",
                   type: "Interactivo"
                 },
                 {
-                  title: "WolframAlpha - Calculadora de límites",
-                  url: "https://www.wolframalpha.com/calculators/limit-calculator",
+                  title: "Symbolab - Calculadora de límites paso a paso",
+                  url: "https://es.symbolab.com/solver/limit-calculator",
                   type: "Calculadora"
                 },
                 {
-                  title: "Symbolab - Calculadora de límites paso a paso",
-                  url: "https://www.symbolab.com/solver/limit-calculator",
-                  type: "Calculadora"
+                  title: "Proyecto Descartes - Cálculo diferencial interactivo",
+                  url: "https://proyectodescartes.org/iCartesiLibri/materiales_didacticos/Libro_Calculo_Diferencial-JS/index.html",
+                  type: "Interactivo"
                 }
               ],
               pdfs: [
                 {
-                  title: "OpenStax Calculus 1 - Limits",
-                  url: "https://openstax.org/books/calculus-volume-1/pages/2-introduction"
-                },
-                {
-                  title: "Paul's Online Math Notes - Limits",
-                  url: "https://tutorial.math.lamar.edu/classes/calci/limitsintro.aspx"
+                  title: "OpenStax Cálculo 1 - El límite de una función",
+                  url: "https://openstax.org/books/c%C3%A1lculo-volumen-1/pages/2-2-el-limite-de-una-funcion"
                 },
                 {
                   title: "Khan Academy - Límites y continuidad",
-                  url: "https://es.khanacademy.org/math/calculus-all-old/limits-and-continuity-calc"
+                  url: "https://es.khanacademy.org/math/differential-calculus/dc-limits"
+                },
+                {
+                  title: "Proyecto Descartes - Cálculo diferencial",
+                  url: "https://proyectodescartes.org/iCartesiLibri/PDF/C%C3%A1lculo_Diferencial_e_Integral-1.pdf"
                 }
               ]
             },
@@ -56,8 +55,8 @@ const DATA = {
               title: "Continuidad",
               meta: "Propiedades",
               videos: [
-                { url: "https://www.youtube.com/watch?v=riXcZT2ICjA" },
-                { url: "https://www.youtube.com/watch?v=3KMqU5j7irw" }
+                { url: "https://www.youtube.com/watch?v=_FIE0_prPYE" },
+                { url: "https://www.youtube.com/watch?v=ZEAPl6VN4JU" }
               ],
               herramientas: [
                 {
@@ -66,23 +65,19 @@ const DATA = {
                   type: "Graficadora"
                 },
                 {
-                  title: "GeoGebra - Interactive Calculus Figures",
-                  url: "https://www.geogebra.org/m/yn6xudfs",
+                  title: "GeoGebra - Límites y continuidad",
+                  url: "https://www.geogebra.org/m/JK3Dq2ZN",
                   type: "Interactivo"
                 }
               ],
               pdfs: [
                 {
-                  title: "OpenStax Calculus 1 - Continuity",
-                  url: "https://openstax.org/books/calculus-volume-1/pages/2-4-continuity"
+                  title: "OpenStax Cálculo 1 - Continuidad",
+                  url: "https://openstax.org/books/c%C3%A1lculo-volumen-1/pages/2-4-continuidad"
                 },
                 {
-                  title: "Paul's Online Math Notes - Continuity",
-                  url: "https://tutorial.math.lamar.edu/classes/calci/continuity.aspx"
-                },
-                {
-                  title: "MIT OCW 18.01SC - Limits and Continuity",
-                  url: "https://ocw.mit.edu/courses/18-01sc-single-variable-calculus-fall-2010/pages/1.-differentiation/part-a-definition-and-basic-rules/session-4-limits-and-continuity/"
+                  title: "Khan Academy - Continuidad",
+                  url: "https://es.khanacademy.org/math/calculus-all-old/limits-and-continuity-calc"
                 }
               ]
             },
@@ -91,14 +86,13 @@ const DATA = {
               title: "Derivadas",
               meta: "Tasa de cambio",
               videos: [
-                { url: "https://www.youtube.com/watch?v=_nbtaQtX6JA" },
-                { url: "https://www.youtube.com/watch?v=7K1sB05pE0A" },
-                { url: "https://www.youtube.com/watch?v=Gbtma_UQpro" }
+                { url: "https://www.youtube.com/watch?v=pMYdSjgzrys" },
+                { url: "https://www.youtube.com/watch?v=uK4-s0ojHFg" }
               ],
               herramientas: [
                 {
-                  title: "GeoGebra - Derivada como pendiente",
-                  url: "https://www.geogebra.org/m/yn6xudfs",
+                  title: "Proyecto Descartes - Cálculo diferencial interactivo",
+                  url: "https://proyectodescartes.org/iCartesiLibri/materiales_didacticos/Calculo_Diferencial_e_Integral_I/index.html",
                   type: "Interactivo"
                 },
                 {
@@ -108,22 +102,18 @@ const DATA = {
                 },
                 {
                   title: "Symbolab - Calculadora de derivadas",
-                  url: "https://www.symbolab.com/solver/derivative-calculator",
+                  url: "https://es.symbolab.com/solver/derivative-calculator",
                   type: "Calculadora"
                 }
               ],
               pdfs: [
                 {
-                  title: "OpenStax Calculus 1 - Derivatives",
-                  url: "https://openstax.org/books/calculus-volume-1/pages/3-introduction"
+                  title: "OpenStax Cálculo 1 - Definir la derivada",
+                  url: "https://openstax.org/books/c%C3%A1lculo-volumen-1/pages/3-1-definir-la-derivada"
                 },
                 {
-                  title: "Paul's Online Math Notes - Derivatives",
-                  url: "https://tutorial.math.lamar.edu/classes/calci/DerivativeIntro.aspx"
-                },
-                {
-                  title: "MIT OCW 18.01SC - Definition of Derivative",
-                  url: "https://ocw.mit.edu/courses/18-01sc-single-variable-calculus-fall-2010/pages/1.-differentiation/part-a-definition-and-basic-rules/session-2-examples-of-derivatives/"
+                  title: "Khan Academy - Derivadas",
+                  url: "https://es.khanacademy.org/math/differential-calculus/dc-diff-intro"
                 }
               ]
             },
@@ -132,39 +122,39 @@ const DATA = {
               title: "Integrales",
               meta: "Acumulación",
               videos: [
-                { url: "https://www.youtube.com/watch?v=13UPhn32Mjs" },
-                { url: "https://www.youtube.com/watch?v=C9luv3o6emw" },
+                { url: "https://www.youtube.com/watch?v=d7Y9Om4KCUM" },
+                { url: "https://www.youtube.com/watch?v=TocqVkBzDrA" },
                 { url: "https://www.youtube.com/watch?v=Mxjyb1yII-8" }
               ],
               herramientas: [
                 {
-                  title: "GeoGebra - Sumas de Riemann e integrales",
-                  url: "https://www.geogebra.org/m/yn6xudfs",
+                  title: "Proyecto Descartes - Cálculo integral interactivo",
+                  url: "https://proyectodescartes.org/iCartesiLibri/materiales_didacticos/Calculo_Diferencial_e_Integral_II/index.html",
                   type: "Interactivo"
                 },
                 {
-                  title: "WolframAlpha - Calculadora de integrales",
-                  url: "https://www.wolframalpha.com/calculators/integral-calculator",
+                  title: "Symbolab - Calculadora de integrales paso a paso",
+                  url: "https://es.symbolab.com/solver/integral-calculator",
                   type: "Calculadora"
                 },
                 {
-                  title: "Symbolab - Calculadora de integrales paso a paso",
-                  url: "https://www.symbolab.com/solver/integral-calculator",
-                  type: "Calculadora"
+                  title: "Desmos - Graficadora para áreas bajo la curva",
+                  url: "https://www.desmos.com/calculator?lang=es",
+                  type: "Graficadora"
                 }
               ],
               pdfs: [
                 {
-                  title: "OpenStax Calculus 1 - Integration",
-                  url: "https://openstax.org/books/calculus-volume-1/pages/5-introduction"
+                  title: "OpenStax Cálculo 1 - La integral definida",
+                  url: "https://openstax.org/books/c%C3%A1lculo-volumen-1/pages/5-2-la-integral-definida"
                 },
                 {
-                  title: "OpenStax Calculus 2 - Techniques of Integration",
-                  url: "https://openstax.org/books/calculus-volume-2/pages/3-introduction"
+                  title: "OpenStax Cálculo 1 - Antiderivadas",
+                  url: "https://openstax.org/books/c%C3%A1lculo-volumen-1/pages/4-10-antiderivadas"
                 },
                 {
-                  title: "Paul's Online Math Notes - Integrals",
-                  url: "https://tutorial.math.lamar.edu/classes/calci/IntegralsIntro.aspx"
+                  title: "Khan Academy - Integrales",
+                  url: "https://es.khanacademy.org/math/integral-calculus/ic-integration"
                 }
               ]
             },
@@ -173,34 +163,30 @@ const DATA = {
               title: "Sucesiones",
               meta: "Convergencia",
               videos: [
-                { url: "https://www.youtube.com/watch?v=iHErQuZ8M-I" },
-                { url: "https://www.youtube.com/watch?v=LpW6zanbSf8" }
+                { url: "https://www.youtube.com/watch?v=lXEe11Sfwgo" },
+                { url: "https://www.youtube.com/watch?v=-fEptsByODI" }
               ],
               herramientas: [
                 {
-                  title: "GeoGebra - Sucesiones y series",
-                  url: "https://www.geogebra.org/m/YpqytNph",
+                  title: "GeoGebra - Límites de sucesiones",
+                  url: "https://www.geogebra.org/m/vjfKMFMG",
                   type: "Interactivo"
-                },
-                {
-                  title: "WolframAlpha - Explorador de sucesiones",
-                  url: "https://www.wolframalpha.com/examples/mathematics/calculus-and-analysis/sequences/",
-                  type: "Calculadora"
                 },
                 {
                   title: "Desmos - Graficadora de puntos de sucesiones",
                   url: "https://www.desmos.com/calculator?lang=es",
                   type: "Graficadora"
+                },
+                {
+                  title: "Proyecto Descartes - Límite de una sucesión",
+                  url: "https://proyectodescartes.org/iCartesiLibri/materiales_didacticos/Libro_Calculo_Diferencial-JS/index.html",
+                  type: "Interactivo"
                 }
               ],
               pdfs: [
                 {
-                  title: "OpenStax Calculus 2 - Sequences",
-                  url: "https://openstax.org/books/calculus-volume-2/pages/5-1-sequences"
-                },
-                {
-                  title: "Paul's Online Math Notes - Sequences",
-                  url: "https://tutorial.math.lamar.edu/classes/calcii/Sequences.aspx"
+                  title: "OpenStax Cálculo 2 - Secuencias",
+                  url: "https://openstax.org/books/c%C3%A1lculo-volumen-2/pages/5-1-secuencias"
                 },
                 {
                   title: "Khan Academy - Sucesiones convergentes",
@@ -213,35 +199,31 @@ const DATA = {
               title: "Series",
               meta: "Sumatorias",
               videos: [
-                { url: "https://www.youtube.com/watch?v=LpW6zanbSf8" },
-                { url: "https://www.youtube.com/watch?v=RzSp9nIFnbo" },
-                { url: "https://www.youtube.com/watch?v=rUis1mSzwyA" }
+                { url: "https://www.youtube.com/watch?v=O16aIAWipTU" },
+                { url: "https://www.youtube.com/watch?v=XwAMhXxwzHE" },
+                { url: "https://www.youtube.com/watch?v=S-KnzKQC408" }
               ],
               herramientas: [
                 {
-                  title: "GeoGebra - Series infinitas",
-                  url: "https://www.geogebra.org/m/YpqytNph",
+                  title: "GeoGebra - Progresiones, sucesiones y series",
+                  url: "https://www.geogebra.org/m/tfvmd4f9",
                   type: "Interactivo"
                 },
                 {
-                  title: "WolframAlpha - Sumas y series",
-                  url: "https://www.wolframalpha.com/examples/mathematics/calculus-and-analysis/sums",
+                  title: "Symbolab - Calculadora de series",
+                  url: "https://es.symbolab.com/solver/series-calculator",
                   type: "Calculadora"
                 },
                 {
-                  title: "Symbolab - Calculadora de series",
-                  url: "https://www.symbolab.com/solver/series-calculator",
+                  title: "Symbolab - Prueba integral para series",
+                  url: "https://es.symbolab.com/solver/series-integral-test-calculator",
                   type: "Calculadora"
                 }
               ],
               pdfs: [
                 {
-                  title: "OpenStax Calculus 2 - Sequences and Series",
-                  url: "https://openstax.org/books/calculus-volume-2/pages/5-introduction"
-                },
-                {
-                  title: "Paul's Online Math Notes - Series",
-                  url: "https://tutorial.math.lamar.edu/classes/calcii/SeriesIntro.aspx"
+                  title: "OpenStax Cálculo 2 - Serie infinita",
+                  url: "https://openstax.org/books/c%C3%A1lculo-volumen-2/pages/5-2-serie-infinita"
                 },
                 {
                   title: "Khan Academy - Series",
