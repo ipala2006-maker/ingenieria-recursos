@@ -18,6 +18,7 @@
     document.addEventListener("touchstart", handleIntent, { passive: true });
     document.addEventListener("mousedown", handleIntent, { passive: true });
     document.addEventListener("click", handleClick, { capture: true });
+    document.addEventListener("keydown", handleBackspaceNavigation);
 
     window.addEventListener("popstate", (event) => {
       const url = event.state?.url || location.href;
@@ -58,6 +59,75 @@
     swapTo(url, { push: true, restoreScroll: false }).catch(() => {
       location.href = url;
     });
+  }
+
+  function handleBackspaceNavigation(event) {
+    if (event.key !== "Backspace") return;
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    if (isEditableTarget(event.target)) return;
+
+    const url = getBackDestination();
+    if (!url) return;
+
+    event.preventDefault();
+    if (url === "__handled__") return;
+    saveScroll();
+    location.href = url;
+  }
+
+  function isEditableTarget(target) {
+    const element = target?.closest?.("input, textarea, select, [contenteditable=''], [contenteditable='true']");
+    if (!element) return false;
+    if (element.matches("input, textarea")) {
+      const type = (element.getAttribute("type") || "text").toLowerCase();
+      return !["button", "checkbox", "color", "file", "hidden", "image", "radio", "range", "reset", "submit"].includes(type);
+    }
+    return true;
+  }
+
+  function getBackDestination() {
+    const path = location.pathname;
+
+    if (path.includes("/pages/tema/")) {
+      const categories = document.getElementById("categoriesView");
+      if (categories && getComputedStyle(categories).display === "none" && typeof window.showCategories === "function") {
+        window.showCategories(false);
+        return "__handled__";
+      }
+
+      const topicSlug = getCurrentSlug();
+      const materia = findMateriaByTopic(topicSlug);
+      if (materia) return new URL(`../materia/${materia.slug}.html`, location.href).href;
+    }
+
+    if (path.includes("/pages/materia/")) {
+      const materiaSlug = getCurrentSlug();
+      const carrera = findCarreraByMateria(materiaSlug);
+      if (carrera) return new URL(`../carrera/${carrera.slug}.html`, location.href).href;
+    }
+
+    if (path.includes("/pages/carrera/")) return getAppRootPath();
+    return "";
+  }
+
+  function getCurrentSlug() {
+    const parts = location.pathname.split("/").filter(Boolean);
+    return (parts[parts.length - 1] || "").replace(".html", "");
+  }
+
+  function findMateriaByTopic(topicSlug) {
+    if (!window.DATA?.carreras) return null;
+    for (const carrera of DATA.carreras) {
+      for (const materia of carrera.materias || []) {
+        if ((materia.temas || []).some((tema) => tema.slug === topicSlug)) return materia;
+      }
+    }
+    return null;
+  }
+
+  function findCarreraByMateria(materiaSlug) {
+    if (!window.DATA?.carreras) return null;
+    return DATA.carreras.find((carrera) => (carrera.materias || []).some((materia) => materia.slug === materiaSlug)) || null;
   }
 
   async function swapTo(url, options) {
