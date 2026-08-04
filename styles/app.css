@@ -246,6 +246,40 @@ img{ max-width: 100%; display:block; }
 }
 .btn:hover{ border-color: rgba(110,231,255,.35); background: rgba(110,231,255,.08); }
 
+.ai-professor-card{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  margin:14px 0 18px;
+  padding:14px 15px;
+  border-radius:var(--radius);
+  border:1px solid rgba(255,255,255,.10);
+  background:linear-gradient(180deg, rgba(110,231,255,.08), rgba(255,255,255,.035));
+  box-shadow:var(--shadow);
+}
+.ai-professor-card__label{
+  margin:0 0 4px;
+  color:var(--accent);
+  font-size:12px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+.ai-professor-card h3{
+  margin:0 0 4px;
+  font-size:17px;
+}
+.ai-professor-card p{
+  margin:0;
+  color:var(--muted);
+  font-size:13.5px;
+  line-height:1.4;
+}
+.ai-professor-card__btn{
+  flex:0 0 auto;
+}
+
 .global-search{
   position: relative;
   width: min(420px, 42vw);
@@ -570,6 +604,14 @@ img{ max-width: 100%; display:block; }
   }
   .bandeja-checks{
     grid-template-columns:1fr;
+  }
+  .ai-professor-card{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+  .ai-professor-card__btn{
+    width:100%;
+    justify-content:center;
   }
   .tray-shell{
     width:min(320px, 80vw);
@@ -1116,6 +1158,7 @@ html.theme-light .pdf-card,
 html.theme-light .tool-card,
 html.theme-light .empty-section,
 html.theme-light .global-search__results,
+html.theme-light .ai-professor-card,
 html.theme-light .bandeja-check{
   color:var(--text) !important;
   background:var(--panel) !important;

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Física I</title>
     <script src="../../scripts/theme-init.js?v=20260628-root-history"></script>
-    <link rel="stylesheet" href="../../styles/app.css?v=20260628-mobile-tray" />
+    <link rel="stylesheet" href="../../styles/app.css?v=20260804-ai-profesores" />
   </head>
 
   <body>
@@ -25,6 +25,15 @@
         <div class="section__head">
           <h2 id="materiaTitle">Física I</h2>
           <p id="materiaDesc" class="section__hint">Mecánica y termodinámica.</p>
+        </div>
+
+        <div class="ai-professor-card">
+          <div>
+            <p class="ai-professor-card__label">Profesor IA</p>
+            <h3>Profesor IA de Física I</h3>
+            <p>Consultá dudas de esta materia con una guía paso a paso.</p>
+          </div>
+          <a class="btn ai-professor-card__btn" href="https://chatgpt.com/?q=Actua%20como%20un%20profesor%20universitario%20de%20F%C3%ADsica%20I%20para%20estudiantes%20de%20ingenieria.%20Explica%20paso%20a%20paso%2C%20con%20ejemplos%2C%20unidades%20cuando%20correspondan%2C%20y%20evita%20dar%20solo%20la%20respuesta%20final.%20Temas%20principales%3A%20mediciones%2C%20est%C3%A1tica%2C%20cinem%C3%A1tica%2C%20din%C3%A1mica%2C%20energ%C3%ADa%2C%20cantidad%20de%20movimiento%2C%20rotaciones%2C%20oscilaciones%2C%20elasticidad%2C%20fluidos%2C%20calorimetr%C3%ADa%2C%20termodin%C3%A1mica%2C%20ondas%20y%20sonido.%20Cuando%20el%20estudiante%20pregunte%2C%20primero%20identifica%20el%20concepto%2C%20luego%20desarrolla%20el%20razonamiento%20y%20al%20final%20propone%20un%20ejercicio%20corto%20de%20practica." target="_blank" rel="noopener">Abrir profesor</a>
         </div>
 
         <div id="topicsGrid" class="topic-grid">
@@ -49,10 +58,29 @@
     </main>
 
     <!-- DATA -->
-    <script src="../../data/data.js"></script>
+    <script src="../../data/data.js?v=20260804-ai-profesores"></script>
     <script src="../../scripts/global-search.js?v=20260628-mobile-tray"></script>
 
     <script>
+      function renderAiProfessor(materia) {
+        if (!materia.aiProfessor?.url || document.querySelector(".ai-professor-card")) return;
+
+        const head = document.querySelector(".section__head");
+        if (!head) return;
+
+        const card = document.createElement("div");
+        card.className = "ai-professor-card";
+        card.innerHTML = `
+          <div>
+            <p class="ai-professor-card__label">Profesor IA</p>
+            <h3>${materia.aiProfessor.title || "Profesor IA de " + materia.title}</h3>
+            <p>Consultá dudas de esta materia con una guía paso a paso.</p>
+          </div>
+          <a class="btn ai-professor-card__btn" href="${materia.aiProfessor.url}" target="_blank" rel="noopener">Abrir profesor</a>
+        `;
+        head.insertAdjacentElement("afterend", card);
+      }
+
       const pathParts = location.pathname.split("/").filter(Boolean);
       const slug = pathParts[pathParts.length - 1].replace(".html", "");
 
@@ -76,6 +104,8 @@
         if (title.textContent.trim() === "Materia") title.textContent = materiaFound.title;
         if (!desc.textContent.trim()) desc.textContent = materiaFound.description;
 
+        renderAiProfessor(materiaFound);
+
         const grid = document.getElementById("topicsGrid");
 
         if (!grid.querySelector(".topic-card")) {
@@ -94,4 +124,3 @@
 
   </body>
 </html>
-

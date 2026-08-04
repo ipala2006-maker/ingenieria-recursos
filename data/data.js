@@ -231,7 +231,11 @@ const DATA = {
                 }
               ]
             }
-          ]
+          ],
+          aiProfessor: {
+            title: "Profesor IA de Análisis Matemático I",
+            url: "https://chatgpt.com/?q=Actua%20como%20un%20profesor%20universitario%20de%20An%C3%A1lisis%20Matem%C3%A1tico%20I%20para%20estudiantes%20de%20ingenieria.%20Explica%20paso%20a%20paso%2C%20con%20ejemplos%2C%20unidades%20cuando%20correspondan%2C%20y%20evita%20dar%20solo%20la%20respuesta%20final.%20Temas%20principales%3A%20l%C3%ADmites%2C%20continuidad%2C%20derivadas%2C%20integrales%2C%20sucesiones%20y%20series.%20Cuando%20el%20estudiante%20pregunte%2C%20primero%20identifica%20el%20concepto%2C%20luego%20desarrolla%20el%20razonamiento%20y%20al%20final%20propone%20un%20ejercicio%20corto%20de%20practica."
+          }
         },
         {
           slug: "fisica-1",
@@ -745,6 +749,84 @@ const DATA = {
                   url: "https://es.khanacademy.org/science/physics/mechanical-waves-and-sound"
                 }
               ]
+            }
+          ],
+          aiProfessor: {
+            title: "Profesor IA de Física I",
+            url: "https://chatgpt.com/?q=Actua%20como%20un%20profesor%20universitario%20de%20F%C3%ADsica%20I%20para%20estudiantes%20de%20ingenieria.%20Explica%20paso%20a%20paso%2C%20con%20ejemplos%2C%20unidades%20cuando%20correspondan%2C%20y%20evita%20dar%20solo%20la%20respuesta%20final.%20Temas%20principales%3A%20mediciones%2C%20est%C3%A1tica%2C%20cinem%C3%A1tica%2C%20din%C3%A1mica%2C%20energ%C3%ADa%2C%20cantidad%20de%20movimiento%2C%20rotaciones%2C%20oscilaciones%2C%20elasticidad%2C%20fluidos%2C%20calorimetr%C3%ADa%2C%20termodin%C3%A1mica%2C%20ondas%20y%20sonido.%20Cuando%20el%20estudiante%20pregunte%2C%20primero%20identifica%20el%20concepto%2C%20luego%20desarrolla%20el%20razonamiento%20y%20al%20final%20propone%20un%20ejercicio%20corto%20de%20practica."
+          }
+        },
+        {
+          slug: "quimica",
+          title: "Química",
+          description: "Estructura atómica, enlaces, reacciones, soluciones, termodinámica y equilibrio.",
+          aiProfessor: {
+            title: "Profesor IA de Química",
+            url: "https://chatgpt.com/g/g-6a7235ce4f8c81919f1b81fa3a5acf07-profesor-quimica"
+          },
+          temas: [
+            {
+              slug: "estructura-atomica-propiedades-periodicas",
+              title: "Estructura atómica y propiedades periódicas",
+              meta: "Átomos, configuración electrónica y tabla periódica",
+              tags: ["estructura atómica", "tabla periódica", "propiedades periódicas"],
+              videos: [],
+              herramientas: [],
+              pdfs: []
+            },
+            {
+              slug: "enlace-quimico",
+              title: "Enlace químico",
+              meta: "Enlaces iónicos, covalentes, metálicos y geometría molecular",
+              tags: ["enlace iónico", "enlace covalente", "geometría molecular"],
+              videos: [],
+              herramientas: [],
+              pdfs: []
+            },
+            {
+              slug: "estequiometria-calculos-reacciones-quimicas",
+              title: "Estequiometría: cálculos y reacciones químicas",
+              meta: "Mol, reactivo limitante, rendimiento y balanceo",
+              tags: ["estequiometría", "mol", "reactivo limitante", "balanceo"],
+              videos: [],
+              herramientas: [],
+              pdfs: []
+            },
+            {
+              slug: "estados-materia-soluciones-gases",
+              title: "Estados de la materia: soluciones y gases",
+              meta: "Soluciones, concentración, leyes de gases y estados de la materia",
+              tags: ["soluciones", "gases", "concentración", "leyes de gases"],
+              videos: [],
+              herramientas: [],
+              pdfs: []
+            },
+            {
+              slug: "termoquimica-termodinamica",
+              title: "Termoquímica y termodinámica",
+              meta: "Calor, entalpía, energía libre y espontaneidad",
+              tags: ["termoquímica", "termodinámica", "entalpía", "energía libre"],
+              videos: [],
+              herramientas: [],
+              pdfs: []
+            },
+            {
+              slug: "equilibrio-quimico",
+              title: "Equilibrio químico",
+              meta: "Constantes de equilibrio y principio de Le Chatelier",
+              tags: ["equilibrio químico", "Le Chatelier", "constante de equilibrio"],
+              videos: [],
+              herramientas: [],
+              pdfs: []
+            },
+            {
+              slug: "oxido-reduccion",
+              title: "Óxido reducción",
+              meta: "Números de oxidación, redox y electroquímica básica",
+              tags: ["redox", "oxidación", "reducción", "electroquímica"],
+              videos: [],
+              herramientas: [],
+              pdfs: []
             }
           ]
         }

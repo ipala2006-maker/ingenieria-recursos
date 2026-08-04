@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Materia</title>
     <script src="../../scripts/theme-init.js?v=20260628-root-history"></script>
-    <link rel="stylesheet" href="../../styles/app.css?v=20260628-mobile-tray" />
+    <link rel="stylesheet" href="../../styles/app.css?v=20260804-ai-profesores" />
   </head>
 
   <body>
@@ -36,10 +36,29 @@
     </main>
 
     <!-- DATA -->
-    <script src="../../data/data.js"></script>
+    <script src="../../data/data.js?v=20260804-ai-profesores"></script>
     <script src="../../scripts/global-search.js?v=20260628-mobile-tray"></script>
 
     <script>
+      function renderAiProfessor(materia) {
+        if (!materia.aiProfessor?.url || document.querySelector(".ai-professor-card")) return;
+
+        const head = document.querySelector(".section__head");
+        if (!head) return;
+
+        const card = document.createElement("div");
+        card.className = "ai-professor-card";
+        card.innerHTML = `
+          <div>
+            <p class="ai-professor-card__label">Profesor IA</p>
+            <h3>${materia.aiProfessor.title || "Profesor IA de " + materia.title}</h3>
+            <p>Consultá dudas de esta materia con una guía paso a paso.</p>
+          </div>
+          <a class="btn ai-professor-card__btn" href="${materia.aiProfessor.url}" target="_blank" rel="noopener">Abrir profesor</a>
+        `;
+        head.insertAdjacentElement("afterend", card);
+      }
+
       const pathParts = location.pathname.split("/").filter(Boolean);
       const slug = pathParts[pathParts.length - 1].replace(".html", "");
 
@@ -60,6 +79,8 @@
 
         document.getElementById("materiaTitle").textContent = materiaFound.title;
         document.getElementById("materiaDesc").textContent = materiaFound.description;
+
+        renderAiProfessor(materiaFound);
 
         const grid = document.getElementById("topicsGrid");
 
