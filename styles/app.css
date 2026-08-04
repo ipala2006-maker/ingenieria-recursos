@@ -250,34 +250,50 @@ img{ max-width: 100%; display:block; }
   display:flex;
   align-items:center;
   justify-content:space-between;
-  gap:16px;
-  margin:14px 0 18px;
-  padding:14px 15px;
-  border-radius:var(--radius);
-  border:1px solid rgba(255,255,255,.10);
-  background:linear-gradient(180deg, rgba(110,231,255,.08), rgba(255,255,255,.035));
-  box-shadow:var(--shadow);
+  gap:12px;
+  margin:8px 0 16px;
+  padding:10px 12px;
+  border-radius:8px;
+  border:1px solid rgba(255,255,255,.08);
+  background:rgba(255,255,255,.025);
 }
 .ai-professor-card__label{
-  margin:0 0 4px;
+  margin:0 0 2px;
   color:var(--accent);
-  font-size:12px;
-  font-weight:800;
+  font-size:10px;
+  font-weight:700;
   text-transform:uppercase;
-  letter-spacing:.08em;
+  letter-spacing:.06em;
 }
 .ai-professor-card h3{
-  margin:0 0 4px;
-  font-size:17px;
+  margin:0 0 2px;
+  font-size:14px;
 }
 .ai-professor-card p{
   margin:0;
   color:var(--muted);
-  font-size:13.5px;
-  line-height:1.4;
+  font-size:12.5px;
+  line-height:1.35;
 }
 .ai-professor-card__btn{
   flex:0 0 auto;
+  min-height:34px;
+  padding:7px 10px;
+  gap:6px;
+  border-color:transparent;
+  background:transparent;
+  color:var(--accent);
+  font-size:13px;
+  box-shadow:none;
+}
+.ai-professor-card__btn svg{
+  width:15px;
+  height:15px;
+  stroke:currentColor;
+}
+.ai-professor-card__btn:hover{
+  border-color:rgba(110,231,255,.18);
+  background:rgba(110,231,255,.06);
 }
 
 .global-search{
@@ -533,6 +549,12 @@ img{ max-width: 100%; display:block; }
   backdrop-filter:blur(10px);
 }
 .bandeja-card-wrap{ position:relative; }
+.topic-card.bandeja-card-wrap{
+  padding-right:104px;
+}
+.topic-card.bandeja-card-wrap > :first-child{
+  min-width:0;
+}
 .bandeja-action-btn{
   min-height:34px;
   border:1px solid rgba(255,255,255,.12);
@@ -606,11 +628,11 @@ img{ max-width: 100%; display:block; }
     grid-template-columns:1fr;
   }
   .ai-professor-card{
-    align-items:flex-start;
-    flex-direction:column;
+    align-items:center;
+    flex-direction:row;
   }
   .ai-professor-card__btn{
-    width:100%;
+    width:auto;
     justify-content:center;
   }
   .tray-shell{

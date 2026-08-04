@@ -233,8 +233,8 @@ const DATA = {
             }
           ],
           aiProfessor: {
-            title: "Profesor IA de Análisis Matemático I",
-            url: "https://chatgpt.com/?q=Actua%20como%20un%20profesor%20universitario%20de%20An%C3%A1lisis%20Matem%C3%A1tico%20I%20para%20estudiantes%20de%20ingenieria.%20Explica%20paso%20a%20paso%2C%20con%20ejemplos%2C%20unidades%20cuando%20correspondan%2C%20y%20evita%20dar%20solo%20la%20respuesta%20final.%20Temas%20principales%3A%20l%C3%ADmites%2C%20continuidad%2C%20derivadas%2C%20integrales%2C%20sucesiones%20y%20series.%20Cuando%20el%20estudiante%20pregunte%2C%20primero%20identifica%20el%20concepto%2C%20luego%20desarrolla%20el%20razonamiento%20y%20al%20final%20propone%20un%20ejercicio%20corto%20de%20practica."
+            title: "Profesor de Análisis Matemático I",
+            url: "https://chatgpt.com/g/g-6a7252e147ac8191afa05d9c5cf8f66b"
           }
         },
         {
@@ -752,8 +752,8 @@ const DATA = {
             }
           ],
           aiProfessor: {
-            title: "Profesor IA de Física I",
-            url: "https://chatgpt.com/?q=Actua%20como%20un%20profesor%20universitario%20de%20F%C3%ADsica%20I%20para%20estudiantes%20de%20ingenieria.%20Explica%20paso%20a%20paso%2C%20con%20ejemplos%2C%20unidades%20cuando%20correspondan%2C%20y%20evita%20dar%20solo%20la%20respuesta%20final.%20Temas%20principales%3A%20mediciones%2C%20est%C3%A1tica%2C%20cinem%C3%A1tica%2C%20din%C3%A1mica%2C%20energ%C3%ADa%2C%20cantidad%20de%20movimiento%2C%20rotaciones%2C%20oscilaciones%2C%20elasticidad%2C%20fluidos%2C%20calorimetr%C3%ADa%2C%20termodin%C3%A1mica%2C%20ondas%20y%20sonido.%20Cuando%20el%20estudiante%20pregunte%2C%20primero%20identifica%20el%20concepto%2C%20luego%20desarrolla%20el%20razonamiento%20y%20al%20final%20propone%20un%20ejercicio%20corto%20de%20practica."
+            title: "Profesor de Física I para Ingeniería",
+            url: "https://chatgpt.com/g/g-6a7252800288819189da5ad9a1f8c709"
           }
         },
         {
@@ -761,8 +761,8 @@ const DATA = {
           title: "Química",
           description: "Estructura atómica, enlaces, reacciones, soluciones, termodinámica y equilibrio.",
           aiProfessor: {
-            title: "Profesor IA de Química",
-            url: "https://chatgpt.com/g/g-6a7235ce4f8c81919f1b81fa3a5acf07-profesor-quimica"
+            title: "Profesor de Química para Ingeniería",
+            url: "https://chatgpt.com/g/g-6a7235ce4f8c81919f1b81fa3a5acf07"
           },
           temas: [
             {
@@ -770,63 +770,266 @@ const DATA = {
               title: "Estructura atómica y propiedades periódicas",
               meta: "Átomos, configuración electrónica y tabla periódica",
               tags: ["estructura atómica", "tabla periódica", "propiedades periódicas"],
-              videos: [],
-              herramientas: [],
-              pdfs: []
+              videos: [
+                {
+                  title: "Configuración electrónica: teoría y ejemplos",
+                  url: "https://www.youtube.com/watch?v=4MMvumKmqs4"
+                },
+                {
+                  title: "Configuraciones electrónicas y periodicidad",
+                  url: "https://www.youtube.com/watch?v=M5Ouz5aEGoc"
+                }
+              ],
+              herramientas: [
+                {
+                  title: "PhET - Construye un átomo",
+                  url: "https://phet.colorado.edu/es/simulations/build-an-atom",
+                  type: "Simulador"
+                },
+                {
+                  title: "Royal Society of Chemistry - Tabla periódica interactiva",
+                  url: "https://periodic-table.rsc.org/",
+                  type: "Interactivo"
+                }
+              ],
+              pdfs: [
+                {
+                  title: "OpenStax Química 2ed - Estructura electrónica de los átomos",
+                  url: "https://openstax.org/books/qu%C3%ADmica-2ed/pages/6-4-estructura-electronica-de-los-atomos-configuraciones-de-electrones"
+                },
+                {
+                  title: "OpenStax - Estructura atómica y simbolismo",
+                  url: "https://openstax.org/books/qu%C3%ADmica-comenzando-%C3%A1tomos-2ed/pages/2-3-estructura-atomica-y-simbolismo"
+                }
+              ]
             },
             {
               slug: "enlace-quimico",
               title: "Enlace químico",
               meta: "Enlaces iónicos, covalentes, metálicos y geometría molecular",
               tags: ["enlace iónico", "enlace covalente", "geometría molecular"],
-              videos: [],
-              herramientas: [],
-              pdfs: []
+              videos: [
+                {
+                  title: "Tipos de enlaces: iónico, covalente y metálico",
+                  url: "https://www.youtube.com/watch?v=WnVFcnGvJ-Y"
+                },
+                {
+                  title: "Geometría molecular y teoría de repulsión de pares electrónicos",
+                  url: "https://www.youtube.com/watch?v=NnqHsXPiR34"
+                }
+              ],
+              herramientas: [
+                {
+                  title: "PhET - Forma de la molécula",
+                  url: "https://phet.colorado.edu/es/simulations/molecule-shapes",
+                  type: "Simulador"
+                },
+                {
+                  title: "MolView - Constructor molecular 3D",
+                  url: "https://molview.org/",
+                  type: "Modelador 3D"
+                }
+              ],
+              pdfs: [
+                {
+                  title: "OpenStax Química 2ed - Enlace covalente",
+                  url: "https://openstax.org/books/qu%C3%ADmica-2ed/pages/7-2-enlace-covalente"
+                },
+                {
+                  title: "OpenStax Química 2ed - Estructura molecular y polaridad",
+                  url: "https://openstax.org/books/qu%C3%ADmica-2ed/pages/7-6-estructura-molecular-y-polaridad"
+                }
+              ]
             },
             {
               slug: "estequiometria-calculos-reacciones-quimicas",
               title: "Estequiometría: cálculos y reacciones químicas",
               meta: "Mol, reactivo limitante, rendimiento y balanceo",
               tags: ["estequiometría", "mol", "reactivo limitante", "balanceo"],
-              videos: [],
-              herramientas: [],
-              pdfs: []
+              videos: [
+                {
+                  title: "Estequiometría, reactivo limitante y rendimiento",
+                  url: "https://www.youtube.com/watch?v=_rts32wOiv0"
+                },
+                {
+                  title: "Reactivo limitante y rendimiento de una reacción química",
+                  url: "https://www.youtube.com/watch?v=whj6ONPrMxI"
+                }
+              ],
+              herramientas: [
+                {
+                  title: "PhET - Balanceo de ecuaciones químicas",
+                  url: "https://phet.colorado.edu/es/simulations/balancing-chemical-equations",
+                  type: "Simulador"
+                },
+                {
+                  title: "PhET - Reactivos, productos y excedentes",
+                  url: "https://phet.colorado.edu/es/simulations/reactants-products-and-leftovers",
+                  type: "Simulador"
+                }
+              ],
+              pdfs: [
+                {
+                  title: "OpenStax Química 2ed - Estequiometría de la reacción",
+                  url: "https://openstax.org/books/qu%C3%ADmica-2ed/pages/4-3-estequiometria-de-la-reaccion"
+                },
+                {
+                  title: "OpenStax Química 2ed - Reactivo limitante y rendimiento",
+                  url: "https://openstax.org/books/qu%C3%ADmica-2ed/pages/4-4-rendimiento-de-la-reaccion"
+                }
+              ]
             },
             {
               slug: "estados-materia-soluciones-gases",
               title: "Estados de la materia: soluciones y gases",
               meta: "Soluciones, concentración, leyes de gases y estados de la materia",
               tags: ["soluciones", "gases", "concentración", "leyes de gases"],
-              videos: [],
-              herramientas: [],
-              pdfs: []
+              videos: [
+                {
+                  title: "Soluciones, concentraciones y diluciones",
+                  url: "https://www.youtube.com/watch?v=ZUUDNWatBCY"
+                },
+                {
+                  title: "Ley combinada de los gases ideales",
+                  url: "https://www.youtube.com/watch?v=LDah9at5qy0"
+                }
+              ],
+              herramientas: [
+                {
+                  title: "PhET - Molaridad",
+                  url: "https://phet.colorado.edu/es/simulations/molarity",
+                  type: "Simulador"
+                },
+                {
+                  title: "PhET - Propiedades de los gases",
+                  url: "https://phet.colorado.edu/es/simulations/gas-properties",
+                  type: "Simulador"
+                }
+              ],
+              pdfs: [
+                {
+                  title: "OpenStax Química 2ed - Molaridad y diluciones",
+                  url: "https://openstax.org/books/qu%C3%ADmica-2ed/pages/3-3-molaridad"
+                },
+                {
+                  title: "OpenStax Química 2ed - Gases, mezclas y reacciones",
+                  url: "https://openstax.org/books/qu%C3%ADmica-2ed/pages/9-3-estequiometria-de-sustancias-gaseosas-mezclas-y-reacciones"
+                }
+              ]
             },
             {
               slug: "termoquimica-termodinamica",
               title: "Termoquímica y termodinámica",
               meta: "Calor, entalpía, energía libre y espontaneidad",
               tags: ["termoquímica", "termodinámica", "entalpía", "energía libre"],
-              videos: [],
-              herramientas: [],
-              pdfs: []
+              videos: [
+                {
+                  title: "Termoquímica: conceptos generales",
+                  url: "https://www.youtube.com/watch?v=frAioNJba9c"
+                },
+                {
+                  title: "Ecuaciones termoquímicas y entalpía",
+                  url: "https://www.youtube.com/watch?v=7a51x6QzBC4"
+                }
+              ],
+              herramientas: [
+                {
+                  title: "PhET - Formas y cambios de energía",
+                  url: "https://phet.colorado.edu/es/simulations/energy-forms-and-changes",
+                  type: "Simulador"
+                },
+                {
+                  title: "ChemCollective - Laboratorio virtual de Química",
+                  url: "https://chemcollective.org/vlab",
+                  type: "Laboratorio virtual"
+                }
+              ],
+              pdfs: [
+                {
+                  title: "OpenStax Química 2ed - Entalpía y ley de Hess",
+                  url: "https://openstax.org/books/qu%C3%ADmica-2ed/pages/5-3-entalpia"
+                },
+                {
+                  title: "OpenStax Química 2ed - Energía libre y espontaneidad",
+                  url: "https://openstax.org/books/qu%C3%ADmica-2ed/pages/16-4-energia-libre"
+                }
+              ]
             },
             {
               slug: "equilibrio-quimico",
               title: "Equilibrio químico",
               meta: "Constantes de equilibrio y principio de Le Chatelier",
               tags: ["equilibrio químico", "Le Chatelier", "constante de equilibrio"],
-              videos: [],
-              herramientas: [],
-              pdfs: []
+              videos: [
+                {
+                  title: "Equilibrio químico: constante, ejercicios y explicación",
+                  url: "https://www.youtube.com/watch?v=U7PUAO7PqLk"
+                },
+                {
+                  title: "Principio de Le Châtelier",
+                  url: "https://www.youtube.com/watch?v=KLYTPTH7Wig"
+                }
+              ],
+              herramientas: [
+                {
+                  title: "PhET - Reacciones y velocidades",
+                  url: "https://phet.colorado.edu/es/simulations/reactions-and-rates",
+                  type: "Simulador"
+                },
+                {
+                  title: "ChemCollective - Laboratorio virtual de equilibrio",
+                  url: "https://chemcollective.org/vlab",
+                  type: "Laboratorio virtual"
+                }
+              ],
+              pdfs: [
+                {
+                  title: "OpenStax Química 2ed - Equilibrio químico",
+                  url: "https://openstax.org/books/qu%C3%ADmica-2ed/pages/13-1-equilibrio-quimico"
+                },
+                {
+                  title: "OpenStax Química 2ed - Principio de Le Châtelier",
+                  url: "https://openstax.org/books/qu%C3%ADmica-2ed/pages/13-3-equilibrios-cambiantes-el-principio-de-le-chatelier"
+                }
+              ]
             },
             {
               slug: "oxido-reduccion",
               title: "Óxido reducción",
               meta: "Números de oxidación, redox y electroquímica básica",
               tags: ["redox", "oxidación", "reducción", "electroquímica"],
-              videos: [],
-              herramientas: [],
-              pdfs: []
+              videos: [
+                {
+                  title: "Reacciones, estequiometría y balanceo redox",
+                  url: "https://www.youtube.com/watch?v=FKEtZ_-ktrs"
+                },
+                {
+                  title: "Reacciones de óxido-reducción",
+                  url: "https://www.youtube.com/watch?v=I6CtpF_3DDo"
+                }
+              ],
+              herramientas: [
+                {
+                  title: "ChemCollective - Laboratorio virtual para reacciones redox",
+                  url: "https://chemcollective.org/vlab",
+                  type: "Laboratorio virtual"
+                },
+                {
+                  title: "PhET - Voltaje de batería y transferencia de electrones",
+                  url: "https://phet.colorado.edu/es/simulations/battery-voltage",
+                  type: "Simulador"
+                }
+              ],
+              pdfs: [
+                {
+                  title: "OpenStax Química 2ed - Repaso y balanceo redox",
+                  url: "https://openstax.org/books/qu%C3%ADmica-2ed/pages/17-1-repaso-de-quimica-redox"
+                },
+                {
+                  title: "OpenStax Química 2ed - Clasificación de reacciones y números de oxidación",
+                  url: "https://openstax.org/books/qu%C3%ADmica-2ed/pages/4-2-clasificacion-de-las-reacciones-quimicas"
+                }
+              ]
             }
           ]
         }

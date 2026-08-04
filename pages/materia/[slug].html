@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Materia</title>
     <script src="../../scripts/theme-init.js?v=20260628-root-history"></script>
-    <link rel="stylesheet" href="../../styles/app.css?v=20260804-ai-profesores" />
+    <link rel="stylesheet" href="../../styles/app.css?v=20260804-quimica-completa" />
   </head>
 
   <body>
@@ -36,7 +36,7 @@
     </main>
 
     <!-- DATA -->
-    <script src="../../data/data.js?v=20260804-ai-profesores"></script>
+    <script src="../../data/data.js?v=20260804-quimica-completa"></script>
     <script src="../../scripts/global-search.js?v=20260628-mobile-tray"></script>
 
     <script>
@@ -51,10 +51,13 @@
         card.innerHTML = `
           <div>
             <p class="ai-professor-card__label">Profesor IA</p>
-            <h3>${materia.aiProfessor.title || "Profesor IA de " + materia.title}</h3>
+            <h3>${materia.aiProfessor.title || "Profesor de " + materia.title}</h3>
             <p>Consultá dudas de esta materia con una guía paso a paso.</p>
           </div>
-          <a class="btn ai-professor-card__btn" href="${materia.aiProfessor.url}" target="_blank" rel="noopener">Abrir profesor</a>
+          <a class="btn ai-professor-card__btn" href="${materia.aiProfessor.url}" target="_blank" rel="noopener" aria-label="Consultar al profesor de ${materia.title}">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/><path d="M9.5 9a2.5 2.5 0 0 1 4.8 1c0 1.7-2.3 1.8-2.3 3"/><path d="M12 16h.01"/></svg>
+            <span>Consultar</span>
+          </a>
         `;
         head.insertAdjacentElement("afterend", card);
       }

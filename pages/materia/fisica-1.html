@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Física I</title>
     <script src="../../scripts/theme-init.js?v=20260628-root-history"></script>
-    <link rel="stylesheet" href="../../styles/app.css?v=20260804-ai-profesores" />
+    <link rel="stylesheet" href="../../styles/app.css?v=20260804-quimica-completa" />
   </head>
 
   <body>
@@ -30,10 +30,13 @@
         <div class="ai-professor-card">
           <div>
             <p class="ai-professor-card__label">Profesor IA</p>
-            <h3>Profesor IA de Física I</h3>
+            <h3>Profesor de Física I para Ingeniería</h3>
             <p>Consultá dudas de esta materia con una guía paso a paso.</p>
           </div>
-          <a class="btn ai-professor-card__btn" href="https://chatgpt.com/?q=Actua%20como%20un%20profesor%20universitario%20de%20F%C3%ADsica%20I%20para%20estudiantes%20de%20ingenieria.%20Explica%20paso%20a%20paso%2C%20con%20ejemplos%2C%20unidades%20cuando%20correspondan%2C%20y%20evita%20dar%20solo%20la%20respuesta%20final.%20Temas%20principales%3A%20mediciones%2C%20est%C3%A1tica%2C%20cinem%C3%A1tica%2C%20din%C3%A1mica%2C%20energ%C3%ADa%2C%20cantidad%20de%20movimiento%2C%20rotaciones%2C%20oscilaciones%2C%20elasticidad%2C%20fluidos%2C%20calorimetr%C3%ADa%2C%20termodin%C3%A1mica%2C%20ondas%20y%20sonido.%20Cuando%20el%20estudiante%20pregunte%2C%20primero%20identifica%20el%20concepto%2C%20luego%20desarrolla%20el%20razonamiento%20y%20al%20final%20propone%20un%20ejercicio%20corto%20de%20practica." target="_blank" rel="noopener">Abrir profesor</a>
+          <a class="btn ai-professor-card__btn" href="https://chatgpt.com/g/g-6a7252800288819189da5ad9a1f8c709" target="_blank" rel="noopener" aria-label="Consultar al profesor de Física I">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/><path d="M9.5 9a2.5 2.5 0 0 1 4.8 1c0 1.7-2.3 1.8-2.3 3"/><path d="M12 16h.01"/></svg>
+            <span>Consultar</span>
+          </a>
         </div>
 
         <div id="topicsGrid" class="topic-grid">
@@ -58,7 +61,7 @@
     </main>
 
     <!-- DATA -->
-    <script src="../../data/data.js?v=20260804-ai-profesores"></script>
+    <script src="../../data/data.js?v=20260804-quimica-completa"></script>
     <script src="../../scripts/global-search.js?v=20260628-mobile-tray"></script>
 
     <script>
@@ -73,10 +76,13 @@
         card.innerHTML = `
           <div>
             <p class="ai-professor-card__label">Profesor IA</p>
-            <h3>${materia.aiProfessor.title || "Profesor IA de " + materia.title}</h3>
+            <h3>${materia.aiProfessor.title || "Profesor de " + materia.title}</h3>
             <p>Consultá dudas de esta materia con una guía paso a paso.</p>
           </div>
-          <a class="btn ai-professor-card__btn" href="${materia.aiProfessor.url}" target="_blank" rel="noopener">Abrir profesor</a>
+          <a class="btn ai-professor-card__btn" href="${materia.aiProfessor.url}" target="_blank" rel="noopener" aria-label="Consultar al profesor de ${materia.title}">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/><path d="M9.5 9a2.5 2.5 0 0 1 4.8 1c0 1.7-2.3 1.8-2.3 3"/><path d="M12 16h.01"/></svg>
+            <span>Consultar</span>
+          </a>
         `;
         head.insertAdjacentElement("afterend", card);
       }

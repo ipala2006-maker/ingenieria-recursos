@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Tema</title>
     <script src="../../scripts/theme-init.js?v=20260628-root-history"></script>
-    <link rel="stylesheet" href="../../styles/app.css?v=20260804-ai-profesores" />
+    <link rel="stylesheet" href="../../styles/app.css?v=20260804-quimica-completa" />
   </head>
 
   <body>
@@ -36,7 +36,7 @@
 
           <div class="resource-card" onclick="showPDFs()">
             <h3>Material</h3>
-            <p>Apuntes y guÃ­as</p>
+            <p>Apuntes y guías</p>
           </div>
 
           <div class="resource-card" onclick="showTools()">
@@ -75,7 +75,7 @@
 
     </main>
 
-    <script src="../../data/data.js?v=20260804-ai-profesores"></script>
+    <script src="../../data/data.js?v=20260804-quimica-completa"></script>
     <script src="../../scripts/global-search.js?v=20260628-mobile-tray"></script>
 
     <script>
@@ -159,11 +159,13 @@
 
             let data = {};
 
-            try {
-              const res = await fetch(`https://noembed.com/embed?url=${video.url}`);
-              data = await res.json();
-            } catch (error) {
-              data = {};
+            if (!video.title) {
+              try {
+                const res = await fetch(`https://noembed.com/embed?url=${video.url}`);
+                if (res.ok) data = await res.json();
+              } catch (error) {
+                data = {};
+              }
             }
 
             let videoId = "";
