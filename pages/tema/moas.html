@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Tema</title>
     <script src="../../scripts/theme-init.js?v=20260628-root-history"></script>
-    <link rel="stylesheet" href="../../styles/app.css?v=20260804-ai-profesores" />
+    <link rel="stylesheet" href="../../styles/app.css?v=20260804-topic-professor" />
   </head>
 
   <body>
@@ -36,7 +36,7 @@
 
           <div class="resource-card" onclick="showPDFs()">
             <h3>Material</h3>
-            <p>Apuntes y guÃ­as</p>
+            <p>Apuntes y guías</p>
           </div>
 
           <div class="resource-card" onclick="showTools()">
@@ -76,7 +76,7 @@
     </main>
 
     <script src="../../data/data.js?v=20260804-ai-profesores"></script>
-    <script src="../../scripts/global-search.js?v=20260628-mobile-tray"></script>
+    <script src="../../scripts/global-search.js?v=20260804-topic-professor"></script>
 
     <script>
       function hideAll() {
@@ -141,7 +141,7 @@
             </a>
           `).join("");
         } else {
-          pdfList.innerHTML = "<p class='muted'>No hay material disponible todavÃ­a.</p>";
+          pdfList.innerHTML = "<p class='muted'>No hay material disponible todavía.</p>";
         }
 
         async function renderVideos() {
@@ -149,7 +149,7 @@
           const videos = topic.videos || [];
 
           if (videos.length === 0) {
-            container.innerHTML = "<p class='muted'>No hay videos disponibles todavÃ­a.</p>";
+            container.innerHTML = "<p class='muted'>No hay videos disponibles todavía.</p>";
             return;
           }
 
@@ -180,9 +180,9 @@
 
             return `
               <a class="video-card" href="${video.url}" target="_blank">
-                <img src="${thumbnail}" alt="${video.title || "Video sin tÃ­tulo"}">
+                <img src="${thumbnail}" alt="${video.title || "Video sin título"}">
                 <div class="video-card__body">
-                  <p class="video-card__title">${data.title || video.title || "Video sin tÃ­tulo"}</p>
+                  <p class="video-card__title">${data.title || video.title || "Video sin título"}</p>
                 </div>
               </a>
             `;
@@ -204,7 +204,7 @@
             </a>
           `).join("");
         } else {
-          toolList.innerHTML = "<p class='muted'>No hay herramientas disponibles todavÃ­a.</p>";
+          toolList.innerHTML = "<p class='muted'>No hay herramientas disponibles todavía.</p>";
         }
 
         const backToMateriaBtn = document.getElementById("backToMateriaBtn");

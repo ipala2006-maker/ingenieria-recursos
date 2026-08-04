@@ -254,6 +254,7 @@
       if (panel && desc && !panel.querySelector(".bandeja-actions")) {
         desc.insertAdjacentElement("afterend", createActions(currentTopic, true));
       }
+      addTopicProfessorButton(currentTopic);
     }
 
     document.querySelectorAll(".topic-card, .video-card").forEach((card) => {
@@ -274,6 +275,27 @@
     wrapper.appendChild(createActionButton("Favorito", STORAGE_KEYS.favorites, item, "star", showText));
     wrapper.appendChild(createActionButton("Guardar", STORAGE_KEYS.saved, item, "bookmark", showText));
     return wrapper;
+  }
+
+  function addTopicProfessorButton(currentTopic) {
+    const actions = document.querySelector(".panel .bandeja-actions");
+    if (!actions || actions.querySelector("[data-topic-professor]")) return;
+
+    const slug = getTopicSlugFromId(currentTopic.id);
+    const topicInfo = findTopicBySlug(slug);
+    const professor = topicInfo?.materia?.aiProfessor;
+    if (!professor?.url) return;
+
+    const link = document.createElement("a");
+    link.className = "topic-professor-btn";
+    link.dataset.topicProfessor = "true";
+    link.href = professor.url;
+    link.target = "_blank";
+    link.rel = "noopener";
+    link.title = `Preguntar al profesor de ${topicInfo.materia.title}`;
+    link.setAttribute("aria-label", link.title);
+    link.innerHTML = `${icon("message")}<span>Preguntar</span>`;
+    actions.appendChild(link);
   }
 
   function createActionButton(label, key, item, iconName, showText) {
@@ -586,6 +608,7 @@
     const icons = {
       star: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.9l2.5 5.1 5.6.8-4 3.9.9 5.5-5-2.6-5 2.6.9-5.5-4-3.9 5.6-.8L12 3.9z"/></svg>',
       bookmark: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.8c0-.5.4-.8.8-.8h8.4c.4 0 .8.3.8.8v15l-5-3-5 3v-15z"/></svg>',
+      message: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-8l-5 4v-4H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm0 2v9h3v1.8l2.3-1.8H19V6H5Zm3 3h8v2H8V9Z"/></svg>',
       close: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.7 5.3 12 10.6l5.3-5.3 1.4 1.4-5.3 5.3 5.3 5.3-1.4 1.4-5.3-5.3-5.3 5.3-1.4-1.4 5.3-5.3-5.3-5.3 1.4-1.4z"/></svg>',
       sun: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5.2a1 1 0 0 1-1-1V2.8a1 1 0 1 1 2 0v1.4a1 1 0 0 1-1 1Zm0 16a1 1 0 0 1-1-1v-1.4a1 1 0 1 1 2 0v1.4a1 1 0 0 1-1 1Zm6.8-8.2a1 1 0 1 1 0-2h1.4a1 1 0 1 1 0 2h-1.4ZM3.8 13a1 1 0 1 1 0-2h1.4a1 1 0 1 1 0 2H3.8Zm13-5.8a1 1 0 0 1 0-1.4l1-1a1 1 0 1 1 1.4 1.4l-1 1a1 1 0 0 1-1.4 0ZM4.8 19.2a1 1 0 0 1 0-1.4l1-1a1 1 0 0 1 1.4 1.4l-1 1a1 1 0 0 1-1.4 0Zm13 0-1-1a1 1 0 0 1 1.4-1.4l1 1a1 1 0 1 1-1.4 1.4ZM5.8 7.2l-1-1a1 1 0 1 1 1.4-1.4l1 1a1 1 0 0 1-1.4 1.4ZM12 16.5a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9Z"/></svg>',
       moon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.3 14.7a8.3 8.3 0 0 1-11-11 1 1 0 0 0-1.1-1.4A10.2 10.2 0 1 0 21.7 15.8a1 1 0 0 0-1.4-1.1ZM12 20.1a8.2 8.2 0 0 1-5.6-14.2 10.3 10.3 0 0 0 11.7 11.7 8.1 8.1 0 0 1-6.1 2.5Z"/></svg>'

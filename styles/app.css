@@ -277,13 +277,13 @@ img{ max-width: 100%; display:block; }
 }
 .ai-professor-card__btn{
   flex:0 0 auto;
-  min-height:34px;
-  padding:7px 10px;
-  gap:6px;
+  min-height:30px;
+  padding:5px 8px;
+  gap:5px;
   border-color:transparent;
   background:transparent;
   color:var(--accent);
-  font-size:13px;
+  font-size:12px;
   box-shadow:none;
 }
 .ai-professor-card__btn svg{
@@ -535,6 +535,30 @@ img{ max-width: 100%; display:block; }
   gap:8px;
   margin-top:12px;
   flex-wrap:wrap;
+}
+.topic-professor-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:5px;
+  min-height:30px;
+  padding:5px 8px;
+  border:1px solid rgba(110,231,255,.22);
+  border-radius:999px;
+  background:rgba(110,231,255,.055);
+  color:var(--accent);
+  font-size:12px;
+  font-weight:700;
+  line-height:1;
+}
+.topic-professor-btn svg{
+  width:14px;
+  height:14px;
+  fill:currentColor;
+}
+.topic-professor-btn:hover{
+  border-color:rgba(110,231,255,.42);
+  background:rgba(110,231,255,.11);
 }
 .bandeja-mini-actions{
   display:flex;

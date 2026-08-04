@@ -194,7 +194,7 @@
     if (document.querySelector('script[src*="scripts/bandeja.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/bandeja.js?v=20260628-mobile-tray`;
+    script.src = `${rootPath}scripts/bandeja.js?v=20260804-topic-professor`;
     script.defer = true;
     document.head.appendChild(script);
   }
