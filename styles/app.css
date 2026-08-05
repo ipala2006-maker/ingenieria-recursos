@@ -745,11 +745,7 @@ img{ max-width: 100%; display:block; }
   font-size:10px;
   font-weight:800;
 }
-.agenda-day__items span.agenda-type-tarea,
-.agenda-day__items span.agenda-type-estudio,
-.agenda-day__items span.agenda-type-sesion-de-estudio,
-.agenda-day__items span.agenda-type-trabajo,
-.agenda-day__items span.agenda-type-examen{
+.agenda-day__items span[class*="agenda-type-"]{
   color:var(--text);
 }
 .agenda-editor{
@@ -858,40 +854,21 @@ img{ max-width: 100%; display:block; }
 .agenda-type-badge{
   color:var(--text) !important;
 }
-.agenda-type-tarea{
-  --agenda-type-color:#6ee7ff;
-}
-.agenda-type-estudio{
-  --agenda-type-color:#a78bfa;
-}
-.agenda-type-trabajo{
-  --agenda-type-color:#34d399;
-}
-.agenda-type-examen{
-  --agenda-type-color:#fb7185;
-}
-.agenda-item.agenda-type-tarea,
-.agenda-item.agenda-type-estudio,
-.agenda-item.agenda-type-sesion-de-estudio,
-.agenda-item.agenda-type-trabajo,
-.agenda-item.agenda-type-examen{
+.agenda-type-tarea{ --agenda-type-color:#6ee7ff; }
+.agenda-type-parcial{ --agenda-type-color:#fb7185; }
+.agenda-type-clase{ --agenda-type-color:#60a5fa; }
+.agenda-type-entrega{ --agenda-type-color:#34d399; }
+.agenda-type-estudio{ --agenda-type-color:#a78bfa; }
+.agenda-type-recordatorio{ --agenda-type-color:#fbbf24; }
+.agenda-type-examen{ --agenda-type-color:#fb7185; }
+.agenda-type-trabajo{ --agenda-type-color:#34d399; }
+.agenda-type-sesion-de-estudio{ --agenda-type-color:#a78bfa; }
+.agenda-item[class*="agenda-type-"]{
   border-left-color:var(--agenda-type-color);
 }
-.agenda-type-badge.agenda-type-tarea,
-.agenda-type-badge.agenda-type-estudio,
-.agenda-type-badge.agenda-type-sesion-de-estudio,
-.agenda-type-badge.agenda-type-trabajo,
-.agenda-type-badge.agenda-type-examen,
-.agenda-mini-item b.agenda-type-tarea,
-.agenda-mini-item b.agenda-type-estudio,
-.agenda-mini-item b.agenda-type-sesion-de-estudio,
-.agenda-mini-item b.agenda-type-trabajo,
-.agenda-mini-item b.agenda-type-examen,
-.agenda-day__items span.agenda-type-tarea,
-.agenda-day__items span.agenda-type-estudio,
-.agenda-day__items span.agenda-type-sesion-de-estudio,
-.agenda-day__items span.agenda-type-trabajo,
-.agenda-day__items span.agenda-type-examen{
+.agenda-type-badge[class*="agenda-type-"],
+.agenda-mini-item b[class*="agenda-type-"],
+.agenda-day__items span[class*="agenda-type-"]{
   border-color:color-mix(in srgb, var(--agenda-type-color) 34%, transparent);
   background:color-mix(in srgb, var(--agenda-type-color) 16%, transparent);
 }
@@ -903,7 +880,7 @@ img{ max-width: 100%; display:block; }
 .agenda-item.is-done{
   opacity:.66;
 }
-.agenda-item.is-done .agenda-item__check span{
+.agenda-item.is-done .agenda-item__check strong{
   text-decoration:line-through;
 }
 .agenda-mini-list{
@@ -1010,6 +987,12 @@ img{ max-width: 100%; display:block; }
   border-color:rgba(110,231,255,.38);
   background:rgba(110,231,255,.16);
 }
+.agenda-save-btn:disabled{
+  opacity:.48;
+  cursor:not-allowed;
+  border-color:rgba(255,255,255,.10);
+  background:rgba(255,255,255,.045);
+}
 .agenda-layout{
   grid-template-columns:minmax(0, 1fr) 340px;
 }
@@ -1018,6 +1001,9 @@ img{ max-width: 100%; display:block; }
 }
 .agenda-form__row--type .tray-field:last-child{
   grid-column:1 / -1;
+}
+.agenda-form__row--time{
+  grid-template-columns:minmax(0, 1fr) minmax(0, 1fr);
 }
 .agenda-calendar{
   min-height:0;

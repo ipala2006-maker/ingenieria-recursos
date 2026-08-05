@@ -12,6 +12,7 @@
   };
 
   const GOOGLE_FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSc8KLH9N0kcYRryZa0tNtLSRIMe0ol_wKWVUwBt9T-3m9WD1A/viewform?usp=header";
+  const AGENDA_TYPES = ["Tarea", "Parcial", "Clase", "Entrega", "Estudio", "Recordatorio"];
   let refreshQueued = false;
   let agendaFilter = "day";
   let agendaMonth = new Date().getMonth();
@@ -47,17 +48,6 @@
           ${traySection("favorites", "Favoritos", "Recursos marcados para volver rápido.", "favoritesList")}
           ${traySection("subjects", "Mis materias", "Acceso rápido a tus materias elegidas.", "mySubjectsQuick")}
           ${traySection("recent", "Recientes", "Últimos temas visitados.", "recentList")}
-          <section class="tray-accordion" data-tray-section="agenda">
-            <button class="tray-accordion__trigger" type="button" aria-expanded="false">
-              <span>Agenda</span>
-              <span class="tray-chevron">+</span>
-            </button>
-            <div class="tray-accordion__body">
-              <p class="tray-help">Abrila desde el calendario de la esquina superior derecha.</p>
-              <button class="btn tray-submit agenda-open-btn" type="button" data-agenda-open>Abrir agenda</button>
-              <div id="agendaMiniList" class="agenda-mini-list"></div>
-            </div>
-          </section>
           ${traySection("saved", "Guardados para después", "Material para revisar después.", "savedList")}
           <section class="tray-accordion" data-tray-section="suggestions">
             <button class="tray-accordion__trigger" type="button" aria-expanded="false">
@@ -130,10 +120,7 @@
                 <label class="tray-field">
                   Tipo
                   <select id="agendaType">
-                    <option value="Tarea">Tarea</option>
-                    <option value="Examen">Examen</option>
-                    <option value="Trabajo">Trabajo</option>
-                    <option value="Sesión de estudio">Sesión de estudio</option>
+                    ${agendaTypeOptions()}
                   </select>
                 </label>
                 <label class="tray-field">
@@ -143,9 +130,19 @@
                 <label class="tray-field">
                   Materia
                   <select id="agendaSubject">
-                    <option value="">Sin materia</option>
                     ${agendaSubjectOptions()}
                   </select>
+                </label>
+              </div>
+
+              <div class="agenda-form__row agenda-form__row--time">
+                <label class="tray-field">
+                  Hora inicio
+                  <input id="agendaStartTime" type="time" />
+                </label>
+                <label class="tray-field">
+                  Hora fin
+                  <input id="agendaEndTime" type="time" />
                 </label>
               </div>
 
@@ -154,7 +151,7 @@
                 <textarea id="agendaNote" rows="2" maxlength="160" placeholder="Ej: revisar guía 2 y fórmulas principales"></textarea>
               </label>
 
-              <button class="agenda-save-btn" type="submit">${icon("plus")}<span>Agregar</span></button>
+              <button class="agenda-save-btn" type="submit" disabled>${icon("plus")}<span>Agregar</span></button>
             </form>
 
             <div class="agenda-filter" aria-label="Filtrar agenda">
@@ -338,6 +335,8 @@
       event.preventDefault();
       addAgendaItem();
     });
+
+    document.getElementById("agendaTitle")?.addEventListener("input", updateAgendaSubmitState);
 
     document.getElementById("agendaDate")?.addEventListener("change", (event) => {
       selectAgendaDate(event.target.value, false);
@@ -574,9 +573,36 @@
   }
 
   function agendaSubjectOptions() {
-    return getSubjects()
+    const selectedSlugs = new Set(readList(STORAGE_KEYS.subjects));
+    const subjects = getSubjects();
+    const selectedSubjects = subjects.filter((subject) => selectedSlugs.has(subject.slug));
+    const otherSubjects = subjects.filter((subject) => !selectedSlugs.has(subject.slug));
+    return [...selectedSubjects, ...otherSubjects]
       .map((subject) => `<option value="${escapeAttr(subject.title)}">${escapeHtml(subject.title)}</option>`)
+      .join("") + `<option value="" selected>Sin materia</option>`;
+  }
+
+  function agendaTypeOptions() {
+    return AGENDA_TYPES
+      .map((type) => `<option value="${escapeAttr(type)}">${escapeHtml(type)}</option>`)
       .join("");
+  }
+
+  function refreshAgendaSubjectOptions() {
+    const select = document.getElementById("agendaSubject");
+    if (!select) return;
+    const current = select.value;
+    const nextOptions = agendaSubjectOptions();
+    if (select.dataset.optionsHtml === nextOptions) return;
+    select.innerHTML = nextOptions;
+    select.dataset.optionsHtml = nextOptions;
+    select.value = [...select.options].some((option) => option.value === current) ? current : "";
+  }
+
+  function updateAgendaSubmitState() {
+    const title = document.getElementById("agendaTitle")?.value.trim() || "";
+    const button = document.querySelector(".agenda-save-btn");
+    if (button) button.disabled = !title;
   }
 
   function addAgendaItem() {
@@ -585,6 +611,8 @@
     const dateInput = document.getElementById("agendaDate");
     const subjectInput = document.getElementById("agendaSubject");
     const noteInput = document.getElementById("agendaNote");
+    const startTimeInput = document.getElementById("agendaStartTime");
+    const endTimeInput = document.getElementById("agendaEndTime");
     const title = titleInput?.value.trim();
     if (!title) return;
 
@@ -596,6 +624,8 @@
       date: dateInput?.value || selectedAgendaDate,
       subject: subjectInput?.value || "",
       note: noteInput?.value.trim() || "",
+      horaInicio: startTimeInput?.value || "",
+      horaFin: endTimeInput?.value || "",
       done: false,
       createdAt: Date.now()
     });
@@ -604,11 +634,16 @@
     titleInput.value = "";
     if (dateInput) dateInput.value = selectedAgendaDate;
     if (noteInput) noteInput.value = "";
+    if (startTimeInput) startTimeInput.value = "";
+    if (endTimeInput) endTimeInput.value = "";
+    updateAgendaSubmitState();
     renderAgenda();
   }
 
   function renderAgenda() {
     const container = document.getElementById("agendaList");
+    refreshAgendaSubjectOptions();
+    updateAgendaSubmitState();
     const items = readList(STORAGE_KEYS.agenda)
       .map(normalizeAgendaItem)
       .filter(Boolean)
@@ -646,6 +681,7 @@
         <div class="agenda-item__meta">
           <span class="agenda-type-badge ${agendaTypeClass(item.type)}">${escapeHtml(item.type)}</span>
           ${item.date ? `<span>${escapeHtml(formatAgendaDate(item.date))}</span>` : ""}
+          ${formatAgendaTimeRange(item) ? `<span>${escapeHtml(formatAgendaTimeRange(item))}</span>` : ""}
           ${item.subject ? `<span>${escapeHtml(item.subject)}</span>` : ""}
         </div>
         <button class="bandeja-remove-btn agenda-item__remove" type="button" data-agenda-remove="${escapeAttr(item.id)}" aria-label="Quitar ${escapeAttr(item.title)}">${icon("close")}</button>
@@ -704,10 +740,10 @@
             ${dayItems.slice(0, 3).map((item) => `
               <span class="agenda-event-pill ${agendaTypeClass(item.type)}">
                 <i aria-hidden="true"></i>
-                <span>${escapeHtml(item.title)}</span>
+                <span>${escapeHtml(formatAgendaCalendarSummary(item))}</span>
               </span>
             `).join("")}
-            ${dayItems.length > 3 ? `<small>+${dayItems.length - 3}</small>` : ""}
+            ${dayItems.length > 3 ? `<small>+${dayItems.length - 3} más</small>` : ""}
           </span>
         </button>
       `);
@@ -783,10 +819,12 @@
     return {
       id: String(item.id),
       title: String(item.title),
-      type: item.type || "Tarea",
+      type: normalizeAgendaType(item.type),
       date: item.date || "",
       subject: item.subject || "",
       note: item.note || "",
+      horaInicio: item.horaInicio || item.startTime || "",
+      horaFin: item.horaFin || item.endTime || "",
       done: Boolean(item.done),
       createdAt: Number(item.createdAt) || 0
     };
@@ -795,9 +833,27 @@
   function compareAgendaItems(a, b) {
     if (a.done !== b.done) return a.done ? 1 : -1;
     if (a.date && b.date && a.date !== b.date) return a.date.localeCompare(b.date);
+    if (a.horaInicio && b.horaInicio && a.horaInicio !== b.horaInicio) return a.horaInicio.localeCompare(b.horaInicio);
+    if (a.horaInicio && !b.horaInicio) return -1;
+    if (!a.horaInicio && b.horaInicio) return 1;
     if (a.date && !b.date) return -1;
     if (!a.date && b.date) return 1;
     return b.createdAt - a.createdAt;
+  }
+
+  function normalizeAgendaType(type) {
+    const value = String(type || "Tarea").trim();
+    const normalized = value
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    const aliases = {
+      examen: "Parcial",
+      trabajo: "Entrega",
+      "sesion de estudio": "Estudio"
+    };
+    const nextType = aliases[normalized] || value;
+    return AGENDA_TYPES.includes(nextType) ? nextType : "Tarea";
   }
 
   function formatAgendaDate(value) {
@@ -807,6 +863,19 @@
       day: "2-digit",
       month: "short"
     });
+  }
+
+  function formatAgendaTimeRange(item) {
+    if (item.horaInicio && item.horaFin) return `${item.horaInicio}-${item.horaFin}`;
+    if (item.horaInicio) return item.horaInicio;
+    if (item.horaFin) return `Hasta ${item.horaFin}`;
+    return "";
+  }
+
+  function formatAgendaCalendarSummary(item) {
+    const prefix = item.subject || item.type;
+    const time = formatAgendaTimeRange(item);
+    return `${time ? `${time} ` : ""}${prefix}: ${item.title}`;
   }
 
   function formatFullDate(value) {
