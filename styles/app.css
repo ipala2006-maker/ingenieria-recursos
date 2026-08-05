@@ -106,6 +106,28 @@ img{ max-width: 100%; display:block; }
   border-color: rgba(255,255,255,.12);
   background: rgba(255,255,255,.05);
 }
+.topbar__link--soon{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  cursor:default;
+}
+.topbar__link--soon:hover{
+  color:var(--muted);
+  border-color:transparent;
+  background:transparent;
+}
+.topbar__soon{
+  display:inline-flex;
+  align-items:center;
+  min-height:20px;
+  padding:2px 7px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.12);
+  color:var(--muted);
+  font-size:11px;
+  font-weight:700;
+}
 .hero{
   margin: 12px 0 18px;
   padding: 14px 18px;
