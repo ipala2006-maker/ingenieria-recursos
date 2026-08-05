@@ -13,11 +13,15 @@
 
   const GOOGLE_FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSc8KLH9N0kcYRryZa0tNtLSRIMe0ol_wKWVUwBt9T-3m9WD1A/viewform?usp=header";
   let refreshQueued = false;
-  let agendaFilter = "pending";
+  let agendaFilter = "day";
+  let agendaMonth = new Date().getMonth();
+  let agendaYear = new Date().getFullYear();
+  let selectedAgendaDate = toDateValue(new Date());
 
   addTray();
   addAgendaPanel();
   addTrayButton();
+  addAgendaButton();
   bindTray();
   trackRecentTopic();
   refreshPageActions();
@@ -49,7 +53,7 @@
               <span class="tray-chevron">+</span>
             </button>
             <div class="tray-accordion__body">
-              <p class="tray-help">Planificá exámenes, trabajos y pendientes sin salir de la página.</p>
+              <p class="tray-help">Abrila desde el calendario de la esquina superior derecha.</p>
               <button class="btn tray-submit agenda-open-btn" type="button" data-agenda-open>Abrir agenda</button>
               <div id="agendaMiniList" class="agenda-mini-list"></div>
             </div>
@@ -92,50 +96,75 @@
           <button class="tray-close" type="button" data-agenda-close aria-label="Cerrar agenda">×</button>
         </header>
 
-        <form id="agendaForm" class="agenda-form">
-          <label class="tray-field">
-            Qué tenés que hacer
-            <input id="agendaTitle" type="text" maxlength="90" placeholder="Ej: Entrega de ejercicios" required />
-          </label>
+        <div class="agenda-layout">
+          <section class="agenda-calendar" aria-label="Calendario">
+            <div class="agenda-calendar__toolbar">
+              <button class="agenda-calendar__nav" type="button" data-agenda-month="prev" aria-label="Mes anterior">${icon("chevronLeft")}</button>
+              <div>
+                <p class="tray-kicker">Calendario</p>
+                <h3 id="agendaMonthLabel"></h3>
+              </div>
+              <button class="agenda-calendar__nav" type="button" data-agenda-month="next" aria-label="Mes siguiente">${icon("chevronRight")}</button>
+            </div>
+            <div class="agenda-weekdays" aria-hidden="true">
+              <span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span>
+            </div>
+            <div id="agendaCalendarGrid" class="agenda-calendar__grid"></div>
+          </section>
 
-          <div class="agenda-form__row agenda-form__row--type">
-            <label class="tray-field">
-              Tipo
-              <select id="agendaType">
-                <option value="Tarea">Tarea</option>
-                <option value="Examen">Examen</option>
-                <option value="Trabajo">Trabajo</option>
-                <option value="Estudio">Estudio</option>
-              </select>
-            </label>
-            <label class="tray-field">
-              Fecha
-              <input id="agendaDate" type="date" />
-            </label>
-            <label class="tray-field">
-              Materia
-              <select id="agendaSubject">
-                <option value="">Sin materia</option>
-                ${agendaSubjectOptions()}
-              </select>
-            </label>
+          <section class="agenda-editor" aria-label="Detalle de agenda">
+            <div class="agenda-selected-day">
+              <p class="tray-kicker">Día seleccionado</p>
+              <h3 id="agendaSelectedLabel"></h3>
+            </div>
+
+            <form id="agendaForm" class="agenda-form">
+              <label class="tray-field">
+                Qué querés anotar
+                <input id="agendaTitle" type="text" maxlength="90" placeholder="Ej: Entrega de ejercicios" required />
+              </label>
+
+              <div class="agenda-form__row agenda-form__row--type">
+                <label class="tray-field">
+                  Tipo
+                  <select id="agendaType">
+                    <option value="Tarea">Tarea</option>
+                    <option value="Examen">Examen</option>
+                    <option value="Trabajo">Trabajo</option>
+                    <option value="Estudio">Estudio</option>
+                  </select>
+                </label>
+                <label class="tray-field">
+                  Fecha
+                  <input id="agendaDate" type="date" />
+                </label>
+                <label class="tray-field">
+                  Materia
+                  <select id="agendaSubject">
+                    <option value="">Sin materia</option>
+                    ${agendaSubjectOptions()}
+                  </select>
+                </label>
+              </div>
+
+              <label class="tray-field">
+                Nota breve
+                <textarea id="agendaNote" rows="2" maxlength="160" placeholder="Ej: revisar guía 2 y fórmulas principales"></textarea>
+              </label>
+
+              <button class="btn tray-submit" type="submit">Agregar a la agenda</button>
+            </form>
+
+            <div class="agenda-filter" aria-label="Filtrar agenda">
+              <button class="agenda-filter__btn is-active" type="button" data-agenda-filter="day">Este día</button>
+              <button class="agenda-filter__btn" type="button" data-agenda-filter="pending">Pendientes</button>
+              <button class="agenda-filter__btn" type="button" data-agenda-filter="all">Todo</button>
+              <button class="agenda-filter__btn" type="button" data-agenda-filter="done">Hechas</button>
+            </div>
+
+            <div id="agendaList" class="agenda-list"></div>
           </div>
-
-          <label class="tray-field">
-            Nota breve
-            <textarea id="agendaNote" rows="2" maxlength="160" placeholder="Ej: revisar guía 2 y fórmulas principales"></textarea>
-          </label>
-
-          <button class="btn tray-submit" type="submit">Agregar a la agenda</button>
-        </form>
-
-        <div class="agenda-filter" aria-label="Filtrar agenda">
-          <button class="agenda-filter__btn is-active" type="button" data-agenda-filter="pending">Pendientes</button>
-          <button class="agenda-filter__btn" type="button" data-agenda-filter="all">Todo</button>
-          <button class="agenda-filter__btn" type="button" data-agenda-filter="done">Hechas</button>
         </div>
-
-        <div id="agendaList" class="agenda-list"></div>
       </div>
     `;
     document.body.appendChild(panel);
@@ -169,6 +198,28 @@
 
     const brand = topbar.querySelector(".brand");
     topbar.insertBefore(button, brand || topbar.firstChild);
+  }
+
+  function addAgendaButton() {
+    const topbar = document.querySelector(".topbar");
+    if (!topbar || topbar.querySelector(".agenda-top-btn")) return;
+
+    let nav = topbar.querySelector(".topbar__nav");
+    if (!nav) {
+      nav = document.createElement("nav");
+      nav.className = "topbar__nav";
+      nav.setAttribute("aria-label", "Acciones rápidas");
+      topbar.appendChild(nav);
+    }
+
+    const button = document.createElement("button");
+    button.className = "topbar__link topbar-icon-btn agenda-top-btn";
+    button.type = "button";
+    button.dataset.agendaOpen = "true";
+    button.setAttribute("aria-label", "Abrir agenda");
+    button.title = "Agenda";
+    button.innerHTML = icon("calendar");
+    nav.prepend(button);
   }
 
   function bindTray() {
@@ -228,13 +279,27 @@
     });
 
     document.querySelector(".agenda-board")?.addEventListener("click", (event) => {
+      if (event.target.closest(".agenda-board__panel")) event.stopPropagation();
+
       const agendaRemove = event.target.closest("[data-agenda-remove]");
       const agendaDone = event.target.closest("[data-agenda-done]");
       const agendaClose = event.target.closest("[data-agenda-close]");
       const agendaFilterButton = event.target.closest("[data-agenda-filter]");
+      const agendaMonthButton = event.target.closest("[data-agenda-month]");
+      const agendaDay = event.target.closest("[data-agenda-date]");
 
       if (agendaClose) {
         closeAgendaBoard();
+        return;
+      }
+
+      if (agendaMonthButton) {
+        moveAgendaMonth(agendaMonthButton.dataset.agendaMonth === "next" ? 1 : -1);
+        return;
+      }
+
+      if (agendaDay) {
+        selectAgendaDate(agendaDay.dataset.agendaDate);
         return;
       }
 
@@ -260,7 +325,20 @@
       addAgendaItem();
     });
 
+    document.getElementById("agendaDate")?.addEventListener("change", (event) => {
+      selectAgendaDate(event.target.value, false);
+    });
+
     document.addEventListener("click", (event) => {
+      const agendaOpen = event.target.closest("[data-agenda-open]");
+
+      if (agendaOpen) {
+        event.preventDefault();
+        event.stopPropagation();
+        openAgendaBoard();
+        return;
+      }
+
       if (shouldCloseAgendaBoard(event)) {
         closeAgendaBoard();
         return;
@@ -318,6 +396,7 @@
     if (!window.matchMedia("(max-width: 760px)").matches) return false;
     if (event.target.closest(".tray-shell")) return false;
     if (event.target.closest(".agenda-board")) return false;
+    if (event.target.closest("[data-agenda-open]")) return false;
     if (event.target.closest("[data-bandeja-trigger]")) return false;
     return true;
   }
@@ -339,6 +418,7 @@
   function openAgendaBoard() {
     document.body.classList.add("agenda-open");
     document.querySelector(".agenda-board")?.setAttribute("aria-hidden", "false");
+    if (document.getElementById("agendaDate")) document.getElementById("agendaDate").value = selectedAgendaDate;
     renderAgenda();
     setTimeout(() => document.getElementById("agendaTitle")?.focus(), 0);
   }
@@ -499,7 +579,7 @@
       id: `agenda:${Date.now()}`,
       title,
       type: typeInput?.value || "Tarea",
-      date: dateInput?.value || "",
+      date: dateInput?.value || selectedAgendaDate,
       subject: subjectInput?.value || "",
       note: noteInput?.value.trim() || "",
       done: false,
@@ -522,9 +602,11 @@
       .sort(compareAgendaItems);
 
     renderAgendaMini(items);
+    renderAgendaCalendar(items);
     if (!container) return;
 
     const visibleItems = items.filter((item) => {
+      if (agendaFilter === "day") return item.date === selectedAgendaDate;
       if (agendaFilter === "done") return item.done;
       if (agendaFilter === "all") return true;
       return !item.done;
@@ -535,7 +617,7 @@
     });
 
     if (!visibleItems.length) {
-      container.innerHTML = `<p class="tray-empty">Todavía no agregaste pendientes.</p>`;
+      container.innerHTML = `<p class="tray-empty">${agendaFilter === "day" ? "No hay anotaciones para este día." : "Todavía no agregaste pendientes."}</p>`;
       return;
     }
 
@@ -574,6 +656,80 @@
         <small>${escapeHtml([item.type, item.date ? formatAgendaDate(item.date) : "", item.subject].filter(Boolean).join(" · "))}</small>
       </button>
     `).join("");
+  }
+
+  function renderAgendaCalendar(items) {
+    const grid = document.getElementById("agendaCalendarGrid");
+    const monthLabel = document.getElementById("agendaMonthLabel");
+    const selectedLabel = document.getElementById("agendaSelectedLabel");
+    const dateInput = document.getElementById("agendaDate");
+    if (!grid || !monthLabel || !selectedLabel) return;
+
+    monthLabel.textContent = formatAgendaMonth(agendaYear, agendaMonth);
+    selectedLabel.textContent = formatFullDate(selectedAgendaDate);
+    if (dateInput && !dateInput.value) dateInput.value = selectedAgendaDate;
+
+    const byDate = groupAgendaByDate(items);
+    const firstDay = new Date(agendaYear, agendaMonth, 1);
+    const daysInMonth = new Date(agendaYear, agendaMonth + 1, 0).getDate();
+    const startOffset = (firstDay.getDay() + 6) % 7;
+    const cells = [];
+
+    for (let i = 0; i < startOffset; i += 1) {
+      cells.push(`<div class="agenda-day agenda-day--empty" aria-hidden="true"></div>`);
+    }
+
+    for (let day = 1; day <= daysInMonth; day += 1) {
+      const date = toDateValue(new Date(agendaYear, agendaMonth, day));
+      const dayItems = byDate.get(date) || [];
+      const isSelected = date === selectedAgendaDate;
+      const isToday = date === toDateValue(new Date());
+
+      cells.push(`
+        <button class="agenda-day ${isSelected ? "is-selected" : ""} ${isToday ? "is-today" : ""}" type="button" data-agenda-date="${escapeAttr(date)}">
+          <span class="agenda-day__number">${day}</span>
+          <span class="agenda-day__items">
+            ${dayItems.slice(0, 2).map((item) => `<span>${escapeHtml(item.title)}</span>`).join("")}
+            ${dayItems.length > 2 ? `<small>+${dayItems.length - 2}</small>` : ""}
+          </span>
+        </button>
+      `);
+    }
+
+    grid.innerHTML = cells.join("");
+  }
+
+  function groupAgendaByDate(items) {
+    const map = new Map();
+    items.forEach((item) => {
+      if (!item.date) return;
+      if (!map.has(item.date)) map.set(item.date, []);
+      map.get(item.date).push(item);
+    });
+    return map;
+  }
+
+  function moveAgendaMonth(direction) {
+    const next = new Date(agendaYear, agendaMonth + direction, 1);
+    agendaYear = next.getFullYear();
+    agendaMonth = next.getMonth();
+    selectedAgendaDate = toDateValue(next);
+    const dateInput = document.getElementById("agendaDate");
+    if (dateInput) dateInput.value = selectedAgendaDate;
+    agendaFilter = "day";
+    renderAgenda();
+  }
+
+  function selectAgendaDate(value, syncInput = true) {
+    if (!value) return;
+    const date = parseDateValue(value);
+    if (!date) return;
+    selectedAgendaDate = value;
+    agendaYear = date.getFullYear();
+    agendaMonth = date.getMonth();
+    if (syncInput && document.getElementById("agendaDate")) document.getElementById("agendaDate").value = value;
+    agendaFilter = "day";
+    renderAgenda();
   }
 
   function toggleAgendaDone(id) {
@@ -619,6 +775,37 @@
       day: "2-digit",
       month: "short"
     });
+  }
+
+  function formatFullDate(value) {
+    const date = parseDateValue(value);
+    if (!date) return "Elegí un día";
+    return date.toLocaleDateString("es-AR", {
+      weekday: "long",
+      day: "2-digit",
+      month: "long",
+      year: "numeric"
+    });
+  }
+
+  function formatAgendaMonth(year, month) {
+    return new Date(year, month, 1).toLocaleDateString("es-AR", {
+      month: "long",
+      year: "numeric"
+    });
+  }
+
+  function parseDateValue(value) {
+    const [year, month, day] = String(value || "").split("-").map(Number);
+    if (!year || !month || !day) return null;
+    return new Date(year, month - 1, day);
+  }
+
+  function toDateValue(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
   }
 
   function renderList(elementId, items, emptyText, key) {
@@ -901,6 +1088,9 @@
       bookmark: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.8c0-.5.4-.8.8-.8h8.4c.4 0 .8.3.8.8v15l-5-3-5 3v-15z"/></svg>',
       message: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-8l-5 4v-4H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm0 2v9h3v1.8l2.3-1.8H19V6H5Zm3 3h8v2H8V9Z"/></svg>',
       close: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.7 5.3 12 10.6l5.3-5.3 1.4 1.4-5.3 5.3 5.3 5.3-1.4 1.4-5.3-5.3-5.3 5.3-1.4-1.4 5.3-5.3-5.3-5.3 1.4-1.4z"/></svg>',
+      calendar: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2h2v2h6V2h2v2h2.2A2.8 2.8 0 0 1 22 6.8v11.4a2.8 2.8 0 0 1-2.8 2.8H4.8A2.8 2.8 0 0 1 2 18.2V6.8A2.8 2.8 0 0 1 4.8 4H7V2Zm12 8H5v8.2c0 .4.4.8.8.8h12.4c.4 0 .8-.4.8-.8V10ZM5.8 6c-.4 0-.8.4-.8.8V8h14V6.8c0-.4-.4-.8-.8-.8H17v2h-2V6H9v2H7V6H5.8Zm1.7 6h3v3h-3v-3Zm5 0h3v3h-3v-3Z"/></svg>',
+      chevronLeft: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.8 5.4 1.4 1.4-5.2 5.2 5.2 5.2-1.4 1.4L8.2 12l6.6-6.6Z"/></svg>',
+      chevronRight: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.2 18.6-1.4-1.4 5.2-5.2-5.2-5.2 1.4-1.4 6.6 6.6-6.6 6.6Z"/></svg>',
       sun: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5.2a1 1 0 0 1-1-1V2.8a1 1 0 1 1 2 0v1.4a1 1 0 0 1-1 1Zm0 16a1 1 0 0 1-1-1v-1.4a1 1 0 1 1 2 0v1.4a1 1 0 0 1-1 1Zm6.8-8.2a1 1 0 1 1 0-2h1.4a1 1 0 1 1 0 2h-1.4ZM3.8 13a1 1 0 1 1 0-2h1.4a1 1 0 1 1 0 2H3.8Zm13-5.8a1 1 0 0 1 0-1.4l1-1a1 1 0 1 1 1.4 1.4l-1 1a1 1 0 0 1-1.4 0ZM4.8 19.2a1 1 0 0 1 0-1.4l1-1a1 1 0 0 1 1.4 1.4l-1 1a1 1 0 0 1-1.4 0Zm13 0-1-1a1 1 0 0 1 1.4-1.4l1 1a1 1 0 1 1-1.4 1.4ZM5.8 7.2l-1-1a1 1 0 1 1 1.4-1.4l1 1a1 1 0 0 1-1.4 1.4ZM12 16.5a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9Z"/></svg>',
       moon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.3 14.7a8.3 8.3 0 0 1-11-11 1 1 0 0 0-1.1-1.4A10.2 10.2 0 1 0 21.7 15.8a1 1 0 0 0-1.4-1.1ZM12 20.1a8.2 8.2 0 0 1-5.6-14.2 10.3 10.3 0 0 0 11.7 11.7 8.1 8.1 0 0 1-6.1 2.5Z"/></svg>'
     };
