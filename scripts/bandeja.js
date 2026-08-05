@@ -622,7 +622,7 @@
     }
 
     container.innerHTML = visibleItems.map((item) => `
-      <article class="agenda-item ${item.done ? "is-done" : ""}">
+      <article class="agenda-item ${agendaTypeClass(item.type)} ${item.done ? "is-done" : ""}">
         <label class="agenda-item__check">
           <input type="checkbox" data-agenda-done="${escapeAttr(item.id)}" ${item.done ? "checked" : ""} />
           <span>
@@ -631,7 +631,7 @@
           </span>
         </label>
         <div class="agenda-item__meta">
-          <span>${escapeHtml(item.type)}</span>
+          <span class="agenda-type-badge ${agendaTypeClass(item.type)}">${escapeHtml(item.type)}</span>
           ${item.date ? `<span>${escapeHtml(formatAgendaDate(item.date))}</span>` : ""}
           ${item.subject ? `<span>${escapeHtml(item.subject)}</span>` : ""}
         </div>
@@ -653,7 +653,7 @@
     container.innerHTML = nextItems.map((item) => `
       <button class="agenda-mini-item" type="button" data-agenda-open>
         <span>${escapeHtml(item.title)}</span>
-        <small>${escapeHtml([item.type, item.date ? formatAgendaDate(item.date) : "", item.subject].filter(Boolean).join(" · "))}</small>
+        <small><b class="${agendaTypeClass(item.type)}">${escapeHtml(item.type)}</b>${escapeHtml([item.date ? formatAgendaDate(item.date) : "", item.subject].filter(Boolean).map((value) => ` · ${value}`).join(""))}</small>
       </button>
     `).join("");
   }
@@ -689,7 +689,7 @@
         <button class="agenda-day ${isSelected ? "is-selected" : ""} ${isToday ? "is-today" : ""}" type="button" data-agenda-date="${escapeAttr(date)}">
           <span class="agenda-day__number">${day}</span>
           <span class="agenda-day__items">
-            ${dayItems.slice(0, 2).map((item) => `<span>${escapeHtml(item.title)}</span>`).join("")}
+            ${dayItems.slice(0, 2).map((item) => `<span class="${agendaTypeClass(item.type)}">${escapeHtml(item.title)}</span>`).join("")}
             ${dayItems.length > 2 ? `<small>+${dayItems.length - 2}</small>` : ""}
           </span>
         </button>
@@ -780,19 +780,34 @@
   function formatFullDate(value) {
     const date = parseDateValue(value);
     if (!date) return "Elegí un día";
-    return date.toLocaleDateString("es-AR", {
+    return sentenceCase(date.toLocaleDateString("es-AR", {
       weekday: "long",
       day: "2-digit",
       month: "long",
       year: "numeric"
-    });
+    }));
   }
 
   function formatAgendaMonth(year, month) {
-    return new Date(year, month, 1).toLocaleDateString("es-AR", {
+    return sentenceCase(new Date(year, month, 1).toLocaleDateString("es-AR", {
       month: "long",
       year: "numeric"
-    });
+    }));
+  }
+
+  function sentenceCase(value) {
+    const text = String(value || "").toLowerCase();
+    return text.charAt(0).toUpperCase() + text.slice(1);
+  }
+
+  function agendaTypeClass(type) {
+    const normalized = String(type || "Tarea")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9-]/g, "");
+    return `agenda-type-${normalized || "tarea"}`;
   }
 
   function parseDateValue(value) {

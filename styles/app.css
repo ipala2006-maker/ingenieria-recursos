@@ -569,8 +569,11 @@ img{ max-width: 100%; display:block; }
   border-radius:14px;
   background:rgba(255,255,255,.06);
   color:var(--text);
-  padding:11px 12px;
+  min-height:44px;
+  padding:11px 13px;
   font:inherit;
+  font-size:13px;
+  font-weight:750;
   outline:none;
   resize:vertical;
 }
@@ -582,6 +585,7 @@ img{ max-width: 100%; display:block; }
 }
 .tray-field select{
   appearance:none;
+  text-overflow:ellipsis;
 }
 .tray-submit{
   width:100%;
@@ -594,7 +598,7 @@ img{ max-width: 100%; display:block; }
   right:16px;
   top:72px;
   bottom:24px;
-  width:min(900px, calc(100vw - 32px));
+  width:min(960px, calc(100vw - 32px));
   opacity:0;
   pointer-events:none;
   transform:translateY(-6px);
@@ -634,7 +638,7 @@ img{ max-width: 100%; display:block; }
   min-height:0;
   flex:1;
   display:grid;
-  grid-template-columns:minmax(0, 1.35fr) minmax(280px, .8fr);
+  grid-template-columns:minmax(0, 1.25fr) minmax(340px, .75fr);
 }
 .agenda-calendar{
   min-width:0;
@@ -654,9 +658,8 @@ img{ max-width: 100%; display:block; }
 .agenda-selected-day h3{
   margin:2px 0 0;
   color:var(--text);
-  font-size:18px;
-  line-height:1.2;
-  text-transform:capitalize;
+  font-size:17px;
+  line-height:1.28;
 }
 .agenda-calendar__nav{
   width:34px;
@@ -742,6 +745,12 @@ img{ max-width: 100%; display:block; }
   font-size:10px;
   font-weight:800;
 }
+.agenda-day__items span.agenda-type-tarea,
+.agenda-day__items span.agenda-type-estudio,
+.agenda-day__items span.agenda-type-trabajo,
+.agenda-day__items span.agenda-type-examen{
+  color:var(--text);
+}
 .agenda-editor{
   min-width:0;
   display:flex;
@@ -753,24 +762,24 @@ img{ max-width: 100%; display:block; }
 }
 .agenda-form{
   display:grid;
-  gap:10px;
+  gap:12px;
   padding:12px 18px 14px;
   border-bottom:1px solid rgba(255,255,255,.08);
 }
 .agenda-form__row{
   display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:8px;
+  grid-template-columns:1fr;
+  gap:10px;
 }
 .agenda-form__row--type{
-  grid-template-columns:.8fr .9fr 1fr;
+  grid-template-columns:1fr;
 }
 .agenda-form .tray-field{
   margin-bottom:0;
 }
 .agenda-filter{
   display:flex;
-  gap:6px;
+  gap:7px;
   flex-wrap:wrap;
   padding:12px 18px 0;
 }
@@ -802,10 +811,11 @@ img{ max-width: 100%; display:block; }
   position:relative;
   display:grid;
   gap:6px;
-  padding:12px 40px 12px 12px;
+  padding:12px 40px 12px 14px;
   border:1px solid rgba(255,255,255,.10);
   border-radius:14px;
   background:rgba(255,255,255,.045);
+  border-left-width:4px;
 }
 .agenda-item__check{
   display:flex;
@@ -843,6 +853,42 @@ img{ max-width: 100%; display:block; }
   border-radius:999px;
   border:1px solid rgba(255,255,255,.10);
   background:rgba(255,255,255,.04);
+}
+.agenda-type-badge{
+  color:var(--text) !important;
+}
+.agenda-type-tarea{
+  --agenda-type-color:#6ee7ff;
+}
+.agenda-type-estudio{
+  --agenda-type-color:#a78bfa;
+}
+.agenda-type-trabajo{
+  --agenda-type-color:#34d399;
+}
+.agenda-type-examen{
+  --agenda-type-color:#fb7185;
+}
+.agenda-item.agenda-type-tarea,
+.agenda-item.agenda-type-estudio,
+.agenda-item.agenda-type-trabajo,
+.agenda-item.agenda-type-examen{
+  border-left-color:var(--agenda-type-color);
+}
+.agenda-type-badge.agenda-type-tarea,
+.agenda-type-badge.agenda-type-estudio,
+.agenda-type-badge.agenda-type-trabajo,
+.agenda-type-badge.agenda-type-examen,
+.agenda-mini-item b.agenda-type-tarea,
+.agenda-mini-item b.agenda-type-estudio,
+.agenda-mini-item b.agenda-type-trabajo,
+.agenda-mini-item b.agenda-type-examen,
+.agenda-day__items span.agenda-type-tarea,
+.agenda-day__items span.agenda-type-estudio,
+.agenda-day__items span.agenda-type-trabajo,
+.agenda-day__items span.agenda-type-examen{
+  border-color:color-mix(in srgb, var(--agenda-type-color) 34%, transparent);
+  background:color-mix(in srgb, var(--agenda-type-color) 16%, transparent);
 }
 .agenda-item__remove{
   position:absolute;
@@ -884,6 +930,13 @@ img{ max-width: 100%; display:block; }
   color:var(--muted);
   font-size:11px;
   font-weight:700;
+}
+.agenda-mini-item b{
+  font-weight:900;
+  padding:2px 5px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.10);
+  color:var(--text);
 }
 .agenda-mini-item:hover{
   border-color:rgba(110,231,255,.26);
