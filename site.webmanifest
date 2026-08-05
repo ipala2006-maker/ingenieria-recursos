@@ -1,7 +1,7 @@
 {
   "name": "Estudiemos",
   "short_name": "Estudiemos",
-  "description": "Recursos gratuitos para estudiantes de ingeniería.",
+  "description": "Plataforma educativa gratuita para estudiantes de ingeniería.",
   "lang": "es-AR",
   "start_url": "./",
   "scope": "./",

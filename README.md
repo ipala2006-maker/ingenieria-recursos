@@ -1,8 +1,8 @@
 # Estudiemos
 
-Plataforma educativa gratuita con recursos para estudiantes de ingeniería.
+Plataforma educativa gratuita para estudiantes de ingeniería.
 
-Sitio publico: [https://ipala2006-maker.github.io/ingenieria-recursos/](https://ipala2006-maker.github.io/ingenieria-recursos/)
+Sitio público: [https://estudiemos-app.vercel.app](https://estudiemos-app.vercel.app)
 
 ## Estructura
 
@@ -13,9 +13,9 @@ Sitio publico: [https://ipala2006-maker.github.io/ingenieria-recursos/](https://
 - `styles/`: estilos visuales.
 - `pdfs/`: material descargable.
 
-El proyecto es un sitio estático. No usa backend, dependencias, variables de entorno ni secretos.
+El proyecto es un sitio estático. No usa framework, backend, dependencias, variables de entorno ni secretos.
 
-## Ejecutar en la computadora
+## Ejecutar localmente
 
 No hace falta instalar paquetes ni generar un build.
 
@@ -23,25 +23,30 @@ No hace falta instalar paquetes ni generar un build.
 2. Ejecutar `python -m http.server 8000`.
 3. Abrir `http://localhost:8000` en el navegador.
 
-También se puede usar cualquier servidor local de archivos estáticos.
+## Build
 
-## Validación
+No existe un paso de build. Vercel publica directamente los archivos del repositorio.
 
-Antes de publicar, comprobar la sintaxis de los archivos JavaScript:
+Antes de publicar, se puede comprobar la sintaxis de JavaScript con:
 
 ```powershell
 Get-ChildItem scripts -Filter *.js | ForEach-Object { node --check $_.FullName }
 ```
 
-Luego recorrer Home, Carrera, Materia y Tema en escritorio y celular.
+## Publicación en Vercel
 
-## Publicación automática
+Configuración del proyecto:
 
-El sitio se publica con GitHub Pages desde la rama `main` y la raíz del repositorio.
+- Framework Preset: `Other`.
+- Root Directory: `./`.
+- Install Command: vacío.
+- Build Command: vacío.
+- Output Directory: vacío.
+- Production Branch: `main`.
 
-Cada cambio enviado a `main` inicia automáticamente una nueva publicación. No hace falta ejecutar un build ni copiar archivos a otra rama. GitHub Pages es la opción más simple para este proyecto porque todo el sitio es estático y ya vive en GitHub.
+Vercel está conectado al repositorio de GitHub. Cada cambio enviado a `main` inicia automáticamente una nueva publicación.
 
-No se requieren variables de entorno. Si en el futuro se agrega una integración que use secretos, deben configurarse en GitHub y nunca escribirse dentro del repositorio.
+No se requieren variables de entorno. Si en el futuro se agrega una integración que use secretos, deben configurarse en Vercel y nunca escribirse dentro del repositorio.
 
 ## Tareas
 
