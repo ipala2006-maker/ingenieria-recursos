@@ -3,18 +3,28 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Ingeniería Recursos - Acerca de</title>
-    <script src="./scripts/theme-init.js?v=20260628-root-history"></script>
+    <meta name="description" content="Conocé Estudiemos, una plataforma gratuita de recursos para estudiantes de ingeniería." />
+    <meta name="application-name" content="Estudiemos" />
+    <meta name="theme-color" content="#f8fafc" />
+    <meta name="color-scheme" content="light dark" />
+    <meta property="og:site_name" content="Estudiemos" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Acerca de | Estudiemos" />
+    <meta property="og:description" content="Conocé Estudiemos, una plataforma gratuita de recursos para estudiantes de ingeniería." />
+    <meta property="og:url" content="https://ipala2006-maker.github.io/ingenieria-recursos/about.html" />
+    <link rel="canonical" href="https://ipala2006-maker.github.io/ingenieria-recursos/about.html" />
+    <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="./site.webmanifest" />
+    <title>Acerca de | Estudiemos</title>
+    <script src="./scripts/theme-init.js?v=20260805-publicacion"></script>
     <link rel="stylesheet" href="./styles/app.css?v=20260805-agenda-academica" />
   </head>
 
   <body>
     <header class="topbar">
       <a class="brand" href="./">
-        <span class="brand__mark" aria-hidden="true">∑</span>
-        <span class="brand__text">
-          Ingeniería <span class="brand__text--muted">Recursos</span>
-        </span>
+        <span class="brand__mark" aria-hidden="true">&sum;</span>
+        <span class="brand__text">Estudiemos</span>
       </a>
 
       <nav class="topbar__nav" aria-label="Navegación">
@@ -38,7 +48,7 @@
       </section>
 
       <footer class="footer">
-        <span>© <span id="year"></span> Ingeniería Recursos</span>
+        <span>&copy; <span id="year"></span> Estudiemos</span>
       </footer>
     </main>
 
@@ -46,6 +56,6 @@
       document.getElementById("year").textContent = new Date().getFullYear();
     </script>
     <script src="./data/data.js?v=20260804-ai-profesores"></script>
-    <script src="./scripts/global-search.js?v=20260805-agenda-academica"></script>
+    <script src="./scripts/global-search.js?v=20260805-publicacion"></script>
   </body>
 </html>

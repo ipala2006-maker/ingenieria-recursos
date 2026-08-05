@@ -75,6 +75,8 @@
     root.classList.toggle("theme-dark", next === "dark");
     root.classList.toggle("theme-light", next === "light");
     root.dataset.theme = next;
+    var themeColor = document.querySelector('meta[name="theme-color"]');
+    if (themeColor) themeColor.setAttribute("content", next === "dark" ? "#0f172a" : "#f8fafc");
     if (instant) {
       requestAnimationFrame(function () {
         requestAnimationFrame(function () {

@@ -449,9 +449,15 @@
 
   function setTheme(theme, save) {
     const next = theme === "dark" ? "dark" : "light";
-    document.documentElement.classList.toggle("theme-dark", next === "dark");
-    document.documentElement.classList.toggle("theme-light", next === "light");
-    if (save) localStorage.setItem("estudiemos_theme", next);
+    if (window.EstudiemosTheme && save) {
+      window.EstudiemosTheme.set(next);
+    } else {
+      document.documentElement.classList.toggle("theme-dark", next === "dark");
+      document.documentElement.classList.toggle("theme-light", next === "light");
+      if (save) localStorage.setItem("estudiemos_theme", next);
+      const themeColor = document.querySelector('meta[name="theme-color"]');
+      if (themeColor) themeColor.setAttribute("content", next === "dark" ? "#0f172a" : "#f8fafc");
+    }
     markActiveTheme();
   }
 

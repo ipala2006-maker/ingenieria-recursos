@@ -1,0 +1,19 @@
+{
+  "name": "Estudiemos",
+  "short_name": "Estudiemos",
+  "description": "Recursos gratuitos para estudiantes de ingeniería.",
+  "lang": "es-AR",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#1a73e8",
+  "icons": [
+    {
+      "src": "assets/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

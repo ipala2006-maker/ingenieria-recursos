@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://ipala2006-maker.github.io/ingenieria-recursos/sitemap.xml
