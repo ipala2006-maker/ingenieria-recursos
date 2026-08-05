@@ -557,29 +557,99 @@ img{ max-width: 100%; display:block; }
   width:100%;
   justify-content:center;
 }
+.agenda-board{
+  position:fixed;
+  z-index:83;
+  left:316px;
+  top:72px;
+  bottom:24px;
+  width:min(620px, calc(100vw - 340px));
+  opacity:0;
+  pointer-events:none;
+  transform:translateX(-10px);
+  transition:opacity .18s ease, transform .18s ease;
+}
+.agenda-open .agenda-board{
+  opacity:1;
+  pointer-events:auto;
+  transform:translateX(0);
+}
+.agenda-board__panel{
+  height:100%;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:18px;
+  background:rgba(11,16,32,.96);
+  box-shadow:0 18px 54px rgba(0,0,0,.34);
+  backdrop-filter:blur(18px);
+}
+.agenda-board__head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:16px;
+  padding:18px 18px 12px;
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+.agenda-board__head h2{
+  margin:2px 0 0;
+  color:var(--text);
+  font-size:20px;
+  letter-spacing:0;
+}
 .agenda-form{
   display:grid;
   gap:10px;
-  margin-top:12px;
+  padding:14px 18px;
+  border-bottom:1px solid rgba(255,255,255,.08);
 }
 .agenda-form__row{
   display:grid;
   grid-template-columns:1fr 1fr;
   gap:8px;
 }
+.agenda-form__row--type{
+  grid-template-columns:.8fr .9fr 1fr;
+}
 .agenda-form .tray-field{
   margin-bottom:0;
+}
+.agenda-filter{
+  display:flex;
+  gap:6px;
+  padding:12px 18px 0;
+}
+.agenda-filter__btn{
+  min-height:30px;
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:999px;
+  background:rgba(255,255,255,.045);
+  color:var(--muted);
+  padding:6px 10px;
+  font:inherit;
+  font-size:12px;
+  font-weight:800;
+  cursor:pointer;
+}
+.agenda-filter__btn:hover,
+.agenda-filter__btn.is-active{
+  border-color:rgba(110,231,255,.34);
+  background:rgba(110,231,255,.12);
+  color:var(--text);
 }
 .agenda-list{
   display:grid;
   gap:8px;
-  margin-top:12px;
+  overflow:auto;
+  padding:12px 18px 18px;
 }
 .agenda-item{
   position:relative;
   display:grid;
   gap:6px;
-  padding:10px 36px 10px 10px;
+  padding:12px 40px 12px 12px;
   border:1px solid rgba(255,255,255,.10);
   border-radius:14px;
   background:rgba(255,255,255,.045);
@@ -592,6 +662,16 @@ img{ max-width: 100%; display:block; }
   font-size:13px;
   font-weight:750;
   line-height:1.35;
+}
+.agenda-item__check strong,
+.agenda-item__check small{
+  display:block;
+}
+.agenda-item__check small{
+  margin-top:3px;
+  color:var(--muted);
+  font-size:12px;
+  font-weight:600;
 }
 .agenda-item__check input{
   margin-top:2px;
@@ -621,6 +701,40 @@ img{ max-width: 100%; display:block; }
 }
 .agenda-item.is-done .agenda-item__check span{
   text-decoration:line-through;
+}
+.agenda-mini-list{
+  display:grid;
+  gap:7px;
+  margin-top:10px;
+}
+.agenda-open-btn{
+  margin-top:10px;
+}
+.agenda-mini-item{
+  width:100%;
+  display:grid;
+  gap:3px;
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:12px;
+  background:rgba(255,255,255,.04);
+  color:var(--text);
+  padding:9px 10px;
+  text-align:left;
+  font:inherit;
+  cursor:pointer;
+}
+.agenda-mini-item span{
+  font-size:12px;
+  font-weight:800;
+}
+.agenda-mini-item small{
+  color:var(--muted);
+  font-size:11px;
+  font-weight:700;
+}
+.agenda-mini-item:hover{
+  border-color:rgba(110,231,255,.26);
+  background:rgba(110,231,255,.08);
 }
 .bandeja-actions{
   display:flex;
@@ -744,6 +858,30 @@ img{ max-width: 100%; display:block; }
     grid-template-columns:1fr;
   }
   .agenda-form__row{
+    grid-template-columns:1fr;
+  }
+  .agenda-board{
+    left:10px;
+    right:10px;
+    top:14px;
+    bottom:14px;
+    width:auto;
+    transform:translateY(8px);
+  }
+  .agenda-open .agenda-board{
+    transform:translateY(0);
+  }
+  .agenda-board__panel{
+    border-radius:16px;
+  }
+  .agenda-board__head,
+  .agenda-form,
+  .agenda-filter,
+  .agenda-list{
+    padding-left:14px;
+    padding-right:14px;
+  }
+  .agenda-form__row--type{
     grid-template-columns:1fr;
   }
   .ai-professor-card{
@@ -1300,7 +1438,10 @@ html.theme-light .tool-card,
 html.theme-light .empty-section,
 html.theme-light .global-search__results,
 html.theme-light .ai-professor-card,
-html.theme-light .bandeja-check{
+html.theme-light .bandeja-check,
+html.theme-light .agenda-board__panel,
+html.theme-light .agenda-item,
+html.theme-light .agenda-mini-item{
   color:var(--text) !important;
   background:var(--panel) !important;
   border-color:var(--border) !important;
@@ -1353,9 +1494,17 @@ html.theme-light .tray-panel,
 html.theme-light .bandeja-mini-actions,
 html.theme-light .subject-toggle,
 html.theme-light .bandeja-action-btn,
-html.theme-light .tray-close{
+html.theme-light .tray-close,
+html.theme-light .agenda-filter__btn{
   background:var(--panel) !important;
   border-color:var(--border) !important;
   color:var(--text) !important;
   box-shadow:var(--shadow) !important;
+}
+
+html.theme-light .agenda-filter__btn.is-active,
+html.theme-light .agenda-filter__btn:hover,
+html.theme-light .agenda-mini-item:hover{
+  border-color:rgba(26,115,232,.28) !important;
+  background:rgba(26,115,232,.08) !important;
 }

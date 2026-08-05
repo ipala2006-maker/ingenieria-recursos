@@ -13,8 +13,10 @@
 
   const GOOGLE_FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSc8KLH9N0kcYRryZa0tNtLSRIMe0ol_wKWVUwBt9T-3m9WD1A/viewform?usp=header";
   let refreshQueued = false;
+  let agendaFilter = "pending";
 
   addTray();
+  addAgendaPanel();
   addTrayButton();
   bindTray();
   trackRecentTopic();
@@ -47,28 +49,9 @@
               <span class="tray-chevron">+</span>
             </button>
             <div class="tray-accordion__body">
-              <p class="tray-help">Organizá parciales, entregas y pendientes de estudio.</p>
-              <form id="agendaForm" class="agenda-form">
-                <label class="tray-field">
-                  Pendiente
-                  <input id="agendaTitle" type="text" maxlength="90" placeholder="Ej: Repasar mediciones" required />
-                </label>
-                <div class="agenda-form__row">
-                  <label class="tray-field">
-                    Fecha
-                    <input id="agendaDate" type="date" />
-                  </label>
-                  <label class="tray-field">
-                    Materia
-                    <select id="agendaSubject">
-                      <option value="">Sin materia</option>
-                      ${agendaSubjectOptions()}
-                    </select>
-                  </label>
-                </div>
-                <button class="btn tray-submit" type="submit">Agregar</button>
-              </form>
-              <div id="agendaList" class="agenda-list"></div>
+              <p class="tray-help">Planificá exámenes, trabajos y pendientes sin salir de la página.</p>
+              <button class="btn tray-submit agenda-open-btn" type="button" data-agenda-open>Abrir agenda</button>
+              <div id="agendaMiniList" class="agenda-mini-list"></div>
             </div>
           </section>
           ${traySection("saved", "Guardados para después", "Material para revisar después.", "savedList")}
@@ -93,6 +76,69 @@
       </div>
     `;
     document.body.appendChild(shell);
+  }
+
+  function addAgendaPanel() {
+    const panel = document.createElement("section");
+    panel.className = "agenda-board";
+    panel.setAttribute("aria-hidden", "true");
+    panel.innerHTML = `
+      <div class="agenda-board__panel" role="dialog" aria-modal="false" aria-label="Agenda de estudio">
+        <header class="agenda-board__head">
+          <div>
+            <p class="tray-kicker">Organización</p>
+            <h2>Agenda de estudio</h2>
+          </div>
+          <button class="tray-close" type="button" data-agenda-close aria-label="Cerrar agenda">×</button>
+        </header>
+
+        <form id="agendaForm" class="agenda-form">
+          <label class="tray-field">
+            Qué tenés que hacer
+            <input id="agendaTitle" type="text" maxlength="90" placeholder="Ej: Entrega de ejercicios" required />
+          </label>
+
+          <div class="agenda-form__row agenda-form__row--type">
+            <label class="tray-field">
+              Tipo
+              <select id="agendaType">
+                <option value="Tarea">Tarea</option>
+                <option value="Examen">Examen</option>
+                <option value="Trabajo">Trabajo</option>
+                <option value="Estudio">Estudio</option>
+              </select>
+            </label>
+            <label class="tray-field">
+              Fecha
+              <input id="agendaDate" type="date" />
+            </label>
+            <label class="tray-field">
+              Materia
+              <select id="agendaSubject">
+                <option value="">Sin materia</option>
+                ${agendaSubjectOptions()}
+              </select>
+            </label>
+          </div>
+
+          <label class="tray-field">
+            Nota breve
+            <textarea id="agendaNote" rows="2" maxlength="160" placeholder="Ej: revisar guía 2 y fórmulas principales"></textarea>
+          </label>
+
+          <button class="btn tray-submit" type="submit">Agregar a la agenda</button>
+        </form>
+
+        <div class="agenda-filter" aria-label="Filtrar agenda">
+          <button class="agenda-filter__btn is-active" type="button" data-agenda-filter="pending">Pendientes</button>
+          <button class="agenda-filter__btn" type="button" data-agenda-filter="all">Todo</button>
+          <button class="agenda-filter__btn" type="button" data-agenda-filter="done">Hechas</button>
+        </div>
+
+        <div id="agendaList" class="agenda-list"></div>
+      </div>
+    `;
+    document.body.appendChild(panel);
   }
 
   function traySection(name, title, help, listId) {
@@ -135,11 +181,16 @@
 
     document.querySelector(".tray-close")?.addEventListener("click", () => {
       document.body.classList.add("tray-transition-enabled");
+      closeAgendaBoard();
       setTrayOpen(false, true);
     });
 
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
+        if (document.body.classList.contains("agenda-open")) {
+          closeAgendaBoard();
+          return;
+        }
         document.body.classList.add("tray-transition-enabled");
         setTrayOpen(false, true);
       }
@@ -148,8 +199,7 @@
     document.querySelector(".tray-shell")?.addEventListener("click", (event) => {
       const trigger = event.target.closest(".tray-accordion__trigger");
       const remove = event.target.closest("[data-bandeja-remove]");
-      const agendaRemove = event.target.closest("[data-agenda-remove]");
-      const agendaDone = event.target.closest("[data-agenda-done]");
+      const agendaOpen = event.target.closest("[data-agenda-open]");
       const theme = event.target.closest("[data-theme-choice]");
 
       if (trigger) {
@@ -165,10 +215,33 @@
         return;
       }
 
+      if (agendaOpen) {
+        openAgendaBoard();
+        return;
+      }
+
       if (remove) {
         event.preventDefault();
         event.stopPropagation();
         removeItem(remove.dataset.bandejaRemove, remove.dataset.bandejaRemoveId);
+      }
+    });
+
+    document.querySelector(".agenda-board")?.addEventListener("click", (event) => {
+      const agendaRemove = event.target.closest("[data-agenda-remove]");
+      const agendaDone = event.target.closest("[data-agenda-done]");
+      const agendaClose = event.target.closest("[data-agenda-close]");
+      const agendaFilterButton = event.target.closest("[data-agenda-filter]");
+
+      if (agendaClose) {
+        closeAgendaBoard();
+        return;
+      }
+
+      if (agendaFilterButton) {
+        agendaFilter = agendaFilterButton.dataset.agendaFilter || "pending";
+        renderAgenda();
+        return;
       }
 
       if (agendaRemove) {
@@ -188,6 +261,11 @@
     });
 
     document.addEventListener("click", (event) => {
+      if (shouldCloseAgendaBoard(event)) {
+        closeAgendaBoard();
+        return;
+      }
+
       if (shouldCloseMobileTray(event)) {
         event.preventDefault();
         event.stopPropagation();
@@ -239,14 +317,35 @@
     if (!document.body.classList.contains("tray-open")) return false;
     if (!window.matchMedia("(max-width: 760px)").matches) return false;
     if (event.target.closest(".tray-shell")) return false;
+    if (event.target.closest(".agenda-board")) return false;
     if (event.target.closest("[data-bandeja-trigger]")) return false;
+    return true;
+  }
+
+  function shouldCloseAgendaBoard(event) {
+    if (!document.body.classList.contains("agenda-open")) return false;
+    if (event.target.closest(".agenda-board__panel")) return false;
+    if (event.target.closest("[data-agenda-open]")) return false;
     return true;
   }
 
   function setTrayOpen(isOpen, shouldSave) {
     document.body.classList.toggle("tray-open", isOpen);
     document.querySelector(".tray-shell")?.setAttribute("aria-hidden", String(!isOpen));
+    if (!isOpen) closeAgendaBoard();
     if (shouldSave) localStorage.setItem(STORAGE_KEYS.open, String(isOpen));
+  }
+
+  function openAgendaBoard() {
+    document.body.classList.add("agenda-open");
+    document.querySelector(".agenda-board")?.setAttribute("aria-hidden", "false");
+    renderAgenda();
+    setTimeout(() => document.getElementById("agendaTitle")?.focus(), 0);
+  }
+
+  function closeAgendaBoard() {
+    document.body.classList.remove("agenda-open");
+    document.querySelector(".agenda-board")?.setAttribute("aria-hidden", "true");
   }
 
   function restoreTrayState() {
@@ -388,8 +487,10 @@
 
   function addAgendaItem() {
     const titleInput = document.getElementById("agendaTitle");
+    const typeInput = document.getElementById("agendaType");
     const dateInput = document.getElementById("agendaDate");
     const subjectInput = document.getElementById("agendaSubject");
+    const noteInput = document.getElementById("agendaNote");
     const title = titleInput?.value.trim();
     if (!title) return;
 
@@ -397,8 +498,10 @@
     items.unshift({
       id: `agenda:${Date.now()}`,
       title,
+      type: typeInput?.value || "Tarea",
       date: dateInput?.value || "",
       subject: subjectInput?.value || "",
+      note: noteInput?.value.trim() || "",
       done: false,
       createdAt: Date.now()
     });
@@ -407,35 +510,69 @@
     titleInput.value = "";
     if (dateInput) dateInput.value = "";
     if (subjectInput) subjectInput.value = "";
+    if (noteInput) noteInput.value = "";
     renderAgenda();
   }
 
   function renderAgenda() {
     const container = document.getElementById("agendaList");
-    if (!container) return;
-
     const items = readList(STORAGE_KEYS.agenda)
       .map(normalizeAgendaItem)
       .filter(Boolean)
       .sort(compareAgendaItems);
 
-    if (!items.length) {
+    renderAgendaMini(items);
+    if (!container) return;
+
+    const visibleItems = items.filter((item) => {
+      if (agendaFilter === "done") return item.done;
+      if (agendaFilter === "all") return true;
+      return !item.done;
+    });
+
+    document.querySelectorAll("[data-agenda-filter]").forEach((button) => {
+      button.classList.toggle("is-active", button.dataset.agendaFilter === agendaFilter);
+    });
+
+    if (!visibleItems.length) {
       container.innerHTML = `<p class="tray-empty">Todavía no agregaste pendientes.</p>`;
       return;
     }
 
-    container.innerHTML = items.map((item) => `
+    container.innerHTML = visibleItems.map((item) => `
       <article class="agenda-item ${item.done ? "is-done" : ""}">
         <label class="agenda-item__check">
           <input type="checkbox" data-agenda-done="${escapeAttr(item.id)}" ${item.done ? "checked" : ""} />
-          <span>${escapeHtml(item.title)}</span>
+          <span>
+            <strong>${escapeHtml(item.title)}</strong>
+            ${item.note ? `<small>${escapeHtml(item.note)}</small>` : ""}
+          </span>
         </label>
         <div class="agenda-item__meta">
+          <span>${escapeHtml(item.type)}</span>
           ${item.date ? `<span>${escapeHtml(formatAgendaDate(item.date))}</span>` : ""}
           ${item.subject ? `<span>${escapeHtml(item.subject)}</span>` : ""}
         </div>
         <button class="bandeja-remove-btn agenda-item__remove" type="button" data-agenda-remove="${escapeAttr(item.id)}" aria-label="Quitar ${escapeAttr(item.title)}">${icon("close")}</button>
       </article>
+    `).join("");
+  }
+
+  function renderAgendaMini(items) {
+    const container = document.getElementById("agendaMiniList");
+    if (!container) return;
+
+    const nextItems = items.filter((item) => !item.done).slice(0, 3);
+    if (!nextItems.length) {
+      container.innerHTML = `<p class="tray-empty">Sin pendientes próximos.</p>`;
+      return;
+    }
+
+    container.innerHTML = nextItems.map((item) => `
+      <button class="agenda-mini-item" type="button" data-agenda-open>
+        <span>${escapeHtml(item.title)}</span>
+        <small>${escapeHtml([item.type, item.date ? formatAgendaDate(item.date) : "", item.subject].filter(Boolean).join(" · "))}</small>
+      </button>
     `).join("");
   }
 
@@ -458,8 +595,10 @@
     return {
       id: String(item.id),
       title: String(item.title),
+      type: item.type || "Tarea",
       date: item.date || "",
       subject: item.subject || "",
+      note: item.note || "",
       done: Boolean(item.done),
       createdAt: Number(item.createdAt) || 0
     };
