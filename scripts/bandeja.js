@@ -7,6 +7,7 @@
     saved: "bandeja_guardados",
     subjects: "bandeja_materias",
     recent: "bandeja_recientes",
+    agenda: "bandeja_agenda",
     open: "bandeja_abierta"
   };
 
@@ -40,6 +41,36 @@
           ${traySection("favorites", "Favoritos", "Recursos marcados para volver rápido.", "favoritesList")}
           ${traySection("subjects", "Mis materias", "Acceso rápido a tus materias elegidas.", "mySubjectsQuick")}
           ${traySection("recent", "Recientes", "Últimos temas visitados.", "recentList")}
+          <section class="tray-accordion" data-tray-section="agenda">
+            <button class="tray-accordion__trigger" type="button" aria-expanded="false">
+              <span>Agenda</span>
+              <span class="tray-chevron">+</span>
+            </button>
+            <div class="tray-accordion__body">
+              <p class="tray-help">Organizá parciales, entregas y pendientes de estudio.</p>
+              <form id="agendaForm" class="agenda-form">
+                <label class="tray-field">
+                  Pendiente
+                  <input id="agendaTitle" type="text" maxlength="90" placeholder="Ej: Repasar mediciones" required />
+                </label>
+                <div class="agenda-form__row">
+                  <label class="tray-field">
+                    Fecha
+                    <input id="agendaDate" type="date" />
+                  </label>
+                  <label class="tray-field">
+                    Materia
+                    <select id="agendaSubject">
+                      <option value="">Sin materia</option>
+                      ${agendaSubjectOptions()}
+                    </select>
+                  </label>
+                </div>
+                <button class="btn tray-submit" type="submit">Agregar</button>
+              </form>
+              <div id="agendaList" class="agenda-list"></div>
+            </div>
+          </section>
           ${traySection("saved", "Guardados para después", "Material para revisar después.", "savedList")}
           <section class="tray-accordion" data-tray-section="suggestions">
             <button class="tray-accordion__trigger" type="button" aria-expanded="false">
@@ -117,6 +148,8 @@
     document.querySelector(".tray-shell")?.addEventListener("click", (event) => {
       const trigger = event.target.closest(".tray-accordion__trigger");
       const remove = event.target.closest("[data-bandeja-remove]");
+      const agendaRemove = event.target.closest("[data-agenda-remove]");
+      const agendaDone = event.target.closest("[data-agenda-done]");
       const theme = event.target.closest("[data-theme-choice]");
 
       if (trigger) {
@@ -137,6 +170,21 @@
         event.stopPropagation();
         removeItem(remove.dataset.bandejaRemove, remove.dataset.bandejaRemoveId);
       }
+
+      if (agendaRemove) {
+        event.preventDefault();
+        event.stopPropagation();
+        removeAgendaItem(agendaRemove.dataset.agendaRemove);
+      }
+
+      if (agendaDone) {
+        toggleAgendaDone(agendaDone.dataset.agendaDone);
+      }
+    });
+
+    document.getElementById("agendaForm")?.addEventListener("submit", (event) => {
+      event.preventDefault();
+      addAgendaItem();
     });
 
     document.addEventListener("click", (event) => {
@@ -329,6 +377,109 @@
       url: createMateriaUrl(subject.slug),
       target: "_self"
     })), "Todavía no seleccionaste materias.", STORAGE_KEYS.subjects);
+    renderAgenda();
+  }
+
+  function agendaSubjectOptions() {
+    return getSubjects()
+      .map((subject) => `<option value="${escapeAttr(subject.title)}">${escapeHtml(subject.title)}</option>`)
+      .join("");
+  }
+
+  function addAgendaItem() {
+    const titleInput = document.getElementById("agendaTitle");
+    const dateInput = document.getElementById("agendaDate");
+    const subjectInput = document.getElementById("agendaSubject");
+    const title = titleInput?.value.trim();
+    if (!title) return;
+
+    const items = readList(STORAGE_KEYS.agenda);
+    items.unshift({
+      id: `agenda:${Date.now()}`,
+      title,
+      date: dateInput?.value || "",
+      subject: subjectInput?.value || "",
+      done: false,
+      createdAt: Date.now()
+    });
+
+    writeList(STORAGE_KEYS.agenda, items.slice(0, 30));
+    titleInput.value = "";
+    if (dateInput) dateInput.value = "";
+    if (subjectInput) subjectInput.value = "";
+    renderAgenda();
+  }
+
+  function renderAgenda() {
+    const container = document.getElementById("agendaList");
+    if (!container) return;
+
+    const items = readList(STORAGE_KEYS.agenda)
+      .map(normalizeAgendaItem)
+      .filter(Boolean)
+      .sort(compareAgendaItems);
+
+    if (!items.length) {
+      container.innerHTML = `<p class="tray-empty">Todavía no agregaste pendientes.</p>`;
+      return;
+    }
+
+    container.innerHTML = items.map((item) => `
+      <article class="agenda-item ${item.done ? "is-done" : ""}">
+        <label class="agenda-item__check">
+          <input type="checkbox" data-agenda-done="${escapeAttr(item.id)}" ${item.done ? "checked" : ""} />
+          <span>${escapeHtml(item.title)}</span>
+        </label>
+        <div class="agenda-item__meta">
+          ${item.date ? `<span>${escapeHtml(formatAgendaDate(item.date))}</span>` : ""}
+          ${item.subject ? `<span>${escapeHtml(item.subject)}</span>` : ""}
+        </div>
+        <button class="bandeja-remove-btn agenda-item__remove" type="button" data-agenda-remove="${escapeAttr(item.id)}" aria-label="Quitar ${escapeAttr(item.title)}">${icon("close")}</button>
+      </article>
+    `).join("");
+  }
+
+  function toggleAgendaDone(id) {
+    const items = readList(STORAGE_KEYS.agenda).map((item) => {
+      if (item.id !== id) return item;
+      return { ...item, done: !item.done };
+    });
+    writeList(STORAGE_KEYS.agenda, items);
+    renderAgenda();
+  }
+
+  function removeAgendaItem(id) {
+    writeList(STORAGE_KEYS.agenda, readList(STORAGE_KEYS.agenda).filter((item) => item.id !== id));
+    renderAgenda();
+  }
+
+  function normalizeAgendaItem(item) {
+    if (!item || !item.id || !item.title) return null;
+    return {
+      id: String(item.id),
+      title: String(item.title),
+      date: item.date || "",
+      subject: item.subject || "",
+      done: Boolean(item.done),
+      createdAt: Number(item.createdAt) || 0
+    };
+  }
+
+  function compareAgendaItems(a, b) {
+    if (a.done !== b.done) return a.done ? 1 : -1;
+    if (a.date && b.date && a.date !== b.date) return a.date.localeCompare(b.date);
+    if (a.date && !b.date) return -1;
+    if (!a.date && b.date) return 1;
+    return b.createdAt - a.createdAt;
+  }
+
+  function formatAgendaDate(value) {
+    const [year, month, day] = String(value).split("-").map(Number);
+    if (!year || !month || !day) return value;
+    return new Date(year, month - 1, day).toLocaleDateString("es-AR", {
+      day: "2-digit",
+      month: "short"
+    });
   }
 
   function renderList(elementId, items, emptyText, key) {
@@ -494,6 +645,7 @@
       const value = JSON.parse(localStorage.getItem(key) || "[]");
       if (!Array.isArray(value)) return [];
       if (key === STORAGE_KEYS.subjects) return value;
+      if (key === STORAGE_KEYS.agenda) return value.map(normalizeAgendaItem).filter(Boolean);
       return dedupeItems(value.map(normalizeItem).filter(Boolean));
     } catch (error) {
       return [];

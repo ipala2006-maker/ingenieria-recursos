@@ -532,7 +532,8 @@ img{ max-width: 100%; display:block; }
   font-weight:700;
 }
 .tray-field input,
-.tray-field textarea{
+.tray-field textarea,
+.tray-field select{
   width:100%;
   border:1px solid rgba(255,255,255,.12);
   border-radius:14px;
@@ -544,13 +545,82 @@ img{ max-width: 100%; display:block; }
   resize:vertical;
 }
 .tray-field input:focus,
-.tray-field textarea:focus{
+.tray-field textarea:focus,
+.tray-field select:focus{
   border-color:rgba(110,231,255,.42);
   box-shadow:var(--ring);
+}
+.tray-field select{
+  appearance:none;
 }
 .tray-submit{
   width:100%;
   justify-content:center;
+}
+.agenda-form{
+  display:grid;
+  gap:10px;
+  margin-top:12px;
+}
+.agenda-form__row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.agenda-form .tray-field{
+  margin-bottom:0;
+}
+.agenda-list{
+  display:grid;
+  gap:8px;
+  margin-top:12px;
+}
+.agenda-item{
+  position:relative;
+  display:grid;
+  gap:6px;
+  padding:10px 36px 10px 10px;
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:14px;
+  background:rgba(255,255,255,.045);
+}
+.agenda-item__check{
+  display:flex;
+  align-items:flex-start;
+  gap:8px;
+  color:var(--text);
+  font-size:13px;
+  font-weight:750;
+  line-height:1.35;
+}
+.agenda-item__check input{
+  margin-top:2px;
+  accent-color:var(--accent);
+}
+.agenda-item__meta{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+  color:var(--muted);
+  font-size:11px;
+  font-weight:700;
+}
+.agenda-item__meta span{
+  padding:3px 7px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.10);
+  background:rgba(255,255,255,.04);
+}
+.agenda-item__remove{
+  position:absolute;
+  top:8px;
+  right:8px;
+}
+.agenda-item.is-done{
+  opacity:.66;
+}
+.agenda-item.is-done .agenda-item__check span{
+  text-decoration:line-through;
 }
 .bandeja-actions{
   display:flex;
@@ -671,6 +741,9 @@ img{ max-width: 100%; display:block; }
     width: 100%;
   }
   .bandeja-checks{
+    grid-template-columns:1fr;
+  }
+  .agenda-form__row{
     grid-template-columns:1fr;
   }
   .ai-professor-card{
@@ -1269,7 +1342,8 @@ html.theme-light .breadcrumbs a{
 
 html.theme-light .global-search__input,
 html.theme-light .tray-field input,
-html.theme-light .tray-field textarea{
+html.theme-light .tray-field textarea,
+html.theme-light .tray-field select{
   background:var(--panel-2) !important;
   border-color:transparent !important;
   color:var(--text) !important;
