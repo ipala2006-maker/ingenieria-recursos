@@ -56,7 +56,7 @@
             </button>
             <div class="tray-accordion__body">
               <p class="tray-help">¿Encontraste un error o querés sugerir un recurso?</p>
-              <a id="suggestionLink" class="btn tray-submit" href="${GOOGLE_FORM_URL}" target="_blank" rel="noopener">Enviar sugerencia</a>
+              <a id="suggestionLink" class="btn tray-submit" href="${GOOGLE_FORM_URL}" target="_blank" rel="noopener noreferrer">Enviar sugerencia</a>
             </div>
           </section>
         </div>
@@ -940,7 +940,7 @@
     }
 
     container.innerHTML = items.map((item) => `
-      <a class="topic-card bandeja-list-card" href="${escapeAttr(createInternalUrl(item.url))}" target="${item.target || "_self"}" rel="noopener">
+      <a class="topic-card bandeja-list-card" href="${escapeAttr(createInternalUrl(item.url))}" target="${item.target || "_self"}" rel="noopener noreferrer">
         <div>
           <p class="topic-card__title">${escapeHtml(item.title)}</p>
           ${item.topic ? `<p class="global-search__meta">Tema: ${escapeHtml(item.topic)}</p>` : ""}

@@ -148,7 +148,7 @@
 
         if (topic.pdfs?.length) {
           pdfList.innerHTML = topic.pdfs.map(pdf => `
-            <a class="topic-card" href="${pdf.url}" target="_blank">
+            <a class="topic-card" href="${pdf.url}" target="_blank" rel="noopener noreferrer">
               <div>
                 <p class="topic-card__title">${pdf.title}</p>
               </div>
@@ -195,7 +195,7 @@
             const thumbnail = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
 
             return `
-              <a class="video-card" href="${video.url}" target="_blank">
+              <a class="video-card" href="${video.url}" target="_blank" rel="noopener noreferrer">
                 <img src="${thumbnail}" alt="${video.title || "Video sin título"}">
                 <div class="video-card__body">
                   <p class="video-card__title">${data.title || video.title || "Video sin título"}</p>
@@ -213,7 +213,7 @@
 
         if (topic.herramientas?.length) {
           toolList.innerHTML = topic.herramientas.map(tool => `
-            <a class="topic-card" href="${tool.url}" target="_blank">
+            <a class="topic-card" href="${tool.url}" target="_blank" rel="noopener noreferrer">
               <div>
                 <p class="topic-card__title">${tool.title}</p>
               </div>

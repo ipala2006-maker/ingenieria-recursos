@@ -222,7 +222,7 @@
 
     results.hidden = false;
     results.innerHTML = matches.map(({ item, match }) => `
-      <a class="topic-card global-search__card" href="${escapeAttr(item.url)}" target="${item.target}" rel="noopener">
+      <a class="topic-card global-search__card" href="${escapeAttr(item.url)}" target="${item.target}" rel="noopener noreferrer">
         <div>
           <p class="topic-card__title">${highlight(item.title, value)}</p>
           ${match.text && normalize(match.text) !== normalize(item.title) ? `<p class="global-search__meta">Coincidencia: ${highlight(match.text, value)}</p>` : ""}

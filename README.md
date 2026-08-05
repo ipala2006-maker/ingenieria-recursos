@@ -15,6 +15,13 @@ Sitio público: [https://estudiemos-app.vercel.app](https://estudiemos-app.verce
 
 El proyecto es un sitio estático. No usa framework, backend, dependencias, variables de entorno ni secretos.
 
+## Seguridad
+
+- `vercel.json` agrega headers de seguridad para proteger la página publicada.
+- `.gitignore` evita subir archivos locales sensibles como `.env` o `.vercel`.
+- `SECURITY.md` resume las reglas simples para mantener el proyecto seguro.
+- GitHub y Vercel deben mantenerse con verificación en dos pasos activada.
+
 ## Ejecutar localmente
 
 No hace falta instalar paquetes ni generar un build.
