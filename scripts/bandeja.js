@@ -88,31 +88,33 @@
     panel.setAttribute("aria-hidden", "true");
     panel.innerHTML = `
       <div class="agenda-board__panel" role="dialog" aria-modal="false" aria-label="Agenda de estudio">
-        <header class="agenda-board__head">
-          <div>
-            <p class="tray-kicker">Organización</p>
-            <h2>Agenda de estudio</h2>
+        <header class="agenda-toolbar">
+          <div class="agenda-toolbar__main">
+            <button class="agenda-toolbar__today" type="button" data-agenda-today>Hoy</button>
+            <div class="agenda-toolbar__nav">
+              <button class="agenda-calendar__nav" type="button" data-agenda-month="prev" aria-label="Mes anterior">${icon("chevronLeft")}</button>
+              <button class="agenda-calendar__nav" type="button" data-agenda-month="next" aria-label="Mes siguiente">${icon("chevronRight")}</button>
+            </div>
+            <div>
+              <p class="tray-kicker">Agenda</p>
+              <h2 id="agendaMonthLabel"></h2>
+            </div>
           </div>
-          <button class="tray-close" type="button" data-agenda-close aria-label="Cerrar agenda">×</button>
+          <div class="agenda-toolbar__actions">
+            <button class="agenda-create-btn" type="button" data-agenda-create>${icon("plus")}<span>Crear</span></button>
+            <button class="tray-close" type="button" data-agenda-close aria-label="Cerrar agenda">×</button>
+          </div>
         </header>
 
         <div class="agenda-layout">
           <section class="agenda-calendar" aria-label="Calendario">
-            <div class="agenda-calendar__toolbar">
-              <button class="agenda-calendar__nav" type="button" data-agenda-month="prev" aria-label="Mes anterior">${icon("chevronLeft")}</button>
-              <div>
-                <p class="tray-kicker">Calendario</p>
-                <h3 id="agendaMonthLabel"></h3>
-              </div>
-              <button class="agenda-calendar__nav" type="button" data-agenda-month="next" aria-label="Mes siguiente">${icon("chevronRight")}</button>
-            </div>
             <div class="agenda-weekdays" aria-hidden="true">
               <span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span>
             </div>
             <div id="agendaCalendarGrid" class="agenda-calendar__grid"></div>
           </section>
 
-          <section class="agenda-editor" aria-label="Detalle de agenda">
+          <aside class="agenda-editor" aria-label="Detalle de agenda">
             <div class="agenda-selected-day">
               <p class="tray-kicker">Día seleccionado</p>
               <h3 id="agendaSelectedLabel"></h3>
@@ -131,7 +133,7 @@
                     <option value="Tarea">Tarea</option>
                     <option value="Examen">Examen</option>
                     <option value="Trabajo">Trabajo</option>
-                    <option value="Estudio">Estudio</option>
+                    <option value="Sesión de estudio">Sesión de estudio</option>
                   </select>
                 </label>
                 <label class="tray-field">
@@ -152,7 +154,7 @@
                 <textarea id="agendaNote" rows="2" maxlength="160" placeholder="Ej: revisar guía 2 y fórmulas principales"></textarea>
               </label>
 
-              <button class="btn tray-submit" type="submit">Agregar a la agenda</button>
+              <button class="agenda-save-btn" type="submit">${icon("plus")}<span>Agregar</span></button>
             </form>
 
             <div class="agenda-filter" aria-label="Filtrar agenda">
@@ -163,7 +165,7 @@
             </div>
 
             <div id="agendaList" class="agenda-list"></div>
-          </div>
+          </aside>
         </div>
       </div>
     `;
@@ -287,9 +289,21 @@
       const agendaFilterButton = event.target.closest("[data-agenda-filter]");
       const agendaMonthButton = event.target.closest("[data-agenda-month]");
       const agendaDay = event.target.closest("[data-agenda-date]");
+      const agendaToday = event.target.closest("[data-agenda-today]");
+      const agendaCreate = event.target.closest("[data-agenda-create]");
 
       if (agendaClose) {
         closeAgendaBoard();
+        return;
+      }
+
+      if (agendaToday) {
+        goToToday();
+        return;
+      }
+
+      if (agendaCreate) {
+        focusAgendaForm();
         return;
       }
 
@@ -420,7 +434,7 @@
     document.querySelector(".agenda-board")?.setAttribute("aria-hidden", "false");
     if (document.getElementById("agendaDate")) document.getElementById("agendaDate").value = selectedAgendaDate;
     renderAgenda();
-    setTimeout(() => document.getElementById("agendaTitle")?.focus(), 0);
+    setTimeout(() => document.querySelector("[data-agenda-create]")?.focus(), 0);
   }
 
   function closeAgendaBoard() {
@@ -588,8 +602,7 @@
 
     writeList(STORAGE_KEYS.agenda, items.slice(0, 30));
     titleInput.value = "";
-    if (dateInput) dateInput.value = "";
-    if (subjectInput) subjectInput.value = "";
+    if (dateInput) dateInput.value = selectedAgendaDate;
     if (noteInput) noteInput.value = "";
     renderAgenda();
   }
@@ -671,26 +684,30 @@
 
     const byDate = groupAgendaByDate(items);
     const firstDay = new Date(agendaYear, agendaMonth, 1);
-    const daysInMonth = new Date(agendaYear, agendaMonth + 1, 0).getDate();
     const startOffset = (firstDay.getDay() + 6) % 7;
+    const startDate = new Date(agendaYear, agendaMonth, 1 - startOffset);
     const cells = [];
 
-    for (let i = 0; i < startOffset; i += 1) {
-      cells.push(`<div class="agenda-day agenda-day--empty" aria-hidden="true"></div>`);
-    }
-
-    for (let day = 1; day <= daysInMonth; day += 1) {
-      const date = toDateValue(new Date(agendaYear, agendaMonth, day));
+    for (let index = 0; index < 42; index += 1) {
+      const currentDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + index);
+      const day = currentDate.getDate();
+      const date = toDateValue(currentDate);
       const dayItems = byDate.get(date) || [];
       const isSelected = date === selectedAgendaDate;
       const isToday = date === toDateValue(new Date());
+      const isOutside = currentDate.getMonth() !== agendaMonth;
 
       cells.push(`
-        <button class="agenda-day ${isSelected ? "is-selected" : ""} ${isToday ? "is-today" : ""}" type="button" data-agenda-date="${escapeAttr(date)}">
+        <button class="agenda-day ${isOutside ? "is-outside" : ""} ${isSelected ? "is-selected" : ""} ${isToday ? "is-today" : ""}" type="button" data-agenda-date="${escapeAttr(date)}">
           <span class="agenda-day__number">${day}</span>
           <span class="agenda-day__items">
-            ${dayItems.slice(0, 2).map((item) => `<span class="${agendaTypeClass(item.type)}">${escapeHtml(item.title)}</span>`).join("")}
-            ${dayItems.length > 2 ? `<small>+${dayItems.length - 2}</small>` : ""}
+            ${dayItems.slice(0, 3).map((item) => `
+              <span class="agenda-event-pill ${agendaTypeClass(item.type)}">
+                <i aria-hidden="true"></i>
+                <span>${escapeHtml(item.title)}</span>
+              </span>
+            `).join("")}
+            ${dayItems.length > 3 ? `<small>+${dayItems.length - 3}</small>` : ""}
           </span>
         </button>
       `);
@@ -718,6 +735,21 @@
     if (dateInput) dateInput.value = selectedAgendaDate;
     agendaFilter = "day";
     renderAgenda();
+  }
+
+  function goToToday() {
+    const today = new Date();
+    selectedAgendaDate = toDateValue(today);
+    agendaYear = today.getFullYear();
+    agendaMonth = today.getMonth();
+    if (document.getElementById("agendaDate")) document.getElementById("agendaDate").value = selectedAgendaDate;
+    agendaFilter = "day";
+    renderAgenda();
+  }
+
+  function focusAgendaForm() {
+    if (document.getElementById("agendaDate")) document.getElementById("agendaDate").value = selectedAgendaDate;
+    document.getElementById("agendaTitle")?.focus();
   }
 
   function selectAgendaDate(value, syncInput = true) {
@@ -1104,6 +1136,7 @@
       message: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-8l-5 4v-4H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm0 2v9h3v1.8l2.3-1.8H19V6H5Zm3 3h8v2H8V9Z"/></svg>',
       close: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.7 5.3 12 10.6l5.3-5.3 1.4 1.4-5.3 5.3 5.3 5.3-1.4 1.4-5.3-5.3-5.3 5.3-1.4-1.4 5.3-5.3-5.3-5.3 1.4-1.4z"/></svg>',
       calendar: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2h2v2h6V2h2v2h2.2A2.8 2.8 0 0 1 22 6.8v11.4a2.8 2.8 0 0 1-2.8 2.8H4.8A2.8 2.8 0 0 1 2 18.2V6.8A2.8 2.8 0 0 1 4.8 4H7V2Zm12 8H5v8.2c0 .4.4.8.8.8h12.4c.4 0 .8-.4.8-.8V10ZM5.8 6c-.4 0-.8.4-.8.8V8h14V6.8c0-.4-.4-.8-.8-.8H17v2h-2V6H9v2H7V6H5.8Zm1.7 6h3v3h-3v-3Zm5 0h3v3h-3v-3Z"/></svg>',
+      plus: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6V5Z"/></svg>',
       chevronLeft: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.8 5.4 1.4 1.4-5.2 5.2 5.2 5.2-1.4 1.4L8.2 12l6.6-6.6Z"/></svg>',
       chevronRight: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.2 18.6-1.4-1.4 5.2-5.2-5.2-5.2 1.4-1.4 6.6 6.6-6.6 6.6Z"/></svg>',
       sun: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5.2a1 1 0 0 1-1-1V2.8a1 1 0 1 1 2 0v1.4a1 1 0 0 1-1 1Zm0 16a1 1 0 0 1-1-1v-1.4a1 1 0 1 1 2 0v1.4a1 1 0 0 1-1 1Zm6.8-8.2a1 1 0 1 1 0-2h1.4a1 1 0 1 1 0 2h-1.4ZM3.8 13a1 1 0 1 1 0-2h1.4a1 1 0 1 1 0 2H3.8Zm13-5.8a1 1 0 0 1 0-1.4l1-1a1 1 0 1 1 1.4 1.4l-1 1a1 1 0 0 1-1.4 0ZM4.8 19.2a1 1 0 0 1 0-1.4l1-1a1 1 0 0 1 1.4 1.4l-1 1a1 1 0 0 1-1.4 0Zm13 0-1-1a1 1 0 0 1 1.4-1.4l1 1a1 1 0 1 1-1.4 1.4ZM5.8 7.2l-1-1a1 1 0 1 1 1.4-1.4l1 1a1 1 0 0 1-1.4 1.4ZM12 16.5a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9Z"/></svg>',
