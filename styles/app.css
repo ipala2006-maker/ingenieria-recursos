@@ -1,3 +1,11 @@
+@font-face{
+  font-family:"Space Grotesk";
+  src:url("../assets/fonts/space-grotesk-latin.woff2") format("woff2");
+  font-style:normal;
+  font-weight:300 700;
+  font-display:swap;
+}
+
 :root{
   --bg: #0b1020;
   --panel: rgba(255,255,255,.06);
@@ -18,7 +26,7 @@
   --ring: 0 0 0 6px rgba(110,231,255,.14);
 
   --maxw: 1100px;
-  --font: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+  --font:"Space Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
 *{ box-sizing: border-box; }
@@ -532,12 +540,60 @@ img{ max-width: 100%; display:block; }
   font-weight:800;
   cursor:pointer;
 }
+.tray-accordion__label{
+  min-width:0;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  text-align:left;
+}
+.tray-accordion__label svg,
+.tray-chevron svg{
+  width:18px;
+  height:18px;
+  flex:0 0 auto;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.8;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.tray-accordion__label > svg{
+  color:var(--muted-2);
+}
 .tray-accordion__trigger:hover{
   color:var(--accent);
 }
 .tray-chevron{
+  width:24px;
+  height:24px;
+  display:grid;
+  place-items:center;
   color:var(--muted-2);
-  font-weight:900;
+}
+.tray-chevron svg{
+  width:16px;
+  height:16px;
+  transition:transform .16s ease;
+}
+.tray-accordion.is-open .tray-chevron svg{
+  transform:rotate(180deg);
+}
+.tray-accordion.is-open .tray-accordion__label > svg{
+  color:var(--accent);
+}
+.tray-close{
+  display:grid;
+  place-items:center;
+}
+.tray-close svg{
+  width:16px;
+  height:16px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.8;
+  stroke-linecap:round;
+  stroke-linejoin:round;
 }
 .tray-accordion__body{
   display:none;

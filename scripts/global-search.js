@@ -139,7 +139,7 @@
 
     const link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = `${rootPath}styles/professional.css?v=20260626-5`;
+    link.href = `${rootPath}styles/professional.css?v=20260809-space-grotesk`;
     document.head.appendChild(link);
   }
 
@@ -195,7 +195,7 @@
     if (document.querySelector('script[src*="scripts/bandeja.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/bandeja.js?v=20260809-rueda-suave`;
+    script.src = `${rootPath}scripts/bandeja.js?v=20260809-space-grotesk`;
     script.defer = true;
     document.head.appendChild(script);
   }

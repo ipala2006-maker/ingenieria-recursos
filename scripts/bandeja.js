@@ -42,17 +42,17 @@
             <p class="tray-kicker">Recursos</p>
             <h2>Accesos rápidos</h2>
           </div>
-          <button class="tray-close" type="button" aria-label="Cerrar">×</button>
+          <button class="tray-close" type="button" aria-label="Cerrar">${icon("lineClose")}</button>
         </div>
         <div class="tray-content">
-          ${traySection("favorites", "Favoritos", "Recursos marcados para volver rápido.", "favoritesList")}
-          ${traySection("subjects", "Mis materias", "Acceso rápido a tus materias elegidas.", "mySubjectsQuick")}
-          ${traySection("recent", "Recientes", "Últimos temas visitados.", "recentList")}
-          ${traySection("saved", "Guardados para después", "Material para revisar después.", "savedList")}
+          ${traySection("favorites", "Favoritos", "Recursos marcados para volver rápido.", "favoritesList", "trayStar")}
+          ${traySection("subjects", "Mis materias", "Acceso rápido a tus materias elegidas.", "mySubjectsQuick", "trayBook")}
+          ${traySection("recent", "Recientes", "Últimos temas visitados.", "recentList", "trayClock")}
+          ${traySection("saved", "Guardados para después", "Material para revisar después.", "savedList", "trayBookmark")}
           <section class="tray-accordion" data-tray-section="suggestions">
             <button class="tray-accordion__trigger" type="button" aria-expanded="false">
-              <span>Sugerencias</span>
-              <span class="tray-chevron">+</span>
+              <span class="tray-accordion__label">${icon("trayMessage")}<span>Sugerencias</span></span>
+              <span class="tray-chevron">${icon("chevronDown")}</span>
             </button>
             <div class="tray-accordion__body">
               <p class="tray-help">¿Encontraste un error o querés sugerir un recurso?</p>
@@ -92,7 +92,7 @@
           </div>
           <div class="agenda-toolbar__actions">
             <button class="agenda-create-btn" type="button" data-agenda-create>${icon("plus")}<span>Crear</span></button>
-            <button class="tray-close" type="button" data-agenda-close aria-label="Cerrar agenda">×</button>
+            <button class="tray-close" type="button" data-agenda-close aria-label="Cerrar agenda">${icon("lineClose")}</button>
           </div>
         </header>
 
@@ -169,12 +169,12 @@
     document.body.appendChild(panel);
   }
 
-  function traySection(name, title, help, listId) {
+  function traySection(name, title, help, listId, iconName) {
     return `
       <section class="tray-accordion" data-tray-section="${name}">
         <button class="tray-accordion__trigger" type="button" aria-expanded="false">
-          <span>${title}</span>
-          <span class="tray-chevron">+</span>
+          <span class="tray-accordion__label">${icon(iconName)}<span>${title}</span></span>
+          <span class="tray-chevron">${icon("chevronDown")}</span>
         </button>
         <div class="tray-accordion__body">
           <p class="tray-help">${help}</p>
@@ -256,7 +256,6 @@
         const section = trigger.closest(".tray-accordion");
         const isOpen = section.classList.toggle("is-open");
         trigger.setAttribute("aria-expanded", String(isOpen));
-        section.querySelector(".tray-chevron").textContent = isOpen ? "−" : "+";
         return;
       }
 
@@ -1206,6 +1205,13 @@
 
   function icon(name) {
     const icons = {
+      trayStar: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"><path d="m12 2.8 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9L6.4 20l1.1-6.2L3 9.4l6.2-.9L12 2.8Z"/></svg>',
+      trayBook: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"><path d="M2.8 5.4A3.4 3.4 0 0 1 6.2 2H11v17H6.2a3.4 3.4 0 0 0-3.4 3.4v-17ZM21.2 5.4A3.4 3.4 0 0 0 17.8 2H13v17h4.8a3.4 3.4 0 0 1 3.4 3.4v-17Z"/></svg>',
+      trayClock: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>',
+      trayBookmark: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"><path d="M6 4.8A2.8 2.8 0 0 1 8.8 2h6.4A2.8 2.8 0 0 1 18 4.8V22l-6-3.5L6 22V4.8Z"/></svg>',
+      trayMessage: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z"/><path d="M8 9h8M8 13h5"/></svg>',
+      chevronDown: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"><path d="m6 9 6 6 6-6"/></svg>',
+      lineClose: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"><path d="m6 6 12 12M18 6 6 18"/></svg>',
       star: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.9l2.5 5.1 5.6.8-4 3.9.9 5.5-5-2.6-5 2.6.9-5.5-4-3.9 5.6-.8L12 3.9z"/></svg>',
       bookmark: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.8c0-.5.4-.8.8-.8h8.4c.4 0 .8.3.8.8v15l-5-3-5 3v-15z"/></svg>',
       message: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-8l-5 4v-4H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm0 2v9h3v1.8l2.3-1.8H19V6H5Zm3 3h8v2H8V9Z"/></svg>',
