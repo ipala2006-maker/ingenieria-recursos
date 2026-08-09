@@ -126,6 +126,7 @@
                   <option value="jazzNight">Jazz nocturno</option>
                   <option value="rain">Lluvia suave</option>
                   <option value="brown">Ruido marrón</option>
+                  <option value="spotify">Spotify · Smooth Jazz Beats</option>
                   <option value="random">Aleatorio</option>
                 </select>
               </label>
@@ -142,7 +143,7 @@
                 </select>
               </label>
             </div>
-            <label class="pomodoro-volume">
+            <label class="pomodoro-volume" data-pomodoro-ambient-volume-row>
               <span>Volumen ambiente</span>
               <input type="range" min="0" max="2" step="0.05" data-pomodoro-ambient-volume />
             </label>
@@ -151,6 +152,15 @@
               <input type="range" min="0.15" max="2" step="0.05" data-pomodoro-alarm-volume />
             </label>
             <p class="pomodoro-now-playing" data-pomodoro-now-playing></p>
+            <div class="pomodoro-spotify-player" data-pomodoro-spotify-player hidden>
+              <iframe
+                title="Smooth Jazz Beats en Spotify"
+                data-src="https://open.spotify.com/embed/playlist/37i9dQZF1DX06817kK7cRP?utm_source=generator&theme=0"
+                loading="lazy"
+                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                referrerpolicy="strict-origin-when-cross-origin"
+              ></iframe>
+            </div>
           </section>
         </section>
       </div>
@@ -258,9 +268,12 @@
     }
 
     if (event.target.matches("[data-pomodoro-ambient-mode]")) {
+      const previousMode = state.ambientMode;
       state.ambientMode = event.target.value;
       saveState();
       if (ambientPlaying) startAmbient();
+      else renderSoundControls();
+      if (previousMode === "spotify" && state.ambientMode !== "spotify") resetSpotifyPlayer();
       return;
     }
 
@@ -272,7 +285,7 @@
 
     if (event.target.matches("[data-pomodoro-ambient-volume]")) {
       state.ambientVolume = volumeNumber(event.target.value, state.ambientVolume, 2);
-      if (ambientGain) ambientGain.gain.setTargetAtTime(state.ambientVolume, getAudioContext().currentTime, 0.04);
+      if (ambientGain) ambientGain.gain.setTargetAtTime(ambientOutputGain(state.ambientVolume), getAudioContext().currentTime, 0.04);
       saveState();
       return;
     }
@@ -394,6 +407,7 @@
     panel.hidden = !open;
     button.classList.toggle("is-open", open);
     button.setAttribute("aria-expanded", String(open));
+    if (open) renderSoundControls();
   }
 
   function toggleConfigPanel(button) {
@@ -672,8 +686,10 @@
     const pattern = alarmPattern();
     const now = context.currentTime;
     const master = context.createGain();
-    master.gain.setValueAtTime(Math.max(0.15, state.alarmVolume) * 0.45, now);
-    master.connect(context.destination);
+    const limiter = createAudioLimiter(context);
+    master.gain.setValueAtTime(Math.max(0.15, state.alarmVolume) * 0.8, now);
+    master.connect(limiter);
+    limiter.connect(context.destination);
 
     pattern.notes.forEach((frequency, index) => {
       const start = now + index * pattern.spacing;
@@ -690,7 +706,10 @@
       oscillator.stop(start + pattern.duration + 0.03);
     });
 
-    setTimeout(() => master.disconnect(), pattern.repeat - 100);
+    setTimeout(() => {
+      master.disconnect();
+      limiter.disconnect();
+    }, pattern.repeat - 100);
   }
 
   function alarmPattern() {
@@ -712,14 +731,23 @@
 
   function startAmbient() {
     stopAmbient(false);
+    const selected = state.ambientMode === "random" ? randomAmbientMode() : state.ambientMode;
+    state.currentAmbient = selected;
+    if (selected === "spotify") {
+      saveState();
+      renderSoundControls();
+      return;
+    }
+
     const context = getAudioContext();
     if (!context) return;
 
     ambientGain = context.createGain();
-    ambientGain.gain.value = state.ambientVolume;
-    ambientGain.connect(context.destination);
-    const selected = state.ambientMode === "random" ? randomAmbientMode() : state.ambientMode;
-    state.currentAmbient = selected;
+    const limiter = createAudioLimiter(context);
+    ambientGain.gain.value = ambientOutputGain(state.ambientVolume);
+    ambientGain.connect(limiter);
+    limiter.connect(context.destination);
+    ambientNodes.push(limiter);
 
     if (selected === "rain") startNoiseAmbient("rain", context, ambientGain);
     else if (selected === "brown") startNoiseAmbient("brown", context, ambientGain);
@@ -885,15 +913,39 @@
   function renderSoundControls() {
     const button = document.querySelector("[data-pomodoro-ambient-toggle]");
     const nowPlaying = document.querySelector("[data-pomodoro-now-playing]");
+    const spotifyPlayer = document.querySelector("[data-pomodoro-spotify-player]");
+    const soundPanel = document.querySelector("[data-pomodoro-sound-panel]");
+    const ambientVolumeRow = document.querySelector("[data-pomodoro-ambient-volume-row]");
+    const spotifySelected = state.ambientMode === "spotify";
     if (button) {
+      button.hidden = spotifySelected;
       button.classList.toggle("is-playing", ambientPlaying);
       button.innerHTML = ambientPlaying
         ? `${icon("pause")}<span>Pausar</span>`
         : `${icon("play")}<span>Reproducir</span>`;
     }
     if (nowPlaying) {
-      nowPlaying.textContent = ambientPlaying ? `Sonando: ${ambientLabel(state.currentAmbient)}` : "";
+      nowPlaying.textContent = spotifySelected
+        ? "Reproducción mediante Spotify"
+        : ambientPlaying ? `Sonando: ${ambientLabel(state.currentAmbient)}` : "";
     }
+    if (spotifyPlayer) {
+      spotifyPlayer.hidden = !spotifySelected;
+      if (spotifySelected && isOpen() && soundPanel && !soundPanel.hidden) loadSpotifyPlayer();
+    }
+    if (ambientVolumeRow) ambientVolumeRow.hidden = spotifySelected;
+  }
+
+  function resetSpotifyPlayer() {
+    const iframe = document.querySelector("[data-pomodoro-spotify-player] iframe");
+    if (!iframe) return;
+    iframe.removeAttribute("src");
+  }
+
+  function loadSpotifyPlayer() {
+    const iframe = document.querySelector("[data-pomodoro-spotify-player] iframe");
+    if (!iframe || iframe.getAttribute("src")) return;
+    iframe.src = iframe.dataset.src;
   }
 
   function ambientLabel(mode) {
@@ -902,6 +954,20 @@
     if (mode === "rain") return "Lluvia suave";
     if (mode === "brown") return "Ruido marrón";
     return "Jazz suave";
+  }
+
+  function ambientOutputGain(value) {
+    return volumeNumber(value, 0.28, 2) * 2.2;
+  }
+
+  function createAudioLimiter(context) {
+    const limiter = context.createDynamicsCompressor();
+    limiter.threshold.value = -10;
+    limiter.knee.value = 12;
+    limiter.ratio.value = 8;
+    limiter.attack.value = 0.004;
+    limiter.release.value = 0.22;
+    return limiter;
   }
 
   function loadState() {
@@ -927,8 +993,8 @@
       running: Boolean(saved.running && Number(saved.endAt) > 0),
       endAt: Number(saved.endAt) || 0,
       autoStart: Boolean(saved.autoStart),
-      ambientMode: ["jazz", "jazzCafe", "jazzNight", "rain", "brown", "random"].includes(saved.ambientMode) ? saved.ambientMode : "jazz",
-      currentAmbient: ["jazz", "jazzCafe", "jazzNight", "rain", "brown"].includes(saved.currentAmbient) ? saved.currentAmbient : "jazz",
+      ambientMode: ["jazz", "jazzCafe", "jazzNight", "rain", "brown", "spotify", "random"].includes(saved.ambientMode) ? saved.ambientMode : "jazz",
+      currentAmbient: ["jazz", "jazzCafe", "jazzNight", "rain", "brown", "spotify"].includes(saved.currentAmbient) ? saved.currentAmbient : "jazz",
       alarmMode: ["digital", "bell", "chime", "pulse"].includes(saved.alarmMode) ? saved.alarmMode : "digital",
       ambientVolume: volumeNumber(saved.ambientVolume, 0.28, 2),
       alarmVolume: Math.max(0.15, volumeNumber(saved.alarmVolume, 0.65, 2)),

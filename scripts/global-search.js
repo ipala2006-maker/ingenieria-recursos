@@ -204,7 +204,7 @@
     if (document.querySelector('script[src*="scripts/pomodoro.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/pomodoro.js?v=20260809-audio-ampliado`;
+    script.src = `${rootPath}scripts/pomodoro.js?v=20260809-spotify-jazz`;
     script.defer = true;
     document.head.appendChild(script);
   }
