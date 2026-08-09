@@ -10,6 +10,14 @@
   const DEFAULT_CONFIG = { blocks: 4, study: 25, break: 5 };
   let state = loadState();
   let timerId = 0;
+  let audioContext = null;
+  let alarmInterval = 0;
+  let alarmActive = false;
+  let ambientGain = null;
+  let ambientNodes = [];
+  let ambientIntervals = [];
+  let ambientPlaying = false;
+  let wheelTouch = null;
 
   addButton();
   addMenu();
@@ -59,12 +67,6 @@
           <button class="pomodoro-icon-btn" type="button" data-pomodoro-close aria-label="Cerrar temporizador" title="Cerrar">${icon("close")}</button>
         </header>
 
-        <div class="pomodoro-config" aria-label="Configurar sesión">
-          ${numberControl("blocks", "Bloques", "")}
-          ${numberControl("study", "Estudio", "min")}
-          ${numberControl("break", "Descanso", "min")}
-        </div>
-
         <div class="pomodoro-cycle-status">
           <span data-pomodoro-cycle>Bloque 1 de 4</span>
           <strong data-pomodoro-phase>Estudio</strong>
@@ -81,6 +83,12 @@
           </div>
         </div>
 
+        <div class="pomodoro-config" aria-label="Configurar sesión">
+          ${numberControl("blocks", "Bloques", "")}
+          ${numberControl("study", "Estudio", "min")}
+          ${numberControl("break", "Descanso", "min")}
+        </div>
+
         <div class="pomodoro-controls">
           <button class="pomodoro-secondary-btn" type="button" data-pomodoro-reset aria-label="Reiniciar tramo" title="Reiniciar">${icon("reset")}</button>
           <button class="pomodoro-start-btn" type="button" data-pomodoro-toggle>${icon("play")}<span>Empezar</span></button>
@@ -92,16 +100,39 @@
           <strong data-pomodoro-count>0</strong>
         </div>
 
-        <div class="pomodoro-options">
-          <label class="pomodoro-switch">
-            <input type="checkbox" data-pomodoro-sound />
-            <span>Sonido al terminar</span>
-          </label>
+        <div class="pomodoro-options pomodoro-options--single">
           <label class="pomodoro-switch">
             <input type="checkbox" data-pomodoro-auto />
             <span>Continuar automáticamente</span>
           </label>
         </div>
+
+        <button class="pomodoro-sound-toggle" type="button" data-pomodoro-sound-settings aria-expanded="false">
+          ${icon("music")}<span>Sonidos para estudiar</span>${icon("chevronDown")}
+        </button>
+        <section class="pomodoro-sound-panel" data-pomodoro-sound-panel hidden>
+          <div class="pomodoro-sound-row">
+            <label>
+              Ambiente
+              <select data-pomodoro-ambient-mode>
+                <option value="jazz">Jazz suave</option>
+                <option value="rain">Lluvia suave</option>
+                <option value="brown">Ruido marrón</option>
+                <option value="random">Aleatorio</option>
+              </select>
+            </label>
+            <button class="pomodoro-ambient-btn" type="button" data-pomodoro-ambient-toggle>${icon("play")}<span>Reproducir</span></button>
+          </div>
+          <label class="pomodoro-volume">
+            <span>Volumen ambiente</span>
+            <input type="range" min="0" max="1" step="0.05" data-pomodoro-ambient-volume />
+          </label>
+          <label class="pomodoro-volume">
+            <span>Volumen de alarma</span>
+            <input type="range" min="0.15" max="1" step="0.05" data-pomodoro-alarm-volume />
+          </label>
+          <p class="pomodoro-now-playing" data-pomodoro-now-playing></p>
+        </section>
       </div>
     `;
     document.body.appendChild(menu);
@@ -109,15 +140,17 @@
 
   function numberControl(key, label, suffix) {
     return `
-      <label class="pomodoro-number-control">
+      <div class="pomodoro-number-control">
         <span>${label}</span>
-        <span class="pomodoro-stepper">
-          <button type="button" data-pomodoro-step="-1" data-pomodoro-key="${key}" aria-label="Reducir ${label.toLowerCase()}">${icon("minus")}</button>
+        <span class="pomodoro-wheel-control" data-pomodoro-wheel="${key}">
+          <button type="button" data-pomodoro-step="1" data-pomodoro-key="${key}" aria-label="Aumentar ${label.toLowerCase()}">${icon("chevronUp")}</button>
+          <small data-pomodoro-preview="next" data-pomodoro-key="${key}"></small>
           <input type="number" min="1" step="1" inputmode="numeric" data-pomodoro-value="${key}" aria-label="${label}" />
-          <button type="button" data-pomodoro-step="1" data-pomodoro-key="${key}" aria-label="Aumentar ${label.toLowerCase()}">${icon("plus")}</button>
+          <small data-pomodoro-preview="previous" data-pomodoro-key="${key}"></small>
+          <button type="button" data-pomodoro-step="-1" data-pomodoro-key="${key}" aria-label="Reducir ${label.toLowerCase()}">${icon("chevronDown")}</button>
         </span>
         ${suffix ? `<small>${suffix}</small>` : ""}
-      </label>
+      </div>
     `;
   }
 
@@ -149,6 +182,9 @@
     const menu = document.querySelector(".pomodoro-menu");
     menu?.addEventListener("change", handleMenuChange);
     menu?.addEventListener("wheel", handleNumberWheel, { passive: false });
+    menu?.addEventListener("touchstart", handleWheelTouchStart, { passive: true });
+    menu?.addEventListener("touchmove", handleWheelTouchMove, { passive: false });
+    menu?.addEventListener("touchend", () => { wheelTouch = null; });
   }
 
   function handleDocumentClick(event) {
@@ -174,12 +210,16 @@
     const toggleButton = event.target.closest("[data-pomodoro-toggle]");
     const resetButton = event.target.closest("[data-pomodoro-reset]");
     const skipButton = event.target.closest("[data-pomodoro-skip]");
+    const soundSettingsButton = event.target.closest("[data-pomodoro-sound-settings]");
+    const ambientButton = event.target.closest("[data-pomodoro-ambient-toggle]");
 
     if (closeButton) closeMenu();
     else if (stepButton) changeConfig(stepButton.dataset.pomodoroKey, Number(stepButton.dataset.pomodoroStep));
     else if (toggleButton) toggleTimer();
     else if (resetButton) resetTimer();
     else if (skipButton) advancePhase(false);
+    else if (soundSettingsButton) toggleSoundPanel(soundSettingsButton);
+    else if (ambientButton) toggleAmbient();
     else if (isOpen() && !menu.contains(event.target)) closeMenu();
   }
 
@@ -190,8 +230,22 @@
       return;
     }
 
-    if (event.target.matches("[data-pomodoro-sound]")) {
-      state.sound = event.target.checked;
+    if (event.target.matches("[data-pomodoro-ambient-mode]")) {
+      state.ambientMode = event.target.value;
+      saveState();
+      if (ambientPlaying) startAmbient();
+      return;
+    }
+
+    if (event.target.matches("[data-pomodoro-ambient-volume]")) {
+      state.ambientVolume = unitNumber(event.target.value, state.ambientVolume);
+      if (ambientGain) ambientGain.gain.setTargetAtTime(state.ambientVolume, getAudioContext().currentTime, 0.04);
+      saveState();
+      return;
+    }
+
+    if (event.target.matches("[data-pomodoro-alarm-volume]")) {
+      state.alarmVolume = Math.max(0.15, unitNumber(event.target.value, state.alarmVolume));
       saveState();
       return;
     }
@@ -203,10 +257,26 @@
   }
 
   function handleNumberWheel(event) {
-    const input = event.target.closest("[data-pomodoro-value]");
-    if (!input || document.activeElement !== input) return;
+    const wheel = event.target.closest("[data-pomodoro-wheel]");
+    if (!wheel) return;
     event.preventDefault();
-    changeConfig(input.dataset.pomodoroValue, event.deltaY < 0 ? 1 : -1);
+    changeConfig(wheel.dataset.pomodoroWheel, event.deltaY < 0 ? 1 : -1);
+  }
+
+  function handleWheelTouchStart(event) {
+    const wheel = event.target.closest("[data-pomodoro-wheel]");
+    if (!wheel || event.target.closest("input, button")) return;
+    wheelTouch = { key: wheel.dataset.pomodoroWheel, y: event.touches[0].clientY };
+  }
+
+  function handleWheelTouchMove(event) {
+    if (!wheelTouch) return;
+    const y = event.touches[0].clientY;
+    const distance = wheelTouch.y - y;
+    if (Math.abs(distance) < 24) return;
+    event.preventDefault();
+    changeConfig(wheelTouch.key, distance > 0 ? 1 : -1);
+    wheelTouch.y = y;
   }
 
   function changeConfig(key, difference) {
@@ -236,6 +306,7 @@
   }
 
   function openMenu() {
+    prepareAudio();
     document.body.classList.remove("agenda-open");
     document.querySelector(".agenda-board")?.setAttribute("aria-hidden", "true");
     document.body.classList.add("pomodoro-open");
@@ -267,7 +338,23 @@
     menu.style.setProperty("--pomodoro-right", `${Math.round(right)}px`);
   }
 
+  function toggleSoundPanel(button) {
+    const panel = document.querySelector("[data-pomodoro-sound-panel]");
+    if (!panel) return;
+    const open = panel.hidden;
+    panel.hidden = !open;
+    button.classList.toggle("is-open", open);
+    button.setAttribute("aria-expanded", String(open));
+  }
+
   function toggleTimer() {
+    if (alarmActive) {
+      stopAlarm();
+      render();
+      return;
+    }
+
+    prepareAudio();
     reconcileTimer(true);
     if (state.running) {
       state.remaining = remainingSeconds();
@@ -285,6 +372,7 @@
   }
 
   function resetTimer() {
+    stopAlarm();
     stopTicker();
     state.running = false;
     state.endAt = 0;
@@ -294,6 +382,7 @@
   }
 
   function advancePhase(completed, shouldNotify = true) {
+    if (!completed) stopAlarm();
     const previousPhase = state.phase;
     stopTicker();
 
@@ -344,7 +433,7 @@
       }
       state.remaining = remaining;
       renderTimerOnly();
-    }, 250);
+    }, 100);
   }
 
   function stopTicker() {
@@ -356,6 +445,11 @@
   function remainingSeconds() {
     if (!state.running || !state.endAt) return Math.max(0, Math.ceil(state.remaining));
     return Math.max(0, Math.ceil((state.endAt - Date.now()) / 1000));
+  }
+
+  function preciseRemainingSeconds() {
+    if (!state.running || !state.endAt) return Math.max(0, Number(state.remaining));
+    return Math.max(0, (state.endAt - Date.now()) / 1000);
   }
 
   function durationSeconds(phase) {
@@ -373,6 +467,11 @@
       const key = input.dataset.pomodoroValue;
       if (document.activeElement !== input) input.value = String(state.config[key]);
     });
+    document.querySelectorAll("[data-pomodoro-preview]").forEach((preview) => {
+      const value = state.config[preview.dataset.pomodoroKey];
+      const difference = preview.dataset.pomodoroPreview === "next" ? 1 : -1;
+      preview.textContent = String(Math.max(1, value + difference));
+    });
 
     const panel = document.querySelector(".pomodoro-menu__panel");
     if (panel) panel.dataset.phase = state.phase;
@@ -384,19 +483,33 @@
     if (phase) phase.textContent = state.phase === "study" ? "Estudio" : "Descanso";
     if (count) count.textContent = String(state.completedToday);
 
-    const sound = document.querySelector("[data-pomodoro-sound]");
     const auto = document.querySelector("[data-pomodoro-auto]");
-    if (sound) sound.checked = state.sound;
     if (auto) auto.checked = state.autoStart;
 
+    const ambientMode = document.querySelector("[data-pomodoro-ambient-mode]");
+    const ambientVolume = document.querySelector("[data-pomodoro-ambient-volume]");
+    const alarmVolume = document.querySelector("[data-pomodoro-alarm-volume]");
+    if (ambientMode) ambientMode.value = state.ambientMode;
+    if (ambientVolume) ambientVolume.value = String(state.ambientVolume);
+    if (alarmVolume) alarmVolume.value = String(state.alarmVolume);
+    renderSoundControls();
+
     const toggle = document.querySelector("[data-pomodoro-toggle]");
-    if (toggle) toggle.innerHTML = state.running ? `${icon("pause")}<span>Pausar</span>` : `${icon("play")}<span>Empezar</span>`;
+    if (toggle) {
+      toggle.classList.toggle("is-alarm", alarmActive);
+      toggle.innerHTML = alarmActive
+        ? `${icon("bellOff")}<span>Silenciar</span>`
+        : state.running
+          ? `${icon("pause")}<span>Pausar</span>`
+          : `${icon("play")}<span>Empezar</span>`;
+    }
 
     renderTimerOnly();
   }
 
   function renderTimerOnly() {
-    const remaining = state.running ? remainingSeconds() : state.remaining;
+    const preciseRemaining = state.running ? preciseRemainingSeconds() : state.remaining;
+    const remaining = Math.ceil(preciseRemaining);
     const minutes = Math.floor(remaining / 60);
     const seconds = remaining % 60;
     const time = document.querySelector("[data-pomodoro-time]");
@@ -410,7 +523,7 @@
     if (label) label.textContent = state.phase === "study" ? `Bloque ${state.currentBlock}` : "Descanso";
 
     const total = durationSeconds(state.phase);
-    const progress = total > 0 ? Math.min(1, Math.max(0, 1 - remaining / total)) : 0;
+    const progress = total > 0 ? Math.min(1, Math.max(0, 1 - preciseRemaining / total)) : 0;
     const circle = document.querySelector(".pomodoro-ring__progress");
     if (circle) circle.style.strokeDashoffset = String(603.19 * (1 - progress));
 
@@ -422,8 +535,10 @@
   }
 
   function notifyCompletion(previousPhase) {
-    if (state.sound) playTone();
-    if ("vibrate" in navigator) navigator.vibrate([120, 80, 120]);
+    startAlarm();
+    if ("vibrate" in navigator && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) {
+      navigator.vibrate([120, 80, 120]);
+    }
     const title = previousPhase === "study" ? "Bloque completado" : "Descanso terminado";
     const originalTitle = document.title;
     document.title = `${title} - Estudiemos`;
@@ -432,26 +547,205 @@
     }, 4000);
   }
 
-  function playTone() {
+  function prepareAudio() {
     try {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      if (!AudioContext) return;
-      const context = new AudioContext();
-      const gain = context.createGain();
-      gain.gain.setValueAtTime(0.0001, context.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.12, context.currentTime + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.65);
-      gain.connect(context.destination);
-      [660, 880].forEach((frequency, index) => {
-        const oscillator = context.createOscillator();
-        oscillator.type = "sine";
-        oscillator.frequency.value = frequency;
-        oscillator.connect(gain);
-        oscillator.start(context.currentTime + index * 0.16);
-        oscillator.stop(context.currentTime + 0.55 + index * 0.16);
-      });
-      setTimeout(() => context.close(), 1000);
+      const context = getAudioContext();
+      if (context?.state === "suspended") context.resume();
     } catch (error) {}
+  }
+
+  function getAudioContext() {
+    if (audioContext) return audioContext;
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return null;
+    audioContext = new AudioContext();
+    return audioContext;
+  }
+
+  function startAlarm() {
+    stopAlarm();
+    prepareAudio();
+    if (!getAudioContext()) return;
+    alarmActive = true;
+    playAlarmPattern();
+    alarmInterval = window.setInterval(playAlarmPattern, 1900);
+    render();
+  }
+
+  function stopAlarm() {
+    if (alarmInterval) clearInterval(alarmInterval);
+    alarmInterval = 0;
+    alarmActive = false;
+  }
+
+  function playAlarmPattern() {
+    const context = getAudioContext();
+    if (!context) return;
+    const now = context.currentTime;
+    const master = context.createGain();
+    master.gain.setValueAtTime(Math.max(0.15, state.alarmVolume) * 0.2, now);
+    master.connect(context.destination);
+
+    [740, 880, 740].forEach((frequency, index) => {
+      const start = now + index * 0.28;
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.value = frequency;
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(1, start + 0.025);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.23);
+      oscillator.connect(gain);
+      gain.connect(master);
+      oscillator.start(start);
+      oscillator.stop(start + 0.25);
+    });
+
+    setTimeout(() => master.disconnect(), 1200);
+  }
+
+  function toggleAmbient() {
+    prepareAudio();
+    if (ambientPlaying) stopAmbient();
+    else startAmbient();
+    renderSoundControls();
+  }
+
+  function startAmbient() {
+    stopAmbient(false);
+    const context = getAudioContext();
+    if (!context) return;
+
+    ambientGain = context.createGain();
+    ambientGain.gain.value = state.ambientVolume;
+    ambientGain.connect(context.destination);
+    const selected = state.ambientMode === "random" ? randomAmbientMode() : state.ambientMode;
+    state.currentAmbient = selected;
+
+    if (selected === "rain") startNoiseAmbient("rain", context, ambientGain);
+    else if (selected === "brown") startNoiseAmbient("brown", context, ambientGain);
+    else startJazzAmbient(context, ambientGain);
+
+    ambientPlaying = true;
+    if (state.ambientMode === "random") {
+      ambientIntervals.push(window.setInterval(startAmbient, 180000));
+    }
+    saveState();
+    renderSoundControls();
+  }
+
+  function stopAmbient(renderAfter = true) {
+    ambientIntervals.forEach(clearInterval);
+    ambientIntervals = [];
+    ambientNodes.forEach((node) => {
+      try { node.stop?.(); } catch (error) {}
+      try { node.disconnect?.(); } catch (error) {}
+    });
+    ambientNodes = [];
+    if (ambientGain) {
+      try { ambientGain.disconnect(); } catch (error) {}
+    }
+    ambientGain = null;
+    ambientPlaying = false;
+    if (renderAfter) renderSoundControls();
+  }
+
+  function startNoiseAmbient(kind, context, destination) {
+    const seconds = 3;
+    const buffer = context.createBuffer(1, context.sampleRate * seconds, context.sampleRate);
+    const channel = buffer.getChannelData(0);
+    let brown = 0;
+    for (let index = 0; index < channel.length; index += 1) {
+      const white = Math.random() * 2 - 1;
+      if (kind === "brown") {
+        brown = (brown + 0.02 * white) / 1.02;
+        channel[index] = brown * 3.2;
+      } else {
+        channel[index] = white * 0.34;
+      }
+    }
+
+    const source = context.createBufferSource();
+    const filter = context.createBiquadFilter();
+    source.buffer = buffer;
+    source.loop = true;
+    filter.type = kind === "brown" ? "lowpass" : "bandpass";
+    filter.frequency.value = kind === "brown" ? 620 : 2400;
+    filter.Q.value = kind === "brown" ? 0.5 : 0.7;
+    source.connect(filter);
+    filter.connect(destination);
+    source.start();
+    ambientNodes.push(source, filter);
+  }
+
+  function startJazzAmbient(context, destination) {
+    const chords = [
+      [261.63, 329.63, 392.00, 493.88],
+      [220.00, 261.63, 329.63, 392.00],
+      [174.61, 220.00, 261.63, 329.63],
+      [196.00, 246.94, 293.66, 369.99]
+    ];
+    let chordIndex = 0;
+
+    const playChord = () => {
+      const now = context.currentTime;
+      const notes = chords[chordIndex % chords.length];
+      chordIndex += 1;
+      notes.forEach((frequency, index) => {
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+        oscillator.type = index % 2 ? "sine" : "triangle";
+        oscillator.frequency.value = frequency;
+        oscillator.detune.value = index * 2;
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.045, now + 0.12 + index * 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 2.35);
+        oscillator.connect(gain);
+        gain.connect(destination);
+        oscillator.start(now);
+        oscillator.stop(now + 2.4);
+      });
+
+      const bass = context.createOscillator();
+      const bassGain = context.createGain();
+      bass.type = "sine";
+      bass.frequency.value = notes[0] / 2;
+      bassGain.gain.setValueAtTime(0.0001, now);
+      bassGain.gain.exponentialRampToValueAtTime(0.07, now + 0.04);
+      bassGain.gain.exponentialRampToValueAtTime(0.0001, now + 1.45);
+      bass.connect(bassGain);
+      bassGain.connect(destination);
+      bass.start(now);
+      bass.stop(now + 1.5);
+    };
+
+    playChord();
+    ambientIntervals.push(window.setInterval(playChord, 2400));
+  }
+
+  function randomAmbientMode() {
+    const modes = ["jazz", "rain", "brown"];
+    return modes[Math.floor(Math.random() * modes.length)];
+  }
+
+  function renderSoundControls() {
+    const button = document.querySelector("[data-pomodoro-ambient-toggle]");
+    const nowPlaying = document.querySelector("[data-pomodoro-now-playing]");
+    if (button) {
+      button.classList.toggle("is-playing", ambientPlaying);
+      button.innerHTML = ambientPlaying
+        ? `${icon("pause")}<span>Pausar</span>`
+        : `${icon("play")}<span>Reproducir</span>`;
+    }
+    if (nowPlaying) {
+      nowPlaying.textContent = ambientPlaying ? `Sonando: ${ambientLabel(state.currentAmbient)}` : "";
+    }
+  }
+
+  function ambientLabel(mode) {
+    if (mode === "rain") return "Lluvia suave";
+    if (mode === "brown") return "Ruido marrón";
+    return "Jazz suave";
   }
 
   function loadState() {
@@ -476,8 +770,11 @@
       remaining: nonNegativeNumber(saved.remaining, fallbackRemaining),
       running: Boolean(saved.running && Number(saved.endAt) > 0),
       endAt: Number(saved.endAt) || 0,
-      sound: saved.sound !== false,
       autoStart: Boolean(saved.autoStart),
+      ambientMode: ["jazz", "rain", "brown", "random"].includes(saved.ambientMode) ? saved.ambientMode : "jazz",
+      currentAmbient: ["jazz", "rain", "brown"].includes(saved.currentAmbient) ? saved.currentAmbient : "jazz",
+      ambientVolume: unitNumber(saved.ambientVolume, 0.28),
+      alarmVolume: Math.max(0.15, unitNumber(saved.alarmVolume, 0.65)),
       completedDate: saved.completedDate || todayKey(),
       completedToday: nonNegativeInteger(saved.completedToday, 0)
     };
@@ -517,6 +814,11 @@
     return Number.isFinite(number) && number >= 0 ? number : fallback;
   }
 
+  function unitNumber(value, fallback) {
+    const number = Number(value);
+    return Number.isFinite(number) ? Math.min(1, Math.max(0, number)) : fallback;
+  }
+
   function compactTime(seconds) {
     return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
   }
@@ -529,8 +831,10 @@
       pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7V5Zm6 0h4v14h-4V5Z"/></svg>',
       reset: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.6 5.6A9 9 0 1 1 3 12h2a7 7 0 1 0 2-4.9L10 10H3V3l2.6 2.6Z"/></svg>',
       skip: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5.5 15 12 5 18.5v-13ZM17 5h2v14h-2V5Z"/></svg>',
-      minus: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 11h14v2H5v-2Z"/></svg>',
-      plus: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6V5Z"/></svg>'
+      bellOff: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4.3 3 16.7 16.7-1.3 1.3-2.4-2.4H5v-2h2v-5.1c0-1.3.4-2.5 1.1-3.5L3 4.3 4.3 3Zm5.3 6.4c-.4.6-.6 1.3-.6 2.1v5.1h6.3L9.6 9.4ZM12 2a2 2 0 0 1 2 2v.4a7 7 0 0 1 5 6.7v3.2l-2-2v-1.2a5 5 0 0 0-5-5c-.5 0-1 .1-1.5.2L8.9 4.7c.4-.1.7-.2 1.1-.3V4a2 2 0 0 1 2-2Zm-2 18h4a2 2 0 0 1-4 0Z"/></svg>',
+      music: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 3v12.2A3.5 3.5 0 1 1 17 12V6.1l-8 1.8v9.3A3.5 3.5 0 1 1 7 14V6.3L19 3ZM5.5 16A1.5 1.5 0 1 0 7 17.5V16H5.5Zm10 0a1.5 1.5 0 1 0 1.5 1.5V16h-1.5Z"/></svg>',
+      chevronUp: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5.4 14.8 1.4 1.4 5.2-5.2 5.2 5.2 1.4-1.4L12 8.2l-6.6 6.6Z"/></svg>',
+      chevronDown: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5.4 9.2 1.4-1.4 5.2 5.2 5.2-5.2 1.4 1.4L12 15.8 5.4 9.2Z"/></svg>'
     };
     return icons[name] || "";
   }
