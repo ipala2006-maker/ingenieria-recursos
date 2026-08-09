@@ -7,12 +7,7 @@
   window.__estudiemosPomodoroInstalled = true;
 
   const STORAGE_KEY = "estudiemos_pomodoro";
-  const MODES = {
-    focus: { label: "Concentración", shortLabel: "Enfoque", durationKey: "focus" },
-    short: { label: "Descanso corto", shortLabel: "Corto", durationKey: "short" },
-    long: { label: "Descanso largo", shortLabel: "Largo", durationKey: "long" }
-  };
-  const DEFAULT_DURATIONS = { focus: 25, short: 5, long: 15 };
+  const DEFAULT_CONFIG = { blocks: 4, study: 25, break: 5 };
   let state = loadState();
   let timerId = 0;
 
@@ -38,9 +33,9 @@
     button.className = "topbar__link topbar-icon-btn pomodoro-top-btn";
     button.type = "button";
     button.dataset.pomodoroOpen = "true";
-    button.setAttribute("aria-label", "Abrir temporizador Pomodoro");
+    button.setAttribute("aria-label", "Abrir temporizador por bloques");
     button.setAttribute("aria-expanded", "false");
-    button.title = "Pomodoro";
+    button.title = "Temporizador";
     button.innerHTML = icon("timer");
 
     const agendaButton = nav.querySelector(".agenda-top-btn");
@@ -55,64 +50,56 @@
     menu.className = "pomodoro-menu";
     menu.setAttribute("aria-hidden", "true");
     menu.innerHTML = `
-      <div class="pomodoro-menu__panel" role="dialog" aria-modal="false" aria-label="Temporizador Pomodoro">
+      <div class="pomodoro-menu__panel" role="dialog" aria-modal="false" aria-label="Temporizador de estudio">
         <header class="pomodoro-head">
           <div>
-            <p class="tray-kicker">Pomodoro</p>
-            <h2>Tiempo de estudio</h2>
+            <p class="tray-kicker">Temporizador</p>
+            <h2>Sesión por bloques</h2>
           </div>
-          <div class="pomodoro-head__actions">
-            <button class="pomodoro-icon-btn" type="button" data-pomodoro-settings aria-label="Ajustar tiempos" aria-expanded="false" title="Ajustar tiempos">${icon("settings")}</button>
-            <button class="pomodoro-icon-btn" type="button" data-pomodoro-close aria-label="Cerrar temporizador" title="Cerrar">${icon("close")}</button>
-          </div>
+          <button class="pomodoro-icon-btn" type="button" data-pomodoro-close aria-label="Cerrar temporizador" title="Cerrar">${icon("close")}</button>
         </header>
 
-        <div class="pomodoro-modes" role="tablist" aria-label="Tipo de sesión">
-          ${Object.entries(MODES).map(([key, mode]) => `
-            <button class="pomodoro-mode" type="button" role="tab" data-pomodoro-mode="${key}">${mode.shortLabel}</button>
-          `).join("")}
+        <div class="pomodoro-config" aria-label="Configurar sesión">
+          ${numberControl("blocks", "Bloques", "")}
+          ${numberControl("study", "Estudio", "min")}
+          ${numberControl("break", "Descanso", "min")}
         </div>
 
-        <div class="pomodoro-timer" data-pomodoro-ring>
+        <div class="pomodoro-cycle-status">
+          <span data-pomodoro-cycle>Bloque 1 de 4</span>
+          <strong data-pomodoro-phase>Estudio</strong>
+        </div>
+
+        <div class="pomodoro-timer">
           <svg class="pomodoro-ring" viewBox="0 0 220 220" aria-hidden="true">
             <circle class="pomodoro-ring__track" cx="110" cy="110" r="96"></circle>
             <circle class="pomodoro-ring__progress" cx="110" cy="110" r="96"></circle>
           </svg>
           <div class="pomodoro-time">
-            <strong data-pomodoro-time>25:00</strong>
-            <span data-pomodoro-label>Concentración</span>
+            <strong data-pomodoro-time role="timer">25:00</strong>
+            <span data-pomodoro-label>Estudio</span>
           </div>
         </div>
 
-        <label class="pomodoro-task">
-          <span>En qué vas a enfocarte</span>
-          <input type="text" maxlength="80" data-pomodoro-task placeholder="Ej: Guía de integrales" autocomplete="off" />
-        </label>
-
         <div class="pomodoro-controls">
-          <button class="pomodoro-secondary-btn" type="button" data-pomodoro-reset aria-label="Reiniciar sesión" title="Reiniciar">${icon("reset")}</button>
+          <button class="pomodoro-secondary-btn" type="button" data-pomodoro-reset aria-label="Reiniciar tramo" title="Reiniciar">${icon("reset")}</button>
           <button class="pomodoro-start-btn" type="button" data-pomodoro-toggle>${icon("play")}<span>Empezar</span></button>
-          <button class="pomodoro-secondary-btn" type="button" data-pomodoro-skip aria-label="Saltar sesión" title="Saltar">${icon("skip")}</button>
+          <button class="pomodoro-secondary-btn" type="button" data-pomodoro-skip aria-label="Saltar al siguiente tramo" title="Siguiente">${icon("skip")}</button>
         </div>
 
         <div class="pomodoro-summary">
-          <span>Sesiones de hoy</span>
+          <span>Bloques completados hoy</span>
           <strong data-pomodoro-count>0</strong>
         </div>
 
-        <div class="pomodoro-settings" data-pomodoro-settings-panel hidden>
-          <div class="pomodoro-settings__grid">
-            ${durationField("focus", "Enfoque", DEFAULT_DURATIONS.focus)}
-            ${durationField("short", "Descanso corto", DEFAULT_DURATIONS.short)}
-            ${durationField("long", "Descanso largo", DEFAULT_DURATIONS.long)}
-          </div>
+        <div class="pomodoro-options">
           <label class="pomodoro-switch">
             <input type="checkbox" data-pomodoro-sound />
             <span>Sonido al terminar</span>
           </label>
           <label class="pomodoro-switch">
             <input type="checkbox" data-pomodoro-auto />
-            <span>Iniciar siguiente sesión automáticamente</span>
+            <span>Continuar automáticamente</span>
           </label>
         </div>
       </div>
@@ -120,11 +107,16 @@
     document.body.appendChild(menu);
   }
 
-  function durationField(key, label, fallback) {
+  function numberControl(key, label, suffix) {
     return `
-      <label class="pomodoro-duration">
+      <label class="pomodoro-number-control">
         <span>${label}</span>
-        <span class="pomodoro-duration__input"><input type="number" min="1" max="120" step="1" value="${fallback}" data-pomodoro-duration="${key}" /><small>min</small></span>
+        <span class="pomodoro-stepper">
+          <button type="button" data-pomodoro-step="-1" data-pomodoro-key="${key}" aria-label="Reducir ${label.toLowerCase()}">${icon("minus")}</button>
+          <input type="number" min="1" step="1" inputmode="numeric" data-pomodoro-value="${key}" aria-label="${label}" />
+          <button type="button" data-pomodoro-step="1" data-pomodoro-key="${key}" aria-label="Aumentar ${label.toLowerCase()}">${icon("plus")}</button>
+        </span>
+        ${suffix ? `<small>${suffix}</small>` : ""}
       </label>
     `;
   }
@@ -155,13 +147,8 @@
     });
 
     const menu = document.querySelector(".pomodoro-menu");
-    menu?.addEventListener("input", (event) => {
-      if (event.target.matches("[data-pomodoro-task]")) {
-        state.task = event.target.value;
-        saveState();
-      }
-    });
     menu?.addEventListener("change", handleMenuChange);
+    menu?.addEventListener("wheel", handleNumberWheel, { passive: false });
   }
 
   function handleDocumentClick(event) {
@@ -183,31 +170,23 @@
 
     if (!menu) return;
     const closeButton = event.target.closest("[data-pomodoro-close]");
-    const settingsButton = event.target.closest("[data-pomodoro-settings]");
-    const modeButton = event.target.closest("[data-pomodoro-mode]");
+    const stepButton = event.target.closest("[data-pomodoro-step]");
     const toggleButton = event.target.closest("[data-pomodoro-toggle]");
     const resetButton = event.target.closest("[data-pomodoro-reset]");
     const skipButton = event.target.closest("[data-pomodoro-skip]");
 
     if (closeButton) closeMenu();
-    else if (settingsButton) toggleSettings(settingsButton);
-    else if (modeButton) selectMode(modeButton.dataset.pomodoroMode);
+    else if (stepButton) changeConfig(stepButton.dataset.pomodoroKey, Number(stepButton.dataset.pomodoroStep));
     else if (toggleButton) toggleTimer();
     else if (resetButton) resetTimer();
-    else if (skipButton) advanceSession(false);
+    else if (skipButton) advancePhase(false);
     else if (isOpen() && !menu.contains(event.target)) closeMenu();
   }
 
   function handleMenuChange(event) {
-    const duration = event.target.closest("[data-pomodoro-duration]");
-    if (duration) {
-      const key = duration.dataset.pomodoroDuration;
-      const value = clampNumber(duration.value, 1, 120, DEFAULT_DURATIONS[key]);
-      duration.value = String(value);
-      state.durations[key] = value;
-      if (state.mode === key && !state.running) state.remaining = value * 60;
-      saveState();
-      render();
+    const valueInput = event.target.closest("[data-pomodoro-value]");
+    if (valueInput) {
+      applyConfigValue(valueInput.dataset.pomodoroValue, valueInput.value);
       return;
     }
 
@@ -221,6 +200,39 @@
       state.autoStart = event.target.checked;
       saveState();
     }
+  }
+
+  function handleNumberWheel(event) {
+    const input = event.target.closest("[data-pomodoro-value]");
+    if (!input || document.activeElement !== input) return;
+    event.preventDefault();
+    changeConfig(input.dataset.pomodoroValue, event.deltaY < 0 ? 1 : -1);
+  }
+
+  function changeConfig(key, difference) {
+    if (!Object.prototype.hasOwnProperty.call(state.config, key)) return;
+    applyConfigValue(key, state.config[key] + difference);
+  }
+
+  function applyConfigValue(key, value) {
+    if (!Object.prototype.hasOwnProperty.call(state.config, key)) return;
+    const affectsCurrentPhase = (key === "study" && state.phase === "study") || (key === "break" && state.phase === "break");
+    const elapsed = affectsCurrentPhase && state.running
+      ? Math.max(0, durationSeconds(state.phase) - remainingSeconds())
+      : 0;
+    const next = positiveInteger(value, state.config[key]);
+    state.config[key] = next;
+
+    if (key === "blocks" && state.currentBlock > next) state.currentBlock = next;
+    if (affectsCurrentPhase) {
+      state.remaining = state.running
+        ? Math.max(1, durationSeconds(state.phase) - elapsed)
+        : durationSeconds(state.phase);
+      if (state.running) state.endAt = safeEndTime(state.remaining);
+    }
+
+    saveState();
+    render();
   }
 
   function openMenu() {
@@ -255,37 +267,17 @@
     menu.style.setProperty("--pomodoro-right", `${Math.round(right)}px`);
   }
 
-  function toggleSettings(button) {
-    const panel = document.querySelector("[data-pomodoro-settings-panel]");
-    if (!panel) return;
-    const open = panel.hidden;
-    panel.hidden = !open;
-    button.setAttribute("aria-expanded", String(open));
-    button.classList.toggle("is-active", open);
-  }
-
-  function selectMode(mode) {
-    if (!MODES[mode] || mode === state.mode) return;
-    stopTicker();
-    state.mode = mode;
-    state.running = false;
-    state.endAt = 0;
-    state.remaining = getDurationSeconds(mode);
-    saveState();
-    render();
-  }
-
   function toggleTimer() {
     reconcileTimer(true);
     if (state.running) {
-      state.remaining = getRemainingSeconds();
+      state.remaining = remainingSeconds();
       state.running = false;
       state.endAt = 0;
       stopTicker();
     } else {
-      if (state.remaining <= 0) state.remaining = getDurationSeconds(state.mode);
+      if (state.remaining <= 0) state.remaining = durationSeconds(state.phase);
       state.running = true;
-      state.endAt = Date.now() + state.remaining * 1000;
+      state.endAt = safeEndTime(state.remaining);
       startTickerIfNeeded();
     }
     saveState();
@@ -296,34 +288,35 @@
     stopTicker();
     state.running = false;
     state.endAt = 0;
-    state.remaining = getDurationSeconds(state.mode);
+    state.remaining = durationSeconds(state.phase);
     saveState();
     render();
   }
 
-  function advanceSession(completed, shouldNotify = true) {
-    const previousMode = state.mode;
+  function advancePhase(completed, shouldNotify = true) {
+    const previousPhase = state.phase;
     stopTicker();
 
-    if (completed && previousMode === "focus") {
+    if (completed && previousPhase === "study") {
       normalizeDailyCount();
       state.completedToday += 1;
     }
 
-    if (previousMode === "focus") {
-      state.mode = state.completedToday > 0 && state.completedToday % 4 === 0 ? "long" : "short";
+    if (previousPhase === "study") {
+      state.phase = "break";
     } else {
-      state.mode = "focus";
+      state.phase = "study";
+      state.currentBlock = state.currentBlock >= state.config.blocks ? 1 : state.currentBlock + 1;
     }
 
     state.running = false;
     state.endAt = 0;
-    state.remaining = getDurationSeconds(state.mode);
+    state.remaining = durationSeconds(state.phase);
 
-    if (completed && shouldNotify) notifyCompletion(previousMode);
+    if (completed && shouldNotify) notifyCompletion(previousPhase);
     if (completed && state.autoStart) {
       state.running = true;
-      state.endAt = Date.now() + state.remaining * 1000;
+      state.endAt = safeEndTime(state.remaining);
       startTickerIfNeeded();
     }
 
@@ -335,19 +328,18 @@
     normalizeDailyCount();
     if (!state.running) return;
 
-    state.remaining = getRemainingSeconds();
+    state.remaining = remainingSeconds();
     if (state.remaining > 0) return;
-
-    advanceSession(true, shouldNotify);
+    advancePhase(true, shouldNotify);
   }
 
   function startTickerIfNeeded() {
     if (!state.running || timerId) return;
     timerId = window.setInterval(() => {
-      const remaining = getRemainingSeconds();
+      const remaining = remainingSeconds();
       if (remaining <= 0) {
         state.remaining = 0;
-        advanceSession(true);
+        advancePhase(true);
         return;
       }
       state.remaining = remaining;
@@ -361,41 +353,41 @@
     timerId = 0;
   }
 
-  function getRemainingSeconds() {
+  function remainingSeconds() {
     if (!state.running || !state.endAt) return Math.max(0, Math.ceil(state.remaining));
     return Math.max(0, Math.ceil((state.endAt - Date.now()) / 1000));
   }
 
-  function getDurationSeconds(mode) {
-    return state.durations[MODES[mode]?.durationKey || "focus"] * 60;
+  function durationSeconds(phase) {
+    return state.config[phase === "break" ? "break" : "study"] * 60;
+  }
+
+  function safeEndTime(seconds) {
+    const maximumSeconds = Math.floor((Number.MAX_SAFE_INTEGER - Date.now()) / 1000);
+    return Date.now() + Math.min(seconds, maximumSeconds) * 1000;
   }
 
   function render() {
     normalizeDailyCount();
-    document.querySelectorAll("[data-pomodoro-mode]").forEach((button) => {
-      const active = button.dataset.pomodoroMode === state.mode;
-      button.classList.toggle("is-active", active);
-      button.setAttribute("aria-selected", String(active));
+    document.querySelectorAll("[data-pomodoro-value]").forEach((input) => {
+      const key = input.dataset.pomodoroValue;
+      if (document.activeElement !== input) input.value = String(state.config[key]);
     });
 
     const panel = document.querySelector(".pomodoro-menu__panel");
-    if (panel) panel.dataset.mode = state.mode;
+    if (panel) panel.dataset.phase = state.phase;
 
-    const task = document.querySelector("[data-pomodoro-task]");
-    if (task && task.value !== state.task) task.value = state.task;
-
-    Object.keys(DEFAULT_DURATIONS).forEach((key) => {
-      const input = document.querySelector(`[data-pomodoro-duration="${key}"]`);
-      if (input) input.value = String(state.durations[key]);
-    });
+    const cycle = document.querySelector("[data-pomodoro-cycle]");
+    const phase = document.querySelector("[data-pomodoro-phase]");
+    const count = document.querySelector("[data-pomodoro-count]");
+    if (cycle) cycle.textContent = `Bloque ${state.currentBlock} de ${state.config.blocks}`;
+    if (phase) phase.textContent = state.phase === "study" ? "Estudio" : "Descanso";
+    if (count) count.textContent = String(state.completedToday);
 
     const sound = document.querySelector("[data-pomodoro-sound]");
     const auto = document.querySelector("[data-pomodoro-auto]");
     if (sound) sound.checked = state.sound;
     if (auto) auto.checked = state.autoStart;
-
-    const count = document.querySelector("[data-pomodoro-count]");
-    if (count) count.textContent = String(state.completedToday);
 
     const toggle = document.querySelector("[data-pomodoro-toggle]");
     if (toggle) toggle.innerHTML = state.running ? `${icon("pause")}<span>Pausar</span>` : `${icon("play")}<span>Empezar</span>`;
@@ -404,15 +396,20 @@
   }
 
   function renderTimerOnly() {
-    const remaining = state.running ? getRemainingSeconds() : state.remaining;
+    const remaining = state.running ? remainingSeconds() : state.remaining;
     const minutes = Math.floor(remaining / 60);
     const seconds = remaining % 60;
     const time = document.querySelector("[data-pomodoro-time]");
     const label = document.querySelector("[data-pomodoro-label]");
-    if (time) time.textContent = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-    if (label) label.textContent = MODES[state.mode].label;
+    const timeText = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+    if (time) {
+      time.textContent = timeText;
+      time.classList.toggle("is-long", timeText.length > 6);
+      time.classList.toggle("is-very-long", timeText.length > 9);
+    }
+    if (label) label.textContent = state.phase === "study" ? `Bloque ${state.currentBlock}` : "Descanso";
 
-    const total = getDurationSeconds(state.mode);
+    const total = durationSeconds(state.phase);
     const progress = total > 0 ? Math.min(1, Math.max(0, 1 - remaining / total)) : 0;
     const circle = document.querySelector(".pomodoro-ring__progress");
     if (circle) circle.style.strokeDashoffset = String(603.19 * (1 - progress));
@@ -420,14 +417,14 @@
     const topButton = document.querySelector("[data-pomodoro-open]");
     if (topButton) {
       topButton.classList.toggle("is-running", state.running);
-      topButton.title = state.running ? `${formatCompactTime(remaining)} - ${MODES[state.mode].label}` : "Pomodoro";
+      topButton.title = state.running ? `${compactTime(remaining)} - ${state.phase === "study" ? `Bloque ${state.currentBlock}` : "Descanso"}` : "Temporizador";
     }
   }
 
-  function notifyCompletion(previousMode) {
+  function notifyCompletion(previousPhase) {
     if (state.sound) playTone();
     if ("vibrate" in navigator) navigator.vibrate([120, 80, 120]);
-    const title = previousMode === "focus" ? "Sesión completada" : "Descanso terminado";
+    const title = previousPhase === "study" ? "Bloque completado" : "Descanso terminado";
     const originalTitle = document.title;
     document.title = `${title} - Estudiemos`;
     setTimeout(() => {
@@ -463,25 +460,26 @@
       saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
     } catch (error) {}
 
-    const mode = MODES[saved.mode] ? saved.mode : "focus";
-    const durations = {
-      focus: clampNumber(saved.durations?.focus, 1, 120, DEFAULT_DURATIONS.focus),
-      short: clampNumber(saved.durations?.short, 1, 120, DEFAULT_DURATIONS.short),
-      long: clampNumber(saved.durations?.long, 1, 120, DEFAULT_DURATIONS.long)
+    const legacyMode = saved.mode ? (saved.mode === "focus" ? "study" : "break") : "study";
+    const phase = saved.phase === "study" || saved.phase === "break" ? saved.phase : legacyMode;
+    const config = {
+      blocks: positiveInteger(saved.config?.blocks ?? saved.totalBlocks, DEFAULT_CONFIG.blocks),
+      study: positiveInteger(saved.config?.study ?? saved.durations?.focus, DEFAULT_CONFIG.study),
+      break: positiveInteger(saved.config?.break ?? saved.durations?.short, DEFAULT_CONFIG.break)
     };
-    const fallbackRemaining = durations[MODES[mode].durationKey] * 60;
+    const fallbackRemaining = config[phase] * 60;
 
     return {
-      mode,
-      durations,
-      remaining: clampNumber(saved.remaining, 0, 7200, fallbackRemaining),
+      config,
+      phase,
+      currentBlock: Math.min(config.blocks, positiveInteger(saved.currentBlock, 1)),
+      remaining: nonNegativeNumber(saved.remaining, fallbackRemaining),
       running: Boolean(saved.running && Number(saved.endAt) > 0),
       endAt: Number(saved.endAt) || 0,
-      task: String(saved.task || "").slice(0, 80),
       sound: saved.sound !== false,
       autoStart: Boolean(saved.autoStart),
       completedDate: saved.completedDate || todayKey(),
-      completedToday: clampNumber(saved.completedToday, 0, 999, 0)
+      completedToday: nonNegativeInteger(saved.completedToday, 0)
     };
   }
 
@@ -504,25 +502,35 @@
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
   }
 
-  function clampNumber(value, min, max, fallback) {
-    const number = Number(value);
-    if (!Number.isFinite(number)) return fallback;
-    return Math.min(max, Math.max(min, Math.round(number)));
+  function positiveInteger(value, fallback) {
+    const number = Math.floor(Number(value));
+    return Number.isFinite(number) && number >= 1 ? Math.min(number, Number.MAX_SAFE_INTEGER) : fallback;
   }
 
-  function formatCompactTime(seconds) {
+  function nonNegativeInteger(value, fallback) {
+    const number = Math.floor(Number(value));
+    return Number.isFinite(number) && number >= 0 ? number : fallback;
+  }
+
+  function nonNegativeNumber(value, fallback) {
+    const number = Number(value);
+    return Number.isFinite(number) && number >= 0 ? number : fallback;
+  }
+
+  function compactTime(seconds) {
     return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
   }
 
   function icon(name) {
     const icons = {
       timer: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2h6v2H9V2Zm3 4a8 8 0 1 1-8 8 8 8 0 0 1 8-8Zm0 2a6 6 0 1 0 6 6 6 6 0 0 0-6-6Zm-1 2h2v4.4l2.8 1.7-1 1.7-3.8-2.3V10Zm6.7-4.1 1.4-1.4 1.4 1.4-1.4 1.4-1.4-1.4Z"/></svg>',
-      settings: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.9 2h2.2l.5 2.1c.5.2 1 .4 1.4.8l2-.7 1.6 1.6-.7 2c.3.4.6.9.8 1.4l2.1.5v2.2l-2.1.5c-.2.5-.4 1-.8 1.4l.7 2-1.6 1.6-2-.7c-.4.3-.9.6-1.4.8l-.5 2.1h-2.2l-.5-2.1c-.5-.2-1-.4-1.4-.8l-2 .7-1.6-1.6.7-2c-.3-.4-.6-.9-.8-1.4l-2.1-.5V9.7l2.1-.5c.2-.5.4-1 .8-1.4l-.7-2L7 4.2l2 .7c.4-.3.9-.6 1.4-.8l.5-2.1ZM12 8a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/></svg>',
       close: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6.7 5.3 5.3 5.3 5.3-5.3 1.4 1.4-5.3 5.3 5.3 5.3-1.4 1.4-5.3-5.3-5.3 5.3-1.4-1.4 5.3-5.3-5.3-5.3 1.4-1.4Z"/></svg>',
       play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.2v13.6L19 12 8 5.2Z"/></svg>',
       pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7V5Zm6 0h4v14h-4V5Z"/></svg>',
       reset: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.6 5.6A9 9 0 1 1 3 12h2a7 7 0 1 0 2-4.9L10 10H3V3l2.6 2.6Z"/></svg>',
-      skip: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5.5 15 12 5 18.5v-13ZM17 5h2v14h-2V5Z"/></svg>'
+      skip: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5.5 15 12 5 18.5v-13ZM17 5h2v14h-2V5Z"/></svg>',
+      minus: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 11h14v2H5v-2Z"/></svg>',
+      plus: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6V5Z"/></svg>'
     };
     return icons[name] || "";
   }
