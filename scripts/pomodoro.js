@@ -85,55 +85,60 @@
           </div>
         </div>
 
-        <div class="pomodoro-config" aria-label="Configurar sesión">
-          ${numberControl("blocks", "Bloques", "")}
-          ${numberControl("study", "Estudio", "min")}
-          ${numberControl("break", "Descanso", "min")}
-        </div>
-
         <div class="pomodoro-controls">
-          <button class="pomodoro-secondary-btn" type="button" data-pomodoro-reset aria-label="Reiniciar tramo" title="Reiniciar">${icon("reset")}</button>
+          <button class="pomodoro-secondary-btn" type="button" data-pomodoro-reset aria-label="Reiniciar bloque actual" title="Reiniciar bloque">${icon("reset")}</button>
           <button class="pomodoro-start-btn" type="button" data-pomodoro-toggle>${icon("play")}<span>Empezar</span></button>
-          <button class="pomodoro-secondary-btn" type="button" data-pomodoro-skip aria-label="Saltar al siguiente tramo" title="Siguiente">${icon("skip")}</button>
+          <button class="pomodoro-secondary-btn" type="button" data-pomodoro-skip aria-label="Pasar al siguiente bloque" title="Siguiente bloque">${icon("skip")}</button>
         </div>
 
-        <div class="pomodoro-summary">
-          <span>Bloques completados hoy</span>
-          <strong data-pomodoro-count>0</strong>
-        </div>
-
-        <div class="pomodoro-options pomodoro-options--single">
-          <label class="pomodoro-switch">
-            <input type="checkbox" data-pomodoro-auto />
-            <span>Continuar automáticamente</span>
-          </label>
-        </div>
-
-        <button class="pomodoro-sound-toggle" type="button" data-pomodoro-sound-settings aria-expanded="false">
-          ${icon("music")}<span>Sonidos para estudiar</span>${icon("chevronDown")}
+        <button class="pomodoro-settings-toggle" type="button" data-pomodoro-config-toggle aria-expanded="false">
+          ${icon("settings")}<span>Configuración del temporizador</span>${icon("chevronDown")}
         </button>
-        <section class="pomodoro-sound-panel" data-pomodoro-sound-panel hidden>
-          <div class="pomodoro-sound-row">
-            <label>
-              Ambiente
-              <select data-pomodoro-ambient-mode>
-                <option value="jazz">Jazz suave</option>
-                <option value="rain">Lluvia suave</option>
-                <option value="brown">Ruido marrón</option>
-                <option value="random">Aleatorio</option>
-              </select>
-            </label>
-            <button class="pomodoro-ambient-btn" type="button" data-pomodoro-ambient-toggle>${icon("play")}<span>Reproducir</span></button>
+        <section class="pomodoro-settings-panel" data-pomodoro-config-panel hidden>
+          <div class="pomodoro-config" aria-label="Configurar sesión">
+            ${numberControl("blocks", "Bloques", "")}
+            ${numberControl("study", "Estudio", "min")}
+            ${numberControl("break", "Descanso", "min")}
           </div>
-          <label class="pomodoro-volume">
-            <span>Volumen ambiente</span>
-            <input type="range" min="0" max="1" step="0.05" data-pomodoro-ambient-volume />
-          </label>
-          <label class="pomodoro-volume">
-            <span>Volumen de alarma</span>
-            <input type="range" min="0.15" max="1" step="0.05" data-pomodoro-alarm-volume />
-          </label>
-          <p class="pomodoro-now-playing" data-pomodoro-now-playing></p>
+
+          <div class="pomodoro-summary">
+            <span>Bloques completados hoy</span>
+            <strong data-pomodoro-count>0</strong>
+          </div>
+
+          <div class="pomodoro-options pomodoro-options--single">
+            <label class="pomodoro-switch">
+              <input type="checkbox" data-pomodoro-auto />
+              <span>Continuar automáticamente</span>
+            </label>
+          </div>
+
+          <button class="pomodoro-sound-toggle" type="button" data-pomodoro-sound-settings aria-expanded="false">
+            ${icon("music")}<span>Sonidos para estudiar</span>${icon("chevronDown")}
+          </button>
+          <section class="pomodoro-sound-panel" data-pomodoro-sound-panel hidden>
+            <div class="pomodoro-sound-row">
+              <label>
+                Ambiente
+                <select data-pomodoro-ambient-mode>
+                  <option value="jazz">Jazz suave</option>
+                  <option value="rain">Lluvia suave</option>
+                  <option value="brown">Ruido marrón</option>
+                  <option value="random">Aleatorio</option>
+                </select>
+              </label>
+              <button class="pomodoro-ambient-btn" type="button" data-pomodoro-ambient-toggle>${icon("play")}<span>Reproducir</span></button>
+            </div>
+            <label class="pomodoro-volume">
+              <span>Volumen ambiente</span>
+              <input type="range" min="0" max="1" step="0.05" data-pomodoro-ambient-volume />
+            </label>
+            <label class="pomodoro-volume">
+              <span>Volumen de alarma</span>
+              <input type="range" min="0.15" max="1" step="0.05" data-pomodoro-alarm-volume />
+            </label>
+            <p class="pomodoro-now-playing" data-pomodoro-now-playing></p>
+          </section>
         </section>
       </div>
     `;
@@ -214,6 +219,7 @@
     const toggleButton = event.target.closest("[data-pomodoro-toggle]");
     const resetButton = event.target.closest("[data-pomodoro-reset]");
     const skipButton = event.target.closest("[data-pomodoro-skip]");
+    const configButton = event.target.closest("[data-pomodoro-config-toggle]");
     const soundSettingsButton = event.target.closest("[data-pomodoro-sound-settings]");
     const ambientButton = event.target.closest("[data-pomodoro-ambient-toggle]");
 
@@ -222,6 +228,7 @@
     else if (toggleButton) toggleTimer();
     else if (resetButton) resetTimer();
     else if (skipButton) advancePhase(false);
+    else if (configButton) toggleConfigPanel(configButton);
     else if (soundSettingsButton) toggleSoundPanel(soundSettingsButton);
     else if (ambientButton) toggleAmbient();
     else if (isOpen() && !menu.contains(event.target)) closeMenu();
@@ -369,6 +376,24 @@
     button.setAttribute("aria-expanded", String(open));
   }
 
+  function toggleConfigPanel(button) {
+    const panel = document.querySelector("[data-pomodoro-config-panel]");
+    if (!panel) return;
+    const open = panel.hidden;
+    panel.hidden = !open;
+    button.classList.toggle("is-open", open);
+    button.setAttribute("aria-expanded", String(open));
+  }
+
+  function closeConfigPanel() {
+    const button = document.querySelector("[data-pomodoro-config-toggle]");
+    const panel = document.querySelector("[data-pomodoro-config-panel]");
+    if (!button || !panel) return;
+    panel.hidden = true;
+    button.classList.remove("is-open");
+    button.setAttribute("aria-expanded", "false");
+  }
+
   function toggleTimer() {
     if (alarmActive) {
       stopAlarm();
@@ -389,6 +414,7 @@
         advancePhase(false);
         return;
       }
+      closeConfigPanel();
       state.running = true;
       state.endAt = safeEndTime(state.remaining);
       startTickerIfNeeded();
@@ -882,6 +908,7 @@
       skip: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5.5 15 12 5 18.5v-13ZM17 5h2v14h-2V5Z"/></svg>',
       bellOff: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4.3 3 16.7 16.7-1.3 1.3-2.4-2.4H5v-2h2v-5.1c0-1.3.4-2.5 1.1-3.5L3 4.3 4.3 3Zm5.3 6.4c-.4.6-.6 1.3-.6 2.1v5.1h6.3L9.6 9.4ZM12 2a2 2 0 0 1 2 2v.4a7 7 0 0 1 5 6.7v3.2l-2-2v-1.2a5 5 0 0 0-5-5c-.5 0-1 .1-1.5.2L8.9 4.7c.4-.1.7-.2 1.1-.3V4a2 2 0 0 1 2-2Zm-2 18h4a2 2 0 0 1-4 0Z"/></svg>',
       music: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 3v12.2A3.5 3.5 0 1 1 17 12V6.1l-8 1.8v9.3A3.5 3.5 0 1 1 7 14V6.3L19 3ZM5.5 16A1.5 1.5 0 1 0 7 17.5V16H5.5Zm10 0a1.5 1.5 0 1 0 1.5 1.5V16h-1.5Z"/></svg>',
+      settings: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.7 4.1a2.3 2.3 0 0 1 4.6 0 2.3 2.3 0 0 0 3.3 1.9 2.3 2.3 0 0 1 2.3 4 2.3 2.3 0 0 0 0 3.8 2.3 2.3 0 0 1-2.3 4 2.3 2.3 0 0 0-3.3 1.9 2.3 2.3 0 0 1-4.6 0 2.3 2.3 0 0 0-3.3-1.9 2.3 2.3 0 0 1-2.3-4 2.3 2.3 0 0 0 0-3.8 2.3 2.3 0 0 1 2.3-4 2.3 2.3 0 0 0 3.3-1.9ZM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/></svg>',
       chevronUp: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5.4 14.8 1.4 1.4 5.2-5.2 5.2 5.2 1.4-1.4L12 8.2l-6.6 6.6Z"/></svg>',
       chevronDown: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5.4 9.2 1.4-1.4 5.2 5.2 5.2-5.2 1.4 1.4L12 15.8 5.4 9.2Z"/></svg>'
     };
