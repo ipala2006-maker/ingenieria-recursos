@@ -8,6 +8,7 @@
 
   const STORAGE_KEY = "estudiemos_pomodoro";
   const DEFAULT_CONFIG = { blocks: 4, study: 25, break: 5 };
+  const MAX_MINUTES = 90;
   let state = loadState();
   let timerId = 0;
   let audioContext = null;
@@ -139,13 +140,14 @@
   }
 
   function numberControl(key, label, suffix) {
+    const maximum = key === "blocks" ? "" : ` max="${MAX_MINUTES}"`;
     return `
       <div class="pomodoro-number-control">
         <span>${label}</span>
         <span class="pomodoro-wheel-control" data-pomodoro-wheel="${key}">
           <button type="button" data-pomodoro-step="1" data-pomodoro-key="${key}" aria-label="Aumentar ${label.toLowerCase()}">${icon("chevronUp")}</button>
           <small data-pomodoro-preview="next" data-pomodoro-key="${key}"></small>
-          <input type="number" min="1" step="1" inputmode="numeric" data-pomodoro-value="${key}" aria-label="${label}" />
+          <input type="number" min="1"${maximum} step="1" inputmode="numeric" data-pomodoro-value="${key}" aria-label="${label}" />
           <small data-pomodoro-preview="previous" data-pomodoro-key="${key}"></small>
           <button type="button" data-pomodoro-step="-1" data-pomodoro-key="${key}" aria-label="Reducir ${label.toLowerCase()}">${icon("chevronDown")}</button>
         </span>
@@ -226,7 +228,9 @@
   function handleMenuChange(event) {
     const valueInput = event.target.closest("[data-pomodoro-value]");
     if (valueInput) {
-      applyConfigValue(valueInput.dataset.pomodoroValue, valueInput.value);
+      const key = valueInput.dataset.pomodoroValue;
+      applyConfigValue(key, valueInput.value);
+      valueInput.value = String(state.config[key]);
       return;
     }
 
@@ -290,7 +294,7 @@
     const elapsed = affectsCurrentPhase && state.running
       ? Math.max(0, durationSeconds(state.phase) - remainingSeconds())
       : 0;
-    const next = positiveInteger(value, state.config[key]);
+    const next = configInteger(key, value, state.config[key]);
     state.config[key] = next;
 
     if (key === "blocks" && state.currentBlock > next) state.currentBlock = next;
@@ -468,9 +472,18 @@
       if (document.activeElement !== input) input.value = String(state.config[key]);
     });
     document.querySelectorAll("[data-pomodoro-preview]").forEach((preview) => {
-      const value = state.config[preview.dataset.pomodoroKey];
+      const key = preview.dataset.pomodoroKey;
+      const value = state.config[key];
       const difference = preview.dataset.pomodoroPreview === "next" ? 1 : -1;
-      preview.textContent = String(Math.max(1, value + difference));
+      const candidate = value + difference;
+      preview.textContent = candidate >= 1 && (key === "blocks" || candidate <= MAX_MINUTES)
+        ? String(candidate)
+        : "";
+    });
+    document.querySelectorAll("[data-pomodoro-step]").forEach((button) => {
+      const key = button.dataset.pomodoroKey;
+      const candidate = state.config[key] + Number(button.dataset.pomodoroStep);
+      button.disabled = candidate < 1 || (key !== "blocks" && candidate > MAX_MINUTES);
     });
 
     const panel = document.querySelector(".pomodoro-menu__panel");
@@ -758,8 +771,8 @@
     const phase = saved.phase === "study" || saved.phase === "break" ? saved.phase : legacyMode;
     const config = {
       blocks: positiveInteger(saved.config?.blocks ?? saved.totalBlocks, DEFAULT_CONFIG.blocks),
-      study: positiveInteger(saved.config?.study ?? saved.durations?.focus, DEFAULT_CONFIG.study),
-      break: positiveInteger(saved.config?.break ?? saved.durations?.short, DEFAULT_CONFIG.break)
+      study: configInteger("study", saved.config?.study ?? saved.durations?.focus, DEFAULT_CONFIG.study),
+      break: configInteger("break", saved.config?.break ?? saved.durations?.short, DEFAULT_CONFIG.break)
     };
     const fallbackRemaining = config[phase] * 60;
 
@@ -802,6 +815,11 @@
   function positiveInteger(value, fallback) {
     const number = Math.floor(Number(value));
     return Number.isFinite(number) && number >= 1 ? Math.min(number, Number.MAX_SAFE_INTEGER) : fallback;
+  }
+
+  function configInteger(key, value, fallback) {
+    const number = positiveInteger(value, fallback);
+    return key === "blocks" ? number : Math.min(MAX_MINUTES, number);
   }
 
   function nonNegativeInteger(value, fallback) {

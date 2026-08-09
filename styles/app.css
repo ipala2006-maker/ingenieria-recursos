@@ -2773,3 +2773,130 @@ html.theme-light .pomodoro-wheel-control input{
     grid-template-columns:1fr;
   }
 }
+
+/* Vista compacta del temporizador */
+.pomodoro-menu__panel{
+  padding:12px;
+}
+.pomodoro-head h2{
+  font-size:17px;
+}
+.pomodoro-cycle-status{
+  margin-top:7px;
+  padding:6px 9px;
+}
+.pomodoro-timer{
+  width:160px;
+  height:160px;
+  margin:7px auto 4px;
+}
+.pomodoro-time strong{
+  font-size:36px;
+}
+.pomodoro-config{
+  margin-top:6px;
+}
+.pomodoro-number-control{
+  gap:3px;
+}
+.pomodoro-wheel-control{
+  grid-template-rows:18px 11px 28px 11px 18px;
+}
+.pomodoro-wheel-control button{
+  height:18px;
+}
+.pomodoro-wheel-control button svg{
+  width:13px;
+  height:13px;
+}
+.pomodoro-wheel-control > small{
+  line-height:11px;
+}
+.pomodoro-wheel-control input{
+  height:28px;
+}
+.pomodoro-wheel-control button:disabled{
+  opacity:.2;
+  cursor:default;
+}
+.pomodoro-controls{
+  margin-top:7px;
+}
+.pomodoro-secondary-btn{
+  width:38px;
+  height:38px;
+}
+.pomodoro-start-btn{
+  min-height:40px;
+}
+.pomodoro-summary{
+  margin-top:7px;
+  padding:6px 9px;
+}
+.pomodoro-options{
+  margin-top:7px;
+}
+.pomodoro-options .pomodoro-switch{
+  padding:6px 8px;
+}
+.pomodoro-sound-toggle{
+  min-height:35px;
+  margin-top:7px;
+  padding:6px 10px;
+}
+.pomodoro-sound-panel{
+  grid-template-columns:1fr 1fr;
+  gap:6px 10px;
+  margin-top:5px;
+  padding:7px;
+}
+.pomodoro-sound-row,
+.pomodoro-now-playing{
+  grid-column:1 / -1;
+}
+.pomodoro-sound-row{
+  align-items:center;
+}
+.pomodoro-sound-row label{
+  grid-template-columns:auto minmax(0, 1fr);
+  align-items:center;
+  gap:7px;
+}
+.pomodoro-sound-row select,
+.pomodoro-ambient-btn{
+  min-height:32px;
+  padding-top:6px;
+  padding-bottom:6px;
+}
+.pomodoro-volume{
+  grid-template-columns:minmax(0, 1fr) minmax(52px, 76px);
+  align-items:center;
+  gap:6px;
+}
+.pomodoro-volume input{
+  min-width:0;
+}
+.pomodoro-now-playing{
+  min-height:11px;
+  line-height:1.1;
+}
+
+@media(max-width:760px){
+  .pomodoro-menu__panel{
+    padding:11px;
+  }
+  .pomodoro-timer{
+    width:160px;
+    height:160px;
+    margin-top:7px;
+  }
+  .pomodoro-time strong{
+    font-size:36px;
+  }
+}
+
+@media(max-width:420px){
+  .pomodoro-sound-row{
+    grid-template-columns:minmax(0, 1fr) auto;
+  }
+}
