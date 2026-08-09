@@ -45,7 +45,7 @@
     button.dataset.pomodoroOpen = "true";
     button.setAttribute("aria-label", "Abrir temporizador por bloques");
     button.setAttribute("aria-expanded", "false");
-    button.title = "Temporizador";
+    button.title = "Temporizador Pomodoro";
     button.innerHTML = icon("timer");
 
     const agendaButton = nav.querySelector(".agenda-top-btn");
@@ -60,10 +60,10 @@
     menu.className = "pomodoro-menu";
     menu.setAttribute("aria-hidden", "true");
     menu.innerHTML = `
-      <div class="pomodoro-menu__panel" role="dialog" aria-modal="false" aria-label="Temporizador de estudio">
+      <div class="pomodoro-menu__panel" role="dialog" aria-modal="false" aria-label="Temporizador Pomodoro">
         <header class="pomodoro-head">
           <div>
-            <p class="tray-kicker">Temporizador</p>
+            <p class="tray-kicker">Temporizador Pomodoro</p>
             <h2>Sesión por bloques</h2>
           </div>
           <button class="pomodoro-icon-btn" type="button" data-pomodoro-close aria-label="Cerrar temporizador" title="Cerrar">${icon("close")}</button>
@@ -164,6 +164,7 @@
   }
 
   function bindEvents() {
+    document.addEventListener("pointerdown", prepareAudio, { capture: true });
     document.addEventListener("click", handleDocumentClick);
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && isOpen()) closeMenu();
@@ -595,7 +596,7 @@
     const topButton = document.querySelector("[data-pomodoro-open]");
     if (topButton) {
       topButton.classList.toggle("is-running", state.running);
-      topButton.title = state.running ? `${compactTime(remaining)} - ${state.phase === "study" ? `Bloque ${state.currentBlock}` : "Descanso"}` : "Temporizador";
+      topButton.title = state.running ? `${compactTime(remaining)} - ${state.phase === "study" ? `Bloque ${state.currentBlock}` : "Descanso"}` : "Temporizador Pomodoro";
     }
   }
 
@@ -615,7 +616,8 @@
   function prepareAudio() {
     try {
       const context = getAudioContext();
-      if (context?.state === "suspended") context.resume();
+      if (!context) return;
+      if (context.state === "suspended") context.resume().catch(() => {});
     } catch (error) {}
   }
 
