@@ -122,6 +122,8 @@
                 Ambiente
                 <select data-pomodoro-ambient-mode>
                   <option value="jazz">Jazz suave</option>
+                  <option value="jazzCafe">Jazz de café</option>
+                  <option value="jazzNight">Jazz nocturno</option>
                   <option value="rain">Lluvia suave</option>
                   <option value="brown">Ruido marrón</option>
                   <option value="random">Aleatorio</option>
@@ -129,13 +131,24 @@
               </label>
               <button class="pomodoro-ambient-btn" type="button" data-pomodoro-ambient-toggle>${icon("play")}<span>Reproducir</span></button>
             </div>
+            <div class="pomodoro-sound-row">
+              <label>
+                Alarma
+                <select data-pomodoro-alarm-mode>
+                  <option value="digital">Digital</option>
+                  <option value="bell">Campana</option>
+                  <option value="chime">Carrillón</option>
+                  <option value="pulse">Pulso</option>
+                </select>
+              </label>
+            </div>
             <label class="pomodoro-volume">
               <span>Volumen ambiente</span>
-              <input type="range" min="0" max="1" step="0.05" data-pomodoro-ambient-volume />
+              <input type="range" min="0" max="2" step="0.05" data-pomodoro-ambient-volume />
             </label>
             <label class="pomodoro-volume">
               <span>Volumen de alarma</span>
-              <input type="range" min="0.15" max="1" step="0.05" data-pomodoro-alarm-volume />
+              <input type="range" min="0.15" max="2" step="0.05" data-pomodoro-alarm-volume />
             </label>
             <p class="pomodoro-now-playing" data-pomodoro-now-playing></p>
           </section>
@@ -251,15 +264,21 @@
       return;
     }
 
+    if (event.target.matches("[data-pomodoro-alarm-mode]")) {
+      state.alarmMode = event.target.value;
+      saveState();
+      return;
+    }
+
     if (event.target.matches("[data-pomodoro-ambient-volume]")) {
-      state.ambientVolume = unitNumber(event.target.value, state.ambientVolume);
+      state.ambientVolume = volumeNumber(event.target.value, state.ambientVolume, 2);
       if (ambientGain) ambientGain.gain.setTargetAtTime(state.ambientVolume, getAudioContext().currentTime, 0.04);
       saveState();
       return;
     }
 
     if (event.target.matches("[data-pomodoro-alarm-volume]")) {
-      state.alarmVolume = Math.max(0.15, unitNumber(event.target.value, state.alarmVolume));
+      state.alarmVolume = Math.max(0.15, volumeNumber(event.target.value, state.alarmVolume, 2));
       saveState();
       return;
     }
@@ -549,9 +568,11 @@
     if (auto) auto.checked = state.autoStart;
 
     const ambientMode = document.querySelector("[data-pomodoro-ambient-mode]");
+    const alarmMode = document.querySelector("[data-pomodoro-alarm-mode]");
     const ambientVolume = document.querySelector("[data-pomodoro-ambient-volume]");
     const alarmVolume = document.querySelector("[data-pomodoro-alarm-volume]");
     if (ambientMode) ambientMode.value = state.ambientMode;
+    if (alarmMode) alarmMode.value = state.alarmMode;
     if (ambientVolume) ambientVolume.value = String(state.ambientVolume);
     if (alarmVolume) alarmVolume.value = String(state.alarmVolume);
     renderSoundControls();
@@ -635,7 +656,7 @@
     if (!getAudioContext()) return;
     alarmActive = true;
     playAlarmPattern();
-    alarmInterval = window.setInterval(playAlarmPattern, 1900);
+    alarmInterval = window.setInterval(playAlarmPattern, alarmPattern().repeat);
     render();
   }
 
@@ -648,27 +669,38 @@
   function playAlarmPattern() {
     const context = getAudioContext();
     if (!context) return;
+    const pattern = alarmPattern();
     const now = context.currentTime;
     const master = context.createGain();
-    master.gain.setValueAtTime(Math.max(0.15, state.alarmVolume) * 0.2, now);
+    master.gain.setValueAtTime(Math.max(0.15, state.alarmVolume) * 0.45, now);
     master.connect(context.destination);
 
-    [740, 880, 740].forEach((frequency, index) => {
-      const start = now + index * 0.28;
+    pattern.notes.forEach((frequency, index) => {
+      const start = now + index * pattern.spacing;
       const oscillator = context.createOscillator();
       const gain = context.createGain();
-      oscillator.type = "sine";
+      oscillator.type = pattern.wave;
       oscillator.frequency.value = frequency;
       gain.gain.setValueAtTime(0.0001, start);
       gain.gain.exponentialRampToValueAtTime(1, start + 0.025);
-      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.23);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + pattern.duration);
       oscillator.connect(gain);
       gain.connect(master);
       oscillator.start(start);
-      oscillator.stop(start + 0.25);
+      oscillator.stop(start + pattern.duration + 0.03);
     });
 
-    setTimeout(() => master.disconnect(), 1200);
+    setTimeout(() => master.disconnect(), pattern.repeat - 100);
+  }
+
+  function alarmPattern() {
+    const patterns = {
+      digital: { notes: [740, 880, 740], wave: "sine", spacing: 0.28, duration: 0.23, repeat: 1900 },
+      bell: { notes: [659.25, 987.77], wave: "triangle", spacing: 0.42, duration: 0.65, repeat: 2400 },
+      chime: { notes: [523.25, 659.25, 783.99, 1046.5], wave: "sine", spacing: 0.22, duration: 0.42, repeat: 2300 },
+      pulse: { notes: [880, 880, 1046.5, 1046.5], wave: "square", spacing: 0.2, duration: 0.13, repeat: 1750 }
+    };
+    return patterns[state.alarmMode] || patterns.digital;
   }
 
   function toggleAmbient() {
@@ -691,7 +723,7 @@
 
     if (selected === "rain") startNoiseAmbient("rain", context, ambientGain);
     else if (selected === "brown") startNoiseAmbient("brown", context, ambientGain);
-    else startJazzAmbient(context, ambientGain);
+    else startJazzAmbient(context, ambientGain, selected);
 
     ambientPlaying = true;
     if (state.ambientMode === "random") {
@@ -745,18 +777,59 @@
     ambientNodes.push(source, filter);
   }
 
-  function startJazzAmbient(context, destination) {
-    const chords = [
-      [261.63, 329.63, 392.00, 493.88],
-      [220.00, 261.63, 329.63, 392.00],
-      [174.61, 220.00, 261.63, 329.63],
-      [196.00, 246.94, 293.66, 369.99]
-    ];
+  function startJazzAmbient(context, destination, mode) {
+    const arrangements = {
+      jazz: {
+        chords: [
+          [261.63, 329.63, 392, 493.88, 587.33],
+          [220, 261.63, 329.63, 392, 493.88],
+          [174.61, 220, 261.63, 329.63, 392],
+          [196, 246.94, 293.66, 369.99, 440],
+          [220, 277.18, 329.63, 415.3, 493.88],
+          [146.83, 185, 220, 277.18, 329.63],
+          [164.81, 207.65, 246.94, 311.13, 369.99],
+          [196, 246.94, 293.66, 349.23, 440]
+        ],
+        melody: [659.25, 587.33, 493.88, 523.25, 554.37, 493.88, 440, 493.88],
+        interval: 3200
+      },
+      jazzCafe: {
+        chords: [
+          [220, 277.18, 329.63, 415.3, 493.88],
+          [246.94, 293.66, 369.99, 440, 554.37],
+          [196, 246.94, 311.13, 369.99, 466.16],
+          [220, 261.63, 329.63, 392, 493.88],
+          [174.61, 220, 277.18, 329.63, 415.3],
+          [185, 233.08, 277.18, 349.23, 415.3],
+          [196, 246.94, 293.66, 369.99, 440],
+          [164.81, 207.65, 261.63, 311.13, 392]
+        ],
+        melody: [554.37, 659.25, 587.33, 493.88, 523.25, 466.16, 440, 523.25],
+        interval: 2850
+      },
+      jazzNight: {
+        chords: [
+          [164.81, 196, 246.94, 293.66, 369.99],
+          [146.83, 185, 220, 277.18, 329.63],
+          [174.61, 207.65, 261.63, 311.13, 392],
+          [130.81, 164.81, 196, 246.94, 293.66],
+          [138.59, 174.61, 207.65, 261.63, 311.13],
+          [155.56, 196, 233.08, 293.66, 349.23],
+          [146.83, 185, 220, 261.63, 329.63],
+          [164.81, 207.65, 246.94, 293.66, 369.99]
+        ],
+        melody: [493.88, 440, 392, 369.99, 415.3, 392, 349.23, 440],
+        interval: 3600
+      }
+    };
+    const arrangement = arrangements[mode] || arrangements.jazz;
     let chordIndex = 0;
 
     const playChord = () => {
       const now = context.currentTime;
-      const notes = chords[chordIndex % chords.length];
+      const indexInSequence = chordIndex % arrangement.chords.length;
+      const notes = arrangement.chords[indexInSequence];
+      const melodyNote = arrangement.melody[indexInSequence];
       chordIndex += 1;
       notes.forEach((frequency, index) => {
         const oscillator = context.createOscillator();
@@ -765,12 +838,12 @@
         oscillator.frequency.value = frequency;
         oscillator.detune.value = index * 2;
         gain.gain.setValueAtTime(0.0001, now);
-        gain.gain.exponentialRampToValueAtTime(0.045, now + 0.12 + index * 0.02);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + 2.35);
+        gain.gain.exponentialRampToValueAtTime(0.035, now + 0.12 + index * 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + arrangement.interval / 1000 - 0.12);
         oscillator.connect(gain);
         gain.connect(destination);
         oscillator.start(now);
-        oscillator.stop(now + 2.4);
+        oscillator.stop(now + arrangement.interval / 1000);
       });
 
       const bass = context.createOscillator();
@@ -784,14 +857,28 @@
       bassGain.connect(destination);
       bass.start(now);
       bass.stop(now + 1.5);
+
+      [0.45, 1.35, 2.05].forEach((offset, melodyIndex) => {
+        const lead = context.createOscillator();
+        const leadGain = context.createGain();
+        lead.type = "sine";
+        lead.frequency.value = melodyNote * (melodyIndex === 1 ? 1.12246 : melodyIndex === 2 ? 0.8909 : 1);
+        leadGain.gain.setValueAtTime(0.0001, now + offset);
+        leadGain.gain.exponentialRampToValueAtTime(0.025, now + offset + 0.04);
+        leadGain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.48);
+        lead.connect(leadGain);
+        leadGain.connect(destination);
+        lead.start(now + offset);
+        lead.stop(now + offset + 0.5);
+      });
     };
 
     playChord();
-    ambientIntervals.push(window.setInterval(playChord, 2400));
+    ambientIntervals.push(window.setInterval(playChord, arrangement.interval));
   }
 
   function randomAmbientMode() {
-    const modes = ["jazz", "rain", "brown"];
+    const modes = ["jazz", "jazzCafe", "jazzNight", "rain", "brown"];
     return modes[Math.floor(Math.random() * modes.length)];
   }
 
@@ -810,6 +897,8 @@
   }
 
   function ambientLabel(mode) {
+    if (mode === "jazzCafe") return "Jazz de café";
+    if (mode === "jazzNight") return "Jazz nocturno";
     if (mode === "rain") return "Lluvia suave";
     if (mode === "brown") return "Ruido marrón";
     return "Jazz suave";
@@ -838,10 +927,11 @@
       running: Boolean(saved.running && Number(saved.endAt) > 0),
       endAt: Number(saved.endAt) || 0,
       autoStart: Boolean(saved.autoStart),
-      ambientMode: ["jazz", "rain", "brown", "random"].includes(saved.ambientMode) ? saved.ambientMode : "jazz",
-      currentAmbient: ["jazz", "rain", "brown"].includes(saved.currentAmbient) ? saved.currentAmbient : "jazz",
-      ambientVolume: unitNumber(saved.ambientVolume, 0.28),
-      alarmVolume: Math.max(0.15, unitNumber(saved.alarmVolume, 0.65)),
+      ambientMode: ["jazz", "jazzCafe", "jazzNight", "rain", "brown", "random"].includes(saved.ambientMode) ? saved.ambientMode : "jazz",
+      currentAmbient: ["jazz", "jazzCafe", "jazzNight", "rain", "brown"].includes(saved.currentAmbient) ? saved.currentAmbient : "jazz",
+      alarmMode: ["digital", "bell", "chime", "pulse"].includes(saved.alarmMode) ? saved.alarmMode : "digital",
+      ambientVolume: volumeNumber(saved.ambientVolume, 0.28, 2),
+      alarmVolume: Math.max(0.15, volumeNumber(saved.alarmVolume, 0.65, 2)),
       completedDate: saved.completedDate || todayKey(),
       completedToday: nonNegativeInteger(saved.completedToday, 0)
     };
@@ -891,9 +981,9 @@
     return Number.isFinite(number) && number >= 0 ? number : fallback;
   }
 
-  function unitNumber(value, fallback) {
+  function volumeNumber(value, fallback, maximum) {
     const number = Number(value);
-    return Number.isFinite(number) ? Math.min(1, Math.max(0, number)) : fallback;
+    return Number.isFinite(number) ? Math.min(maximum, Math.max(0, number)) : fallback;
   }
 
   function compactTime(seconds) {
