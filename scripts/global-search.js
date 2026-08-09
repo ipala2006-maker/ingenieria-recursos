@@ -195,7 +195,7 @@
     if (document.querySelector('script[src*="scripts/bandeja.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/bandeja.js?v=20260805-publicacion`;
+    script.src = `${rootPath}scripts/bandeja.js?v=20260809-rueda-suave`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -204,7 +204,7 @@
     if (document.querySelector('script[src*="scripts/pomodoro.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/pomodoro.js?v=20260809-pomodoro-compacto`;
+    script.src = `${rootPath}scripts/pomodoro.js?v=20260809-rueda-suave`;
     script.defer = true;
     document.head.appendChild(script);
   }

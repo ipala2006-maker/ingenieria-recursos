@@ -1854,13 +1854,13 @@ kbd{
    El CSS base original nace oscuro. Estas reglas fuerzan que el tema claro
    pinte claro desde el primer CSS cargado, antes de cualquier script tardio. */
 html.theme-light{
-  --bg:#f8fafc !important;
-  --panel:#ffffff !important;
-  --panel-2:#f1f5f9 !important;
-  --border:#dfe5ef !important;
-  --text:#1f2937 !important;
-  --muted:#64748b !important;
-  --muted-2:#94a3b8 !important;
+  --bg:#edf1f5 !important;
+  --panel:#f7f9fb !important;
+  --panel-2:#e8edf3 !important;
+  --border:#d2dae5 !important;
+  --text:#263244 !important;
+  --muted:#657387 !important;
+  --muted-2:#8795a8 !important;
   --accent:#1a73e8 !important;
   --accent-2:#34a853 !important;
   --accent-3:#fbbc04 !important;
@@ -1873,14 +1873,14 @@ html.theme-light{
 html.theme-light body{
   color:var(--text) !important;
   background:
-    radial-gradient(900px 420px at 15% -15%, rgba(26,115,232,.10), transparent 60%),
-    radial-gradient(760px 360px at 95% -10%, rgba(52,168,83,.08), transparent 55%),
+    radial-gradient(900px 420px at 15% -15%, rgba(26,115,232,.055), transparent 60%),
+    radial-gradient(760px 360px at 95% -10%, rgba(52,168,83,.04), transparent 55%),
     var(--bg) !important;
 }
 
 html.theme-light .topbar{
-  background:rgba(255,255,255,.92) !important;
-  border-bottom-color:rgba(203,213,225,.9) !important;
+  background:rgba(247,249,251,.94) !important;
+  border-bottom-color:rgba(196,207,220,.9) !important;
   box-shadow:0 1px 2px rgba(15,23,42,.04) !important;
 }
 
@@ -1973,15 +1973,15 @@ html.theme-light .topbar-icon-btn:hover{
 }
 
 html.theme-light .agenda-calendar{
-  background:#fff !important;
+  background:var(--panel) !important;
 }
 
 html.theme-light .agenda-board__panel{
-  background:#fff !important;
+  background:var(--panel) !important;
 }
 
 html.theme-light .agenda-editor{
-  background:#f8fafc !important;
+  background:var(--panel-2) !important;
 }
 
 html.theme-light .agenda-weekdays,
@@ -1996,7 +1996,7 @@ html.theme-light .agenda-day{
 }
 
 html.theme-light .agenda-day.is-outside{
-  background:#f8fafc !important;
+  background:var(--panel-2) !important;
   color:var(--muted) !important;
 }
 
@@ -2349,7 +2349,7 @@ html.theme-light .pomodoro-top-btn.is-running::after{
   border-color:#fff;
 }
 html.theme-light .pomodoro-menu__panel{
-  background:rgba(255,255,255,.98);
+  background:rgba(247,249,251,.98);
   border-color:var(--border);
   box-shadow:0 18px 48px rgba(15,23,42,.18);
 }
@@ -2360,7 +2360,7 @@ html.theme-light .pomodoro-settings,
 html.theme-light .pomodoro-task input,
 html.theme-light .pomodoro-duration input{
   border-color:var(--border);
-  background:#f8fafc;
+  background:var(--panel-2);
   color:var(--text);
 }
 html.theme-light .pomodoro-ring__track{
@@ -2523,7 +2523,7 @@ html.theme-light .pomodoro-stepper,
 html.theme-light .pomodoro-cycle-status,
 html.theme-light .pomodoro-options .pomodoro-switch{
   border-color:var(--border);
-  background:#f8fafc;
+  background:var(--panel-2);
 }
 html.theme-light .pomodoro-stepper input{
   border-color:var(--border);
@@ -2751,7 +2751,7 @@ html.theme-light .pomodoro-sound-toggle,
 html.theme-light .pomodoro-sound-panel,
 html.theme-light .pomodoro-sound-row select{
   border-color:var(--border);
-  background:#f8fafc;
+  background:var(--panel-2);
   color:var(--text);
 }
 html.theme-light .pomodoro-wheel-control input{
@@ -2818,6 +2818,20 @@ html.theme-light .pomodoro-wheel-control input{
 .pomodoro-wheel-control button:disabled{
   opacity:.2;
   cursor:default;
+}
+.pomodoro-wheel-control.is-rolling-up > :not(button){
+  animation:pomodoro-wheel-up .14s ease-out;
+}
+.pomodoro-wheel-control.is-rolling-down > :not(button){
+  animation:pomodoro-wheel-down .14s ease-out;
+}
+@keyframes pomodoro-wheel-up{
+  from{ transform:translateY(5px); opacity:.5; }
+  to{ transform:translateY(0); opacity:1; }
+}
+@keyframes pomodoro-wheel-down{
+  from{ transform:translateY(-5px); opacity:.5; }
+  to{ transform:translateY(0); opacity:1; }
 }
 .pomodoro-controls{
   margin-top:7px;

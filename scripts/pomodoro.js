@@ -8,7 +8,8 @@
 
   const STORAGE_KEY = "estudiemos_pomodoro";
   const DEFAULT_CONFIG = { blocks: 4, study: 25, break: 5 };
-  const MAX_MINUTES = 90;
+  const MAX_MINUTES = 59;
+  const MINUTE_VALUES = MAX_MINUTES + 1;
   let state = loadState();
   let timerId = 0;
   let audioContext = null;
@@ -140,6 +141,7 @@
   }
 
   function numberControl(key, label, suffix) {
+    const minimum = key === "blocks" ? 1 : 0;
     const maximum = key === "blocks" ? "" : ` max="${MAX_MINUTES}"`;
     return `
       <div class="pomodoro-number-control">
@@ -147,7 +149,7 @@
         <span class="pomodoro-wheel-control" data-pomodoro-wheel="${key}">
           <button type="button" data-pomodoro-step="1" data-pomodoro-key="${key}" aria-label="Aumentar ${label.toLowerCase()}">${icon("chevronUp")}</button>
           <small data-pomodoro-preview="next" data-pomodoro-key="${key}"></small>
-          <input type="number" min="1"${maximum} step="1" inputmode="numeric" data-pomodoro-value="${key}" aria-label="${label}" />
+          <input type="number" min="${minimum}"${maximum} step="1" inputmode="numeric" data-pomodoro-value="${key}" aria-label="${label}" />
           <small data-pomodoro-preview="previous" data-pomodoro-key="${key}"></small>
           <button type="button" data-pomodoro-step="-1" data-pomodoro-key="${key}" aria-label="Reducir ${label.toLowerCase()}">${icon("chevronDown")}</button>
         </span>
@@ -285,7 +287,23 @@
 
   function changeConfig(key, difference) {
     if (!Object.prototype.hasOwnProperty.call(state.config, key)) return;
-    applyConfigValue(key, state.config[key] + difference);
+    const next = key === "blocks"
+      ? state.config[key] + difference
+      : wrapMinute(state.config[key] + difference);
+    applyConfigValue(key, next);
+    const input = document.querySelector(`[data-pomodoro-value="${key}"]`);
+    if (input) input.value = String(state.config[key]);
+    animateWheel(key, difference);
+  }
+
+  function animateWheel(key, difference) {
+    const wheel = document.querySelector(`[data-pomodoro-wheel="${key}"]`);
+    if (!wheel) return;
+    const className = difference > 0 ? "is-rolling-up" : "is-rolling-down";
+    wheel.classList.remove("is-rolling-up", "is-rolling-down");
+    void wheel.offsetWidth;
+    wheel.classList.add(className);
+    window.setTimeout(() => wheel.classList.remove(className), 140);
   }
 
   function applyConfigValue(key, value) {
@@ -367,6 +385,10 @@
       stopTicker();
     } else {
       if (state.remaining <= 0) state.remaining = durationSeconds(state.phase);
+      if (state.remaining <= 0) {
+        advancePhase(false);
+        return;
+      }
       state.running = true;
       state.endAt = safeEndTime(state.remaining);
       startTickerIfNeeded();
@@ -407,7 +429,7 @@
     state.remaining = durationSeconds(state.phase);
 
     if (completed && shouldNotify) notifyCompletion(previousPhase);
-    if (completed && state.autoStart) {
+    if (completed && state.autoStart && state.remaining > 0) {
       state.running = true;
       state.endAt = safeEndTime(state.remaining);
       startTickerIfNeeded();
@@ -476,14 +498,14 @@
       const value = state.config[key];
       const difference = preview.dataset.pomodoroPreview === "next" ? 1 : -1;
       const candidate = value + difference;
-      preview.textContent = candidate >= 1 && (key === "blocks" || candidate <= MAX_MINUTES)
-        ? String(candidate)
-        : "";
+      preview.textContent = key === "blocks"
+        ? String(Math.max(1, candidate))
+        : String(wrapMinute(candidate));
     });
     document.querySelectorAll("[data-pomodoro-step]").forEach((button) => {
       const key = button.dataset.pomodoroKey;
       const candidate = state.config[key] + Number(button.dataset.pomodoroStep);
-      button.disabled = candidate < 1 || (key !== "blocks" && candidate > MAX_MINUTES);
+      button.disabled = key === "blocks" && candidate < 1;
     });
 
     const panel = document.querySelector(".pomodoro-menu__panel");
@@ -509,12 +531,16 @@
 
     const toggle = document.querySelector("[data-pomodoro-toggle]");
     if (toggle) {
+      const toggleState = alarmActive ? "alarm" : state.running ? "pause" : "start";
       toggle.classList.toggle("is-alarm", alarmActive);
-      toggle.innerHTML = alarmActive
-        ? `${icon("bellOff")}<span>Silenciar</span>`
-        : state.running
-          ? `${icon("pause")}<span>Pausar</span>`
-          : `${icon("play")}<span>Empezar</span>`;
+      if (toggle.dataset.pomodoroState !== toggleState) {
+        toggle.dataset.pomodoroState = toggleState;
+        toggle.innerHTML = alarmActive
+          ? `${icon("bellOff")}<span>Silenciar</span>`
+          : state.running
+            ? `${icon("pause")}<span>Pausar</span>`
+            : `${icon("play")}<span>Empezar</span>`;
+      }
     }
 
     renderTimerOnly();
@@ -818,8 +844,13 @@
   }
 
   function configInteger(key, value, fallback) {
-    const number = positiveInteger(value, fallback);
-    return key === "blocks" ? number : Math.min(MAX_MINUTES, number);
+    if (key === "blocks") return positiveInteger(value, fallback);
+    const number = Math.floor(Number(value));
+    return Number.isFinite(number) ? Math.min(MAX_MINUTES, Math.max(0, number)) : fallback;
+  }
+
+  function wrapMinute(value) {
+    return ((Math.floor(Number(value)) % MINUTE_VALUES) + MINUTE_VALUES) % MINUTE_VALUES;
   }
 
   function nonNegativeInteger(value, fallback) {

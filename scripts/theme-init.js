@@ -11,13 +11,13 @@
     style.id = "earlyThemeStyles";
     style.textContent = "\n" +
       "html.theme-light{\n" +
-      "  --bg:#f8fafc;\n" +
-      "  --panel:#ffffff;\n" +
-      "  --panel-2:#f1f5f9;\n" +
-      "  --border:#dfe5ef;\n" +
-      "  --text:#1f2937;\n" +
-      "  --muted:#64748b;\n" +
-      "  --muted-2:#94a3b8;\n" +
+      "  --bg:#edf1f5;\n" +
+      "  --panel:#f7f9fb;\n" +
+      "  --panel-2:#e8edf3;\n" +
+      "  --border:#d2dae5;\n" +
+      "  --text:#263244;\n" +
+      "  --muted:#657387;\n" +
+      "  --muted-2:#8795a8;\n" +
       "  --accent:#1a73e8;\n" +
       "  --accent-2:#34a853;\n" +
       "  --accent-3:#fbbc04;\n" +
@@ -27,11 +27,11 @@
       "  color-scheme:light;\n" +
       "}\n" +
       "html.theme-light body{\n" +
-      "  background:radial-gradient(900px 420px at 15% -15%, rgba(26,115,232,.10), transparent 60%), radial-gradient(760px 360px at 95% -10%, rgba(52,168,83,.08), transparent 55%), var(--bg);\n" +
+      "  background:radial-gradient(900px 420px at 15% -15%, rgba(26,115,232,.055), transparent 60%), radial-gradient(760px 360px at 95% -10%, rgba(52,168,83,.04), transparent 55%), var(--bg);\n" +
       "}\n" +
       "html.theme-light .topbar{\n" +
-      "  background:rgba(255,255,255,.86);\n" +
-      "  border-bottom-color:rgba(203,213,225,.9);\n" +
+      "  background:rgba(247,249,251,.94);\n" +
+      "  border-bottom-color:rgba(196,207,220,.9);\n" +
       "}\n" +
       "html.theme-dark{color-scheme:dark;}\n" +
       "html.theme-syncing,html.theme-syncing *{transition:none!important;}\n";
@@ -76,7 +76,7 @@
     root.classList.toggle("theme-light", next === "light");
     root.dataset.theme = next;
     var themeColor = document.querySelector('meta[name="theme-color"]');
-    if (themeColor) themeColor.setAttribute("content", next === "dark" ? "#0f172a" : "#f8fafc");
+    if (themeColor) themeColor.setAttribute("content", next === "dark" ? "#0f172a" : "#edf1f5");
     if (instant) {
       requestAnimationFrame(function () {
         requestAnimationFrame(function () {

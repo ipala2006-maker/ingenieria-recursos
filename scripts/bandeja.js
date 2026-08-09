@@ -456,7 +456,7 @@
       document.documentElement.classList.toggle("theme-light", next === "light");
       if (save) localStorage.setItem("estudiemos_theme", next);
       const themeColor = document.querySelector('meta[name="theme-color"]');
-      if (themeColor) themeColor.setAttribute("content", next === "dark" ? "#0f172a" : "#f8fafc");
+      if (themeColor) themeColor.setAttribute("content", next === "dark" ? "#0f172a" : "#edf1f5");
     }
     markActiveTheme();
   }
