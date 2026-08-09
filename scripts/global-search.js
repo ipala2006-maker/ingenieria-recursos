@@ -11,6 +11,7 @@
   applySavedTheme();
   loadProfessionalStyle();
   addLightTrayButton();
+  loadPomodoroScript();
   loadTrayAfterPageSettles();
 
   const search = document.createElement("div");
@@ -195,6 +196,15 @@
 
     const script = document.createElement("script");
     script.src = `${rootPath}scripts/bandeja.js?v=20260805-publicacion`;
+    script.defer = true;
+    document.head.appendChild(script);
+  }
+
+  function loadPomodoroScript() {
+    if (document.querySelector('script[src*="scripts/pomodoro.js"]')) return;
+
+    const script = document.createElement("script");
+    script.src = `${rootPath}scripts/pomodoro.js?v=20260809-pomodoro`;
     script.defer = true;
     document.head.appendChild(script);
   }

@@ -144,10 +144,10 @@
       if (!currentMain) throw new Error("Pagina sin main");
 
       document.title = next.title || document.title;
-      currentMain.replaceWith(next.main);
-
       if (options.push) history.pushState({ url, scroll: 0 }, "", url);
       else saveCurrentHistoryState();
+
+      currentMain.replaceWith(next.main);
 
       if (options.restoreScroll) {
         requestAnimationFrame(() => scrollTo(0, Number(history.state?.scroll || 0)));
@@ -170,7 +170,11 @@
   }
 
   function refreshPersistentShell() {
-    document.querySelector(".brand")?.setAttribute("href", getAppRootPath());
+    const root = getAppRootPath();
+    document.querySelector(".brand")?.setAttribute("href", root);
+    document.querySelector('a.topbar__link[href*="about.html"]')?.setAttribute("href", `${root}about.html`);
+    document.querySelector('link[rel~="icon"]')?.setAttribute("href", `${root}assets/favicon.svg`);
+    document.querySelector('link[rel="manifest"]')?.setAttribute("href", `${root}site.webmanifest`);
   }
 
   function parsePage(html) {

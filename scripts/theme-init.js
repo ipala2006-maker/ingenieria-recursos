@@ -109,7 +109,7 @@
       window.EstudiemosRoot = rootPath || "./";
     }
     var script = document.createElement("script");
-    script.src = rootPath + "scripts/smooth-nav.js?v=20260628-root-history";
+    script.src = rootPath + "scripts/smooth-nav.js?v=20260809-pomodoro";
     script.defer = true;
     document.head.appendChild(script);
   }
