@@ -20,6 +20,9 @@
   let ambientIntervals = [];
   let ambientPlaying = false;
   let wheelTouch = null;
+  let dragState = null;
+  let draggedPosition = null;
+  let pipWindow = null;
 
   addButton();
   addMenu();
@@ -66,7 +69,10 @@
             <p class="tray-kicker">Temporizador Pomodoro</p>
             <h2>Sesión por bloques</h2>
           </div>
-          <button class="pomodoro-icon-btn" type="button" data-pomodoro-close aria-label="Cerrar temporizador" title="Cerrar">${icon("close")}</button>
+          <div class="pomodoro-head__actions">
+            <button class="pomodoro-icon-btn" type="button" data-pomodoro-popout aria-label="Abrir temporizador flotante" title="Abrir fuera de la página">${icon("popout")}</button>
+            <button class="pomodoro-icon-btn" type="button" data-pomodoro-close aria-label="Cerrar temporizador" title="Cerrar">${icon("close")}</button>
+          </div>
         </header>
 
         <div class="pomodoro-cycle-status">
@@ -166,6 +172,8 @@
       </div>
     `;
     document.body.appendChild(menu);
+    const popoutButton = menu.querySelector("[data-pomodoro-popout]");
+    if (popoutButton) popoutButton.hidden = !("documentPictureInPicture" in window);
   }
 
   function numberControl(key, label, suffix) {
@@ -187,7 +195,6 @@
   }
 
   function bindEvents() {
-    document.addEventListener("pointerdown", prepareAudio, { capture: true });
     document.addEventListener("click", handleDocumentClick);
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && isOpen()) closeMenu();
@@ -195,6 +202,10 @@
     window.addEventListener("resize", () => {
       if (isOpen()) placeMenu();
     }, { passive: true });
+    window.addEventListener("pointermove", handleDragMove, { passive: false });
+    window.addEventListener("pointerup", stopDragging, { passive: true });
+    window.addEventListener("pointercancel", stopDragging, { passive: true });
+    window.addEventListener("estudiemos:theme-change", renderPipControls);
     window.addEventListener("storage", (event) => {
       if (event.key !== STORAGE_KEY) return;
       state = loadState();
@@ -213,6 +224,7 @@
     });
 
     const menu = document.querySelector(".pomodoro-menu");
+    menu?.querySelector(".pomodoro-head")?.addEventListener("pointerdown", handleDragStart);
     menu?.addEventListener("change", handleMenuChange);
     menu?.addEventListener("wheel", handleNumberWheel, { passive: false });
     menu?.addEventListener("touchstart", handleWheelTouchStart, { passive: true });
@@ -239,6 +251,7 @@
 
     if (!menu) return;
     const closeButton = event.target.closest("[data-pomodoro-close]");
+    const popoutButton = event.target.closest("[data-pomodoro-popout]");
     const stepButton = event.target.closest("[data-pomodoro-step]");
     const toggleButton = event.target.closest("[data-pomodoro-toggle]");
     const resetButton = event.target.closest("[data-pomodoro-reset]");
@@ -248,6 +261,7 @@
     const ambientButton = event.target.closest("[data-pomodoro-ambient-toggle]");
 
     if (closeButton) closeMenu();
+    else if (popoutButton) openFloatingTimer();
     else if (stepButton) changeConfig(stepButton.dataset.pomodoroKey, Number(stepButton.dataset.pomodoroStep));
     else if (toggleButton) toggleTimer();
     else if (resetButton) resetTimer();
@@ -393,11 +407,142 @@
     const menu = document.querySelector(".pomodoro-menu");
     if (!button || !menu) return;
 
+    if (window.innerWidth <= 760) {
+      draggedPosition = null;
+      menu.style.removeProperty("left");
+      menu.style.removeProperty("right");
+      menu.style.removeProperty("top");
+    } else if (draggedPosition) {
+      applyDraggedPosition(menu, draggedPosition.left, draggedPosition.top);
+      return;
+    }
+
     const rect = button.getBoundingClientRect();
     const top = Math.min(rect.bottom + 10, window.innerHeight - 90);
     const right = Math.max(10, window.innerWidth - rect.right);
     menu.style.setProperty("--pomodoro-top", `${Math.round(top)}px`);
     menu.style.setProperty("--pomodoro-right", `${Math.round(right)}px`);
+  }
+
+  function handleDragStart(event) {
+    if (event.button !== 0 || window.innerWidth <= 760) return;
+    if (event.target.closest("button, input, select, textarea, a, [role='button']")) return;
+
+    const menu = document.querySelector(".pomodoro-menu");
+    if (!menu || !isOpen()) return;
+    const rect = menu.getBoundingClientRect();
+    dragState = {
+      pointerId: event.pointerId,
+      offsetX: event.clientX - rect.left,
+      offsetY: event.clientY - rect.top
+    };
+    menu.classList.add("is-dragging");
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    event.preventDefault();
+  }
+
+  function handleDragMove(event) {
+    if (!dragState || event.pointerId !== dragState.pointerId) return;
+    const menu = document.querySelector(".pomodoro-menu");
+    if (!menu) return;
+    event.preventDefault();
+    applyDraggedPosition(menu, event.clientX - dragState.offsetX, event.clientY - dragState.offsetY);
+  }
+
+  function applyDraggedPosition(menu, left, top) {
+    const margin = 8;
+    const maximumLeft = Math.max(margin, window.innerWidth - menu.offsetWidth - margin);
+    const maximumTop = Math.max(margin, window.innerHeight - Math.min(menu.offsetHeight, window.innerHeight - margin * 2) - margin);
+    const nextLeft = Math.min(maximumLeft, Math.max(margin, left));
+    const nextTop = Math.min(maximumTop, Math.max(margin, top));
+    draggedPosition = { left: nextLeft, top: nextTop };
+    menu.style.left = `${Math.round(nextLeft)}px`;
+    menu.style.right = "auto";
+    menu.style.top = `${Math.round(nextTop)}px`;
+  }
+
+  function stopDragging(event) {
+    if (!dragState || (event.pointerId != null && event.pointerId !== dragState.pointerId)) return;
+    dragState = null;
+    document.querySelector(".pomodoro-menu")?.classList.remove("is-dragging");
+  }
+
+  async function openFloatingTimer() {
+    if (!("documentPictureInPicture" in window)) return;
+    if (pipWindow && !pipWindow.closed) {
+      pipWindow.focus();
+      return;
+    }
+
+    try {
+      prepareAudio();
+      pipWindow = await window.documentPictureInPicture.requestWindow({
+        width: 340,
+        height: 430,
+        disallowReturnToOpener: false
+      });
+      buildFloatingTimer(pipWindow);
+      pipWindow.addEventListener("pagehide", () => {
+        pipWindow = null;
+      }, { once: true });
+      closeMenu();
+      render();
+    } catch (error) {
+      pipWindow = null;
+    }
+  }
+
+  function buildFloatingTimer(targetWindow) {
+    const doc = targetWindow.document;
+    doc.documentElement.lang = "es";
+    doc.head.innerHTML = `<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">`;
+    doc.title = "Temporizador Pomodoro - Estudiemos";
+    const style = doc.createElement("style");
+    style.textContent = floatingTimerStyles();
+    doc.head.appendChild(style);
+    doc.body.innerHTML = `
+      <main class="floating-timer" data-pip-root>
+        <header>
+          <div><small>TEMPORIZADOR POMODORO</small><strong data-pip-cycle></strong></div>
+          <button type="button" data-pip-close aria-label="Cerrar ventana flotante" title="Cerrar">${icon("close")}</button>
+        </header>
+        <div class="floating-phase" data-pip-phase></div>
+        <div class="floating-clock">
+          <svg viewBox="0 0 220 220" aria-hidden="true">
+            <circle class="track" cx="110" cy="110" r="96"></circle>
+            <circle class="progress" data-pip-progress cx="110" cy="110" r="96"></circle>
+          </svg>
+          <div><strong data-pip-time>25:00</strong><span data-pip-label>Bloque 1</span></div>
+        </div>
+        <div class="floating-controls">
+          <button type="button" data-pip-reset aria-label="Reiniciar bloque" title="Reiniciar">${icon("reset")}</button>
+          <button class="primary" type="button" data-pip-toggle>${icon("play")}<span>Empezar</span></button>
+          <button type="button" data-pip-skip aria-label="Siguiente bloque" title="Siguiente">${icon("skip")}</button>
+        </div>
+      </main>
+    `;
+
+    doc.addEventListener("click", (event) => {
+      if (event.target.closest("[data-pip-close]")) targetWindow.close();
+      else if (event.target.closest("[data-pip-reset]")) resetTimer();
+      else if (event.target.closest("[data-pip-toggle]")) toggleTimer();
+      else if (event.target.closest("[data-pip-skip]")) advancePhase(false);
+    });
+  }
+
+  function floatingTimerStyles() {
+    return `
+      :root{color-scheme:dark;--bg:#0b1020;--panel:#111827;--border:#273248;--text:#f3f6fb;--muted:#9ba8bd;--accent:#8ab4f8;--phase:#8ab4f8;font-family:"Space Grotesk",Inter,system-ui,sans-serif}
+      :root[data-theme="light"]{color-scheme:light;--bg:#edf1f5;--panel:#f7f9fb;--border:#d2dae5;--text:#263244;--muted:#657387;--accent:#1a73e8;--phase:#1a73e8}
+      *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg);color:var(--text)}
+      button{font:inherit}.floating-timer{width:100%;min-height:100vh;padding:16px;display:flex;flex-direction:column;justify-content:center;background:var(--panel)}
+      header{display:flex;align-items:center;justify-content:space-between;gap:12px}header div{display:grid;gap:3px}header small{color:var(--muted);font-size:10px;font-weight:800}header strong{font-size:15px}
+      header button,.floating-controls>button{display:grid;place-items:center;border:1px solid var(--border);border-radius:999px;background:transparent;color:var(--muted);cursor:pointer}header button{width:34px;height:34px}
+      button svg{width:17px;height:17px;fill:currentColor}.floating-phase{margin-top:10px;padding:7px 10px;border:1px solid var(--border);border-radius:10px;color:var(--phase);font-size:11px;font-weight:800;text-align:center}
+      .floating-clock{position:relative;width:206px;height:206px;margin:16px auto 14px}.floating-clock svg{width:100%;height:100%;transform:rotate(-90deg)}.floating-clock circle{fill:none;stroke-width:9}.track{stroke:var(--border)}.progress{stroke:var(--phase);stroke-linecap:round;stroke-dasharray:603.19;stroke-dashoffset:603.19}
+      .floating-clock>div{position:absolute;inset:0;display:grid;place-content:center;text-align:center}.floating-clock strong{font-size:42px;line-height:1}.floating-clock span{margin-top:7px;color:var(--muted);font-size:12px;font-weight:700}
+      .floating-controls{display:grid;grid-template-columns:42px minmax(0,1fr) 42px;align-items:center;gap:10px}.floating-controls>button{height:42px}.floating-controls .primary{display:flex;gap:8px;border-radius:11px;border-color:transparent;background:var(--accent);color:#08101f;font-weight:800}.floating-controls .primary.is-alarm{background:#ff7185;color:#25070d}
+    `;
   }
 
   function toggleSoundPanel(button) {
@@ -590,6 +735,7 @@
     if (ambientVolume) ambientVolume.value = String(state.ambientVolume);
     if (alarmVolume) alarmVolume.value = String(state.alarmVolume);
     renderSoundControls();
+    renderPipControls();
 
     const toggle = document.querySelector("[data-pomodoro-toggle]");
     if (toggle) {
@@ -632,6 +778,51 @@
     if (topButton) {
       topButton.classList.toggle("is-running", state.running);
       topButton.title = state.running ? `${compactTime(remaining)} - ${state.phase === "study" ? `Bloque ${state.currentBlock}` : "Descanso"}` : "Temporizador Pomodoro";
+    }
+    renderPipTimer(timeText, progress);
+  }
+
+  function renderPipControls() {
+    const doc = getPipDocument();
+    if (!doc) return;
+    const dark = document.documentElement.classList.contains("theme-dark");
+    doc.documentElement.dataset.theme = dark ? "dark" : "light";
+    doc.documentElement.style.setProperty("--phase", state.phase === "study" ? (dark ? "#8ab4f8" : "#1a73e8") : "#fbbc04");
+
+    const cycle = doc.querySelector("[data-pip-cycle]");
+    const phase = doc.querySelector("[data-pip-phase]");
+    const toggle = doc.querySelector("[data-pip-toggle]");
+    if (cycle) cycle.textContent = `Bloque ${state.currentBlock} de ${state.config.blocks}`;
+    if (phase) phase.textContent = state.phase === "study" ? "ESTUDIO" : "DESCANSO";
+    if (toggle) {
+      toggle.classList.toggle("is-alarm", alarmActive);
+      toggle.innerHTML = alarmActive
+        ? `${icon("bellOff")}<span>Silenciar</span>`
+        : state.running
+          ? `${icon("pause")}<span>Pausar</span>`
+          : `${icon("play")}<span>Empezar</span>`;
+    }
+  }
+
+  function renderPipTimer(timeText, progress) {
+    const doc = getPipDocument();
+    if (!doc) return;
+    const time = doc.querySelector("[data-pip-time]");
+    const label = doc.querySelector("[data-pip-label]");
+    const circle = doc.querySelector("[data-pip-progress]");
+    if (time) {
+      time.textContent = timeText;
+      time.style.fontSize = timeText.length > 9 ? "27px" : timeText.length > 6 ? "34px" : "42px";
+    }
+    if (label) label.textContent = state.phase === "study" ? `Bloque ${state.currentBlock}` : "Descanso";
+    if (circle) circle.style.strokeDashoffset = String(603.19 * (1 - progress));
+  }
+
+  function getPipDocument() {
+    try {
+      return pipWindow && !pipWindow.closed ? pipWindow.document : null;
+    } catch (error) {
+      return null;
     }
   }
 
@@ -1066,6 +1257,7 @@
       skip: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5.5 15 12 5 18.5v-13ZM17 5h2v14h-2V5Z"/></svg>',
       bellOff: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4.3 3 16.7 16.7-1.3 1.3-2.4-2.4H5v-2h2v-5.1c0-1.3.4-2.5 1.1-3.5L3 4.3 4.3 3Zm5.3 6.4c-.4.6-.6 1.3-.6 2.1v5.1h6.3L9.6 9.4ZM12 2a2 2 0 0 1 2 2v.4a7 7 0 0 1 5 6.7v3.2l-2-2v-1.2a5 5 0 0 0-5-5c-.5 0-1 .1-1.5.2L8.9 4.7c.4-.1.7-.2 1.1-.3V4a2 2 0 0 1 2-2Zm-2 18h4a2 2 0 0 1-4 0Z"/></svg>',
       music: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 3v12.2A3.5 3.5 0 1 1 17 12V6.1l-8 1.8v9.3A3.5 3.5 0 1 1 7 14V6.3L19 3ZM5.5 16A1.5 1.5 0 1 0 7 17.5V16H5.5Zm10 0a1.5 1.5 0 1 0 1.5 1.5V16h-1.5Z"/></svg>',
+      popout: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6h-2V7.4l-7.3 7.3-1.4-1.4L16.6 6H14V4ZM5 6h6v2H7v9h9v-4h2v6H5V6Z"/></svg>',
       settings: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.7 4.1a2.3 2.3 0 0 1 4.6 0 2.3 2.3 0 0 0 3.3 1.9 2.3 2.3 0 0 1 2.3 4 2.3 2.3 0 0 0 0 3.8 2.3 2.3 0 0 1-2.3 4 2.3 2.3 0 0 0-3.3 1.9 2.3 2.3 0 0 1-4.6 0 2.3 2.3 0 0 0-3.3-1.9 2.3 2.3 0 0 1-2.3-4 2.3 2.3 0 0 0 0-3.8 2.3 2.3 0 0 1 2.3-4 2.3 2.3 0 0 0 3.3-1.9ZM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/></svg>',
       chevronUp: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5.4 14.8 1.4 1.4 5.2-5.2 5.2 5.2 1.4-1.4L12 8.2l-6.6 6.6Z"/></svg>',
       chevronDown: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5.4 9.2 1.4-1.4 5.2 5.2 5.2-5.2 1.4 1.4L12 15.8 5.4 9.2Z"/></svg>'

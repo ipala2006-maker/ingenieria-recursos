@@ -184,8 +184,8 @@
       return;
     }
 
-    let theme = "light";
-    try { theme = localStorage.getItem("estudiemos_theme") || "light"; } catch (error) {}
+    let theme = "dark";
+    try { theme = localStorage.getItem("estudiemos_theme") || "dark"; } catch (error) {}
     const dark = theme === "dark";
     document.documentElement.classList.toggle("theme-dark", dark);
     document.documentElement.classList.toggle("theme-light", !dark);
@@ -204,7 +204,7 @@
     if (document.querySelector('script[src*="scripts/pomodoro.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/pomodoro.js?v=20260809-spotify-jazz`;
+    script.src = `${rootPath}scripts/pomodoro.js?v=20260811-floating-timer`;
     script.defer = true;
     document.head.appendChild(script);
   }

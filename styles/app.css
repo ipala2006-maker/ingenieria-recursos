@@ -2132,6 +2132,15 @@ html.theme-light .agenda-mini-item b{
 .pomodoro-head{
   justify-content:space-between;
   gap:14px;
+  cursor:grab;
+  touch-action:none;
+  user-select:none;
+}
+.pomodoro-menu.is-dragging .pomodoro-head{
+  cursor:grabbing;
+}
+.pomodoro-menu.is-dragging{
+  transition:none;
 }
 .pomodoro-head h2{
   margin:2px 0 0;
@@ -2156,6 +2165,9 @@ html.theme-light .agenda-mini-item b{
 .pomodoro-icon-btn{
   width:34px;
   height:34px;
+}
+.pomodoro-icon-btn[hidden]{
+  display:none;
 }
 .pomodoro-secondary-btn{
   width:42px;
@@ -2435,6 +2447,10 @@ html.theme-light .pomodoro-summary{
   .pomodoro-menu__panel{
     padding:14px;
     border-radius:14px;
+  }
+  .pomodoro-head{
+    cursor:default;
+    touch-action:auto;
   }
   .pomodoro-timer{
     width:194px;

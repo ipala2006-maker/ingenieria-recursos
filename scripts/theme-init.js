@@ -1,7 +1,7 @@
 (function () {
   var STORAGE_KEY = "estudiemos_theme";
   var TRAY_OPEN_KEY = "bandeja_abierta";
-  var DEFAULT_THEME = "light";
+  var DEFAULT_THEME = "dark";
   var root = document.documentElement;
 
   function installEarlyThemeStyles() {
