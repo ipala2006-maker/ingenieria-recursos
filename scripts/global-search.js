@@ -204,7 +204,7 @@
     if (document.querySelector('script[src*="scripts/pomodoro.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/pomodoro.js?v=20260811-floating-timer`;
+    script.src = `${rootPath}scripts/pomodoro.js?v=20260811-pip-completo`;
     script.defer = true;
     document.head.appendChild(script);
   }

@@ -282,31 +282,26 @@
     }
 
     if (event.target.matches("[data-pomodoro-ambient-mode]")) {
-      const previousMode = state.ambientMode;
-      state.ambientMode = event.target.value;
-      saveState();
-      if (ambientPlaying) startAmbient();
-      else renderSoundControls();
-      if (previousMode === "spotify" && state.ambientMode !== "spotify") resetSpotifyPlayer();
+      setAmbientMode(event.target.value);
       return;
     }
 
     if (event.target.matches("[data-pomodoro-alarm-mode]")) {
       state.alarmMode = event.target.value;
       saveState();
+      renderPipControls();
       return;
     }
 
     if (event.target.matches("[data-pomodoro-ambient-volume]")) {
-      state.ambientVolume = volumeNumber(event.target.value, state.ambientVolume, 2);
-      if (ambientGain) ambientGain.gain.setTargetAtTime(ambientOutputGain(state.ambientVolume), getAudioContext().currentTime, 0.04);
-      saveState();
+      setAmbientVolume(event.target.value);
       return;
     }
 
     if (event.target.matches("[data-pomodoro-alarm-volume]")) {
       state.alarmVolume = Math.max(0.15, volumeNumber(event.target.value, state.alarmVolume, 2));
       saveState();
+      renderPipControls();
       return;
     }
 
@@ -412,6 +407,9 @@
       menu.style.removeProperty("left");
       menu.style.removeProperty("right");
       menu.style.removeProperty("top");
+      menu.style.setProperty("--pomodoro-top", "10px");
+      menu.style.setProperty("--pomodoro-right", "10px");
+      return;
     } else if (draggedPosition) {
       applyDraggedPosition(menu, draggedPosition.left, draggedPosition.top);
       return;
@@ -477,8 +475,8 @@
     try {
       prepareAudio();
       pipWindow = await window.documentPictureInPicture.requestWindow({
-        width: 340,
-        height: 430,
+        width: 360,
+        height: 450,
         disallowReturnToOpener: false
       });
       buildFloatingTimer(pipWindow);
@@ -519,6 +517,43 @@
           <button class="primary" type="button" data-pip-toggle>${icon("play")}<span>Empezar</span></button>
           <button type="button" data-pip-skip aria-label="Siguiente bloque" title="Siguiente">${icon("skip")}</button>
         </div>
+        <button class="floating-disclosure" type="button" data-pip-settings-toggle aria-expanded="false">
+          ${icon("settings")}<span>Configuración del temporizador</span>${icon("chevronDown")}
+        </button>
+        <section class="floating-settings" data-pip-settings-panel hidden>
+          <div class="floating-config">
+            ${floatingNumberControl("blocks", "Bloques", "")}
+            ${floatingNumberControl("study", "Estudio", "min")}
+            ${floatingNumberControl("break", "Descanso", "min")}
+          </div>
+          <div class="floating-summary"><span>Bloques completados hoy</span><strong data-pip-count>0</strong></div>
+          <label class="floating-auto"><input type="checkbox" data-pip-auto><span>Continuar automáticamente</span></label>
+          <button class="floating-disclosure" type="button" data-pip-sound-toggle aria-expanded="false">
+            ${icon("music")}<span>Sonidos para estudiar</span>${icon("chevronDown")}
+          </button>
+          <section class="floating-sounds" data-pip-sound-panel hidden>
+            <label>Ambiente
+              <select data-pip-ambient-mode>
+                <option value="jazz">Jazz suave</option><option value="jazzCafe">Jazz de café</option>
+                <option value="jazzNight">Jazz nocturno</option><option value="rain">Lluvia suave</option>
+                <option value="brown">Ruido marrón</option><option value="spotify">Spotify · Smooth Jazz Beats</option>
+                <option value="random">Aleatorio</option>
+              </select>
+            </label>
+            <button class="floating-play" type="button" data-pip-ambient-toggle>${icon("play")}<span>Reproducir</span></button>
+            <label>Alarma
+              <select data-pip-alarm-mode>
+                <option value="digital">Digital</option><option value="bell">Campana</option>
+                <option value="chime">Carrillón</option><option value="pulse">Pulso</option>
+              </select>
+            </label>
+            <label class="floating-volume" data-pip-ambient-volume-row>Volumen ambiente<input type="range" min="0" max="2" step="0.05" data-pip-ambient-volume></label>
+            <label class="floating-volume">Volumen de alarma<input type="range" min="0.15" max="2" step="0.05" data-pip-alarm-volume></label>
+            <div class="floating-spotify" data-pip-spotify hidden>
+              <iframe title="Smooth Jazz Beats en Spotify" data-src="https://open.spotify.com/embed/playlist/37i9dQZF1DX06817kK7cRP?utm_source=generator&theme=0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>
+            </div>
+          </section>
+        </section>
       </main>
     `;
 
@@ -527,21 +562,123 @@
       else if (event.target.closest("[data-pip-reset]")) resetTimer();
       else if (event.target.closest("[data-pip-toggle]")) toggleTimer();
       else if (event.target.closest("[data-pip-skip]")) advancePhase(false);
+      else if (event.target.closest("[data-pip-step]")) {
+        const button = event.target.closest("[data-pip-step]");
+        changeConfig(button.dataset.pipKey, Number(button.dataset.pipStep));
+      } else if (event.target.closest("[data-pip-settings-toggle]")) {
+        toggleFloatingSection(targetWindow, "settings");
+      } else if (event.target.closest("[data-pip-sound-toggle]")) {
+        toggleFloatingSection(targetWindow, "sound");
+      } else if (event.target.closest("[data-pip-ambient-toggle]")) {
+        toggleAmbient();
+      }
     });
+    doc.addEventListener("change", handleFloatingChange);
+    doc.addEventListener("wheel", (event) => {
+      const wheel = event.target.closest("[data-pip-wheel]");
+      if (!wheel) return;
+      event.preventDefault();
+      changeConfig(wheel.dataset.pipWheel, event.deltaY < 0 ? 1 : -1);
+    }, { passive: false });
+  }
+
+  function floatingNumberControl(key, label, suffix) {
+    return `
+      <div class="floating-number">
+        <span>${label}</span>
+        <div data-pip-wheel="${key}">
+          <button type="button" data-pip-step="1" data-pip-key="${key}" aria-label="Aumentar ${label.toLowerCase()}">${icon("chevronUp")}</button>
+          <small data-pip-preview="next" data-pip-key="${key}"></small>
+          <input type="number" min="${key === "blocks" ? 1 : 0}" ${key === "blocks" ? "" : `max="${MAX_MINUTES}"`} data-pip-value="${key}" aria-label="${label}">
+          <small data-pip-preview="previous" data-pip-key="${key}"></small>
+          <button type="button" data-pip-step="-1" data-pip-key="${key}" aria-label="Reducir ${label.toLowerCase()}">${icon("chevronDown")}</button>
+        </div>
+        ${suffix ? `<small>${suffix}</small>` : ""}
+      </div>`;
+  }
+
+  function toggleFloatingSection(targetWindow, section) {
+    const doc = targetWindow.document;
+    const settings = section === "settings";
+    const button = doc.querySelector(settings ? "[data-pip-settings-toggle]" : "[data-pip-sound-toggle]");
+    const panel = doc.querySelector(settings ? "[data-pip-settings-panel]" : "[data-pip-sound-panel]");
+    if (!button || !panel) return;
+    const open = panel.hidden;
+    panel.hidden = !open;
+    button.classList.toggle("is-open", open);
+    button.setAttribute("aria-expanded", String(open));
+    const root = doc.querySelector("[data-pip-root]");
+    root?.classList.toggle(settings ? "settings-open" : "sound-open", open);
+    if (!settings && open) root?.classList.add("settings-open");
+    if (settings && !open) {
+      const soundButton = doc.querySelector("[data-pip-sound-toggle]");
+      const soundPanel = doc.querySelector("[data-pip-sound-panel]");
+      if (soundButton && soundPanel) {
+        soundPanel.hidden = true;
+        soundButton.classList.remove("is-open");
+        soundButton.setAttribute("aria-expanded", "false");
+      }
+      root?.classList.remove("sound-open");
+    }
+    try {
+      const settingsOpen = !doc.querySelector("[data-pip-settings-panel]")?.hidden;
+      const soundOpen = !doc.querySelector("[data-pip-sound-panel]")?.hidden;
+      targetWindow.resizeTo(settingsOpen ? 390 : 360, soundOpen ? 720 : settingsOpen ? 625 : 450);
+    } catch (error) {}
+    renderPipControls();
+  }
+
+  function handleFloatingChange(event) {
+    const valueInput = event.target.closest("[data-pip-value]");
+    if (valueInput) {
+      applyConfigValue(valueInput.dataset.pipValue, valueInput.value);
+      return;
+    }
+    if (event.target.matches("[data-pip-auto]")) {
+      state.autoStart = event.target.checked;
+      saveState();
+      render();
+      return;
+    }
+    if (event.target.matches("[data-pip-ambient-mode]")) {
+      setAmbientMode(event.target.value);
+      return;
+    }
+    if (event.target.matches("[data-pip-alarm-mode]")) {
+      state.alarmMode = event.target.value;
+      saveState();
+      render();
+      return;
+    }
+    if (event.target.matches("[data-pip-ambient-volume]")) {
+      setAmbientVolume(event.target.value);
+      return;
+    }
+    if (event.target.matches("[data-pip-alarm-volume]")) {
+      state.alarmVolume = Math.max(0.15, volumeNumber(event.target.value, state.alarmVolume, 2));
+      saveState();
+      render();
+    }
   }
 
   function floatingTimerStyles() {
     return `
       :root{color-scheme:dark;--bg:#0b1020;--panel:#111827;--border:#273248;--text:#f3f6fb;--muted:#9ba8bd;--accent:#8ab4f8;--phase:#8ab4f8;font-family:"Space Grotesk",Inter,system-ui,sans-serif}
       :root[data-theme="light"]{color-scheme:light;--bg:#edf1f5;--panel:#f7f9fb;--border:#d2dae5;--text:#263244;--muted:#657387;--accent:#1a73e8;--phase:#1a73e8}
-      *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg);color:var(--text)}
-      button{font:inherit}.floating-timer{width:100%;min-height:100vh;padding:16px;display:flex;flex-direction:column;justify-content:center;background:var(--panel)}
+      *{box-sizing:border-box}[hidden]{display:none!important}body{margin:0;height:100vh;overflow:hidden;background:var(--bg);color:var(--text)}
+      button,select,input{font:inherit}.floating-timer{width:100%;height:100vh;overflow:hidden;padding:13px;display:flex;flex-direction:column;background:var(--panel)}
       header{display:flex;align-items:center;justify-content:space-between;gap:12px}header div{display:grid;gap:3px}header small{color:var(--muted);font-size:10px;font-weight:800}header strong{font-size:15px}
       header button,.floating-controls>button{display:grid;place-items:center;border:1px solid var(--border);border-radius:999px;background:transparent;color:var(--muted);cursor:pointer}header button{width:34px;height:34px}
       button svg{width:17px;height:17px;fill:currentColor}.floating-phase{margin-top:10px;padding:7px 10px;border:1px solid var(--border);border-radius:10px;color:var(--phase);font-size:11px;font-weight:800;text-align:center}
-      .floating-clock{position:relative;width:206px;height:206px;margin:16px auto 14px}.floating-clock svg{width:100%;height:100%;transform:rotate(-90deg)}.floating-clock circle{fill:none;stroke-width:9}.track{stroke:var(--border)}.progress{stroke:var(--phase);stroke-linecap:round;stroke-dasharray:603.19;stroke-dashoffset:603.19}
+      .floating-clock{position:relative;width:190px;height:190px;margin:13px auto 11px;transition:width .16s ease,height .16s ease,margin .16s ease}.floating-clock svg{width:100%;height:100%;transform:rotate(-90deg)}.floating-clock circle{fill:none;stroke-width:9}.track{stroke:var(--border)}.progress{stroke:var(--phase);stroke-linecap:round;stroke-dasharray:603.19;stroke-dashoffset:603.19;transition:stroke-dashoffset .12s linear}
       .floating-clock>div{position:absolute;inset:0;display:grid;place-content:center;text-align:center}.floating-clock strong{font-size:42px;line-height:1}.floating-clock span{margin-top:7px;color:var(--muted);font-size:12px;font-weight:700}
       .floating-controls{display:grid;grid-template-columns:42px minmax(0,1fr) 42px;align-items:center;gap:10px}.floating-controls>button{height:42px}.floating-controls .primary{display:flex;gap:8px;border-radius:11px;border-color:transparent;background:var(--accent);color:#08101f;font-weight:800}.floating-controls .primary.is-alarm{background:#ff7185;color:#25070d}
+      .floating-disclosure{width:100%;min-height:36px;display:grid;grid-template-columns:17px minmax(0,1fr) 16px;align-items:center;gap:8px;margin-top:8px;padding:6px 9px;border:1px solid var(--border);border-radius:10px;background:transparent;color:var(--muted);font-size:11px;font-weight:800;text-align:left;cursor:pointer}.floating-disclosure svg:last-child{transition:transform .16s ease}.floating-disclosure.is-open svg:last-child{transform:rotate(180deg)}
+      .floating-settings{margin-top:5px;padding:7px;border:1px solid var(--border);border-radius:11px;background:color-mix(in srgb,var(--panel) 84%,var(--bg))}.floating-config{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.floating-number{min-width:0;display:grid;gap:2px;color:var(--muted);font-size:10px;font-weight:800;text-align:center}.floating-number>div{display:grid;grid-template-rows:15px 9px 25px 9px 15px;overflow:hidden;border:1px solid var(--border);border-radius:9px;background:var(--bg)}.floating-number button{height:15px;display:grid;place-items:center;border:0;background:transparent;color:var(--muted);cursor:pointer}.floating-number button svg{width:11px;height:11px}.floating-number button:disabled{opacity:.2}.floating-number small{font-size:9px;line-height:9px;color:var(--muted)}.floating-number input{width:100%;height:25px;border:0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);outline:0;background:color-mix(in srgb,var(--accent) 8%,transparent);color:var(--text);font-weight:900;text-align:center;appearance:textfield}.floating-number input::-webkit-inner-spin-button{appearance:none}
+      .floating-summary{min-height:28px;display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px;padding:5px 7px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);color:var(--muted);font-size:10px;font-weight:750}.floating-summary strong{min-width:22px;height:22px;display:grid;place-items:center;border-radius:999px;background:color-mix(in srgb,var(--accent) 13%,transparent);color:var(--text)}.floating-auto{min-height:29px;display:flex;align-items:center;gap:7px;margin-top:5px;padding:5px 7px;border:1px solid var(--border);border-radius:9px;color:var(--muted);font-size:10px;font-weight:750}.floating-auto input{accent-color:var(--accent)}
+      .floating-sounds{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;margin-top:5px;padding:7px;border:1px solid var(--border);border-radius:9px}.floating-sounds>label{min-width:0;display:grid;grid-template-columns:52px minmax(0,1fr);align-items:center;gap:6px;color:var(--muted);font-size:9px;font-weight:750}.floating-sounds select{min-width:0;height:29px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);padding:4px 7px;font-size:10px;font-weight:700}.floating-play{min-height:29px;display:flex;align-items:center;justify-content:center;gap:5px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text);font-size:10px;font-weight:800;cursor:pointer}.floating-volume{grid-column:1/-1}.floating-volume input{width:100%;accent-color:var(--accent)}.floating-spotify{grid-column:1/-1}.floating-spotify iframe{display:block;width:100%;height:80px;border:0;border-radius:8px}
+      .settings-open .floating-clock{width:118px;height:118px;margin:6px auto 5px}.settings-open .floating-clock strong{font-size:30px}.settings-open .floating-clock span{margin-top:4px;font-size:10px}.settings-open .floating-phase{margin-top:6px;padding:5px}.settings-open .floating-controls{grid-template-columns:36px minmax(0,1fr) 36px;gap:7px}.settings-open .floating-controls>button{height:36px}.settings-open header button{width:30px;height:30px}.settings-open header strong{font-size:13px}.sound-open .floating-clock{width:94px;height:94px}.sound-open .floating-clock strong{font-size:25px}
+      @media(max-height:560px){.floating-timer{padding:9px}.floating-clock{width:154px;height:154px;margin:8px auto}.floating-disclosure{margin-top:5px}.settings-open .floating-clock{width:92px;height:92px}.floating-settings{padding:5px}.floating-sounds{padding:5px}}
     `;
   }
 
@@ -552,6 +689,7 @@
     panel.hidden = !open;
     button.classList.toggle("is-open", open);
     button.setAttribute("aria-expanded", String(open));
+    document.querySelector(".pomodoro-menu__panel")?.classList.toggle("is-sound-open", open);
     if (open) renderSoundControls();
   }
 
@@ -562,6 +700,7 @@
     panel.hidden = !open;
     button.classList.toggle("is-open", open);
     button.setAttribute("aria-expanded", String(open));
+    document.querySelector(".pomodoro-menu__panel")?.classList.toggle("is-config-open", open);
   }
 
   function closeConfigPanel() {
@@ -571,6 +710,14 @@
     panel.hidden = true;
     button.classList.remove("is-open");
     button.setAttribute("aria-expanded", "false");
+    document.querySelector(".pomodoro-menu__panel")?.classList.remove("is-config-open", "is-sound-open");
+    const soundButton = document.querySelector("[data-pomodoro-sound-settings]");
+    const soundPanel = document.querySelector("[data-pomodoro-sound-panel]");
+    if (soundButton && soundPanel) {
+      soundPanel.hidden = true;
+      soundButton.classList.remove("is-open");
+      soundButton.setAttribute("aria-expanded", "false");
+    }
   }
 
   function toggleTimer() {
@@ -802,6 +949,52 @@
           ? `${icon("pause")}<span>Pausar</span>`
           : `${icon("play")}<span>Empezar</span>`;
     }
+
+    doc.querySelectorAll("[data-pip-value]").forEach((input) => {
+      const key = input.dataset.pipValue;
+      if (doc.activeElement !== input) input.value = String(state.config[key]);
+    });
+    doc.querySelectorAll("[data-pip-preview]").forEach((preview) => {
+      const key = preview.dataset.pipKey;
+      const difference = preview.dataset.pipPreview === "next" ? 1 : -1;
+      const candidate = state.config[key] + difference;
+      preview.textContent = key === "blocks" ? String(Math.max(1, candidate)) : String(wrapMinute(candidate));
+    });
+    doc.querySelectorAll("[data-pip-step]").forEach((button) => {
+      const candidate = state.config[button.dataset.pipKey] + Number(button.dataset.pipStep);
+      button.disabled = button.dataset.pipKey === "blocks" && candidate < 1;
+    });
+
+    const count = doc.querySelector("[data-pip-count]");
+    const auto = doc.querySelector("[data-pip-auto]");
+    const ambientMode = doc.querySelector("[data-pip-ambient-mode]");
+    const alarmMode = doc.querySelector("[data-pip-alarm-mode]");
+    const ambientVolume = doc.querySelector("[data-pip-ambient-volume]");
+    const alarmVolume = doc.querySelector("[data-pip-alarm-volume]");
+    if (count) count.textContent = String(state.completedToday);
+    if (auto) auto.checked = state.autoStart;
+    if (ambientMode) ambientMode.value = state.ambientMode;
+    if (alarmMode) alarmMode.value = state.alarmMode;
+    if (ambientVolume) ambientVolume.value = String(state.ambientVolume);
+    if (alarmVolume) alarmVolume.value = String(state.alarmVolume);
+
+    const spotifySelected = state.ambientMode === "spotify";
+    const ambientButton = doc.querySelector("[data-pip-ambient-toggle]");
+    const ambientVolumeRow = doc.querySelector("[data-pip-ambient-volume-row]");
+    const spotifyPlayer = doc.querySelector("[data-pip-spotify]");
+    if (ambientButton) {
+      ambientButton.hidden = spotifySelected;
+      ambientButton.innerHTML = ambientPlaying
+        ? `${icon("pause")}<span>Pausar</span>`
+        : `${icon("play")}<span>Reproducir</span>`;
+    }
+    if (ambientVolumeRow) ambientVolumeRow.hidden = spotifySelected;
+    if (spotifyPlayer) {
+      spotifyPlayer.hidden = !spotifySelected;
+      const soundPanel = doc.querySelector("[data-pip-sound-panel]");
+      const iframe = spotifyPlayer.querySelector("iframe");
+      if (spotifySelected && soundPanel && !soundPanel.hidden && iframe && !iframe.getAttribute("src")) iframe.src = iframe.dataset.src;
+    }
   }
 
   function renderPipTimer(timeText, progress) {
@@ -917,7 +1110,7 @@
     prepareAudio();
     if (ambientPlaying) stopAmbient();
     else startAmbient();
-    renderSoundControls();
+    render();
   }
 
   function startAmbient() {
@@ -1127,10 +1320,28 @@
     if (ambientVolumeRow) ambientVolumeRow.hidden = spotifySelected;
   }
 
+  function setAmbientMode(value) {
+    const previousMode = state.ambientMode;
+    state.ambientMode = value;
+    saveState();
+    if (ambientPlaying) startAmbient();
+    if (previousMode === "spotify" && state.ambientMode !== "spotify") resetSpotifyPlayer();
+    render();
+  }
+
+  function setAmbientVolume(value) {
+    state.ambientVolume = volumeNumber(value, state.ambientVolume, 2);
+    if (ambientGain) {
+      const context = getAudioContext();
+      if (context) ambientGain.gain.setTargetAtTime(ambientOutputGain(state.ambientVolume), context.currentTime, 0.04);
+    }
+    saveState();
+    render();
+  }
+
   function resetSpotifyPlayer() {
-    const iframe = document.querySelector("[data-pomodoro-spotify-player] iframe");
-    if (!iframe) return;
-    iframe.removeAttribute("src");
+    document.querySelector("[data-pomodoro-spotify-player] iframe")?.removeAttribute("src");
+    getPipDocument()?.querySelector("[data-pip-spotify] iframe")?.removeAttribute("src");
   }
 
   function loadSpotifyPlayer() {
