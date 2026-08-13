@@ -3511,3 +3511,24 @@ html.theme-light .app-install-sheet__close{
     display:inline-grid;
   }
 }
+
+.pomodoro-platform-note{
+  margin:8px 0 0;
+  padding:8px 10px;
+  border:1px solid color-mix(in srgb, var(--accent) 22%, var(--border));
+  border-radius:9px;
+  background:color-mix(in srgb, var(--accent) 7%, transparent);
+  color:var(--muted);
+  font-size:11px;
+  line-height:1.4;
+}
+
+.pomodoro-pip-video{
+  position:fixed;
+  left:-4px;
+  bottom:-4px;
+  width:2px;
+  height:2px;
+  opacity:.01;
+  pointer-events:none;
+}

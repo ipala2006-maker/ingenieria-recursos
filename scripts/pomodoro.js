@@ -25,6 +25,9 @@
   let dragState = null;
   let draggedPosition = null;
   let pipWindow = null;
+  let videoPip = null;
+  let videoPipDrawTimer = 0;
+  let videoPipOpening = false;
   let wakeLock = null;
   let wakeLockRequest = null;
   let serviceWorkerRegistration = null;
@@ -87,6 +90,8 @@
           <span data-pomodoro-cycle>Bloque 1 de 4</span>
           <strong data-pomodoro-phase>Estudio</strong>
         </div>
+
+        <p class="pomodoro-platform-note" data-pomodoro-platform-note hidden></p>
 
         <div class="pomodoro-timer">
           <svg class="pomodoro-ring" viewBox="0 0 220 220" aria-hidden="true">
@@ -551,7 +556,24 @@
 
   async function openFloatingTimer() {
     if (supportsMobileFloating()) {
-      toggleMobileFloating();
+      if (isMobileFloating()) {
+        setMobileFloating(false);
+        placeMenu();
+        return;
+      }
+
+      const opened = await openVideoPictureInPicture();
+      if (opened) {
+        setPlatformNote("");
+        closeMenu();
+        return;
+      }
+
+      setPlatformNote(isIOS()
+        ? "iPhone no permite mostrar una app web instalada en la isla dinámica ni en Picture-in-Picture. Se mantiene el modo compacto dentro de Estudiemos."
+        : "Este navegador no habilitó Picture-in-Picture. Se mantiene el modo compacto dentro de Estudiemos.");
+      setMobileFloating(true);
+      placeMenu();
       return;
     }
     if (!("documentPictureInPicture" in window)) return;
@@ -1019,7 +1041,11 @@
       topButton.classList.toggle("is-running", state.running);
       topButton.title = state.running ? `${compactTime(remaining)} - ${state.phase === "study" ? `Bloque ${state.currentBlock}` : "Descanso"}` : "Temporizador Pomodoro";
     }
+    if (videoPip && "mediaSession" in navigator) {
+      try { navigator.mediaSession.playbackState = state.running ? "playing" : "paused"; } catch (error) {}
+    }
     renderPipTimer(timeText, progress);
+    drawVideoPipFrame();
   }
 
   function renderPipControls() {
@@ -1136,6 +1162,201 @@
     } catch (error) {
       serviceWorkerRegistration = null;
     }
+  }
+
+  function supportsVideoPictureInPicture() {
+    return Boolean(
+      document.pictureInPictureEnabled
+      && window.HTMLCanvasElement?.prototype?.captureStream
+      && window.HTMLVideoElement?.prototype?.requestPictureInPicture
+    );
+  }
+
+  async function openVideoPictureInPicture() {
+    if (!supportsVideoPictureInPicture() || videoPipOpening) return false;
+    if (videoPip?.video && document.pictureInPictureElement === videoPip.video) return true;
+
+    videoPipOpening = true;
+    try {
+      const session = createVideoPipSession();
+      drawVideoPipFrame();
+      await session.video.play();
+      await session.video.requestPictureInPicture();
+      session.controlsReady = true;
+      startVideoPipRenderer();
+      configureMediaSession(true);
+      return true;
+    } catch (error) {
+      destroyVideoPipSession();
+      return false;
+    } finally {
+      videoPipOpening = false;
+    }
+  }
+
+  function createVideoPipSession() {
+    if (videoPip) return videoPip;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 720;
+    canvas.height = 405;
+    const context = canvas.getContext("2d");
+    const stream = canvas.captureStream(15);
+    const video = document.createElement("video");
+    video.className = "pomodoro-pip-video";
+    video.autoplay = true;
+    video.muted = true;
+    video.playsInline = true;
+    video.disableRemotePlayback = true;
+    video.setAttribute("playsinline", "");
+    video.setAttribute("webkit-playsinline", "");
+    video.srcObject = stream;
+    video.addEventListener("leavepictureinpicture", destroyVideoPipSession, { once: true });
+    video.addEventListener("play", handleVideoPipPlay);
+    video.addEventListener("pause", handleVideoPipPause);
+    document.body.appendChild(video);
+    videoPip = { canvas, context, stream, video, controlsReady: false };
+    return videoPip;
+  }
+
+  function handleVideoPipPlay() {
+    if (!videoPip?.controlsReady || document.pictureInPictureElement !== videoPip.video) return;
+    if (!state.running && !alarmActive) toggleTimer();
+  }
+
+  function handleVideoPipPause() {
+    if (!videoPip?.controlsReady || document.pictureInPictureElement !== videoPip.video) return;
+    if (state.running || alarmActive) toggleTimer();
+  }
+
+  function startVideoPipRenderer() {
+    stopVideoPipRenderer();
+    drawVideoPipFrame();
+    videoPipDrawTimer = window.setInterval(drawVideoPipFrame, 80);
+  }
+
+  function stopVideoPipRenderer() {
+    if (!videoPipDrawTimer) return;
+    clearInterval(videoPipDrawTimer);
+    videoPipDrawTimer = 0;
+  }
+
+  function destroyVideoPipSession() {
+    stopVideoPipRenderer();
+    configureMediaSession(false);
+    if (!videoPip) return;
+    const session = videoPip;
+    session.controlsReady = false;
+    videoPip = null;
+    session.video.removeEventListener("play", handleVideoPipPlay);
+    session.video.removeEventListener("pause", handleVideoPipPause);
+    session.video.pause();
+    session.video.srcObject = null;
+    session.stream.getTracks().forEach((track) => track.stop());
+    session.video.remove();
+  }
+
+  function drawVideoPipFrame() {
+    if (!videoPip?.context) return;
+    const { canvas, context: ctx } = videoPip;
+    const width = canvas.width;
+    const height = canvas.height;
+    const dark = document.documentElement.classList.contains("theme-dark");
+    const background = dark ? "#0b1020" : "#eef2f6";
+    const panel = dark ? "#111827" : "#f8fafc";
+    const text = dark ? "#f3f6fb" : "#263244";
+    const muted = dark ? "#9ba8bd" : "#657387";
+    const track = dark ? "#273248" : "#d2dae5";
+    const phaseColor = state.phase === "study" ? (dark ? "#8ab4f8" : "#1a73e8") : "#fbbc04";
+    const preciseRemaining = state.running ? preciseRemainingSeconds() : state.remaining;
+    const remaining = Math.max(0, Math.ceil(preciseRemaining));
+    const timeText = `${String(Math.floor(remaining / 60)).padStart(2, "0")}:${String(remaining % 60).padStart(2, "0")}`;
+    const total = durationSeconds(state.phase);
+    const progress = total > 0 ? Math.min(1, Math.max(0, 1 - preciseRemaining / total)) : 0;
+
+    ctx.fillStyle = background;
+    ctx.fillRect(0, 0, width, height);
+    ctx.fillStyle = panel;
+    ctx.fillRect(12, 12, width - 24, height - 24);
+
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = muted;
+    ctx.font = "700 18px system-ui, sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText("TEMPORIZADOR POMODORO", 38, 48);
+
+    ctx.fillStyle = phaseColor;
+    ctx.font = "800 18px system-ui, sans-serif";
+    ctx.textAlign = "right";
+    ctx.fillText(state.phase === "study" ? "ESTUDIO" : "DESCANSO", width - 38, 48);
+
+    const centerX = width / 2;
+    const centerY = 222;
+    const radius = 125;
+    ctx.lineWidth = 14;
+    ctx.lineCap = "round";
+    ctx.strokeStyle = track;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = phaseColor;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
+    ctx.stroke();
+
+    ctx.fillStyle = text;
+    ctx.font = `800 ${timeText.length > 6 ? 68 : 82}px system-ui, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.fillText(timeText, centerX, centerY - 9);
+    ctx.fillStyle = muted;
+    ctx.font = "700 22px system-ui, sans-serif";
+    ctx.fillText(state.phase === "study" ? `Bloque ${state.currentBlock} de ${state.config.blocks}` : "Descanso", centerX, centerY + 58);
+
+    ctx.fillStyle = state.running ? phaseColor : muted;
+    ctx.font = "700 17px system-ui, sans-serif";
+    ctx.fillText(state.running ? "EN CURSO" : alarmActive ? "ALARMA" : "PAUSADO", centerX, height - 35);
+  }
+
+  function configureMediaSession(active) {
+    if (!("mediaSession" in navigator)) return;
+    const setHandler = (action, handler) => {
+      try { navigator.mediaSession.setActionHandler(action, handler); } catch (error) {}
+    };
+    if (!active) {
+      setHandler("play", null);
+      setHandler("pause", null);
+      setHandler("nexttrack", null);
+      setHandler("previoustrack", null);
+      return;
+    }
+
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: "Temporizador Pomodoro",
+        artist: "Estudiemos",
+        album: "Sesión por bloques",
+        artwork: [
+          { src: new URL("../assets/icon-192.png", SCRIPT_URL).href, sizes: "192x192", type: "image/png" },
+          { src: new URL("../assets/icon-512.png", SCRIPT_URL).href, sizes: "512x512", type: "image/png" }
+        ]
+      });
+    } catch (error) {}
+    setHandler("play", () => { if (!state.running) toggleTimer(); });
+    setHandler("pause", () => { if (state.running) toggleTimer(); });
+    setHandler("nexttrack", () => advancePhase(false));
+    setHandler("previoustrack", resetTimer);
+  }
+
+  function setPlatformNote(message) {
+    const note = document.querySelector("[data-pomodoro-platform-note]");
+    if (!note) return;
+    note.textContent = message;
+    note.hidden = !message;
+  }
+
+  function isIOS() {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent)
+      || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   }
 
   async function requestDeviceAlerts() {
