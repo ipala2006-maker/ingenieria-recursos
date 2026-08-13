@@ -26,7 +26,6 @@
   let draggedPosition = null;
   let pipWindow = null;
   let videoPip = null;
-  let videoPipDrawTimer = 0;
   let videoPipOpening = false;
   let wakeLock = null;
   let wakeLockRequest = null;
@@ -1183,7 +1182,7 @@
       await session.video.play();
       await session.video.requestPictureInPicture();
       session.controlsReady = true;
-      startVideoPipRenderer();
+      drawVideoPipFrame();
       configureMediaSession(true);
       return true;
     } catch (error) {
@@ -1198,10 +1197,16 @@
     if (videoPip) return videoPip;
 
     const canvas = document.createElement("canvas");
-    canvas.width = 720;
-    canvas.height = 405;
-    const context = canvas.getContext("2d");
-    const stream = canvas.captureStream(15);
+    canvas.className = "pomodoro-pip-canvas";
+    canvas.width = 1280;
+    canvas.height = 720;
+    const context = canvas.getContext("2d", { alpha: false, desynchronized: true });
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = "high";
+    const supportsManualFrames = typeof window.CanvasCaptureMediaStreamTrack !== "undefined"
+      && "requestFrame" in window.CanvasCaptureMediaStreamTrack.prototype;
+    const stream = canvas.captureStream(supportsManualFrames ? 0 : 10);
+    const frameTrack = stream.getVideoTracks()[0] || null;
     const video = document.createElement("video");
     video.className = "pomodoro-pip-video";
     video.autoplay = true;
@@ -1214,8 +1219,8 @@
     video.addEventListener("leavepictureinpicture", destroyVideoPipSession, { once: true });
     video.addEventListener("play", handleVideoPipPlay);
     video.addEventListener("pause", handleVideoPipPause);
-    document.body.appendChild(video);
-    videoPip = { canvas, context, stream, video, controlsReady: false };
+    document.body.append(canvas, video);
+    videoPip = { canvas, context, stream, frameTrack, video, controlsReady: false };
     return videoPip;
   }
 
@@ -1229,20 +1234,7 @@
     if (state.running || alarmActive) toggleTimer();
   }
 
-  function startVideoPipRenderer() {
-    stopVideoPipRenderer();
-    drawVideoPipFrame();
-    videoPipDrawTimer = window.setInterval(drawVideoPipFrame, 80);
-  }
-
-  function stopVideoPipRenderer() {
-    if (!videoPipDrawTimer) return;
-    clearInterval(videoPipDrawTimer);
-    videoPipDrawTimer = 0;
-  }
-
   function destroyVideoPipSession() {
-    stopVideoPipRenderer();
     configureMediaSession(false);
     if (!videoPip) return;
     const session = videoPip;
@@ -1253,6 +1245,7 @@
     session.video.pause();
     session.video.srcObject = null;
     session.stream.getTracks().forEach((track) => track.stop());
+    session.canvas.remove();
     session.video.remove();
   }
 
@@ -1262,11 +1255,12 @@
     const width = canvas.width;
     const height = canvas.height;
     const dark = document.documentElement.classList.contains("theme-dark");
-    const background = dark ? "#0b1020" : "#eef2f6";
+    const background = dark ? "#080d18" : "#e9eef4";
     const panel = dark ? "#111827" : "#f8fafc";
+    const panelRaised = dark ? "#172033" : "#ffffff";
     const text = dark ? "#f3f6fb" : "#263244";
     const muted = dark ? "#9ba8bd" : "#657387";
-    const track = dark ? "#273248" : "#d2dae5";
+    const track = dark ? "#2b364b" : "#d4dce7";
     const phaseColor = state.phase === "study" ? (dark ? "#8ab4f8" : "#1a73e8") : "#fbbc04";
     const preciseRemaining = state.running ? preciseRemainingSeconds() : state.remaining;
     const remaining = Math.max(0, Math.ceil(preciseRemaining));
@@ -1277,44 +1271,77 @@
     ctx.fillStyle = background;
     ctx.fillRect(0, 0, width, height);
     ctx.fillStyle = panel;
-    ctx.fillRect(12, 12, width - 24, height - 24);
+    roundedRect(ctx, 24, 24, width - 48, height - 48, 42);
+    ctx.fill();
 
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = muted;
-    ctx.font = "700 18px system-ui, sans-serif";
-    ctx.textAlign = "left";
-    ctx.fillText("TEMPORIZADOR POMODORO", 38, 48);
-
+    ctx.fillStyle = panelRaised;
+    roundedRect(ctx, 58, 54, 74, 74, 20);
+    ctx.fill();
     ctx.fillStyle = phaseColor;
-    ctx.font = "800 18px system-ui, sans-serif";
-    ctx.textAlign = "right";
-    ctx.fillText(state.phase === "study" ? "ESTUDIO" : "DESCANSO", width - 38, 48);
-
-    const centerX = width / 2;
-    const centerY = 222;
-    const radius = 125;
-    ctx.lineWidth = 14;
-    ctx.lineCap = "round";
-    ctx.strokeStyle = track;
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.strokeStyle = phaseColor;
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, radius, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
-    ctx.stroke();
+    ctx.font = "800 48px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("Σ", 95, 92);
 
     ctx.fillStyle = text;
-    ctx.font = `800 ${timeText.length > 6 ? 68 : 82}px system-ui, sans-serif`;
-    ctx.textAlign = "center";
-    ctx.fillText(timeText, centerX, centerY - 9);
+    ctx.font = "700 30px system-ui, sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText("Estudiemos", 154, 78);
     ctx.fillStyle = muted;
-    ctx.font = "700 22px system-ui, sans-serif";
-    ctx.fillText(state.phase === "study" ? `Bloque ${state.currentBlock} de ${state.config.blocks}` : "Descanso", centerX, centerY + 58);
+    ctx.font = "650 20px system-ui, sans-serif";
+    ctx.fillText("Temporizador Pomodoro", 154, 111);
+
+    ctx.fillStyle = dark ? "#1d2a42" : "#e8f0fe";
+    roundedRect(ctx, width - 262, 63, 190, 52, 26);
+    ctx.fill();
+    ctx.fillStyle = phaseColor;
+    ctx.font = "800 20px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(state.phase === "study" ? "ESTUDIO" : "DESCANSO", width - 167, 90);
+
+    const centerX = width / 2;
+    ctx.fillStyle = text;
+    ctx.font = `800 ${timeText.length > 6 ? 144 : 174}px system-ui, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.fillText(timeText, centerX, 326);
+    ctx.fillStyle = muted;
+    ctx.font = "700 31px system-ui, sans-serif";
+    ctx.fillText(state.phase === "study" ? `Bloque ${state.currentBlock} de ${state.config.blocks}` : "Descanso", centerX, 426);
+
+    const progressX = 92;
+    const progressY = 498;
+    const progressWidth = width - 184;
+    const progressHeight = 18;
+    ctx.fillStyle = track;
+    roundedRect(ctx, progressX, progressY, progressWidth, progressHeight, 9);
+    ctx.fill();
+    if (progress > 0) {
+      ctx.fillStyle = phaseColor;
+      roundedRect(ctx, progressX, progressY, Math.max(progressHeight, progressWidth * progress), progressHeight, 9);
+      ctx.fill();
+    }
 
     ctx.fillStyle = state.running ? phaseColor : muted;
-    ctx.font = "700 17px system-ui, sans-serif";
-    ctx.fillText(state.running ? "EN CURSO" : alarmActive ? "ALARMA" : "PAUSADO", centerX, height - 35);
+    ctx.font = "750 22px system-ui, sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText(state.running ? "EN CURSO" : alarmActive ? "ALARMA" : "PAUSADO", progressX, 568);
+    ctx.fillStyle = muted;
+    ctx.font = "650 20px system-ui, sans-serif";
+    ctx.textAlign = "right";
+    ctx.fillText("Tocá la ventana para ver los controles", width - progressX, 568);
+
+    try { videoPip.frameTrack?.requestFrame?.(); } catch (error) {}
+  }
+
+  function roundedRect(context, x, y, width, height, radius) {
+    const safeRadius = Math.min(radius, width / 2, height / 2);
+    context.beginPath();
+    context.moveTo(x + safeRadius, y);
+    context.arcTo(x + width, y, x + width, y + height, safeRadius);
+    context.arcTo(x + width, y + height, x, y + height, safeRadius);
+    context.arcTo(x, y + height, x, y, safeRadius);
+    context.arcTo(x, y, x + width, y, safeRadius);
+    context.closePath();
   }
 
   function configureMediaSession(active) {

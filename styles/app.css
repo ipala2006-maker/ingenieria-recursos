@@ -3523,7 +3523,8 @@ html.theme-light .app-install-sheet__close{
   line-height:1.4;
 }
 
-.pomodoro-pip-video{
+.pomodoro-pip-video,
+.pomodoro-pip-canvas{
   position:fixed;
   left:-4px;
   bottom:-4px;
