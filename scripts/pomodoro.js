@@ -6,7 +6,9 @@
 
   window.__estudiemosPomodoroInstalled = true;
 
+  const SCRIPT_URL = document.currentScript?.src || new URL("scripts/pomodoro.js", location.href).href;
   const STORAGE_KEY = "estudiemos_pomodoro";
+  const MOBILE_FLOATING_KEY = "estudiemos_pomodoro_mobile_floating";
   const DEFAULT_CONFIG = { blocks: 4, study: 25, break: 5 };
   const MAX_MINUTES = 59;
   const MINUTE_VALUES = MAX_MINUTES + 1;
@@ -23,13 +25,19 @@
   let dragState = null;
   let draggedPosition = null;
   let pipWindow = null;
+  let wakeLock = null;
+  let wakeLockRequest = null;
+  let serviceWorkerRegistration = null;
 
   addButton();
   addMenu();
   bindEvents();
+  registerDeviceSupport();
   reconcileTimer(false);
   render();
   startTickerIfNeeded();
+  restoreMobileFloating();
+  if (state.running) requestWakeLock();
 
   function addButton() {
     let nav = topbar.querySelector(".topbar__nav");
@@ -117,6 +125,10 @@
               <input type="checkbox" data-pomodoro-auto />
               <span>Continuar automáticamente</span>
             </label>
+            <div class="pomodoro-device-alerts" data-pomodoro-device-alerts-row>
+              <span>${icon("bell")}<span>Avisos del dispositivo</span></span>
+              <button type="button" data-pomodoro-device-alerts>Activar</button>
+            </div>
           </div>
 
           <button class="pomodoro-sound-toggle" type="button" data-pomodoro-sound-settings aria-expanded="false">
@@ -173,7 +185,13 @@
     `;
     document.body.appendChild(menu);
     const popoutButton = menu.querySelector("[data-pomodoro-popout]");
-    if (popoutButton) popoutButton.hidden = !("documentPictureInPicture" in window);
+    if (popoutButton) {
+      popoutButton.hidden = !("documentPictureInPicture" in window) && !supportsMobileFloating();
+      if (supportsMobileFloating()) {
+        popoutButton.setAttribute("aria-label", "Minimizar temporizador");
+        popoutButton.title = "Usar como ventana flotante";
+      }
+    }
   }
 
   function numberControl(key, label, suffix) {
@@ -202,6 +220,12 @@
     window.addEventListener("resize", () => {
       if (isOpen()) placeMenu();
     }, { passive: true });
+    window.visualViewport?.addEventListener("resize", () => {
+      if (isMobileFloating()) placeMenu();
+    }, { passive: true });
+    window.visualViewport?.addEventListener("scroll", () => {
+      if (isMobileFloating()) placeMenu();
+    }, { passive: true });
     window.addEventListener("pointermove", handleDragMove, { passive: false });
     window.addEventListener("pointerup", stopDragging, { passive: true });
     window.addEventListener("pointercancel", stopDragging, { passive: true });
@@ -217,6 +241,7 @@
       if (document.visibilityState !== "visible") return;
       reconcileTimer(true);
       render();
+      syncWakeLock();
     });
     document.addEventListener("estudiemos:navigation", () => {
       if (isOpen()) placeMenu();
@@ -259,6 +284,7 @@
     const configButton = event.target.closest("[data-pomodoro-config-toggle]");
     const soundSettingsButton = event.target.closest("[data-pomodoro-sound-settings]");
     const ambientButton = event.target.closest("[data-pomodoro-ambient-toggle]");
+    const deviceAlertsButton = event.target.closest("[data-pomodoro-device-alerts]");
 
     if (closeButton) closeMenu();
     else if (popoutButton) openFloatingTimer();
@@ -269,7 +295,8 @@
     else if (configButton) toggleConfigPanel(configButton);
     else if (soundSettingsButton) toggleSoundPanel(soundSettingsButton);
     else if (ambientButton) toggleAmbient();
-    else if (isOpen() && !menu.contains(event.target)) closeMenu();
+    else if (deviceAlertsButton) requestDeviceAlerts();
+    else if (isOpen() && !isMobileFloating() && !menu.contains(event.target)) closeMenu();
   }
 
   function handleMenuChange(event) {
@@ -388,6 +415,7 @@
   }
 
   function closeMenu() {
+    setMobileFloating(false);
     document.body.classList.remove("pomodoro-open");
     document.querySelector(".pomodoro-menu")?.setAttribute("aria-hidden", "true");
     document.querySelector("[data-pomodoro-open]")?.setAttribute("aria-expanded", "false");
@@ -397,10 +425,66 @@
     return document.body.classList.contains("pomodoro-open");
   }
 
+  function supportsMobileFloating() {
+    return window.matchMedia("(max-width: 760px), (pointer: coarse)").matches;
+  }
+
+  function isMobileFloating() {
+    return document.querySelector(".pomodoro-menu")?.classList.contains("is-mobile-floating") || false;
+  }
+
+  function toggleMobileFloating() {
+    setMobileFloating(!isMobileFloating());
+    if (!isOpen()) openMenu();
+    else placeMenu();
+  }
+
+  function setMobileFloating(enabled) {
+    const active = Boolean(enabled && supportsMobileFloating());
+    const menu = document.querySelector(".pomodoro-menu");
+    const button = document.querySelector("[data-pomodoro-popout]");
+    menu?.classList.toggle("is-mobile-floating", active);
+    document.body.classList.toggle("pomodoro-mobile-floating", active);
+    button?.classList.toggle("is-active", active);
+    if (button && !("documentPictureInPicture" in window)) {
+      button.setAttribute("aria-label", active ? "Expandir temporizador" : "Minimizar temporizador");
+      button.title = active ? "Volver al temporizador completo" : "Usar como ventana flotante";
+    }
+    if (active) closeConfigPanel();
+    try { localStorage.setItem(MOBILE_FLOATING_KEY, active ? "true" : "false"); } catch (error) {}
+  }
+
+  function restoreMobileFloating() {
+    let saved = false;
+    try { saved = localStorage.getItem(MOBILE_FLOATING_KEY) === "true"; } catch (error) {}
+    if (!saved || !state.running || !supportsMobileFloating()) return;
+    setMobileFloating(true);
+    document.body.classList.add("pomodoro-open");
+    document.querySelector(".pomodoro-menu")?.setAttribute("aria-hidden", "false");
+    document.querySelector("[data-pomodoro-open]")?.setAttribute("aria-expanded", "true");
+    placeMenu();
+  }
+
   function placeMenu() {
     const button = document.querySelector("[data-pomodoro-open]");
     const menu = document.querySelector(".pomodoro-menu");
     if (!button || !menu) return;
+
+    if (isMobileFloating()) {
+      draggedPosition = null;
+      const viewport = window.visualViewport;
+      const visibleLeft = viewport?.offsetLeft || 0;
+      const visibleTop = viewport?.offsetTop || 0;
+      const visibleWidth = viewport?.width || window.innerWidth;
+      const visibleHeight = viewport?.height || window.innerHeight;
+      const left = Math.max(8, visibleLeft + visibleWidth - menu.offsetWidth - 12);
+      const top = Math.max(8, visibleTop + visibleHeight - menu.offsetHeight - 12);
+      menu.style.left = `${Math.round(left)}px`;
+      menu.style.right = "auto";
+      menu.style.top = `${Math.round(top)}px`;
+      menu.style.bottom = "auto";
+      return;
+    }
 
     if (window.innerWidth <= 760) {
       draggedPosition = null;
@@ -466,6 +550,10 @@
   }
 
   async function openFloatingTimer() {
+    if (supportsMobileFloating()) {
+      toggleMobileFloating();
+      return;
+    }
     if (!("documentPictureInPicture" in window)) return;
     if (pipWindow && !pipWindow.closed) {
       pipWindow.focus();
@@ -723,6 +811,7 @@
   function toggleTimer() {
     if (alarmActive) {
       stopAlarm();
+      syncWakeLock();
       render();
       return;
     }
@@ -746,6 +835,7 @@
       startTickerIfNeeded();
     }
     saveState();
+    syncWakeLock();
     render();
   }
 
@@ -756,6 +846,7 @@
     state.endAt = 0;
     state.remaining = durationSeconds(state.phase);
     saveState();
+    syncWakeLock();
     render();
   }
 
@@ -788,6 +879,7 @@
     }
 
     saveState();
+    syncWakeLock();
     render();
   }
 
@@ -883,6 +975,7 @@
     if (alarmVolume) alarmVolume.value = String(state.alarmVolume);
     renderSoundControls();
     renderPipControls();
+    renderDeviceAlerts();
 
     const toggle = document.querySelector("[data-pomodoro-toggle]");
     if (toggle) {
@@ -1025,11 +1118,102 @@
       navigator.vibrate([120, 80, 120]);
     }
     const title = previousPhase === "study" ? "Bloque completado" : "Descanso terminado";
+    const message = previousPhase === "study" ? "Es momento de descansar." : "Es momento de volver al estudio.";
+    showDeviceNotification(title, message);
     const originalTitle = document.title;
     document.title = `${title} - Estudiemos`;
     setTimeout(() => {
       if (document.title === `${title} - Estudiemos`) document.title = originalTitle;
     }, 4000);
+  }
+
+  async function registerDeviceSupport() {
+    if (!("serviceWorker" in navigator) || !window.isSecureContext) return;
+    try {
+      const serviceWorkerUrl = new URL("../service-worker.js", SCRIPT_URL);
+      const scopeUrl = new URL("../", SCRIPT_URL);
+      serviceWorkerRegistration = await navigator.serviceWorker.register(serviceWorkerUrl, { scope: scopeUrl.pathname });
+    } catch (error) {
+      serviceWorkerRegistration = null;
+    }
+  }
+
+  async function requestDeviceAlerts() {
+    if (!("Notification" in window)) {
+      renderDeviceAlerts();
+      return;
+    }
+    try {
+      if (Notification.permission === "default") await Notification.requestPermission();
+      if (!serviceWorkerRegistration && "serviceWorker" in navigator) {
+        serviceWorkerRegistration = await navigator.serviceWorker.ready;
+      }
+    } catch (error) {}
+    renderDeviceAlerts();
+  }
+
+  function renderDeviceAlerts() {
+    const row = document.querySelector("[data-pomodoro-device-alerts-row]");
+    const button = document.querySelector("[data-pomodoro-device-alerts]");
+    if (!row || !button) return;
+    const supported = "Notification" in window && "serviceWorker" in navigator;
+    const permission = supported ? Notification.permission : "unsupported";
+    button.disabled = permission === "granted" || permission === "denied" || !supported;
+    button.textContent = permission === "granted"
+      ? "Activos"
+      : permission === "denied"
+        ? "Bloqueados"
+        : supported ? "Activar" : "Instalá la app";
+    row.dataset.status = permission;
+    row.title = supported
+      ? "Permite mostrar el final del bloque como aviso del dispositivo."
+      : "En iPhone, agregá Estudiemos a la pantalla de inicio para activar avisos.";
+  }
+
+  async function showDeviceNotification(title, body) {
+    if (!("Notification" in window) || Notification.permission !== "granted") return;
+    const options = {
+      body,
+      icon: new URL("../assets/icon-192.png", SCRIPT_URL).href,
+      badge: new URL("../assets/icon-192.png", SCRIPT_URL).href,
+      tag: "estudiemos-pomodoro",
+      renotify: true,
+      requireInteraction: true,
+      vibrate: [180, 90, 180, 90, 260],
+      data: { url: location.href }
+    };
+    try {
+      const registration = serviceWorkerRegistration || await navigator.serviceWorker?.ready;
+      if (registration) await registration.showNotification(title, options);
+      else new Notification(title, options);
+    } catch (error) {
+      try { new Notification(title, options); } catch (notificationError) {}
+    }
+  }
+
+  async function requestWakeLock() {
+    if (!("wakeLock" in navigator) || document.visibilityState !== "visible" || wakeLock || wakeLockRequest) return;
+    try {
+      wakeLockRequest = navigator.wakeLock.request("screen");
+      wakeLock = await wakeLockRequest;
+      wakeLock.addEventListener("release", () => { wakeLock = null; }, { once: true });
+    } catch (error) {
+      wakeLock = null;
+    } finally {
+      wakeLockRequest = null;
+    }
+  }
+
+  async function releaseWakeLock() {
+    const current = wakeLock;
+    wakeLock = null;
+    if (!current) return;
+    try { await current.release(); } catch (error) {}
+  }
+
+  function syncWakeLock() {
+    if (state.running || alarmActive) requestWakeLock();
+    else releaseWakeLock();
   }
 
   function prepareAudio() {
@@ -1466,6 +1650,7 @@
       pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7V5Zm6 0h4v14h-4V5Z"/></svg>',
       reset: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.6 5.6A9 9 0 1 1 3 12h2a7 7 0 1 0 2-4.9L10 10H3V3l2.6 2.6Z"/></svg>',
       skip: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5.5 15 12 5 18.5v-13ZM17 5h2v14h-2V5Z"/></svg>',
+      bell: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a2 2 0 0 1 2 2v.4a7 7 0 0 1 5 6.7V17h2v2H3v-2h2v-5.9a7 7 0 0 1 5-6.7V4a2 2 0 0 1 2-2Zm0 4a5 5 0 0 0-5 5.1V17h10v-5.9A5 5 0 0 0 12 6Zm-2 15h4a2 2 0 0 1-4 0Z"/></svg>',
       bellOff: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4.3 3 16.7 16.7-1.3 1.3-2.4-2.4H5v-2h2v-5.1c0-1.3.4-2.5 1.1-3.5L3 4.3 4.3 3Zm5.3 6.4c-.4.6-.6 1.3-.6 2.1v5.1h6.3L9.6 9.4ZM12 2a2 2 0 0 1 2 2v.4a7 7 0 0 1 5 6.7v3.2l-2-2v-1.2a5 5 0 0 0-5-5c-.5 0-1 .1-1.5.2L8.9 4.7c.4-.1.7-.2 1.1-.3V4a2 2 0 0 1 2-2Zm-2 18h4a2 2 0 0 1-4 0Z"/></svg>',
       music: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 3v12.2A3.5 3.5 0 1 1 17 12V6.1l-8 1.8v9.3A3.5 3.5 0 1 1 7 14V6.3L19 3ZM5.5 16A1.5 1.5 0 1 0 7 17.5V16H5.5Zm10 0a1.5 1.5 0 1 0 1.5 1.5V16h-1.5Z"/></svg>',
       popout: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6h-2V7.4l-7.3 7.3-1.4-1.4L16.6 6H14V4ZM5 6h6v2H7v9h9v-4h2v6H5V6Z"/></svg>',

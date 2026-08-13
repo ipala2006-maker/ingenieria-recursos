@@ -3209,3 +3209,131 @@ html.theme-light .pomodoro-settings-panel{
     height:64px;
   }
 }
+
+/* Avisos y ventana compacta del temporizador en celulares. */
+.pomodoro-device-alerts{
+  display:none;
+}
+
+@media (max-width:760px), (max-width:900px) and (pointer:coarse){
+  .pomodoro-options--single{
+    grid-template-columns:minmax(0, 1fr) minmax(0, 1fr);
+    gap:6px;
+  }
+  .pomodoro-options--single .pomodoro-switch{
+    justify-content:flex-start;
+  }
+  .pomodoro-device-alerts{
+    min-width:0;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:6px;
+    padding:6px 7px;
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:10px;
+    background:rgba(255,255,255,.025);
+    color:var(--muted);
+    font-size:10px;
+    font-weight:750;
+  }
+  .pomodoro-device-alerts > span{
+    min-width:0;
+    display:flex;
+    align-items:center;
+    gap:5px;
+  }
+  .pomodoro-device-alerts > span span{
+    overflow-wrap:anywhere;
+  }
+  .pomodoro-device-alerts svg{
+    width:14px;
+    height:14px;
+    flex:0 0 auto;
+    fill:currentColor;
+  }
+  .pomodoro-device-alerts button{
+    min-height:25px;
+    border:1px solid color-mix(in srgb, var(--pomodoro-color) 36%, transparent);
+    border-radius:8px;
+    background:color-mix(in srgb, var(--pomodoro-color) 10%, transparent);
+    color:var(--text);
+    padding:4px 6px;
+    font:inherit;
+    font-size:9px;
+    font-weight:800;
+    cursor:pointer;
+  }
+  .pomodoro-device-alerts button:disabled{
+    cursor:default;
+    opacity:.68;
+  }
+  html.theme-light .pomodoro-device-alerts{
+    border-color:var(--border);
+    background:var(--panel-2);
+  }
+
+  .pomodoro-menu.is-mobile-floating{
+    top:0;
+    right:auto;
+    bottom:auto;
+    left:0;
+    width:min(310px, calc(100vw - 24px));
+    max-height:none;
+    transform:translateY(12px) scale(.97);
+    transform-origin:bottom right;
+  }
+  .pomodoro-open .pomodoro-menu.is-mobile-floating{
+    transform:translateY(0) scale(1);
+  }
+  .pomodoro-menu.is-mobile-floating .pomodoro-menu__panel{
+    padding:10px;
+    border-radius:18px;
+    box-shadow:0 18px 54px rgba(0,0,0,.48);
+    backdrop-filter:blur(22px);
+  }
+  .pomodoro-menu.is-mobile-floating .pomodoro-head{
+    cursor:default;
+  }
+  .pomodoro-menu.is-mobile-floating .pomodoro-head .tray-kicker,
+  .pomodoro-menu.is-mobile-floating .pomodoro-settings-toggle,
+  .pomodoro-menu.is-mobile-floating .pomodoro-settings-panel{
+    display:none;
+  }
+  .pomodoro-menu.is-mobile-floating .pomodoro-head h2{
+    margin:0;
+    font-size:14px;
+  }
+  .pomodoro-menu.is-mobile-floating .pomodoro-icon-btn{
+    width:30px;
+    height:30px;
+  }
+  .pomodoro-menu.is-mobile-floating .pomodoro-cycle-status{
+    margin-top:6px;
+    padding:5px 8px;
+  }
+  .pomodoro-menu.is-mobile-floating .pomodoro-timer{
+    width:104px;
+    height:104px;
+    margin:6px auto 4px;
+  }
+  .pomodoro-menu.is-mobile-floating .pomodoro-time strong{
+    font-size:28px;
+  }
+  .pomodoro-menu.is-mobile-floating .pomodoro-time span{
+    font-size:10px;
+  }
+  .pomodoro-menu.is-mobile-floating .pomodoro-controls{
+    gap:7px;
+    margin-top:4px;
+  }
+  .pomodoro-menu.is-mobile-floating .pomodoro-secondary-btn{
+    width:34px;
+    height:34px;
+  }
+  .pomodoro-menu.is-mobile-floating .pomodoro-start-btn{
+    min-width:132px;
+    min-height:36px;
+    padding:6px 12px;
+  }
+}
