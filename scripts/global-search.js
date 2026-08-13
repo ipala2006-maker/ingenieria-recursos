@@ -205,7 +205,7 @@
     if (document.querySelector('script[src*="scripts/pomodoro.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/pomodoro.js?v=20260813-mobile-pip-hd`;
+    script.src = `${rootPath}scripts/pomodoro.js?v=20260813-mobile-pip-live`;
     script.defer = true;
     document.head.appendChild(script);
   }

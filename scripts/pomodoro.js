@@ -26,6 +26,7 @@
   let draggedPosition = null;
   let pipWindow = null;
   let videoPip = null;
+  let videoPipDrawTimer = 0;
   let videoPipOpening = false;
   let wakeLock = null;
   let wakeLockRequest = null;
@@ -242,6 +243,7 @@
       startTickerIfNeeded();
     });
     document.addEventListener("visibilitychange", () => {
+      if (videoPip) ensureVideoPipPlayback();
       if (document.visibilityState !== "visible") return;
       reconcileTimer(true);
       render();
@@ -1040,11 +1042,7 @@
       topButton.classList.toggle("is-running", state.running);
       topButton.title = state.running ? `${compactTime(remaining)} - ${state.phase === "study" ? `Bloque ${state.currentBlock}` : "Descanso"}` : "Temporizador Pomodoro";
     }
-    if (videoPip && "mediaSession" in navigator) {
-      try { navigator.mediaSession.playbackState = state.running ? "playing" : "paused"; } catch (error) {}
-    }
     renderPipTimer(timeText, progress);
-    drawVideoPipFrame();
   }
 
   function renderPipControls() {
@@ -1182,8 +1180,7 @@
       await session.video.play();
       await session.video.requestPictureInPicture();
       session.controlsReady = true;
-      drawVideoPipFrame();
-      configureMediaSession(true);
+      startVideoPipRenderer();
       return true;
     } catch (error) {
       destroyVideoPipSession();
@@ -1198,15 +1195,12 @@
 
     const canvas = document.createElement("canvas");
     canvas.className = "pomodoro-pip-canvas";
-    canvas.width = 1280;
-    canvas.height = 720;
+    canvas.width = 1920;
+    canvas.height = 1080;
     const context = canvas.getContext("2d", { alpha: false, desynchronized: true });
     context.imageSmoothingEnabled = true;
     context.imageSmoothingQuality = "high";
-    const supportsManualFrames = typeof window.CanvasCaptureMediaStreamTrack !== "undefined"
-      && "requestFrame" in window.CanvasCaptureMediaStreamTrack.prototype;
-    const stream = canvas.captureStream(supportsManualFrames ? 0 : 10);
-    const frameTrack = stream.getVideoTracks()[0] || null;
+    const stream = canvas.captureStream(8);
     const video = document.createElement("video");
     video.className = "pomodoro-pip-video";
     video.autoplay = true;
@@ -1217,31 +1211,38 @@
     video.setAttribute("webkit-playsinline", "");
     video.srcObject = stream;
     video.addEventListener("leavepictureinpicture", destroyVideoPipSession, { once: true });
-    video.addEventListener("play", handleVideoPipPlay);
-    video.addEventListener("pause", handleVideoPipPause);
+    video.addEventListener("pause", ensureVideoPipPlayback);
     document.body.append(canvas, video);
-    videoPip = { canvas, context, stream, frameTrack, video, controlsReady: false };
+    videoPip = { canvas, context, stream, video, controlsReady: false };
     return videoPip;
   }
 
-  function handleVideoPipPlay() {
+  function ensureVideoPipPlayback() {
     if (!videoPip?.controlsReady || document.pictureInPictureElement !== videoPip.video) return;
-    if (!state.running && !alarmActive) toggleTimer();
+    window.setTimeout(() => {
+      if (videoPip?.video.paused) videoPip.video.play().catch(() => {});
+    }, 0);
   }
 
-  function handleVideoPipPause() {
-    if (!videoPip?.controlsReady || document.pictureInPictureElement !== videoPip.video) return;
-    if (state.running || alarmActive) toggleTimer();
+  function startVideoPipRenderer() {
+    stopVideoPipRenderer();
+    drawVideoPipFrame();
+    videoPipDrawTimer = window.setInterval(drawVideoPipFrame, 250);
+  }
+
+  function stopVideoPipRenderer() {
+    if (!videoPipDrawTimer) return;
+    clearInterval(videoPipDrawTimer);
+    videoPipDrawTimer = 0;
   }
 
   function destroyVideoPipSession() {
-    configureMediaSession(false);
+    stopVideoPipRenderer();
     if (!videoPip) return;
     const session = videoPip;
     session.controlsReady = false;
     videoPip = null;
-    session.video.removeEventListener("play", handleVideoPipPlay);
-    session.video.removeEventListener("pause", handleVideoPipPause);
+    session.video.removeEventListener("pause", ensureVideoPipPlayback);
     session.video.pause();
     session.video.srcObject = null;
     session.stream.getTracks().forEach((track) => track.stop());
@@ -1252,8 +1253,10 @@
   function drawVideoPipFrame() {
     if (!videoPip?.context) return;
     const { canvas, context: ctx } = videoPip;
-    const width = canvas.width;
-    const height = canvas.height;
+    const width = 1280;
+    const height = 720;
+    const renderScale = canvas.width / width;
+    ctx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
     const dark = document.documentElement.classList.contains("theme-dark");
     const background = dark ? "#080d18" : "#e9eef4";
     const panel = dark ? "#111827" : "#f8fafc";
@@ -1278,34 +1281,34 @@
     roundedRect(ctx, 58, 54, 74, 74, 20);
     ctx.fill();
     ctx.fillStyle = phaseColor;
-    ctx.font = "800 48px system-ui, sans-serif";
+    ctx.font = '700 48px "Space Grotesk", system-ui, sans-serif';
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText("Σ", 95, 92);
 
     ctx.fillStyle = text;
-    ctx.font = "700 30px system-ui, sans-serif";
+    ctx.font = '700 30px "Space Grotesk", system-ui, sans-serif';
     ctx.textAlign = "left";
     ctx.fillText("Estudiemos", 154, 78);
     ctx.fillStyle = muted;
-    ctx.font = "650 20px system-ui, sans-serif";
+    ctx.font = '600 20px "Space Grotesk", system-ui, sans-serif';
     ctx.fillText("Temporizador Pomodoro", 154, 111);
 
     ctx.fillStyle = dark ? "#1d2a42" : "#e8f0fe";
     roundedRect(ctx, width - 262, 63, 190, 52, 26);
     ctx.fill();
     ctx.fillStyle = phaseColor;
-    ctx.font = "800 20px system-ui, sans-serif";
+    ctx.font = '700 20px "Space Grotesk", system-ui, sans-serif';
     ctx.textAlign = "center";
     ctx.fillText(state.phase === "study" ? "ESTUDIO" : "DESCANSO", width - 167, 90);
 
     const centerX = width / 2;
     ctx.fillStyle = text;
-    ctx.font = `800 ${timeText.length > 6 ? 144 : 174}px system-ui, sans-serif`;
+    ctx.font = `700 ${timeText.length > 6 ? 144 : 174}px "Space Grotesk", system-ui, sans-serif`;
     ctx.textAlign = "center";
     ctx.fillText(timeText, centerX, 326);
     ctx.fillStyle = muted;
-    ctx.font = "700 31px system-ui, sans-serif";
+    ctx.font = '700 31px "Space Grotesk", system-ui, sans-serif';
     ctx.fillText(state.phase === "study" ? `Bloque ${state.currentBlock} de ${state.config.blocks}` : "Descanso", centerX, 426);
 
     const progressX = 92;
@@ -1322,15 +1325,14 @@
     }
 
     ctx.fillStyle = state.running ? phaseColor : muted;
-    ctx.font = "750 22px system-ui, sans-serif";
+    ctx.font = '700 22px "Space Grotesk", system-ui, sans-serif';
     ctx.textAlign = "left";
     ctx.fillText(state.running ? "EN CURSO" : alarmActive ? "ALARMA" : "PAUSADO", progressX, 568);
     ctx.fillStyle = muted;
-    ctx.font = "650 20px system-ui, sans-serif";
+    ctx.font = '600 20px "Space Grotesk", system-ui, sans-serif';
     ctx.textAlign = "right";
     ctx.fillText("Tocá la ventana para ver los controles", width - progressX, 568);
 
-    try { videoPip.frameTrack?.requestFrame?.(); } catch (error) {}
   }
 
   function roundedRect(context, x, y, width, height, radius) {
@@ -1342,36 +1344,6 @@
     context.arcTo(x, y + height, x, y, safeRadius);
     context.arcTo(x, y, x + width, y, safeRadius);
     context.closePath();
-  }
-
-  function configureMediaSession(active) {
-    if (!("mediaSession" in navigator)) return;
-    const setHandler = (action, handler) => {
-      try { navigator.mediaSession.setActionHandler(action, handler); } catch (error) {}
-    };
-    if (!active) {
-      setHandler("play", null);
-      setHandler("pause", null);
-      setHandler("nexttrack", null);
-      setHandler("previoustrack", null);
-      return;
-    }
-
-    try {
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: "Temporizador Pomodoro",
-        artist: "Estudiemos",
-        album: "Sesión por bloques",
-        artwork: [
-          { src: new URL("../assets/icon-192.png", SCRIPT_URL).href, sizes: "192x192", type: "image/png" },
-          { src: new URL("../assets/icon-512.png", SCRIPT_URL).href, sizes: "512x512", type: "image/png" }
-        ]
-      });
-    } catch (error) {}
-    setHandler("play", () => { if (!state.running) toggleTimer(); });
-    setHandler("pause", () => { if (state.running) toggleTimer(); });
-    setHandler("nexttrack", () => advancePhase(false));
-    setHandler("previoustrack", resetTimer);
   }
 
   function setPlatformNote(message) {
