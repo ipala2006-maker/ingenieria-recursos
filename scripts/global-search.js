@@ -12,6 +12,7 @@
   loadProfessionalStyle();
   addLightTrayButton();
   loadPomodoroScript();
+  loadInstallAppScript();
   loadTrayAfterPageSettles();
 
   const search = document.createElement("div");
@@ -205,6 +206,15 @@
 
     const script = document.createElement("script");
     script.src = `${rootPath}scripts/pomodoro.js?v=20260813-mobile-timer`;
+    script.defer = true;
+    document.head.appendChild(script);
+  }
+
+  function loadInstallAppScript() {
+    if (document.querySelector('script[src*="scripts/install-app.js"]')) return;
+
+    const script = document.createElement("script");
+    script.src = `${rootPath}scripts/install-app.js?v=20260813-install-ios`;
     script.defer = true;
     document.head.appendChild(script);
   }

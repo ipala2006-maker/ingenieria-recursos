@@ -3337,3 +3337,177 @@ html.theme-light .pomodoro-settings-panel{
     padding:6px 12px;
   }
 }
+
+/* Instalacion guiada en celulares. */
+.app-install-btn{
+  display:none;
+}
+.app-install-sheet[hidden]{
+  display:none;
+}
+.app-install-sheet{
+  position:fixed;
+  inset:0;
+  z-index:120;
+  display:grid;
+  align-items:end;
+  justify-items:center;
+  padding:12px;
+}
+.app-install-sheet__backdrop{
+  position:absolute;
+  inset:0;
+  border:0;
+  background:rgba(2,6,18,.66);
+  backdrop-filter:blur(5px);
+}
+.app-install-sheet__panel{
+  position:relative;
+  z-index:1;
+  width:min(430px, 100%);
+  max-height:calc(100dvh - 24px);
+  overflow:auto;
+  padding:16px;
+  border:1px solid rgba(255,255,255,.13);
+  border-radius:16px;
+  background:#101727;
+  box-shadow:0 24px 68px rgba(0,0,0,.5);
+  color:var(--text);
+}
+.app-install-sheet__panel header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.app-install-sheet__identity{
+  min-width:0;
+  display:flex;
+  align-items:center;
+  gap:11px;
+}
+.app-install-sheet__identity img{
+  width:48px;
+  height:48px;
+  flex:0 0 auto;
+  border-radius:12px;
+}
+.app-install-sheet__identity small{
+  color:var(--muted-2);
+  font-size:10px;
+  font-weight:800;
+}
+.app-install-sheet__identity h2{
+  margin:2px 0 0;
+  font-size:17px;
+}
+.app-install-sheet__close{
+  width:36px;
+  height:36px;
+  flex:0 0 auto;
+  display:grid;
+  place-items:center;
+  border:1px solid rgba(255,255,255,.11);
+  border-radius:999px;
+  background:rgba(255,255,255,.04);
+  color:var(--muted);
+  cursor:pointer;
+}
+.app-install-sheet__close svg,
+.app-install-steps svg,
+.app-install-sheet__primary svg{
+  width:18px;
+  height:18px;
+  fill:currentColor;
+}
+.app-install-sheet__lead{
+  margin:16px 0 12px;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.45;
+}
+.app-install-steps{
+  display:grid;
+  gap:0;
+  margin:0;
+  padding:0;
+  list-style:none;
+  border-top:1px solid rgba(255,255,255,.08);
+}
+.app-install-steps li{
+  min-height:54px;
+  display:grid;
+  grid-template-columns:25px minmax(0, 1fr) 22px;
+  align-items:center;
+  gap:9px;
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+.app-install-steps li > span{
+  width:23px;
+  height:23px;
+  display:grid;
+  place-items:center;
+  border-radius:999px;
+  background:color-mix(in srgb, var(--accent) 14%, transparent);
+  color:var(--text);
+  font-size:11px;
+  font-weight:900;
+}
+.app-install-steps p{
+  margin:0;
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.35;
+}
+.app-install-steps strong{
+  color:var(--text);
+}
+.app-install-steps svg{
+  color:var(--accent);
+}
+.app-install-sheet__note{
+  margin:12px 0 0;
+  color:var(--muted-2);
+  font-size:11px;
+  line-height:1.45;
+}
+.app-install-sheet__note strong{
+  color:var(--muted);
+}
+.app-install-sheet__primary{
+  width:100%;
+  min-height:42px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  margin-top:14px;
+  border:1px solid transparent;
+  border-radius:11px;
+  background:var(--accent);
+  color:#07111f;
+  padding:9px 14px;
+  font:inherit;
+  font-size:13px;
+  font-weight:900;
+  cursor:pointer;
+}
+html.theme-light .app-install-sheet__panel{
+  border-color:var(--border);
+  background:#f7f9fb;
+  box-shadow:0 24px 58px rgba(15,23,42,.24);
+}
+html.theme-light .app-install-sheet__close,
+html.theme-light .app-install-steps li,
+html.theme-light .app-install-steps{
+  border-color:var(--border);
+}
+html.theme-light .app-install-sheet__close{
+  background:var(--panel-2);
+}
+
+@media (max-width:760px), (max-width:900px) and (pointer:coarse){
+  .app-install-btn{
+    display:inline-grid;
+  }
+}
