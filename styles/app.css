@@ -3526,10 +3526,11 @@ html.theme-light .app-install-sheet__close{
 .pomodoro-pip-video,
 .pomodoro-pip-canvas{
   position:fixed;
-  left:-4px;
-  bottom:-4px;
-  width:2px;
-  height:2px;
+  left:-20px;
+  bottom:-12px;
+  width:16px;
+  height:9px;
+  aspect-ratio:16 / 9;
   opacity:.01;
   pointer-events:none;
 }

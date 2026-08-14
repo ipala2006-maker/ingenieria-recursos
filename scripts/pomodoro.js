@@ -1042,6 +1042,7 @@
       topButton.classList.toggle("is-running", state.running);
       topButton.title = state.running ? `${compactTime(remaining)} - ${state.phase === "study" ? `Bloque ${state.currentBlock}` : "Descanso"}` : "Temporizador Pomodoro";
     }
+    syncVideoPipControlState();
     renderPipTimer(timeText, progress);
   }
 
@@ -1178,9 +1179,11 @@
       const session = createVideoPipSession();
       drawVideoPipFrame();
       await session.video.play();
+      await waitForVideoDimensions(session.video);
       await session.video.requestPictureInPicture();
       session.controlsReady = true;
       startVideoPipRenderer();
+      configureVideoPipControls(true);
       return true;
     } catch (error) {
       destroyVideoPipSession();
@@ -1207,6 +1210,9 @@
     video.muted = true;
     video.playsInline = true;
     video.disableRemotePlayback = true;
+    video.width = 1920;
+    video.height = 1080;
+    video.style.aspectRatio = "16 / 9";
     video.setAttribute("playsinline", "");
     video.setAttribute("webkit-playsinline", "");
     video.srcObject = stream;
@@ -1215,6 +1221,21 @@
     document.body.append(canvas, video);
     videoPip = { canvas, context, stream, video, controlsReady: false };
     return videoPip;
+  }
+
+  function waitForVideoDimensions(video) {
+    if (video.videoWidth > 0 && video.videoHeight > 0) return Promise.resolve();
+    return new Promise((resolve) => {
+      const finish = () => {
+        clearTimeout(timeout);
+        video.removeEventListener("loadedmetadata", finish);
+        video.removeEventListener("resize", finish);
+        resolve();
+      };
+      const timeout = window.setTimeout(finish, 300);
+      video.addEventListener("loadedmetadata", finish, { once: true });
+      video.addEventListener("resize", finish, { once: true });
+    });
   }
 
   function ensureVideoPipPlayback() {
@@ -1238,6 +1259,7 @@
 
   function destroyVideoPipSession() {
     stopVideoPipRenderer();
+    configureVideoPipControls(false);
     if (!videoPip) return;
     const session = videoPip;
     session.controlsReady = false;
@@ -1331,7 +1353,7 @@
     ctx.fillStyle = muted;
     ctx.font = '600 20px "Space Grotesk", system-ui, sans-serif';
     ctx.textAlign = "right";
-    ctx.fillText("Tocá la ventana para ver los controles", width - progressX, 568);
+    ctx.fillText("Tocá para pausar, reiniciar o avanzar", width - progressX, 568);
 
   }
 
@@ -1344,6 +1366,46 @@
     context.arcTo(x, y + height, x, y, safeRadius);
     context.arcTo(x, y, x + width, y, safeRadius);
     context.closePath();
+  }
+
+  function configureVideoPipControls(active) {
+    if (!("mediaSession" in navigator)) return;
+    const setHandler = (action, handler) => {
+      try { navigator.mediaSession.setActionHandler(action, handler); } catch (error) {}
+    };
+
+    if (!active) {
+      setHandler("play", null);
+      setHandler("pause", null);
+      setHandler("previoustrack", null);
+      setHandler("nexttrack", null);
+      return;
+    }
+
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: "Temporizador Pomodoro",
+        artist: "Estudiemos",
+        album: "Sesión de estudio"
+      });
+    } catch (error) {}
+
+    setHandler("play", () => {
+      if (!state.running && !alarmActive) toggleTimer();
+      ensureVideoPipPlayback();
+    });
+    setHandler("pause", () => {
+      if (state.running || alarmActive) toggleTimer();
+      ensureVideoPipPlayback();
+    });
+    setHandler("previoustrack", resetTimer);
+    setHandler("nexttrack", () => advancePhase(false));
+    syncVideoPipControlState();
+  }
+
+  function syncVideoPipControlState() {
+    if (!videoPip || !("mediaSession" in navigator)) return;
+    try { navigator.mediaSession.playbackState = state.running ? "playing" : "paused"; } catch (error) {}
   }
 
   function setPlatformNote(message) {
