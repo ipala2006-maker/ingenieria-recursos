@@ -243,7 +243,7 @@
       startTickerIfNeeded();
     });
     document.addEventListener("visibilitychange", () => {
-      if (videoPip) ensureVideoPipPlayback();
+      if (videoPip) syncVideoPipPlayback();
       if (document.visibilityState !== "visible") return;
       reconcileTimer(true);
       render();
@@ -1217,7 +1217,7 @@
     video.setAttribute("webkit-playsinline", "");
     video.srcObject = stream;
     video.addEventListener("leavepictureinpicture", destroyVideoPipSession, { once: true });
-    video.addEventListener("pause", ensureVideoPipPlayback);
+    video.addEventListener("pause", handleVideoPipPause);
     document.body.append(canvas, video);
     videoPip = { canvas, context, stream, video, controlsReady: false };
     return videoPip;
@@ -1238,11 +1238,20 @@
     });
   }
 
-  function ensureVideoPipPlayback() {
+  function syncVideoPipPlayback() {
     if (!videoPip?.controlsReady || document.pictureInPictureElement !== videoPip.video) return;
+    const shouldPlay = state.running || alarmActive;
+    if (shouldPlay && videoPip.video.paused) {
+      videoPip.video.play().catch(() => {});
+    } else if (!shouldPlay && !videoPip.video.paused) {
+      videoPip.video.pause();
+    }
+  }
+
+  function handleVideoPipPause() {
     window.setTimeout(() => {
-      if (videoPip?.video.paused) videoPip.video.play().catch(() => {});
-    }, 0);
+      if (videoPip?.controlsReady && (state.running || alarmActive)) syncVideoPipPlayback();
+    }, 180);
   }
 
   function startVideoPipRenderer() {
@@ -1264,7 +1273,7 @@
     const session = videoPip;
     session.controlsReady = false;
     videoPip = null;
-    session.video.removeEventListener("pause", ensureVideoPipPlayback);
+    session.video.removeEventListener("pause", handleVideoPipPause);
     session.video.pause();
     session.video.srcObject = null;
     session.stream.getTracks().forEach((track) => track.stop());
@@ -1392,11 +1401,11 @@
 
     setHandler("play", () => {
       if (!state.running && !alarmActive) toggleTimer();
-      ensureVideoPipPlayback();
+      syncVideoPipPlayback();
     });
     setHandler("pause", () => {
       if (state.running || alarmActive) toggleTimer();
-      ensureVideoPipPlayback();
+      syncVideoPipPlayback();
     });
     setHandler("previoustrack", resetTimer);
     setHandler("nexttrack", () => advancePhase(false));
@@ -1405,7 +1414,9 @@
 
   function syncVideoPipControlState() {
     if (!videoPip || !("mediaSession" in navigator)) return;
-    try { navigator.mediaSession.playbackState = state.running ? "playing" : "paused"; } catch (error) {}
+    const shouldPlay = state.running || alarmActive;
+    try { navigator.mediaSession.playbackState = shouldPlay ? "playing" : "paused"; } catch (error) {}
+    syncVideoPipPlayback();
   }
 
   function setPlatformNote(message) {
