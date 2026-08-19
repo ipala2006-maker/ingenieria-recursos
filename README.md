@@ -12,6 +12,7 @@ Sitio público: [https://estudiemos-app.vercel.app](https://estudiemos-app.verce
 - `scripts/`: buscador, bandeja, agenda, tema y navegación.
 - `styles/`: estilos visuales.
 - `pdfs/`: material descargable.
+- `android-app/`: aplicación Android y widget nativo de la agenda.
 
 El proyecto usa HTML, CSS y JavaScript sin framework ni dependencias. Vercel publica los archivos estáticos y ejecuta una función pequeña para el asistente inteligente de la agenda.
 
@@ -66,6 +67,21 @@ Variables de Vercel:
 Para configurarla: Vercel → proyecto Estudiemos → Settings → Environment Variables. Agregar `GEMINI_API_KEY` para Production y volver a desplegar el último commit.
 
 El archivo `.env.example` muestra los nombres esperados sin contener secretos reales.
+
+## Aplicación y widget de Android
+
+La PWA instalada desde Chrome no puede crear widgets del sistema. La carpeta `android-app/` contiene una aplicación Android nativa que abre Estudiemos y sincroniza la agenda localmente con el widget, sin base de datos ni permisos sensibles.
+
+Cada cambio relacionado con Android genera un APK de prueba en GitHub:
+
+1. Abrir la pestaña **Actions** del repositorio.
+2. Entrar en la ejecución **Build Android app** más reciente.
+3. Descargar el archivo **Estudiemos-Android** en la sección de artefactos.
+4. Descomprimirlo e instalar `app-debug.apk` en Android.
+5. Abrir la aplicación Estudiemos al menos una vez.
+6. Mantener presionada la pantalla de inicio, elegir **Widgets** y agregar **Agenda de Estudiemos**.
+
+La agenda se guarda solo en el dispositivo. Al crear, editar o eliminar una anotación desde la aplicación Android, el widget se actualiza automáticamente. Los cambios visuales de la web llegan sin reinstalar; los cambios del código Android requieren instalar un APK nuevo.
 
 ## Tareas
 

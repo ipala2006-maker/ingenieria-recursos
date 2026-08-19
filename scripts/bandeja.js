@@ -35,6 +35,10 @@
   restoreTrayState();
   markActiveTheme();
   observeLateCards();
+  syncAgendaWithAndroid(readList(STORAGE_KEYS.agenda));
+  window.addEventListener("estudiemos-android-ready", () => {
+    syncAgendaWithAndroid(readList(STORAGE_KEYS.agenda));
+  });
 
   function addTray() {
     const shell = document.createElement("aside");
@@ -1574,6 +1578,19 @@
 
   function writeList(key, value) {
     localStorage.setItem(key, JSON.stringify(value));
+    if (key === STORAGE_KEYS.agenda) syncAgendaWithAndroid(value);
+  }
+
+  function syncAgendaWithAndroid(items) {
+    try {
+      if (!window.EstudiemosAndroid || typeof window.EstudiemosAndroid.postMessage !== "function") return;
+      window.EstudiemosAndroid.postMessage(JSON.stringify({
+        type: "agenda-sync",
+        items: Array.isArray(items) ? items.map(normalizeAgendaItem).filter(Boolean) : []
+      }));
+    } catch (_) {
+      // The regular web and PWA versions work without the optional Android bridge.
+    }
   }
 
   function normalizeItem(item) {

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Estudiemos</string>
+    <string name="agenda_widget_name">Agenda de Estudiemos</string>
+    <string name="agenda_widget_description">Próximas clases, tareas y exámenes de tu agenda.</string>
+</resources>

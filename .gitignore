@@ -9,3 +9,8 @@ yarn-error.log*
 pnpm-debug.log*
 .DS_Store
 Thumbs.db
+
+# Android build output and local machine configuration
+android-app/.gradle/
+android-app/local.properties
+android-app/**/build/
