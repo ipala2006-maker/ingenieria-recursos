@@ -95,6 +95,7 @@
       localStorage.setItem(STORAGE_KEY, next);
     } catch (error) {}
     applyTheme(next, true);
+    window.dispatchEvent(new CustomEvent("estudiemos:data-change", { detail: { key: STORAGE_KEY } }));
   }
 
   function loadSmoothNavigation() {

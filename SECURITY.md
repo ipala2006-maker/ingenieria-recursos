@@ -1,27 +1,35 @@
 # Seguridad de Estudiemos
 
-Estudiemos no usa login ni base de datos. La unica parte de servidor es el asistente de agenda, ejecutado como una funcion de Vercel.
+Estudiemos usa una función de Vercel para el asistente de agenda y Supabase para las cuentas y la sincronización entre dispositivos.
 
 ## Reglas para mantenerlo seguro
 
-- No subir claves, tokens, contrasenas ni archivos `.env` al repositorio.
-- Hacer cambios solamente desde GitHub/Codex/Vercel usando la cuenta de Ian.
-- Mantener activada la verificacion en dos pasos en GitHub y Vercel.
-- Revisar los cambios antes de publicarlos si en el futuro se agregan login, pagos, base de datos o APIs.
-- Guardar `GEMINI_API_KEY` y cualquier secreto futuro solamente en Vercel, dentro de Environment Variables.
-- No colocar la clave de Gemini en HTML, JavaScript del navegador ni archivos versionados.
+- No subir claves privadas, tokens, contraseñas ni archivos `.env` al repositorio.
+- Mantener activada la verificación en dos pasos en GitHub, Vercel y Supabase.
+- Guardar `GEMINI_API_KEY` solamente en las variables privadas de Vercel.
+- `SUPABASE_PUBLISHABLE_KEY` puede llegar al navegador y queda limitada por las políticas de acceso por usuario.
+- Nunca colocar `SUPABASE_SECRET_KEY` ni una clave `service_role` en HTML, JavaScript público, GitHub o `api/account-config.js`.
+- Mantener habilitado Row Level Security en `public.user_states`.
+- No modificar las políticas de `supabase/schema.sql` para permitir acceso anónimo.
+
+## Protección de los datos
+
+- Cada registro está asociado al identificador interno de su usuario.
+- Las políticas permiten seleccionar, crear, actualizar o eliminar únicamente el registro propio.
+- La contraseña es administrada por Supabase Auth y nunca se guarda en el repositorio ni en la tabla de Estudiemos.
+- La copia local permite seguir usando la plataforma cuando no hay conexión.
 
 ## Si aparece un problema
 
 1. Pausar cambios nuevos.
-2. Revisar el ultimo commit publicado.
-3. Volver al deploy anterior desde Vercel si la pagina quedo inestable.
-4. Cambiar cualquier token o clave que se haya expuesto por error.
+2. Revisar el último commit y el último despliegue.
+3. Volver al despliegue anterior desde Vercel si la página quedó inestable.
+4. Cambiar inmediatamente cualquier clave privada expuesta.
+5. Revisar los usuarios y registros desde Supabase.
 
-## Estado actual
+## Variables utilizadas
 
-- Hay una funcion acotada en `api/agenda-ai.js`; valida los datos y no guarda la agenda.
-- No hay base de datos.
-- No hay cuentas de usuarios.
-- `GEMINI_API_KEY` es necesaria para la interpretacion inteligente de la agenda.
-- La publicacion automatica se realiza desde la rama `main` conectada a Vercel.
+- `GEMINI_API_KEY`: privada, solo en Vercel.
+- `GEMINI_MODEL`: configuración no sensible.
+- `SUPABASE_URL`: pública.
+- `SUPABASE_PUBLISHABLE_KEY`: pública y restringida por Row Level Security.

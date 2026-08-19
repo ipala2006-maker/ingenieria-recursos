@@ -41,6 +41,14 @@
   window.addEventListener("estudiemos-android-ready", () => {
     syncAgendaWithAndroid(readList(STORAGE_KEYS.agenda));
   });
+  window.addEventListener("estudiemos:cloud-restored", () => {
+    renderTray();
+    renderAgenda();
+    syncActionButtons();
+    syncSubjectButtons();
+    markActiveTheme();
+    syncAgendaWithAndroid(readList(STORAGE_KEYS.agenda));
+  });
 
   function addTray() {
     const shell = document.createElement("aside");
@@ -1588,6 +1596,7 @@
   function writeList(key, value) {
     localStorage.setItem(key, JSON.stringify(value));
     if (key === STORAGE_KEYS.agenda) syncAgendaWithAndroid(value);
+    window.dispatchEvent(new CustomEvent("estudiemos:data-change", { detail: { key } }));
   }
 
   function syncAgendaWithAndroid(items) {

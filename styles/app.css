@@ -3807,3 +3807,198 @@ html.theme-light .app-install-sheet__close{
   opacity:.01;
   pointer-events:none;
 }
+
+/* Cuenta y sincronizacion entre dispositivos */
+.account-top-btn{position:relative}
+.account-top-btn__status{
+  position:absolute;
+  right:3px;
+  bottom:3px;
+  width:8px;
+  height:8px;
+  border:2px solid var(--panel);
+  border-radius:999px;
+  background:var(--muted-2);
+}
+.account-top-btn.is-connected .account-top-btn__status{background:#34d399}
+.account-shell{
+  position:fixed;
+  inset:0;
+  z-index:1400;
+  display:grid;
+  place-items:center;
+  padding:18px;
+  background:rgba(3,7,18,.58);
+  backdrop-filter:blur(7px);
+}
+.account-shell[hidden]{display:none}
+.account-panel{
+  width:min(100%,430px);
+  max-height:min(680px,calc(100vh - 36px));
+  overflow:auto;
+  padding:22px;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:16px;
+  background:var(--panel);
+  color:var(--text);
+  box-shadow:0 26px 80px rgba(0,0,0,.42);
+}
+.account-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  margin-bottom:18px;
+}
+.account-head h2{margin:2px 0 0;font-size:22px}
+.account-intro,.account-unavailable p{
+  margin:0 0 18px;
+  color:var(--muted);
+  line-height:1.55;
+}
+.account-form,.account-password-form{display:grid;gap:12px}
+.account-form label,.account-password-form label{
+  display:grid;
+  gap:7px;
+  color:var(--muted);
+  font-size:13px;
+  font-weight:750;
+}
+.account-form input,.account-password-form input{
+  width:100%;
+  min-height:45px;
+  padding:10px 12px;
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:10px;
+  outline:none;
+  background:var(--panel-2);
+  color:var(--text);
+}
+.account-form input:focus,.account-password-form input:focus{border-color:var(--accent);box-shadow:var(--ring)}
+.account-primary,.account-secondary,.account-link{
+  min-height:42px;
+  padding:9px 14px;
+  border-radius:10px;
+  font:inherit;
+  font-weight:800;
+  cursor:pointer;
+}
+.account-primary{
+  border:1px solid rgba(110,231,255,.25);
+  background:var(--accent);
+  color:#07111f;
+}
+.account-primary:hover{filter:brightness(1.06)}
+.account-secondary{
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.055);
+  color:var(--text);
+}
+.account-secondary:hover{
+  border-color:rgba(110,231,255,.30);
+  background:rgba(110,231,255,.08);
+}
+.account-link{
+  min-height:32px;
+  padding:4px 8px;
+  border:0;
+  background:transparent;
+  color:var(--muted);
+}
+.account-link:hover{color:var(--text)}
+.account-primary:disabled,.account-secondary:disabled,.account-link:disabled{
+  cursor:wait;
+  opacity:.6;
+}
+.account-loading{
+  min-height:170px;
+  display:grid;
+  place-items:center;
+  align-content:center;
+  gap:12px;
+  color:var(--muted);
+}
+.account-loading[hidden],.account-auth[hidden],.account-profile[hidden],.account-unavailable[hidden]{display:none}
+.account-password-form[hidden]{display:none}
+.account-spinner{
+  width:28px;
+  height:28px;
+  border:3px solid rgba(255,255,255,.14);
+  border-top-color:var(--accent);
+  border-radius:999px;
+  animation:account-spin .8s linear infinite;
+}
+@keyframes account-spin{to{transform:rotate(360deg)}}
+.account-profile{display:grid;gap:13px}
+.account-identity{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:13px;
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:12px;
+  background:rgba(255,255,255,.035);
+}
+.account-identity>div{min-width:0;display:grid;gap:3px}
+.account-identity strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.account-identity span:not(.account-avatar){color:var(--muted);font-size:12px}
+.account-avatar{
+  width:40px;
+  height:40px;
+  flex:0 0 auto;
+  display:grid;
+  place-items:center;
+  border-radius:999px;
+  background:rgba(110,231,255,.12);
+  color:var(--accent);
+}
+.account-avatar svg{width:20px;height:20px;fill:currentColor}
+.account-benefits{display:grid;gap:7px;padding:2px 4px 6px}
+.account-benefits p{
+  margin:0;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  color:var(--muted);
+  font-size:13px;
+}
+.account-benefits svg{width:16px;height:16px;flex:0 0 auto;fill:#34d399}
+.account-status{
+  min-height:20px;
+  margin:14px 0 0;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.4;
+}
+.account-status[data-type="error"]{color:#fca5a5}
+.account-status[data-type="success"]{color:#6ee7b7}
+.account-privacy{
+  margin:12px 0 0;
+  padding-top:12px;
+  border-top:1px solid rgba(255,255,255,.08);
+  color:var(--muted-2);
+  font-size:11px;
+  line-height:1.45;
+}
+html.theme-light .account-shell{background:rgba(38,50,68,.28)}
+html.theme-light .account-panel{
+  border-color:rgba(86,105,130,.20);
+  box-shadow:0 26px 70px rgba(38,50,68,.20);
+}
+html.theme-light .account-form input{border-color:rgba(86,105,130,.22)}
+html.theme-light .account-password-form input{border-color:rgba(86,105,130,.22)}
+html.theme-light .account-primary{color:#fff}
+html.theme-light .account-secondary,html.theme-light .account-identity{border-color:rgba(86,105,130,.18)}
+html.theme-light .account-status[data-type="error"]{color:#b3261e}
+html.theme-light .account-status[data-type="success"]{color:#137333}
+
+@media (max-width:600px){
+  .account-shell{align-items:end;padding:10px}
+  .account-panel{
+    width:100%;
+    max-height:calc(100dvh - 20px);
+    padding:18px;
+    border-radius:15px;
+  }
+  .account-head{margin-bottom:14px}
+}

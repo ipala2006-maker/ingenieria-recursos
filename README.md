@@ -68,6 +68,21 @@ Para configurarla: Vercel → proyecto Estudiemos → Settings → Environment V
 
 El archivo `.env.example` muestra los nombres esperados sin contener secretos reales.
 
+## Cuentas y sincronización
+
+Las cuentas usan Supabase Auth y una tabla privada protegida con Row Level Security. Se sincronizan la agenda, los horarios, favoritos, guardados, materias elegidas, recientes y tema visual. La copia local se conserva para que Estudiemos continúe funcionando sin conexión.
+
+Configuración inicial:
+
+1. Crear un proyecto gratuito en Supabase.
+2. Abrir **SQL Editor**, pegar el contenido de `supabase/schema.sql` y ejecutarlo una vez.
+3. En **Authentication → URL Configuration**, usar `https://estudiemos-app.vercel.app` como Site URL y agregar `https://estudiemos-app.vercel.app/**` a Redirect URLs.
+4. Copiar la Project URL y la Publishable key desde **Project Settings → API Keys**.
+5. En Vercel agregar para Production las variables `SUPABASE_URL` y `SUPABASE_PUBLISHABLE_KEY`.
+6. Volver a desplegar el último commit.
+
+La Publishable key está diseñada para usarse en el navegador y queda limitada por las políticas de la tabla. No se debe usar ni publicar una Secret key o `service_role`.
+
 ## Widgets de Android
 
 La PWA instalada desde Chrome sigue siendo la aplicación principal. Como Android no permite que una PWA cree widgets del sistema por sí sola, la carpeta `android-app/` contiene un complemento nativo liviano que habilita dos widgets sin base de datos ni permisos sensibles:

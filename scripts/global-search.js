@@ -10,6 +10,7 @@
   preserveNavigationState();
   applySavedTheme();
   loadProfessionalStyle();
+  loadAccountScript();
   addLightTrayButton();
   loadPomodoroScript();
   loadInstallAppScript();
@@ -206,6 +207,15 @@
 
     const script = document.createElement("script");
     script.src = `${rootPath}scripts/pomodoro.js?v=20260819-agenda-semantic`;
+    script.defer = true;
+    document.head.appendChild(script);
+  }
+
+  function loadAccountScript() {
+    if (document.querySelector('script[src*="scripts/account.js"]')) return;
+
+    const script = document.createElement("script");
+    script.src = `${rootPath}scripts/account.js?v=20260819-account-sync`;
     script.defer = true;
     document.head.appendChild(script);
   }
