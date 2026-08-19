@@ -33,6 +33,7 @@
 html,body{ height: 100%; }
 body{
   margin: 0;
+  overflow-x: hidden;
   font-family: var(--font);
   color: var(--text);
   background:
@@ -1009,6 +1010,7 @@ img{ max-width: 100%; display:block; }
   letter-spacing:0;
 }
 .agenda-toolbar__today,
+.agenda-assistant-btn,
 .agenda-create-btn,
 .agenda-save-btn{
   min-height:36px;
@@ -1032,12 +1034,14 @@ img{ max-width: 100%; display:block; }
   background:rgba(110,231,255,.12);
 }
 .agenda-create-btn svg,
+.agenda-assistant-btn svg,
 .agenda-save-btn svg{
   width:15px;
   height:15px;
   fill:currentColor;
 }
 .agenda-toolbar__today:hover,
+.agenda-assistant-btn:hover,
 .agenda-create-btn:hover,
 .agenda-save-btn:hover{
   border-color:rgba(110,231,255,.38);
@@ -1179,8 +1183,220 @@ img{ max-width: 100%; display:block; }
   width:100%;
 }
 .agenda-save-btn span,
+.agenda-assistant-btn span,
 .agenda-create-btn span{
   white-space:nowrap;
+}
+.agenda-assistant-btn{
+  border-color:rgba(167,139,250,.28);
+  background:rgba(167,139,250,.10);
+}
+.agenda-assistant-btn:hover{
+  border-color:rgba(167,139,250,.42);
+  background:rgba(167,139,250,.16);
+}
+.agenda-editor.is-assistant-open > :not(.agenda-assistant){
+  display:none;
+}
+.agenda-assistant{
+  min-height:0;
+  overflow:auto;
+  overflow-x:hidden;
+  padding:18px 16px;
+}
+.agenda-assistant[hidden]{
+  display:none;
+}
+.agenda-assistant__head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:8px;
+}
+.agenda-assistant__head h3{
+  margin:2px 0 0;
+  color:var(--text);
+  font-size:18px;
+  line-height:1.25;
+}
+.agenda-assistant__close{
+  width:32px;
+  height:32px;
+  flex:0 0 auto;
+  display:grid;
+  place-items:center;
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:999px;
+  background:rgba(255,255,255,.04);
+  color:var(--muted);
+  cursor:pointer;
+}
+.agenda-assistant__close:hover{
+  border-color:rgba(167,139,250,.34);
+  background:rgba(167,139,250,.10);
+  color:var(--text);
+}
+.agenda-assistant__close svg{
+  width:16px;
+  height:16px;
+  stroke-width:1.8;
+}
+.agenda-assistant__intro{
+  margin:0 0 14px;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.5;
+}
+.agenda-assistant__form{
+  display:grid;
+  gap:10px;
+  padding:13px;
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:14px;
+  background:rgba(255,255,255,.035);
+}
+.agenda-assistant__form .tray-field{
+  gap:5px;
+  margin:0;
+  font-size:12px;
+}
+.agenda-assistant__form textarea{
+  min-height:112px;
+  line-height:1.45;
+}
+.agenda-assistant__dates{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:9px;
+}
+.agenda-assistant__dates .tray-field,
+.agenda-assistant__dates input{
+  min-width:0;
+}
+.agenda-assistant__hint{
+  margin:-3px 0 0;
+  color:var(--muted-2);
+  font-size:11px;
+  line-height:1.4;
+}
+.agenda-assistant__interpret,
+.agenda-assistant__confirm{
+  min-height:40px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  border:1px solid rgba(167,139,250,.34);
+  border-radius:10px;
+  background:rgba(167,139,250,.15);
+  color:var(--text);
+  padding:9px 12px;
+  font:inherit;
+  font-size:13px;
+  font-weight:850;
+  cursor:pointer;
+}
+.agenda-assistant__interpret:hover,
+.agenda-assistant__confirm:hover{
+  border-color:rgba(167,139,250,.52);
+  background:rgba(167,139,250,.21);
+}
+.agenda-assistant__interpret svg{
+  width:16px;
+  height:16px;
+  stroke-width:1.6;
+}
+.agenda-assistant__status{
+  margin-top:12px;
+  border-radius:10px;
+  color:var(--muted);
+  font-size:12px;
+  font-weight:750;
+  line-height:1.45;
+}
+.agenda-assistant__status:empty{
+  display:none;
+}
+.agenda-assistant__status.is-error,
+.agenda-assistant__status.is-success,
+.agenda-assistant__status.is-info{
+  padding:9px 11px;
+  border:1px solid rgba(255,255,255,.10);
+  background:rgba(255,255,255,.035);
+}
+.agenda-assistant__status.is-error{
+  border-color:rgba(248,113,113,.28);
+  color:#fca5a5;
+}
+.agenda-assistant__status.is-success{
+  border-color:rgba(74,222,128,.28);
+  color:#86efac;
+}
+.agenda-assistant__preview{
+  margin-top:12px;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:12px;
+  background:rgba(255,255,255,.025);
+}
+.agenda-assistant__preview[hidden]{
+  display:none;
+}
+.agenda-assistant__summary{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  padding:10px 11px;
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+.agenda-assistant__summary strong{
+  color:var(--text);
+  font-size:13px;
+}
+.agenda-assistant__summary span{
+  color:var(--muted);
+  font-size:11px;
+}
+.agenda-assistant__schedule-list{
+  display:grid;
+}
+.agenda-assistant__schedule{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto auto;
+  align-items:center;
+  gap:8px;
+  padding:9px 11px;
+  border-bottom:1px solid rgba(255,255,255,.07);
+  color:var(--muted);
+  font-size:11px;
+}
+.agenda-assistant__schedule:last-child{
+  border-bottom:0;
+}
+.agenda-assistant__schedule strong{
+  min-width:0;
+  overflow:hidden;
+  color:var(--text);
+  font-size:12px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.agenda-assistant__confirm{
+  width:100%;
+  margin-top:10px;
+  border-color:rgba(110,231,255,.34);
+  background:rgba(110,231,255,.13);
+}
+.agenda-assistant__confirm[hidden]{
+  display:none;
+}
+.agenda-assistant__privacy{
+  margin:12px 0 0;
+  color:var(--muted-2);
+  font-size:11px;
+  text-align:center;
 }
 .agenda-filter{
   padding:12px 16px 0;
@@ -1352,6 +1568,7 @@ img{ max-width: 100%; display:block; }
     font-size:18px;
   }
   .agenda-toolbar__today,
+  .agenda-assistant-btn,
   .agenda-create-btn{
     min-height:34px;
     padding:7px 10px;
@@ -1359,7 +1576,8 @@ img{ max-width: 100%; display:block; }
   .agenda-layout{
     display:flex;
     flex-direction:column;
-    overflow:auto;
+    overflow-x:hidden;
+    overflow-y:auto;
   }
   .agenda-calendar{
     border-right:0;
@@ -1386,6 +1604,19 @@ img{ max-width: 100%; display:block; }
   }
   .agenda-editor{
     flex:none;
+  }
+  .agenda-board.is-assistant-open .agenda-calendar{
+    display:none;
+  }
+  .agenda-board.is-assistant-open .agenda-editor{
+    flex:1;
+    overflow:auto;
+  }
+  .agenda-assistant{
+    padding:14px;
+  }
+  .agenda-assistant__form{
+    padding:12px;
   }
   .agenda-board__head,
   .agenda-form,
@@ -3208,6 +3439,22 @@ html.theme-light .pomodoro-settings-panel{
   .pomodoro-menu__panel.is-config-open .pomodoro-spotify-player iframe{
     height:64px;
   }
+}
+
+html.theme-light .agenda-assistant__form,
+html.theme-light .agenda-assistant__preview,
+html.theme-light .agenda-assistant__status.is-error,
+html.theme-light .agenda-assistant__status.is-success,
+html.theme-light .agenda-assistant__status.is-info{
+  background:var(--panel) !important;
+  border-color:var(--border) !important;
+}
+
+html.theme-light .agenda-assistant__close,
+html.theme-light .agenda-assistant-btn{
+  color:var(--text) !important;
+  border-color:var(--border) !important;
+  background:var(--panel) !important;
 }
 
 /* Avisos y ventana compacta del temporizador en celulares. */

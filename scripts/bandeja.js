@@ -13,11 +13,24 @@
 
   const GOOGLE_FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSc8KLH9N0kcYRryZa0tNtLSRIMe0ol_wKWVUwBt9T-3m9WD1A/viewform?usp=header";
   const AGENDA_TYPES = ["Tarea", "Parcial", "Clase", "Entrega", "Estudio", "Recordatorio"];
+  const MAX_AGENDA_ITEMS = 500;
+  const MAX_ASSISTANT_RANGE_DAYS = 370;
+  const AGENDA_DAY_NAMES = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+  const AGENDA_DAY_ALIASES = [
+    { day: 0, aliases: ["domingo", "dom"] },
+    { day: 1, aliases: ["lunes", "lun"] },
+    { day: 2, aliases: ["martes", "mar"] },
+    { day: 3, aliases: ["miercoles", "mie"] },
+    { day: 4, aliases: ["jueves", "jue"] },
+    { day: 5, aliases: ["viernes", "vie"] },
+    { day: 6, aliases: ["sabado", "sab"] }
+  ];
   let refreshQueued = false;
   let agendaFilter = "day";
   let agendaMonth = new Date().getMonth();
   let agendaYear = new Date().getFullYear();
   let selectedAgendaDate = toDateValue(new Date());
+  let agendaAssistantPreview = [];
 
   addTray();
   addAgendaPanel();
@@ -91,6 +104,7 @@
             </div>
           </div>
           <div class="agenda-toolbar__actions">
+            <button class="agenda-assistant-btn" type="button" data-agenda-assistant>${icon("sparkles")}<span>Organizar</span></button>
             <button class="agenda-create-btn" type="button" data-agenda-create>${icon("plus")}<span>Crear</span></button>
             <button class="tray-close" type="button" data-agenda-close aria-label="Cerrar agenda">${icon("lineClose")}</button>
           </div>
@@ -105,6 +119,43 @@
           </section>
 
           <aside class="agenda-editor" aria-label="Detalle de agenda">
+            <section class="agenda-assistant" id="agendaAssistant" hidden>
+              <div class="agenda-assistant__head">
+                <div>
+                  <p class="tray-kicker">Asistente inteligente</p>
+                  <h3>Organizar cursado</h3>
+                </div>
+                <button class="agenda-assistant__close" type="button" data-agenda-assistant-close aria-label="Cerrar asistente">${icon("lineClose")}</button>
+              </div>
+              <p class="agenda-assistant__intro">Escribí tus horarios con tus palabras. Los interpretamos y los repetimos cada semana en la agenda.</p>
+
+              <form id="agendaAssistantForm" class="agenda-assistant__form">
+                <label class="tray-field">
+                  Tus horarios
+                  <textarea id="agendaAssistantPrompt" rows="5" maxlength="700" placeholder="Física I: lunes y miércoles de 8 a 10&#10;Análisis Matemático I: martes de 14:30 a 16"></textarea>
+                </label>
+                <p class="agenda-assistant__hint">Escribí una materia por línea.</p>
+
+                <div class="agenda-assistant__dates">
+                  <label class="tray-field">
+                    Desde
+                    <input id="agendaAssistantFrom" type="date" required />
+                  </label>
+                  <label class="tray-field">
+                    Hasta
+                    <input id="agendaAssistantUntil" type="date" required />
+                  </label>
+                </div>
+
+                <button class="agenda-assistant__interpret" type="submit">${icon("sparkles")}<span>Interpretar horarios</span></button>
+              </form>
+
+              <div id="agendaAssistantStatus" class="agenda-assistant__status" role="status" aria-live="polite"></div>
+              <div id="agendaAssistantPreview" class="agenda-assistant__preview" hidden></div>
+              <button id="agendaAssistantConfirm" class="agenda-assistant__confirm" type="button" data-agenda-assistant-confirm hidden>Guardar en la agenda</button>
+              <p class="agenda-assistant__privacy">Funciona de forma privada en este dispositivo.</p>
+            </section>
+
             <div class="agenda-selected-day">
               <p class="tray-kicker">Día seleccionado</p>
               <h3 id="agendaSelectedLabel"></h3>
@@ -287,6 +338,9 @@
       const agendaDay = event.target.closest("[data-agenda-date]");
       const agendaToday = event.target.closest("[data-agenda-today]");
       const agendaCreate = event.target.closest("[data-agenda-create]");
+      const agendaAssistant = event.target.closest("[data-agenda-assistant]");
+      const agendaAssistantClose = event.target.closest("[data-agenda-assistant-close]");
+      const agendaAssistantConfirm = event.target.closest("[data-agenda-assistant-confirm]");
 
       if (agendaClose) {
         closeAgendaBoard();
@@ -299,7 +353,23 @@
       }
 
       if (agendaCreate) {
+        closeAgendaAssistant();
         focusAgendaForm();
+        return;
+      }
+
+      if (agendaAssistant) {
+        openAgendaAssistant();
+        return;
+      }
+
+      if (agendaAssistantClose) {
+        closeAgendaAssistant();
+        return;
+      }
+
+      if (agendaAssistantConfirm) {
+        saveAgendaAssistantItems();
         return;
       }
 
@@ -333,6 +403,11 @@
     document.getElementById("agendaForm")?.addEventListener("submit", (event) => {
       event.preventDefault();
       addAgendaItem();
+    });
+
+    document.getElementById("agendaAssistantForm")?.addEventListener("submit", (event) => {
+      event.preventDefault();
+      previewAgendaAssistant();
     });
 
     document.getElementById("agendaTitle")?.addEventListener("input", updateAgendaSubmitState);
@@ -635,7 +710,7 @@
       createdAt: Date.now()
     });
 
-    writeList(STORAGE_KEYS.agenda, items.slice(0, 30));
+    writeList(STORAGE_KEYS.agenda, items.slice(0, MAX_AGENDA_ITEMS));
     titleInput.value = "";
     if (dateInput) dateInput.value = selectedAgendaDate;
     if (noteInput) noteInput.value = "";
@@ -643,6 +718,261 @@
     if (endTimeInput) endTimeInput.value = "";
     updateAgendaSubmitState();
     renderAgenda();
+  }
+
+  function openAgendaAssistant() {
+    const editor = document.querySelector(".agenda-editor");
+    const panel = document.getElementById("agendaAssistant");
+    if (!editor || !panel) return;
+    setAgendaAssistantDateDefaults();
+    editor.classList.add("is-assistant-open");
+    document.querySelector(".agenda-board")?.classList.add("is-assistant-open");
+    panel.hidden = false;
+    requestAnimationFrame(() => {
+      if (window.matchMedia("(max-width: 720px)").matches) panel.scrollIntoView({ block: "start" });
+      document.getElementById("agendaAssistantPrompt")?.focus();
+    });
+  }
+
+  function closeAgendaAssistant() {
+    const editor = document.querySelector(".agenda-editor");
+    const panel = document.getElementById("agendaAssistant");
+    editor?.classList.remove("is-assistant-open");
+    document.querySelector(".agenda-board")?.classList.remove("is-assistant-open");
+    if (panel) panel.hidden = true;
+  }
+
+  function setAgendaAssistantDateDefaults() {
+    const fromInput = document.getElementById("agendaAssistantFrom");
+    const untilInput = document.getElementById("agendaAssistantUntil");
+    if (!fromInput || !untilInput) return;
+    const today = new Date();
+    const semesterEnd = new Date(today.getFullYear(), today.getMonth() + 4, today.getDate());
+    if (!fromInput.value) fromInput.value = toDateValue(today);
+    if (!untilInput.value) untilInput.value = toDateValue(semesterEnd);
+  }
+
+  function previewAgendaAssistant() {
+    const prompt = document.getElementById("agendaAssistantPrompt")?.value.trim() || "";
+    const fromValue = document.getElementById("agendaAssistantFrom")?.value || "";
+    const untilValue = document.getElementById("agendaAssistantUntil")?.value || "";
+    const status = document.getElementById("agendaAssistantStatus");
+    const preview = document.getElementById("agendaAssistantPreview");
+    const confirm = document.getElementById("agendaAssistantConfirm");
+    agendaAssistantPreview = [];
+    if (preview) {
+      preview.hidden = true;
+      preview.innerHTML = "";
+    }
+    if (confirm) confirm.hidden = true;
+
+    if (!prompt) {
+      setAgendaAssistantStatus("Escribí al menos un horario para poder organizarlo.", "error");
+      return;
+    }
+
+    const from = parseDateValue(fromValue);
+    const until = parseDateValue(untilValue);
+    if (!from || !until || from > until) {
+      setAgendaAssistantStatus("Revisá las fechas: el comienzo debe ser anterior al final.", "error");
+      return;
+    }
+
+    const rangeDays = Math.floor((until - from) / 86400000) + 1;
+    if (rangeDays > MAX_ASSISTANT_RANGE_DAYS) {
+      setAgendaAssistantStatus("Podés organizar hasta un año por vez.", "error");
+      return;
+    }
+
+    const result = parseAgendaAssistantPrompt(prompt);
+    if (result.errors.length) {
+      setAgendaAssistantStatus(result.errors.join(" "), "error");
+      return;
+    }
+
+    agendaAssistantPreview = buildAgendaAssistantItems(result.schedules, from, until);
+    if (!agendaAssistantPreview.length) {
+      setAgendaAssistantStatus("No hay clases nuevas para guardar en esas fechas.", "info");
+      return;
+    }
+
+    if (preview) {
+      preview.innerHTML = `
+        <div class="agenda-assistant__summary">
+          <strong>${agendaAssistantPreview.length} clases listas</strong>
+          <span>Revisá antes de guardar</span>
+        </div>
+        <div class="agenda-assistant__schedule-list">
+          ${result.schedules.map((schedule) => `
+            <div class="agenda-assistant__schedule">
+              <strong>${escapeHtml(schedule.subject)}</strong>
+              <span>${escapeHtml(schedule.days.map(shortAgendaDayName).join(" y "))}</span>
+              <span>${escapeHtml(`${schedule.horaInicio}-${schedule.horaFin}`)}</span>
+            </div>
+          `).join("")}
+        </div>
+      `;
+      preview.hidden = false;
+    }
+    if (confirm) {
+      confirm.textContent = `Guardar ${agendaAssistantPreview.length} clases`;
+      confirm.hidden = false;
+    }
+    if (status) {
+      status.textContent = "";
+      status.className = "agenda-assistant__status";
+    }
+  }
+
+  function parseAgendaAssistantPrompt(prompt) {
+    const lines = String(prompt)
+      .split(/\n|;/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .slice(0, 12);
+    const schedules = [];
+    const errors = [];
+
+    lines.forEach((line, index) => {
+      const normalizedLine = normalizeAssistantText(line);
+      const days = AGENDA_DAY_ALIASES
+        .filter((entry) => entry.aliases.some((alias) => new RegExp(`\\b${alias}\\b`, "i").test(normalizedLine)))
+        .map((entry) => entry.day);
+      const timeMatch = normalizedLine.match(/(?:de|desde)?\s*(\d{1,2})(?::(\d{2}))?\s*(?:a|hasta|-)\s*(\d{1,2})(?::(\d{2}))?/i);
+      const subject = findAssistantSubject(line, normalizedLine);
+
+      if (!subject || !days.length || !timeMatch) {
+        errors.push(`No pude interpretar la línea ${index + 1}. Usá el formato “Materia: lunes de 8 a 10”.`);
+        return;
+      }
+
+      const horaInicio = normalizeAssistantTime(timeMatch[1], timeMatch[2]);
+      const horaFin = normalizeAssistantTime(timeMatch[3], timeMatch[4]);
+      if (!horaInicio || !horaFin || horaInicio >= horaFin) {
+        errors.push(`Revisá las horas de la línea ${index + 1}.`);
+        return;
+      }
+
+      schedules.push({ subject, days: [...new Set(days)], horaInicio, horaFin });
+    });
+
+    if (!lines.length) errors.push("Escribí al menos un horario.");
+    return { schedules, errors };
+  }
+
+  function findAssistantSubject(originalLine, normalizedLine) {
+    const subjects = getSubjects()
+      .map((subject) => ({ title: subject.title, slug: subject.slug, normalized: normalizeAssistantText(subject.title) }))
+      .sort((a, b) => b.normalized.length - a.normalized.length);
+    const exact = subjects.find((subject) => normalizedLine.includes(subject.normalized));
+    if (exact) return exact.title;
+
+    const aliases = [
+      { words: ["fisica"], slug: "fisica-1" },
+      { words: ["analisis", "calculo"], slug: "analisis-matematico-1" },
+      { words: ["quimica"], slug: "quimica" }
+    ];
+    const alias = aliases.find((entry) => entry.words.some((word) => new RegExp(`\\b${word}\\b`, "i").test(normalizedLine)));
+    const aliasSubject = alias && subjects.find((subject) => subject.slug === alias.slug);
+    if (aliasSubject) return aliasSubject.title;
+
+    const dayMatch = normalizeAssistantText(originalLine).match(/\b(lunes|lun|martes|mar|miercoles|mie|jueves|jue|viernes|vie|sabado|sab|domingo|dom)\b/i);
+    if (!dayMatch || typeof dayMatch.index !== "number") return "";
+    const prefix = originalLine.slice(0, dayMatch.index)
+      .replace(/^(tengo|curso|cursada|clases?\s+de)\s+/i, "")
+      .replace(/[,:-]+\s*$/, "")
+      .trim();
+    return prefix.length >= 2 ? sentenceCase(prefix) : "";
+  }
+
+  function normalizeAssistantText(value) {
+    return String(value || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function normalizeAssistantTime(hourValue, minuteValue) {
+    const hour = Number(hourValue);
+    const minute = Number(minuteValue || 0);
+    if (!Number.isInteger(hour) || !Number.isInteger(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) return "";
+    return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+  }
+
+  function buildAgendaAssistantItems(schedules, from, until) {
+    const existing = readList(STORAGE_KEYS.agenda);
+    const occupied = new Set(existing.map(agendaAssistantItemKey));
+    const items = [];
+    const cursor = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+    let index = 0;
+
+    while (cursor <= until) {
+      schedules.forEach((schedule) => {
+        if (!schedule.days.includes(cursor.getDay())) return;
+        const item = {
+          id: `agenda:${Date.now()}:assistant:${index}`,
+          title: `Clase de ${schedule.subject}`,
+          type: "Clase",
+          date: toDateValue(cursor),
+          subject: schedule.subject,
+          note: "Horario de cursado",
+          horaInicio: schedule.horaInicio,
+          horaFin: schedule.horaFin,
+          done: false,
+          createdAt: Date.now() + index
+        };
+        const key = agendaAssistantItemKey(item);
+        if (!occupied.has(key)) {
+          occupied.add(key);
+          items.push(item);
+          index += 1;
+        }
+      });
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    return items;
+  }
+
+  function agendaAssistantItemKey(item) {
+    return [item.type, normalizeAssistantText(item.subject), item.date, item.horaInicio, item.horaFin].join("|");
+  }
+
+  function saveAgendaAssistantItems() {
+    if (!agendaAssistantPreview.length) return;
+    const current = readList(STORAGE_KEYS.agenda);
+    const occupied = new Set(current.map(agendaAssistantItemKey));
+    const fresh = agendaAssistantPreview.filter((item) => !occupied.has(agendaAssistantItemKey(item)));
+    if (!fresh.length) {
+      setAgendaAssistantStatus("Esas clases ya estaban guardadas en la agenda.", "info");
+      return;
+    }
+
+    writeList(STORAGE_KEYS.agenda, [...fresh, ...current].slice(0, MAX_AGENDA_ITEMS));
+    const firstDate = parseDateValue(fresh[0].date);
+    if (firstDate) {
+      selectedAgendaDate = fresh[0].date;
+      agendaMonth = firstDate.getMonth();
+      agendaYear = firstDate.getFullYear();
+    }
+    agendaAssistantPreview = [];
+    document.getElementById("agendaAssistantPreview")?.setAttribute("hidden", "");
+    document.getElementById("agendaAssistantConfirm")?.setAttribute("hidden", "");
+    setAgendaAssistantStatus(`Listo. Se guardaron ${fresh.length} clases en tu agenda.`, "success");
+    renderAgenda();
+  }
+
+  function setAgendaAssistantStatus(message, type) {
+    const status = document.getElementById("agendaAssistantStatus");
+    if (!status) return;
+    status.textContent = message;
+    status.className = `agenda-assistant__status is-${type || "info"}`;
+  }
+
+  function shortAgendaDayName(day) {
+    return sentenceCase(AGENDA_DAY_NAMES[day] || "").slice(0, 3);
   }
 
   function renderAgenda() {
@@ -1217,6 +1547,7 @@
       message: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-8l-5 4v-4H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm0 2v9h3v1.8l2.3-1.8H19V6H5Zm3 3h8v2H8V9Z"/></svg>',
       close: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.7 5.3 12 10.6l5.3-5.3 1.4 1.4-5.3 5.3 5.3 5.3-1.4 1.4-5.3-5.3-5.3 5.3-1.4-1.4 5.3-5.3-5.3-5.3 1.4-1.4z"/></svg>',
       calendar: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2h2v2h6V2h2v2h2.2A2.8 2.8 0 0 1 22 6.8v11.4a2.8 2.8 0 0 1-2.8 2.8H4.8A2.8 2.8 0 0 1 2 18.2V6.8A2.8 2.8 0 0 1 4.8 4H7V2Zm12 8H5v8.2c0 .4.4.8.8.8h12.4c.4 0 .8-.4.8-.8V10ZM5.8 6c-.4 0-.8.4-.8.8V8h14V6.8c0-.4-.4-.8-.8-.8H17v2h-2V6H9v2H7V6H5.8Zm1.7 6h3v3h-3v-3Zm5 0h3v3h-3v-3Z"/></svg>',
+      sparkles: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"><path d="m12 3 1.2 3.8L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.2L12 3ZM18.5 13l.8 2.7 2.7.8-2.7.8-.8 2.7-.8-2.7-2.7-.8 2.7-.8.8-2.7ZM5.5 13l.7 2.3 2.3.7-2.3.7-.7 2.3-.7-2.3-2.3-.7 2.3-.7.7-2.3Z"/></svg>',
       plus: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6V5Z"/></svg>',
       chevronLeft: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.8 5.4 1.4 1.4-5.2 5.2 5.2 5.2-1.4 1.4L8.2 12l6.6-6.6Z"/></svg>',
       chevronRight: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.2 18.6-1.4-1.4 5.2-5.2-5.2-5.2 1.4-1.4 6.6 6.6-6.6 6.6Z"/></svg>',
