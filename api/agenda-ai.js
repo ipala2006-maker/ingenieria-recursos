@@ -4,6 +4,7 @@ const MAX_AGENDA_ITEMS = 500;
 const MAX_INSTRUCTION_LENGTH = 1200;
 const MAX_RANGE_DAYS = 370;
 const REQUEST_TIMEOUT_MS = 50000;
+const MODEL_RETRY_DELAY_MS = 900;
 
 const RESPONSE_SCHEMA = {
   type: "object",
@@ -104,26 +105,12 @@ module.exports = async function agendaAi(request, response) {
   if (!input.ok) return response.status(400).json({ error: input.error });
 
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-    const modelResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(MODEL)}:generateContent`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": process.env.GEMINI_API_KEY
-        },
-        body: JSON.stringify(buildModelRequest(input.value)),
-        signal: controller.signal
-      }
-    ).finally(() => clearTimeout(timeout));
-
-    const payload = await modelResponse.json().catch(() => null);
+    const { modelResponse, payload } = await requestModel(buildModelRequest(input.value));
     if (!modelResponse.ok) {
       const unavailable = modelResponse.status === 429 || modelResponse.status >= 500;
       const providerMessage = cleanText(payload?.error?.message, 300);
       return response.status(unavailable ? 503 : 502).json({
+        code: unavailable ? "AI_BUSY" : "AI_REQUEST_FAILED",
         error: unavailable
           ? "La IA esta ocupada en este momento. Proba nuevamente en unos segundos."
           : "No se pudo interpretar la instruccion.",
@@ -138,12 +125,48 @@ module.exports = async function agendaAi(request, response) {
   } catch (error) {
     const timedOut = error?.name === "AbortError";
     return response.status(503).json({
+      code: timedOut ? "AI_TIMEOUT" : "AI_CONNECTION_FAILED",
       error: timedOut
         ? "La IA tardo demasiado en responder. Proba nuevamente."
         : "No se pudo conectar con la IA en este momento."
     });
   }
 };
+
+async function requestModel(body) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let modelResponse;
+  let payload;
+
+  try {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      modelResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(MODEL)}:generateContent`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": process.env.GEMINI_API_KEY
+          },
+          body: JSON.stringify(body),
+          signal: controller.signal
+        }
+      );
+      payload = await modelResponse.json().catch(() => null);
+      const retryable = modelResponse.status === 429 || modelResponse.status >= 500;
+      if (modelResponse.ok || !retryable || attempt === 1) break;
+      await wait(MODEL_RETRY_DELAY_MS);
+    }
+    return { modelResponse, payload };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function wait(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
 
 function setResponseHeaders(response) {
   response.setHeader("Cache-Control", "no-store, max-age=0");
@@ -242,7 +265,7 @@ Reglas de razonamiento:
     materiasConocidas: input.subjects,
     agendaActualDatosCampos: ["titulo", "tipo", "materia", "nota", "horaInicio", "horaFin", "hecha"],
     agendaActualEventoCampos: ["id", "fecha", "creadaEn"],
-    agendaActualGrupos: compactAgendaForModel(input.agenda)
+    agendaActualGrupos: compactAgendaForModel(selectAgendaForModel(input))
   };
 
   return {
@@ -255,6 +278,20 @@ Reglas de razonamiento:
       responseSchema: RESPONSE_SCHEMA
     }
   };
+}
+
+function selectAgendaForModel(input) {
+  const instruction = normalizeText(input.instruction);
+  const mentionedSubjects = input.subjects
+    .map(normalizeText)
+    .filter((subject) => subject && instruction.includes(subject));
+  if (!mentionedSubjects.length) return input.agenda;
+
+  return input.agenda.filter((item) => {
+    const subject = normalizeText(item.subject);
+    const title = normalizeText(item.title);
+    return mentionedSubjects.some((mentioned) => subject === mentioned || title.includes(mentioned));
+  });
 }
 
 function compactAgendaForModel(agenda) {
@@ -371,6 +408,15 @@ function sanitizeUpdate(item, validIds) {
 
 function cleanText(value, maxLength) {
   return String(value || "").replace(/[\u0000-\u001F\u007F]/g, " ").replace(/\s+/g, " ").trim().slice(0, maxLength);
+}
+
+function normalizeText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 }
 
 function cleanDate(value) {
