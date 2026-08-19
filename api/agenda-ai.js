@@ -231,7 +231,7 @@ Reglas de razonamiento:
 - Si una hora es ambigua, usa el contexto habitual universitario; si no hay contexto suficiente, pedi una aclaracion.
 - Ejecuta toda la orden solicitada en un solo plan. No agregues acciones no pedidas.
 - Si falta un dato indispensable o hay dos interpretaciones peligrosas, completa clarification y deja todas las acciones vacias.
-- agendaActual usa filas compactas. Lee cada posicion segun agendaActualCampos; cada fila sigue representando una anotacion completa.
+- agendaActualGrupos agrupa anotaciones con los mismos datos para evitar repeticiones. Lee datos y eventos segun sus listas de campos; cada evento conserva su ID, fecha y orden de creacion exactos.
 - Responde exclusivamente con el JSON solicitado.`;
 
   const userContext = {
@@ -240,19 +240,9 @@ Reglas de razonamiento:
     zonaHoraria: input.timezone,
     rangoPredeterminado: { desde: input.dateFrom, hasta: input.dateUntil },
     materiasConocidas: input.subjects,
-    agendaActualCampos: ["id", "titulo", "tipo", "fecha", "materia", "nota", "horaInicio", "horaFin", "hecha", "creadaEn"],
-    agendaActual: input.agenda.map((item) => [
-      item.id,
-      item.title,
-      item.type,
-      item.date,
-      item.subject,
-      item.note,
-      item.horaInicio,
-      item.horaFin,
-      item.done ? 1 : 0,
-      item.createdAt
-    ])
+    agendaActualDatosCampos: ["titulo", "tipo", "materia", "nota", "horaInicio", "horaFin", "hecha"],
+    agendaActualEventoCampos: ["id", "fecha", "creadaEn"],
+    agendaActualGrupos: compactAgendaForModel(input.agenda)
   };
 
   return {
@@ -265,6 +255,25 @@ Reglas de razonamiento:
       responseSchema: RESPONSE_SCHEMA
     }
   };
+}
+
+function compactAgendaForModel(agenda) {
+  const groups = new Map();
+  agenda.forEach((item) => {
+    const data = [
+      item.title,
+      item.type,
+      item.subject,
+      item.note,
+      item.horaInicio,
+      item.horaFin,
+      item.done ? 1 : 0
+    ];
+    const key = JSON.stringify(data);
+    if (!groups.has(key)) groups.set(key, { datos: data, eventos: [] });
+    groups.get(key).eventos.push([item.id, item.date, item.createdAt]);
+  });
+  return [...groups.values()];
 }
 
 function sanitizePlan(raw, agenda) {
