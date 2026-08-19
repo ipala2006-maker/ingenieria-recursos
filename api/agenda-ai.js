@@ -1,5 +1,5 @@
 // This function keeps the model credential on Vercel and out of the browser.
-const MODEL = process.env.GEMINI_MODEL || "gemini-3.6-flash";
+const MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
 const MAX_AGENDA_ITEMS = 500;
 const MAX_INSTRUCTION_LENGTH = 1200;
 const MAX_RANGE_DAYS = 370;
@@ -272,7 +272,6 @@ Reglas de razonamiento:
     systemInstruction: { parts: [{ text: systemInstruction }] },
     contents: [{ role: "user", parts: [{ text: JSON.stringify(userContext) }] }],
     generationConfig: {
-      temperature: 0.15,
       maxOutputTokens: 16384,
       responseMimeType: "application/json",
       responseSchema: RESPONSE_SCHEMA
