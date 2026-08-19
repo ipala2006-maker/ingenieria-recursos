@@ -61,7 +61,7 @@ La interpretación natural de órdenes usa Gemini desde la función `api/agenda-
 Variables de Vercel:
 
 - `GEMINI_API_KEY`: requerida. Se crea en Google AI Studio.
-- `GEMINI_MODEL`: opcional. Por defecto se usa `gemini-2.5-flash`.
+- `GEMINI_MODEL`: opcional. Por defecto se usa `gemini-3.6-flash`.
 
 Para configurarla: Vercel → proyecto Estudiemos → Settings → Environment Variables. Agregar `GEMINI_API_KEY` para Production y volver a desplegar el último commit.
 
