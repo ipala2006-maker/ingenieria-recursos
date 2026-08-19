@@ -138,7 +138,7 @@ module.exports = async function agendaAi(request, response) {
 
     const text = payload?.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("") || "";
     const parsed = JSON.parse(text);
-    const plan = sanitizePlan(parsed, input.value.agenda);
+    const plan = sanitizePlan(parsed, input.value);
     return response.status(200).json(plan);
   } catch (error) {
     const timedOut = error?.name === "AbortError";
@@ -270,6 +270,7 @@ Reglas de razonamiento:
 - Usa deleteIds solamente cuando el usuario identifica una o pocas anotaciones concretas y no hace falta una regla.
 - No conviertas frases como "elimina...", "cambia..." o "mueve..." en eventos nuevos.
 - Para horarios semanales usa createSchedules. El domingo es 0, lunes 1, martes 2, miercoles 3, jueves 4, viernes 5 y sabado 6.
+- Si varias materias comparten dias y horario, crea un horario separado para cada materia. Nunca combines dos materias conocidas en un mismo title o subject.
 - Para eventos de una sola fecha usa createEvents.
 - Si el usuario no indica el periodo de una recurrencia, usa el rango predeterminado recibido.
 - Si una hora es ambigua, usa el contexto habitual universitario; si no hay contexto suficiente, pedi una aclaracion.
@@ -333,8 +334,9 @@ function compactAgendaForModel(agenda) {
   return [...groups.values()];
 }
 
-function sanitizePlan(raw, agenda) {
+function sanitizePlan(raw, input) {
   const source = raw && typeof raw === "object" ? raw : {};
+  const agenda = input.agenda;
   const validIds = new Set(agenda.map((item) => item.id));
   const directDeleteIds = Array.isArray(source.deleteIds) ? source.deleteIds.map((id) => cleanText(id, 180)) : [];
   const ruleDeleteIds = expandDeleteRules(source.deleteRules, agenda);
@@ -343,9 +345,10 @@ function sanitizePlan(raw, agenda) {
     .slice(0, MAX_AGENDA_ITEMS);
   const deleted = new Set(deleteIds);
 
-  const createSchedules = Array.isArray(source.createSchedules)
+  const sanitizedSchedules = Array.isArray(source.createSchedules)
     ? source.createSchedules.map(sanitizeSchedule).filter(Boolean).slice(0, 50)
     : [];
+  const createSchedules = splitCombinedSchedules(sanitizedSchedules, input.subjects).slice(0, 50);
   const createEvents = Array.isArray(source.createEvents)
     ? source.createEvents.map(sanitizeCreatedEvent).filter(Boolean).slice(0, 100)
     : [];
@@ -361,6 +364,27 @@ function sanitizePlan(raw, agenda) {
     deleteIds,
     updates
   };
+}
+
+function splitCombinedSchedules(schedules, subjects) {
+  const knownSubjects = subjects
+    .map((subject) => ({ original: subject, normalized: normalizeText(subject) }))
+    .filter((subject) => subject.normalized);
+
+  return schedules.flatMap((schedule) => {
+    const searchable = normalizeText(`${schedule.subject} ${schedule.title}`);
+    const matches = knownSubjects.filter((subject) => hasNormalizedPhrase(searchable, subject.normalized));
+    if (matches.length < 2) return [schedule];
+    return matches.map((subject) => ({
+      ...schedule,
+      title: `Clase de ${subject.original}`,
+      subject: subject.original
+    }));
+  });
+}
+
+function hasNormalizedPhrase(text, phrase) {
+  return ` ${text} `.includes(` ${phrase} `);
 }
 
 function expandDeleteRules(rawRules, agenda) {
