@@ -1151,7 +1151,7 @@
       document.getElementById("agendaAssistantPreview")?.setAttribute("hidden", "");
       document.getElementById("agendaAssistantConfirm")?.setAttribute("hidden", "");
       document.getElementById("agendaAssistantConfirm")?.classList.remove("is-delete");
-      setAgendaAssistantStatus(`Listo. Se eliminaron ${removedCount} ${removedCount === 1 ? "clase" : "clases"} de tu agenda.`, "success");
+      setAgendaAssistantStatus(removedCount === 1 ? "Listo. Se eliminó 1 clase de tu agenda." : `Listo. Se eliminaron ${removedCount} clases de tu agenda.`, "success");
       renderAgenda();
       return;
     }
