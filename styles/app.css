@@ -1310,6 +1310,10 @@ img{ max-width: 100%; display:block; }
   border-color:rgba(167,139,250,.52);
   background:rgba(167,139,250,.21);
 }
+.agenda-assistant__interpret:disabled{
+  opacity:.7;
+  cursor:wait;
+}
 .agenda-assistant__interpret svg{
   width:16px;
   height:16px;

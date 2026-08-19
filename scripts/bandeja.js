@@ -16,15 +16,6 @@
   const MAX_AGENDA_ITEMS = 500;
   const MAX_ASSISTANT_RANGE_DAYS = 370;
   const AGENDA_DAY_NAMES = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
-  const AGENDA_DAY_ALIASES = [
-    { day: 0, aliases: ["domingo", "domingos", "dom"] },
-    { day: 1, aliases: ["lunes", "lun"] },
-    { day: 2, aliases: ["martes", "mar"] },
-    { day: 3, aliases: ["miercoles", "mie"] },
-    { day: 4, aliases: ["jueves", "jue"] },
-    { day: 5, aliases: ["viernes", "vie"] },
-    { day: 6, aliases: ["sabado", "sabados", "sab"] }
-  ];
   let refreshQueued = false;
   let agendaFilter = "day";
   let agendaMonth = new Date().getMonth();
@@ -128,14 +119,14 @@
                 </div>
                 <button class="agenda-assistant__close" type="button" data-agenda-assistant-close aria-label="Cerrar asistente">${icon("lineClose")}</button>
               </div>
-              <p class="agenda-assistant__intro">Escribí tus horarios con tus palabras. Los interpretamos y los repetimos cada semana en la agenda.</p>
+              <p class="agenda-assistant__intro">Decile qué necesitás organizar. Puede crear, corregir o eliminar anotaciones usando el contexto de tu agenda.</p>
 
               <form id="agendaAssistantForm" class="agenda-assistant__form">
                 <label class="tray-field">
                   Tus horarios
-                  <textarea id="agendaAssistantPrompt" rows="5" maxlength="700" placeholder="Física I: lunes y miércoles de 8 a 10&#10;Análisis Matemático I: martes de 14:30 a 16"></textarea>
+                  <textarea id="agendaAssistantPrompt" rows="5" maxlength="1200" placeholder="Ej: Eliminá los horarios de Química que no sean lunes o martes y quitá también los duplicados."></textarea>
                 </label>
-                <p class="agenda-assistant__hint">Podés agregar varias materias o pedir que elimine horarios anteriores.</p>
+                <p class="agenda-assistant__hint">Escribí con naturalidad. La IA revisará el resultado con vos antes de modificar la agenda.</p>
 
                 <div class="agenda-assistant__dates">
                   <label class="tray-field">
@@ -148,13 +139,13 @@
                   </label>
                 </div>
 
-                <button class="agenda-assistant__interpret" type="submit">${icon("sparkles")}<span>Interpretar horarios</span></button>
+                <button class="agenda-assistant__interpret" type="submit">${icon("sparkles")}<span>Interpretar con IA</span></button>
               </form>
 
               <div id="agendaAssistantStatus" class="agenda-assistant__status" role="status" aria-live="polite"></div>
               <div id="agendaAssistantPreview" class="agenda-assistant__preview" hidden></div>
               <button id="agendaAssistantConfirm" class="agenda-assistant__confirm" type="button" data-agenda-assistant-confirm hidden>Guardar en la agenda</button>
-              <p class="agenda-assistant__privacy">Funciona de forma privada en este dispositivo.</p>
+              <p class="agenda-assistant__privacy">Solo se envían esta instrucción y los datos necesarios de la agenda. Los cambios requieren confirmación.</p>
             </section>
 
             <div class="agenda-selected-day">
@@ -753,13 +744,14 @@
     if (!untilInput.value) untilInput.value = toDateValue(semesterEnd);
   }
 
-  function previewAgendaAssistant() {
+  async function previewAgendaAssistant() {
     const prompt = document.getElementById("agendaAssistantPrompt")?.value.trim() || "";
     const fromValue = document.getElementById("agendaAssistantFrom")?.value || "";
     const untilValue = document.getElementById("agendaAssistantUntil")?.value || "";
     const status = document.getElementById("agendaAssistantStatus");
     const preview = document.getElementById("agendaAssistantPreview");
     const confirm = document.getElementById("agendaAssistantConfirm");
+    const interpret = document.querySelector(".agenda-assistant__interpret");
     agendaAssistantPreview = [];
     agendaAssistantAction = null;
     if (preview) {
@@ -772,13 +764,7 @@
     }
 
     if (!prompt) {
-      setAgendaAssistantStatus("Escribí al menos un horario para poder organizarlo.", "error");
-      return;
-    }
-
-    const command = parseAgendaAssistantCommand(prompt);
-    if (command) {
-      previewAgendaAssistantDeletion(command, preview, confirm, status);
+      setAgendaAssistantStatus("Escribí qué querés cambiar u organizar.", "error");
       return;
     }
 
@@ -795,89 +781,216 @@
       return;
     }
 
-    const result = parseAgendaAssistantPrompt(prompt);
-    if (result.errors.length) {
-      setAgendaAssistantStatus(result.errors.join(" "), "error");
-      return;
-    }
+    setAgendaAssistantLoading(interpret, true);
+    setAgendaAssistantStatus("La IA está revisando tu agenda...", "info");
 
-    agendaAssistantPreview = buildAgendaAssistantItems(result.schedules, from, until);
-    if (!agendaAssistantPreview.length) {
-      setAgendaAssistantStatus("No hay clases nuevas para guardar en esas fechas.", "info");
-      return;
-    }
-    agendaAssistantAction = { type: "add" };
+    try {
+      const response = await fetch(`${getRootPath()}api/agenda-ai`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          instruction: prompt,
+          dateFrom: fromValue,
+          dateUntil: untilValue,
+          today: toDateValue(new Date()),
+          subjects: getSubjects().map((subject) => subject.title),
+          agenda: getAgendaAssistantContext()
+        })
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const message = result.code === "AI_NOT_CONFIGURED"
+          ? "La IA todavía no está conectada. Falta configurar su clave segura en Vercel."
+          : (result.error || "No se pudo interpretar la instrucción. Probá nuevamente.");
+        setAgendaAssistantStatus(message, "error");
+        return;
+      }
 
-    if (preview) {
-      preview.innerHTML = `
-        <div class="agenda-assistant__summary">
-          <strong>${agendaAssistantPreview.length === 1 ? "1 clase lista" : `${agendaAssistantPreview.length} clases listas`}</strong>
-          <span>Revisá antes de guardar</span>
-        </div>
-        <div class="agenda-assistant__schedule-list">
-          ${result.schedules.map((schedule) => `
-            <div class="agenda-assistant__schedule">
-              <strong>${escapeHtml(schedule.subject)}</strong>
-              <span>${escapeHtml(schedule.days.map(shortAgendaDayName).join(" y "))}</span>
-              <span>${escapeHtml(`${schedule.horaInicio}-${schedule.horaFin}`)}</span>
-            </div>
-          `).join("")}
-        </div>
-      `;
-      preview.hidden = false;
-    }
-    if (confirm) {
-      confirm.textContent = agendaAssistantPreview.length === 1 ? "Guardar 1 clase" : `Guardar ${agendaAssistantPreview.length} clases`;
-      confirm.hidden = false;
-    }
-    if (status) {
-      status.textContent = "";
-      status.className = "agenda-assistant__status";
+      const plan = prepareAgendaAssistantPlan(result);
+      if (plan.clarification) {
+        setAgendaAssistantStatus(plan.clarification, "info");
+        return;
+      }
+      if (!plan.changeCount) {
+        setAgendaAssistantStatus("No hay cambios nuevos para aplicar. Es posible que ya estén reflejados en la agenda.", "info");
+        return;
+      }
+
+      agendaAssistantPreview = plan.items;
+      agendaAssistantAction = plan;
+      renderAgendaAssistantPlan(plan, preview, confirm, status);
+    } catch (_) {
+      setAgendaAssistantStatus("No se pudo conectar con la IA. Revisá tu conexión y probá nuevamente.", "error");
+    } finally {
+      setAgendaAssistantLoading(interpret, false);
     }
   }
 
-  function parseAgendaAssistantCommand(prompt) {
-    const normalized = normalizeAssistantText(prompt);
-    if (!/\b(elimina|eliminar|borra|borrar|quita|quitar|limpia|limpiar|saca|sacar)\b/.test(normalized)) return null;
+  function setAgendaAssistantLoading(button, loading) {
+    if (!button) return;
+    button.disabled = loading;
+    button.setAttribute("aria-busy", String(loading));
+    const label = button.querySelector("span");
+    if (label) label.textContent = loading ? "Interpretando..." : "Interpretar con IA";
+  }
 
-    const days = extractAssistantDays(normalized);
-    const outsideDays = /\b(no\s+sean?|que\s+no\s+sean?|fuera\s+de|excepto|menos|salvo|distintos?\s+de)\b/.test(normalized);
-    const removeDuplicates = /\b(duplicados?|duplicadas?|repetidos?|repetidas?|copias?|dobles?)\b/.test(normalized);
-    const mentionsResources = /\b(horarios?|clases?|cursadas?|anotaciones?)\b/.test(normalized);
-    const subject = findAssistantCommandSubject(prompt);
+  function getAgendaAssistantContext() {
+    return readList(STORAGE_KEYS.agenda).map((item) => ({
+      id: item.id,
+      title: item.title,
+      type: item.type,
+      date: item.date,
+      subject: item.subject || "",
+      note: item.note || "",
+      horaInicio: item.horaInicio || "",
+      horaFin: item.horaFin || "",
+      done: Boolean(item.done),
+      createdAt: Number(item.createdAt) || 0
+    }));
+  }
+
+  function prepareAgendaAssistantPlan(result) {
+    const current = readList(STORAGE_KEYS.agenda);
+    const currentById = new Map(current.map((item) => [item.id, item]));
+    const deleteIds = [...new Set(Array.isArray(result.deleteIds) ? result.deleteIds : [])]
+      .filter((id) => currentById.has(id));
+    const deleteSet = new Set(deleteIds);
+    const updatesById = new Map();
+    (Array.isArray(result.updates) ? result.updates : [])
+      .map((update) => normalizeAgendaAssistantUpdate(update, currentById))
+      .filter((update) => update && !deleteSet.has(update.id))
+      .forEach((update) => updatesById.set(update.id, { ...(updatesById.get(update.id) || {}), ...update }));
+    const updates = [...updatesById.values()];
+    const schedules = (Array.isArray(result.createSchedules) ? result.createSchedules : [])
+      .map(normalizeAgendaAssistantSchedule)
+      .filter(Boolean);
+    const items = [
+      ...buildAgendaAssistantItems(schedules),
+      ...(Array.isArray(result.createEvents) ? result.createEvents : [])
+        .map(createAgendaAssistantItem)
+        .filter(Boolean)
+    ];
+    const retained = current.filter((item) => !deleteSet.has(item.id));
+    const availableSlots = Math.max(0, MAX_AGENDA_ITEMS - retained.length);
+    const uniqueItems = dedupeAgendaAssistantItems(items, retained, availableSlots);
     return {
-      type: "delete",
-      subject,
-      days,
-      dayMode: outsideDays ? "outside" : (days.length ? "inside" : "all"),
-      removeDuplicates,
-      duplicatesOnly: removeDuplicates && !mentionsResources
+      type: "ai",
+      summary: String(result.summary || "").trim(),
+      clarification: String(result.clarification || "").trim(),
+      deleteIds,
+      updates,
+      items: uniqueItems,
+      schedules,
+      changeCount: deleteIds.length + updates.length + uniqueItems.length
     };
   }
 
-  function previewAgendaAssistantDeletion(command, preview, confirm, status) {
-    const plan = buildAssistantDeletionPlan(command);
-    const removable = plan.removable;
+  function normalizeAgendaAssistantSchedule(schedule) {
+    if (!schedule || typeof schedule !== "object") return null;
+    const from = parseDateValue(schedule.dateFrom);
+    const until = parseDateValue(schedule.dateUntil);
+    const days = [...new Set(Array.isArray(schedule.days) ? schedule.days.map(Number) : [])]
+      .filter((day) => Number.isInteger(day) && day >= 0 && day <= 6);
+    if (!from || !until || from > until || !days.length) return null;
+    const rangeDays = Math.floor((until - from) / 86400000) + 1;
+    if (rangeDays > MAX_ASSISTANT_RANGE_DAYS) return null;
+    const horaInicio = validAgendaAssistantTime(schedule.horaInicio);
+    const horaFin = validAgendaAssistantTime(schedule.horaFin);
+    if ((horaInicio || horaFin) && (!horaInicio || !horaFin || horaInicio >= horaFin)) return null;
+    const subject = String(schedule.subject || "").trim().slice(0, 80);
+    return {
+      title: String(schedule.title || (subject ? `Clase de ${subject}` : "Clase")).trim().slice(0, 90),
+      subject,
+      type: AGENDA_TYPES.includes(schedule.type) ? schedule.type : "Clase",
+      days,
+      dateFrom: schedule.dateFrom,
+      dateUntil: schedule.dateUntil,
+      horaInicio,
+      horaFin,
+      note: String(schedule.note || "Horario de cursado").trim().slice(0, 240)
+    };
+  }
 
-    if (!removable.length) {
-      const detail = command.subject ? ` de ${command.subject}` : "";
-      setAgendaAssistantStatus(`No encontré horarios${detail} creados por el asistente.`, "info");
-      return;
-    }
+  function createAgendaAssistantItem(event) {
+    if (!event || typeof event !== "object") return null;
+    const title = String(event.title || "").trim().slice(0, 90);
+    const date = parseDateValue(event.date);
+    const horaInicio = validAgendaAssistantTime(event.horaInicio);
+    const horaFin = validAgendaAssistantTime(event.horaFin);
+    if (!title || !date || ((horaInicio || horaFin) && (!horaInicio || !horaFin || horaInicio >= horaFin))) return null;
+    return {
+      id: `agenda:${Date.now()}:ai:${cryptoRandomId()}`,
+      title,
+      type: AGENDA_TYPES.includes(event.type) ? event.type : "Tarea",
+      date: event.date,
+      subject: String(event.subject || "").trim().slice(0, 80),
+      note: String(event.note || "").trim().slice(0, 240),
+      horaInicio,
+      horaFin,
+      done: Boolean(event.done),
+      createdAt: Date.now()
+    };
+  }
 
-    agendaAssistantAction = { type: "delete", ids: removable.map((item) => item.id) };
+  function normalizeAgendaAssistantUpdate(update, currentById) {
+    if (!update || typeof update !== "object" || !currentById.has(update.id)) return null;
+    const current = currentById.get(update.id);
+    const next = { id: update.id };
+    if (typeof update.title === "string" && update.title.trim()) next.title = update.title.trim().slice(0, 90);
+    if (AGENDA_TYPES.includes(update.type)) next.type = update.type;
+    if (parseDateValue(update.date)) next.date = update.date;
+    if (typeof update.subject === "string") next.subject = update.subject.trim().slice(0, 80);
+    if (typeof update.note === "string") next.note = update.note.trim().slice(0, 240);
+    if (typeof update.done === "boolean") next.done = update.done;
+    if (typeof update.horaInicio === "string") next.horaInicio = validAgendaAssistantTime(update.horaInicio);
+    if (typeof update.horaFin === "string") next.horaFin = validAgendaAssistantTime(update.horaFin);
+    const merged = { ...current, ...next };
+    if ((merged.horaInicio || merged.horaFin) && (!merged.horaInicio || !merged.horaFin || merged.horaInicio >= merged.horaFin)) return null;
+    return Object.keys(next).length > 1 ? next : null;
+  }
+
+  function validAgendaAssistantTime(value) {
+    const text = String(value || "").trim();
+    if (!text) return "";
+    const match = text.match(/^(\d{2}):(\d{2})$/);
+    if (!match || Number(match[1]) > 23 || Number(match[2]) > 59) return "";
+    return text;
+  }
+
+  function dedupeAgendaAssistantItems(items, current, limit = MAX_AGENDA_ITEMS) {
+    const occupied = new Set(current.map(agendaAssistantItemKey));
+    return items.filter((item) => {
+      const key = agendaAssistantItemKey(item);
+      if (occupied.has(key)) return false;
+      occupied.add(key);
+      return true;
+    }).slice(0, limit);
+  }
+
+  function renderAgendaAssistantPlan(plan, preview, confirm, status) {
+    const rows = [];
+    plan.schedules.slice(0, 4).forEach((schedule) => {
+      const matchingCount = plan.items.filter((item) => normalizeAssistantText(item.subject) === normalizeAssistantText(schedule.subject)).length;
+      const days = schedule.days.map(shortAgendaDayName).join(" y ");
+      const time = schedule.horaInicio && schedule.horaFin ? ` · ${schedule.horaInicio}-${schedule.horaFin}` : "";
+      rows.push({ title: schedule.subject || schedule.title, detail: `${days}${time}`, count: matchingCount });
+    });
+    const singleEventCount = plan.items.length - rows.reduce((total, row) => total + row.count, 0);
+    if (singleEventCount > 0) rows.push({ title: "Agregar", detail: summarizeAgendaAssistantAdds(plan), count: singleEventCount });
+    if (plan.updates.length) rows.push({ title: "Actualizar", detail: summarizeAgendaAssistantUpdates(plan), count: plan.updates.length });
+    if (plan.deleteIds.length) rows.push({ title: "Eliminar", detail: summarizeAgendaAssistantDeletes(plan), count: plan.deleteIds.length });
     if (preview) {
       preview.innerHTML = `
         <div class="agenda-assistant__summary">
-          <strong>${removable.length === 1 ? "1 clase para eliminar" : `${removable.length} clases para eliminar`}</strong>
-          <span>Revisá antes de confirmar</span>
+          <strong>${escapeHtml(plan.summary || `${plan.changeCount} cambios listos`)}</strong>
+          <span>Revisá antes de aplicar</span>
         </div>
         <div class="agenda-assistant__schedule-list">
-          ${plan.rows.map((row) => `
+          ${rows.map((row) => `
             <div class="agenda-assistant__schedule">
               <strong>${escapeHtml(row.title)}</strong>
               <span>${escapeHtml(row.detail)}</span>
-              <span>${row.count} ${row.count === 1 ? "clase" : "clases"}</span>
+              <span>${row.count} ${row.count === 1 ? "cambio" : "cambios"}</span>
             </div>
           `).join("")}
         </div>
@@ -885,8 +998,8 @@
       preview.hidden = false;
     }
     if (confirm) {
-      confirm.textContent = removable.length === 1 ? "Eliminar 1 clase" : `Eliminar ${removable.length} clases`;
-      confirm.classList.add("is-delete");
+      confirm.textContent = plan.changeCount === 1 ? "Aplicar 1 cambio" : `Aplicar ${plan.changeCount} cambios`;
+      confirm.classList.toggle("is-delete", plan.deleteIds.length > 0 && !plan.items.length && !plan.updates.length);
       confirm.hidden = false;
     }
     if (status) {
@@ -895,277 +1008,26 @@
     }
   }
 
-  function findAssistantCommandSubject(prompt) {
-    const normalized = normalizeAssistantText(prompt);
-    const storedSubjects = readList(STORAGE_KEYS.agenda).map((item) => item.subject).filter(Boolean);
-    const candidates = [...new Set([...getSubjects().map((subject) => subject.title), ...storedSubjects])]
-      .map((title) => ({ title, normalized: normalizeAssistantText(title) }))
-      .sort((a, b) => b.normalized.length - a.normalized.length);
-    const known = candidates.find((candidate) => new RegExp(`(?:^|\\s)${escapeRegExp(candidate.normalized)}(?:$|\\s|[.,;:()])`, "i").test(normalized));
-    if (known) return known.title;
-
-    const extracted = normalized.match(/\b(?:horarios?|clases?|cursadas?|anotaciones?)\s+de\s+(.+?)(?=\s+(?:que|en|fuera|excepto|menos|salvo|duplicad|repetid|los\s+(?:lunes|martes|miercoles|jueves|viernes|sabado|domingo))\b|[.,;:]|$)/i);
-    return extracted?.[1] ? resolveAssistantSubject(extracted[1], false) : "";
+  function summarizeAgendaAssistantAdds(plan) {
+    const subjects = [...new Set(plan.items.map((item) => item.subject || item.title).filter(Boolean))].slice(0, 3);
+    return subjects.join(", ") || "Nuevas anotaciones";
   }
 
-  function buildAssistantDeletionPlan(command) {
-    const candidates = readList(STORAGE_KEYS.agenda).filter((item) => {
-      if (!isAssistantScheduleItem(item)) return false;
-      return !command.subject || normalizeAssistantText(item.subject) === normalizeAssistantText(command.subject);
-    });
-    const allowedDays = new Set(command.days || []);
-    const removals = new Map();
-    const counts = { scope: 0, duplicates: 0 };
-    const outsideItems = [];
-    const mark = (item, reason) => {
-      if (!item?.id || removals.has(item.id)) return;
-      removals.set(item.id, item);
-      counts[reason] += 1;
-    };
-    const itemDay = (item) => parseDateValue(item.date)?.getDay();
-
-    if (command.dayMode === "outside" && allowedDays.size) {
-      candidates.forEach((item) => {
-        if (!allowedDays.has(itemDay(item))) {
-          outsideItems.push(item);
-          mark(item, "scope");
-        }
-      });
-    } else if (!command.duplicatesOnly && !command.removeDuplicates) {
-      candidates.forEach((item) => {
-        if (command.dayMode === "all" || allowedDays.has(itemDay(item))) mark(item, "scope");
-      });
-    }
-
-    if (command.removeDuplicates) {
-      const duplicateCandidates = candidates.filter((item) => !allowedDays.size || allowedDays.has(itemDay(item)));
-      const contaminatedSignatures = new Set(outsideItems.map(assistantTimeSignature));
-      const byDate = new Map();
-      duplicateCandidates.forEach((item) => {
-        const key = `${normalizeAssistantText(item.subject)}|${item.date}`;
-        if (!byDate.has(key)) byDate.set(key, []);
-        byDate.get(key).push(item);
-      });
-
-      byDate.forEach((dateItems) => {
-        const bySignature = new Map();
-        dateItems.forEach((item) => {
-          const signature = assistantTimeSignature(item);
-          if (!bySignature.has(signature)) bySignature.set(signature, []);
-          bySignature.get(signature).push(item);
-        });
-
-        bySignature.forEach((sameTimeItems) => {
-          sameTimeItems
-            .sort((a, b) => (Number(a.createdAt) || 0) - (Number(b.createdAt) || 0))
-            .slice(1)
-            .forEach((item) => mark(item, "duplicates"));
-        });
-
-        const cleanSignatures = [...bySignature.keys()].filter((signature) => !contaminatedSignatures.has(signature));
-        if (command.dayMode === "outside" && cleanSignatures.length) {
-          bySignature.forEach((sameTimeItems, signature) => {
-            if (contaminatedSignatures.has(signature)) sameTimeItems.forEach((item) => mark(item, "duplicates"));
-          });
-        }
-      });
-    }
-
-    const subjectLabel = command.subject || "Horarios de cursado";
-    const dayLabel = command.days.length ? command.days.map(shortAgendaDayName).join(" y ") : "todos los días";
-    const rows = [];
-    if (counts.scope) {
-      rows.push({
-        title: subjectLabel,
-        detail: command.dayMode === "outside" ? `Fuera de ${dayLabel}` : (command.dayMode === "inside" ? `En ${dayLabel}` : "Todos los horarios"),
-        count: counts.scope
-      });
-    }
-    if (counts.duplicates) rows.push({ title: "Duplicados", detail: `${subjectLabel} · ${dayLabel}`, count: counts.duplicates });
-    return { removable: [...removals.values()], rows };
+  function summarizeAgendaAssistantUpdates(plan) {
+    const currentById = new Map(readList(STORAGE_KEYS.agenda).map((item) => [item.id, item]));
+    const labels = [...new Set(plan.updates.map((update) => currentById.get(update.id)?.subject || currentById.get(update.id)?.title).filter(Boolean))].slice(0, 3);
+    return labels.join(", ") || "Anotaciones existentes";
   }
 
-  function assistantTimeSignature(item) {
-    return `${item.horaInicio || ""}|${item.horaFin || ""}`;
+  function summarizeAgendaAssistantDeletes(plan) {
+    const ids = new Set(plan.deleteIds);
+    const labels = [...new Set(readList(STORAGE_KEYS.agenda).filter((item) => ids.has(item.id)).map((item) => item.subject || item.title).filter(Boolean))].slice(0, 3);
+    return labels.join(", ") || "Anotaciones existentes";
   }
 
-  function escapeRegExp(value) {
-    return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  }
-
-  function isAssistantScheduleItem(item) {
-    return String(item?.id || "").includes(":assistant:") || (item?.type === "Clase" && item?.note === "Horario de cursado");
-  }
-
-  function parseAgendaAssistantPrompt(prompt) {
-    const source = String(prompt || "").trim();
-    const normalizedSource = normalizeAssistantSource(source);
-    const dayPattern = "(?:lunes|martes|miercoles|jueves|viernes|sabados?|domingos?|lun|mar|mie|jue|vie|sab|dom)";
-    const dayGroupPattern = `(?:(?:cada|todos?)\\s+)?(?:los?\\s+)?${dayPattern}(?:\\s*(?:,|y)\\s*(?:(?:cada|todos?)\\s+)?(?:los?\\s+)?${dayPattern})*`;
-    const timePattern = "(?:(?:de|desde)\\s+|a\\s+las?\\s+)?(\\d{1,2})(?::(\\d{2}))?\\s*(?:(?:de\\s+la\\s+)?(manana|tarde|noche|mediodia|am|pm))?\\s*(?:hs|hrs|horas?)?\\s*(?:a|hasta|-)\\s*(?:las?\\s+)?(\\d{1,2})(?::(\\d{2}))?\\s*(?:(?:de\\s+la\\s+)?(manana|tarde|noche|mediodia|am|pm))?\\s*(?:hs|hrs|horas?)?";
-    const schedulePattern = new RegExp(`(${dayGroupPattern})\\s*,?\\s*${timePattern}`, "gi");
-    const schedules = [];
-    const errors = [];
-    let previousEnd = 0;
-    let activeSubjects = [];
-    let match;
-
-    while ((match = schedulePattern.exec(normalizedSource)) !== null) {
-      const subjectContext = source.slice(previousEnd, match.index);
-      const detectedSubjects = extractAssistantSubjects(subjectContext);
-      if (detectedSubjects.length) activeSubjects = detectedSubjects;
-
-      const days = extractAssistantDays(match[1]);
-      const times = normalizeAssistantTimeRange({
-        startHour: match[2],
-        startMinute: match[3],
-        startPeriod: match[4],
-        endHour: match[5],
-        endMinute: match[6],
-        endPeriod: match[7]
-      });
-
-      if (!activeSubjects.length) {
-        errors.push(`No pude reconocer la materia asociada a ${match[1]}.`);
-      } else if (!days.length || !times) {
-        errors.push(`Revisá el horario cercano a “${match[0].trim()}”.`);
-      } else {
-        activeSubjects.forEach((subject) => {
-          schedules.push({ subject, days, horaInicio: times.horaInicio, horaFin: times.horaFin });
-        });
-      }
-      previousEnd = schedulePattern.lastIndex;
-    }
-
-    if (!schedules.length && !errors.length) {
-      errors.push("No pude encontrar horarios completos. Probá con “Física: lunes de 8 a 10”.");
-    }
-
-    return { schedules: dedupeAssistantSchedules(schedules), errors: [...new Set(errors)] };
-  }
-
-  function extractAssistantSubjects(context) {
-    const cleaned = String(context || "")
-      .replace(/[.;\n]+/g, " ")
-      .replace(/\b(?:por\s+(?:último|ultimo)|finalmente|además|ademas|también|tambien)\b/gi, " ")
-      .replace(/\b(?:tengo|curso|cursaré|cursare|cursando|cursada|clases?\s+de)\b/gi, " ")
-      .replace(/\b(?:hs|hrs|horas?)\b/gi, " ")
-      .replace(/^[\s,:-]*(?:y\s+)?|[\s,:-]+$/gi, "")
-      .replace(/\s+/g, " ")
-      .trim();
-    if (!cleaned) return [];
-
-    const knownWhole = resolveAssistantSubject(cleaned, true);
-    if (knownWhole) return [knownWhole];
-
-    const parts = cleaned
-      .split(/\s+y\s+/i)
-      .map((part) => part.replace(/^[\s,:-]+|[\s,:-]+$/g, "").trim())
-      .filter((part) => part.length >= 2);
-    const candidates = parts.length > 1 ? parts : [cleaned];
-    return [...new Set(candidates.map((candidate) => resolveAssistantSubject(candidate, false)).filter(Boolean))];
-  }
-
-  function resolveAssistantSubject(value, knownOnly) {
-    const normalized = normalizeAssistantText(value);
-    if (!normalized) return "";
-    const subjects = getSubjects().map((subject) => ({
-      title: subject.title,
-      slug: subject.slug,
-      normalized: normalizeAssistantText(subject.title)
-    }));
-    const exact = subjects.find((subject) => subject.normalized === normalized);
-    if (exact) return exact.title;
-
-    const aliases = {
-      fisica: "fisica-1",
-      "fisica 1": "fisica-1",
-      "analisis": "analisis-matematico-1",
-      "analisis matematico": "analisis-matematico-1",
-      "analisis matematico 1": "analisis-matematico-1",
-      quimica: "quimica"
-    };
-    const aliasSlug = aliases[normalized];
-    const aliasSubject = aliasSlug && subjects.find((subject) => subject.slug === aliasSlug);
-    if (aliasSubject) return aliasSubject.title;
-    if (knownOnly) return "";
-    return formatAssistantSubject(value);
-  }
-
-  function formatAssistantSubject(value) {
-    const accentWords = {
-      analisis: "Análisis",
-      calculo: "Cálculo",
-      computacion: "Computación",
-      fisica: "Física",
-      matematica: "Matemática",
-      matematico: "Matemático",
-      numerico: "Numérico",
-      quimica: "Química"
-    };
-    return String(value || "")
-      .trim()
-      .split(/\s+/)
-      .map((word) => {
-        const normalized = normalizeAssistantText(word);
-        if (/^(i|ii|iii|iv|v|vi)$/i.test(word)) return word.toUpperCase();
-        if (accentWords[normalized]) return accentWords[normalized];
-        if (/^\d+$/.test(word)) return word;
-        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-      })
-      .join(" ");
-  }
-
-  function extractAssistantDays(value) {
-    const normalized = normalizeAssistantText(value);
-    return AGENDA_DAY_ALIASES
-      .filter((entry) => entry.aliases.some((alias) => new RegExp(`\\b${alias}\\b`, "i").test(normalized)))
-      .map((entry) => entry.day);
-  }
-
-  function normalizeAssistantTimeRange(values) {
-    const startPeriod = values.startPeriod || values.endPeriod || "";
-    const endPeriod = values.endPeriod || values.startPeriod || "";
-    let startHour = assistantHourNumber(values.startHour, startPeriod);
-    let endHour = assistantHourNumber(values.endHour, endPeriod);
-    const startMinute = Number(values.startMinute || 0);
-    const endMinute = Number(values.endMinute || 0);
-    if (![startHour, endHour, startMinute, endMinute].every(Number.isInteger)) return null;
-    if (startHour < 0 || startHour > 23 || endHour < 0 || endHour > 23 || startMinute < 0 || startMinute > 59 || endMinute < 0 || endMinute > 59) return null;
-    if (!startPeriod && !endPeriod && endHour <= startHour && endHour <= 12) endHour += 12;
-    if (endHour > 23) return null;
-
-    const horaInicio = normalizeAssistantTime(startHour, startMinute);
-    const horaFin = normalizeAssistantTime(endHour, endMinute);
-    if (!horaInicio || !horaFin || horaInicio >= horaFin) return null;
-    return { horaInicio, horaFin };
-  }
-
-  function assistantHourNumber(value, period) {
-    let hour = Number(value);
-    if (!Number.isInteger(hour)) return NaN;
-    const normalizedPeriod = normalizeAssistantText(period);
-    if ((normalizedPeriod === "manana" || normalizedPeriod === "am") && hour === 12) hour = 0;
-    if (["tarde", "noche", "pm"].includes(normalizedPeriod) && hour < 12) hour += 12;
-    if (normalizedPeriod === "mediodia" && hour < 12) hour += 12;
-    return hour;
-  }
-
-  function dedupeAssistantSchedules(schedules) {
-    const seen = new Set();
-    return schedules.filter((schedule) => {
-      const key = [normalizeAssistantText(schedule.subject), schedule.days.join(","), schedule.horaInicio, schedule.horaFin].join("|");
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-  }
-
-  function normalizeAssistantSource(value) {
-    return String(value || "")
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
+  function cryptoRandomId() {
+    if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+    return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   }
 
   function normalizeAssistantText(value) {
@@ -1177,44 +1039,34 @@
       .trim();
   }
 
-  function normalizeAssistantTime(hourValue, minuteValue) {
-    const hour = Number(hourValue);
-    const minute = Number(minuteValue || 0);
-    if (!Number.isInteger(hour) || !Number.isInteger(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) return "";
-    return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
-  }
-
-  function buildAgendaAssistantItems(schedules, from, until) {
-    const existing = readList(STORAGE_KEYS.agenda);
-    const occupied = new Set(existing.map(agendaAssistantItemKey));
+  function buildAgendaAssistantItems(schedules) {
     const items = [];
-    const cursor = new Date(from.getFullYear(), from.getMonth(), from.getDate());
     let index = 0;
 
-    while (cursor <= until) {
-      schedules.forEach((schedule) => {
-        if (!schedule.days.includes(cursor.getDay())) return;
-        const item = {
-          id: `agenda:${Date.now()}:assistant:${index}`,
-          title: `Clase de ${schedule.subject}`,
-          type: "Clase",
-          date: toDateValue(cursor),
-          subject: schedule.subject,
-          note: "Horario de cursado",
-          horaInicio: schedule.horaInicio,
-          horaFin: schedule.horaFin,
-          done: false,
-          createdAt: Date.now() + index
-        };
-        const key = agendaAssistantItemKey(item);
-        if (!occupied.has(key)) {
-          occupied.add(key);
-          items.push(item);
+    schedules.forEach((schedule) => {
+      const from = parseDateValue(schedule.dateFrom);
+      const until = parseDateValue(schedule.dateUntil);
+      if (!from || !until) return;
+      const cursor = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+      while (cursor <= until) {
+        if (schedule.days.includes(cursor.getDay())) {
+          items.push({
+            id: `agenda:${Date.now()}:ai:${index}:${cryptoRandomId()}`,
+            title: schedule.title,
+            type: schedule.type,
+            date: toDateValue(cursor),
+            subject: schedule.subject,
+            note: schedule.note,
+            horaInicio: schedule.horaInicio,
+            horaFin: schedule.horaFin,
+            done: false,
+            createdAt: Date.now() + index
+          });
           index += 1;
         }
-      });
-      cursor.setDate(cursor.getDate() + 1);
-    }
+        cursor.setDate(cursor.getDate() + 1);
+      }
+    });
 
     return items;
   }
@@ -1224,35 +1076,25 @@
   }
 
   function saveAgendaAssistantItems() {
-    if (agendaAssistantAction?.type === "delete") {
-      const ids = new Set(agendaAssistantAction.ids || []);
-      const current = readList(STORAGE_KEYS.agenda);
-      const next = current.filter((item) => !ids.has(item.id));
-      const removedCount = current.length - next.length;
-      writeList(STORAGE_KEYS.agenda, next);
-      agendaAssistantAction = null;
-      agendaAssistantPreview = [];
-      document.getElementById("agendaAssistantPreview")?.setAttribute("hidden", "");
-      document.getElementById("agendaAssistantConfirm")?.setAttribute("hidden", "");
-      document.getElementById("agendaAssistantConfirm")?.classList.remove("is-delete");
-      setAgendaAssistantStatus(removedCount === 1 ? "Listo. Se eliminó 1 clase de tu agenda." : `Listo. Se eliminaron ${removedCount} clases de tu agenda.`, "success");
-      renderAgenda();
-      return;
-    }
-
-    if (agendaAssistantAction?.type !== "add" || !agendaAssistantPreview.length) return;
+    if (agendaAssistantAction?.type !== "ai") return;
     const current = readList(STORAGE_KEYS.agenda);
-    const occupied = new Set(current.map(agendaAssistantItemKey));
-    const fresh = agendaAssistantPreview.filter((item) => !occupied.has(agendaAssistantItemKey(item)));
-    if (!fresh.length) {
-      setAgendaAssistantStatus("Esas clases ya estaban guardadas en la agenda.", "info");
+    const deleteIds = new Set(agendaAssistantAction.deleteIds || []);
+    const updates = new Map((agendaAssistantAction.updates || []).map((update) => [update.id, update]));
+    const retained = current
+      .filter((item) => !deleteIds.has(item.id))
+      .map((item) => updates.has(item.id) ? { ...item, ...updates.get(item.id), id: item.id } : item);
+    const fresh = dedupeAgendaAssistantItems(agendaAssistantPreview, retained, Math.max(0, MAX_AGENDA_ITEMS - retained.length));
+    const next = [...fresh, ...retained].slice(0, MAX_AGENDA_ITEMS);
+    const appliedCount = (current.length - retained.length) + updates.size + fresh.length;
+    if (!appliedCount) {
+      setAgendaAssistantStatus("No quedaban cambios nuevos para aplicar.", "info");
       return;
     }
 
-    writeList(STORAGE_KEYS.agenda, [...fresh, ...current].slice(0, MAX_AGENDA_ITEMS));
-    const firstDate = parseDateValue(fresh[0].date);
+    writeList(STORAGE_KEYS.agenda, next);
+    const firstDate = parseDateValue(fresh[0]?.date || retained.find((item) => updates.has(item.id))?.date);
     if (firstDate) {
-      selectedAgendaDate = fresh[0].date;
+      selectedAgendaDate = toDateValue(firstDate);
       agendaMonth = firstDate.getMonth();
       agendaYear = firstDate.getFullYear();
     }
@@ -1260,7 +1102,8 @@
     agendaAssistantAction = null;
     document.getElementById("agendaAssistantPreview")?.setAttribute("hidden", "");
     document.getElementById("agendaAssistantConfirm")?.setAttribute("hidden", "");
-    setAgendaAssistantStatus(`Listo. Se guardaron ${fresh.length} clases en tu agenda.`, "success");
+    document.getElementById("agendaAssistantConfirm")?.classList.remove("is-delete");
+    setAgendaAssistantStatus(appliedCount === 1 ? "Listo. Se aplicó 1 cambio en tu agenda." : `Listo. Se aplicaron ${appliedCount} cambios en tu agenda.`, "success");
     renderAgenda();
   }
 

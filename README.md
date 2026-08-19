@@ -13,7 +13,7 @@ Sitio público: [https://estudiemos-app.vercel.app](https://estudiemos-app.verce
 - `styles/`: estilos visuales.
 - `pdfs/`: material descargable.
 
-El proyecto es un sitio estático. No usa framework, backend, dependencias, variables de entorno ni secretos.
+El proyecto usa HTML, CSS y JavaScript sin framework ni dependencias. Vercel publica los archivos estáticos y ejecuta una función pequeña para el asistente inteligente de la agenda.
 
 ## Seguridad
 
@@ -21,6 +21,7 @@ El proyecto es un sitio estático. No usa framework, backend, dependencias, vari
 - `.gitignore` evita subir archivos locales sensibles como `.env` o `.vercel`.
 - `SECURITY.md` resume las reglas simples para mantener el proyecto seguro.
 - GitHub y Vercel deben mantenerse con verificación en dos pasos activada.
+- La clave de Gemini se usa únicamente en `api/agenda-ai.js` y debe guardarse como variable secreta de Vercel.
 
 ## Ejecutar localmente
 
@@ -53,7 +54,18 @@ Configuración del proyecto:
 
 Vercel está conectado al repositorio de GitHub. Cada cambio enviado a `main` inicia automáticamente una nueva publicación.
 
-No se requieren variables de entorno. Si en el futuro se agrega una integración que use secretos, deben configurarse en Vercel y nunca escribirse dentro del repositorio.
+## Asistente inteligente de agenda
+
+La interpretación natural de órdenes usa Gemini desde la función `api/agenda-ai.js`. La clave nunca se envía al navegador.
+
+Variables de Vercel:
+
+- `GEMINI_API_KEY`: requerida. Se crea en Google AI Studio.
+- `GEMINI_MODEL`: opcional. Por defecto se usa `gemini-2.5-flash`.
+
+Para configurarla: Vercel → proyecto Estudiemos → Settings → Environment Variables. Agregar `GEMINI_API_KEY` para Production y volver a desplegar el último commit.
+
+El archivo `.env.example` muestra los nombres esperados sin contener secretos reales.
 
 ## Tareas
 

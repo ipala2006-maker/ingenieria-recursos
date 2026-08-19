@@ -1,6 +1,6 @@
 # Seguridad de Estudiemos
 
-Estudiemos es un sitio estatico: no usa login, base de datos, backend ni claves privadas dentro del codigo.
+Estudiemos no usa login ni base de datos. La unica parte de servidor es el asistente de agenda, ejecutado como una funcion de Vercel.
 
 ## Reglas para mantenerlo seguro
 
@@ -8,7 +8,8 @@ Estudiemos es un sitio estatico: no usa login, base de datos, backend ni claves 
 - Hacer cambios solamente desde GitHub/Codex/Vercel usando la cuenta de Ian.
 - Mantener activada la verificacion en dos pasos en GitHub y Vercel.
 - Revisar los cambios antes de publicarlos si en el futuro se agregan login, pagos, base de datos o APIs.
-- Guardar cualquier secreto futuro solamente en Vercel, dentro de Environment Variables.
+- Guardar `GEMINI_API_KEY` y cualquier secreto futuro solamente en Vercel, dentro de Environment Variables.
+- No colocar la clave de Gemini en HTML, JavaScript del navegador ni archivos versionados.
 
 ## Si aparece un problema
 
@@ -19,8 +20,8 @@ Estudiemos es un sitio estatico: no usa login, base de datos, backend ni claves 
 
 ## Estado actual
 
-- No hay backend.
+- Hay una funcion acotada en `api/agenda-ai.js`; valida los datos y no guarda la agenda.
 - No hay base de datos.
 - No hay cuentas de usuarios.
-- No hay variables de entorno requeridas.
+- `GEMINI_API_KEY` es necesaria para la interpretacion inteligente de la agenda.
 - La publicacion automatica se realiza desde la rama `main` conectada a Vercel.
