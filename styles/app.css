@@ -1297,6 +1297,14 @@ img{ max-width: 100%; display:block; }
   font-weight:850;
   cursor:pointer;
 }
+.agenda-assistant__confirm.is-delete{
+  border-color:rgba(248,113,113,.34);
+  background:rgba(248,113,113,.12);
+}
+.agenda-assistant__confirm.is-delete:hover{
+  border-color:rgba(248,113,113,.52);
+  background:rgba(248,113,113,.18);
+}
 .agenda-assistant__interpret:hover,
 .agenda-assistant__confirm:hover{
   border-color:rgba(167,139,250,.52);

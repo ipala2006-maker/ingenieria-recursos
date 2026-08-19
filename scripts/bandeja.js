@@ -31,6 +31,7 @@
   let agendaYear = new Date().getFullYear();
   let selectedAgendaDate = toDateValue(new Date());
   let agendaAssistantPreview = [];
+  let agendaAssistantAction = null;
 
   addTray();
   addAgendaPanel();
@@ -134,7 +135,7 @@
                   Tus horarios
                   <textarea id="agendaAssistantPrompt" rows="5" maxlength="700" placeholder="Física I: lunes y miércoles de 8 a 10&#10;Análisis Matemático I: martes de 14:30 a 16"></textarea>
                 </label>
-                <p class="agenda-assistant__hint">Podés escribir varias materias y horarios en un solo mensaje.</p>
+                <p class="agenda-assistant__hint">Podés agregar varias materias o pedir que elimine horarios anteriores.</p>
 
                 <div class="agenda-assistant__dates">
                   <label class="tray-field">
@@ -760,14 +761,24 @@
     const preview = document.getElementById("agendaAssistantPreview");
     const confirm = document.getElementById("agendaAssistantConfirm");
     agendaAssistantPreview = [];
+    agendaAssistantAction = null;
     if (preview) {
       preview.hidden = true;
       preview.innerHTML = "";
     }
-    if (confirm) confirm.hidden = true;
+    if (confirm) {
+      confirm.hidden = true;
+      confirm.classList.remove("is-delete");
+    }
 
     if (!prompt) {
       setAgendaAssistantStatus("Escribí al menos un horario para poder organizarlo.", "error");
+      return;
+    }
+
+    const command = parseAgendaAssistantCommand(prompt);
+    if (command) {
+      previewAgendaAssistantDeletion(command, preview, confirm, status);
       return;
     }
 
@@ -795,11 +806,12 @@
       setAgendaAssistantStatus("No hay clases nuevas para guardar en esas fechas.", "info");
       return;
     }
+    agendaAssistantAction = { type: "add" };
 
     if (preview) {
       preview.innerHTML = `
         <div class="agenda-assistant__summary">
-          <strong>${agendaAssistantPreview.length} clases listas</strong>
+          <strong>${agendaAssistantPreview.length === 1 ? "1 clase lista" : `${agendaAssistantPreview.length} clases listas`}</strong>
           <span>Revisá antes de guardar</span>
         </div>
         <div class="agenda-assistant__schedule-list">
@@ -815,13 +827,90 @@
       preview.hidden = false;
     }
     if (confirm) {
-      confirm.textContent = `Guardar ${agendaAssistantPreview.length} clases`;
+      confirm.textContent = agendaAssistantPreview.length === 1 ? "Guardar 1 clase" : `Guardar ${agendaAssistantPreview.length} clases`;
       confirm.hidden = false;
     }
     if (status) {
       status.textContent = "";
       status.className = "agenda-assistant__status";
     }
+  }
+
+  function parseAgendaAssistantCommand(prompt) {
+    const normalized = normalizeAssistantText(prompt);
+    if (!/\b(elimina|eliminar|borra|borrar|quita|quitar|limpia|limpiar|saca|sacar)\b/.test(normalized)) return null;
+
+    const days = extractAssistantDays(normalized);
+    const subjectText = normalizeAssistantSource(prompt)
+      .replace(/\b(?:elimina(?:r)?|borra(?:r)?|quita(?:r)?|limpia(?:r)?|saca(?:r)?)\b/gi, " ")
+      .replace(/\b(?:todos?|todas?|mis?|los?|las?|horarios?|clases?|cursadas?|anotaciones?|anteriores?|previos?|previas?|creados?|creadas?|agenda|de|del|en)\b/gi, " ")
+      .replace(/\b(?:lunes|martes|miércoles|miercoles|jueves|viernes|sábados?|sabados?|domingos?|lun|mar|mié|mie|jue|vie|sáb|sab|dom)\b/gi, " ")
+      .replace(/[.,;:]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    const subject = subjectText ? resolveAssistantSubject(subjectText, false) : "";
+    return { type: "delete", subject, days };
+  }
+
+  function previewAgendaAssistantDeletion(command, preview, confirm, status) {
+    const removable = readList(STORAGE_KEYS.agenda).filter((item) => {
+      if (!isAssistantScheduleItem(item)) return false;
+      if (command.subject && normalizeAssistantText(item.subject) !== normalizeAssistantText(command.subject)) return false;
+      if (command.days.length) {
+        const date = parseDateValue(item.date);
+        if (!date || !command.days.includes(date.getDay())) return false;
+      }
+      return true;
+    });
+
+    if (!removable.length) {
+      const detail = command.subject ? ` de ${command.subject}` : "";
+      setAgendaAssistantStatus(`No encontré horarios${detail} creados por el asistente.`, "info");
+      return;
+    }
+
+    agendaAssistantAction = { type: "delete", ids: removable.map((item) => item.id) };
+    const grouped = groupAssistantItemsBySubject(removable);
+    if (preview) {
+      preview.innerHTML = `
+        <div class="agenda-assistant__summary">
+          <strong>${removable.length === 1 ? "1 clase para eliminar" : `${removable.length} clases para eliminar`}</strong>
+          <span>Revisá antes de confirmar</span>
+        </div>
+        <div class="agenda-assistant__schedule-list">
+          ${grouped.map((group) => `
+            <div class="agenda-assistant__schedule">
+              <strong>${escapeHtml(group.subject)}</strong>
+              <span>Horario de cursado</span>
+              <span>${group.count} ${group.count === 1 ? "clase" : "clases"}</span>
+            </div>
+          `).join("")}
+        </div>
+      `;
+      preview.hidden = false;
+    }
+    if (confirm) {
+      confirm.textContent = removable.length === 1 ? "Eliminar 1 clase" : `Eliminar ${removable.length} clases`;
+      confirm.classList.add("is-delete");
+      confirm.hidden = false;
+    }
+    if (status) {
+      status.textContent = "";
+      status.className = "agenda-assistant__status";
+    }
+  }
+
+  function isAssistantScheduleItem(item) {
+    return String(item?.id || "").includes(":assistant:") || (item?.type === "Clase" && item?.note === "Horario de cursado");
+  }
+
+  function groupAssistantItemsBySubject(items) {
+    const groups = new Map();
+    items.forEach((item) => {
+      const subject = item.subject || "Sin materia";
+      groups.set(subject, (groups.get(subject) || 0) + 1);
+    });
+    return [...groups].map(([subject, count]) => ({ subject, count }));
   }
 
   function parseAgendaAssistantPrompt(prompt) {
@@ -1051,7 +1140,23 @@
   }
 
   function saveAgendaAssistantItems() {
-    if (!agendaAssistantPreview.length) return;
+    if (agendaAssistantAction?.type === "delete") {
+      const ids = new Set(agendaAssistantAction.ids || []);
+      const current = readList(STORAGE_KEYS.agenda);
+      const next = current.filter((item) => !ids.has(item.id));
+      const removedCount = current.length - next.length;
+      writeList(STORAGE_KEYS.agenda, next);
+      agendaAssistantAction = null;
+      agendaAssistantPreview = [];
+      document.getElementById("agendaAssistantPreview")?.setAttribute("hidden", "");
+      document.getElementById("agendaAssistantConfirm")?.setAttribute("hidden", "");
+      document.getElementById("agendaAssistantConfirm")?.classList.remove("is-delete");
+      setAgendaAssistantStatus(`Listo. Se eliminaron ${removedCount} ${removedCount === 1 ? "clase" : "clases"} de tu agenda.`, "success");
+      renderAgenda();
+      return;
+    }
+
+    if (agendaAssistantAction?.type !== "add" || !agendaAssistantPreview.length) return;
     const current = readList(STORAGE_KEYS.agenda);
     const occupied = new Set(current.map(agendaAssistantItemKey));
     const fresh = agendaAssistantPreview.filter((item) => !occupied.has(agendaAssistantItemKey(item)));
@@ -1068,6 +1173,7 @@
       agendaYear = firstDate.getFullYear();
     }
     agendaAssistantPreview = [];
+    agendaAssistantAction = null;
     document.getElementById("agendaAssistantPreview")?.setAttribute("hidden", "");
     document.getElementById("agendaAssistantConfirm")?.setAttribute("hidden", "");
     setAgendaAssistantStatus(`Listo. Se guardaron ${fresh.length} clases en tu agenda.`, "success");
