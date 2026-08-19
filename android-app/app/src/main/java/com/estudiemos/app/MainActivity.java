@@ -86,7 +86,11 @@ public class MainActivity extends Activity {
             boolean isMainFrame,
             @NonNull JavaScriptReplyProxy replyProxy
     ) {
-        if (!isMainFrame || !APP_ORIGIN.equals(sourceOrigin.toString())) return;
+        if (
+                !isMainFrame ||
+                !"https".equals(sourceOrigin.getScheme()) ||
+                !"estudiemos-app.vercel.app".equals(sourceOrigin.getHost())
+        ) return;
         AgendaWidgetProvider.storeAgendaAndUpdate(this, message.getData());
     }
 
