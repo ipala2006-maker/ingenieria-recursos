@@ -196,7 +196,7 @@
     if (document.querySelector('script[src*="scripts/bandeja.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/bandeja.js?v=20260819-agenda-actions`;
+    script.src = `${rootPath}scripts/bandeja.js?v=20260819-agenda-semantic`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -205,7 +205,7 @@
     if (document.querySelector('script[src*="scripts/pomodoro.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/pomodoro.js?v=20260819-agenda-actions`;
+    script.src = `${rootPath}scripts/pomodoro.js?v=20260819-agenda-semantic`;
     script.defer = true;
     document.head.appendChild(script);
   }
