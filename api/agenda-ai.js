@@ -3,7 +3,7 @@ const MODEL = process.env.GEMINI_MODEL || "gemini-3.6-flash";
 const MAX_AGENDA_ITEMS = 500;
 const MAX_INSTRUCTION_LENGTH = 1200;
 const MAX_RANGE_DAYS = 370;
-const REQUEST_TIMEOUT_MS = 25000;
+const REQUEST_TIMEOUT_MS = 50000;
 
 const RESPONSE_SCHEMA = {
   type: "object",
@@ -231,6 +231,7 @@ Reglas de razonamiento:
 - Si una hora es ambigua, usa el contexto habitual universitario; si no hay contexto suficiente, pedi una aclaracion.
 - Ejecuta toda la orden solicitada en un solo plan. No agregues acciones no pedidas.
 - Si falta un dato indispensable o hay dos interpretaciones peligrosas, completa clarification y deja todas las acciones vacias.
+- agendaActual usa filas compactas. Lee cada posicion segun agendaActualCampos; cada fila sigue representando una anotacion completa.
 - Responde exclusivamente con el JSON solicitado.`;
 
   const userContext = {
@@ -239,7 +240,19 @@ Reglas de razonamiento:
     zonaHoraria: input.timezone,
     rangoPredeterminado: { desde: input.dateFrom, hasta: input.dateUntil },
     materiasConocidas: input.subjects,
-    agendaActual: input.agenda
+    agendaActualCampos: ["id", "titulo", "tipo", "fecha", "materia", "nota", "horaInicio", "horaFin", "hecha", "creadaEn"],
+    agendaActual: input.agenda.map((item) => [
+      item.id,
+      item.title,
+      item.type,
+      item.date,
+      item.subject,
+      item.note,
+      item.horaInicio,
+      item.horaFin,
+      item.done ? 1 : 0,
+      item.createdAt
+    ])
   };
 
   return {
