@@ -56,8 +56,26 @@ const RESPONSE_SCHEMA = {
     },
     deleteIds: {
       type: "array",
-      description: "IDs exactos de anotaciones existentes que se deben eliminar.",
+      description: "IDs exactos de anotaciones individuales que se deben eliminar. No usar para borrados masivos o condicionales.",
       items: { type: "string" }
+    },
+    deleteRules: {
+      type: "array",
+      description: "Reglas para borrados masivos o condicionales. El servidor las aplica de forma exacta sobre la agenda.",
+      items: {
+        type: "object",
+        properties: {
+          subject: { type: "string", description: "Materia afectada. Vacio solamente si la orden abarca toda la agenda." },
+          titleContains: { type: "string", description: "Texto que debe contener el titulo. Vacio si no corresponde." },
+          dateFrom: { type: "string", description: "Fecha inicial YYYY-MM-DD. Vacio si no hay limite." },
+          dateUntil: { type: "string", description: "Fecha final YYYY-MM-DD. Vacio si no hay limite." },
+          deleteAll: { type: "boolean", description: "Eliminar todo lo que coincida con materia, titulo y fechas." },
+          keepWeekdays: { type: "array", description: "Conservar estos dias y eliminar los demas dentro del alcance.", items: { type: "integer" } },
+          deleteWeekdays: { type: "array", description: "Eliminar solamente estos dias dentro del alcance.", items: { type: "integer" } },
+          removeDuplicates: { type: "boolean", description: "Eliminar duplicados conservando siempre el registro mas antiguo." }
+        },
+        required: ["subject", "titleContains", "dateFrom", "dateUntil", "deleteAll", "keepWeekdays", "deleteWeekdays", "removeDuplicates"]
+      }
     },
     updates: {
       type: "array",
@@ -79,7 +97,7 @@ const RESPONSE_SCHEMA = {
       }
     }
   },
-  required: ["summary", "clarification", "createSchedules", "createEvents", "deleteIds", "updates"]
+  required: ["summary", "clarification", "createSchedules", "createEvents", "deleteIds", "deleteRules", "updates"]
 };
 
 module.exports = async function agendaAi(request, response) {
@@ -247,6 +265,9 @@ Reglas de razonamiento:
 - Usa la agenda recibida como unica fuente de verdad para borrar o editar. En deleteIds usa solamente IDs que existan.
 - Si piden borrar eventos fuera de determinados dias, conserva los de los dias permitidos y selecciona todos los demas de esa materia.
 - Si piden quitar duplicados, conserva el registro mas antiguo de cada coincidencia por materia, fecha y horario, y elimina los posteriores.
+- Para borrados masivos, por materia, por dias, por rango o de duplicados usa deleteRules y deja deleteIds vacio. El servidor elegira los IDs exactos.
+- En deleteRules: keepWeekdays expresa los dias que deben conservarse; deleteWeekdays los que deben borrarse; removeDuplicates conserva el mas antiguo; deleteAll borra todo el alcance.
+- Usa deleteIds solamente cuando el usuario identifica una o pocas anotaciones concretas y no hace falta una regla.
 - No conviertas frases como "elimina...", "cambia..." o "mueve..." en eventos nuevos.
 - Para horarios semanales usa createSchedules. El domingo es 0, lunes 1, martes 2, miercoles 3, jueves 4, viernes 5 y sabado 6.
 - Para eventos de una sola fecha usa createEvents.
@@ -315,7 +336,9 @@ function compactAgendaForModel(agenda) {
 function sanitizePlan(raw, agenda) {
   const source = raw && typeof raw === "object" ? raw : {};
   const validIds = new Set(agenda.map((item) => item.id));
-  const deleteIds = [...new Set(Array.isArray(source.deleteIds) ? source.deleteIds.map((id) => cleanText(id, 180)) : [])]
+  const directDeleteIds = Array.isArray(source.deleteIds) ? source.deleteIds.map((id) => cleanText(id, 180)) : [];
+  const ruleDeleteIds = expandDeleteRules(source.deleteRules, agenda);
+  const deleteIds = [...new Set([...directDeleteIds, ...ruleDeleteIds])]
     .filter((id) => validIds.has(id))
     .slice(0, MAX_AGENDA_ITEMS);
   const deleted = new Set(deleteIds);
@@ -338,6 +361,78 @@ function sanitizePlan(raw, agenda) {
     deleteIds,
     updates
   };
+}
+
+function expandDeleteRules(rawRules, agenda) {
+  if (!Array.isArray(rawRules)) return [];
+  const deleted = new Set();
+
+  rawRules.slice(0, 50).forEach((rawRule) => {
+    const rule = sanitizeDeleteRule(rawRule);
+    if (!rule || !rule.hasAction) return;
+    const scoped = agenda.filter((item) => matchesDeleteRuleScope(item, rule));
+
+    scoped.forEach((item) => {
+      const weekday = new Date(`${item.date}T12:00:00Z`).getUTCDay();
+      if (
+        rule.deleteAll ||
+        (rule.keepWeekdays.length && !rule.keepWeekdays.includes(weekday)) ||
+        rule.deleteWeekdays.includes(weekday)
+      ) {
+        deleted.add(item.id);
+      }
+    });
+
+    if (rule.removeDuplicates) {
+      const seen = new Set();
+      [...scoped]
+        .filter((item) => !deleted.has(item.id))
+        .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0))
+        .forEach((item) => {
+          const identity = normalizeText(item.subject) || normalizeText(item.title);
+          const key = [identity, item.type, item.date, item.horaInicio, item.horaFin].join("|");
+          if (seen.has(key)) deleted.add(item.id);
+          else seen.add(key);
+        });
+    }
+  });
+
+  return [...deleted];
+}
+
+function sanitizeDeleteRule(rawRule) {
+  if (!rawRule || typeof rawRule !== "object") return null;
+  const keepWeekdays = cleanWeekdays(rawRule.keepWeekdays);
+  const deleteWeekdays = cleanWeekdays(rawRule.deleteWeekdays);
+  const deleteAll = Boolean(rawRule.deleteAll);
+  const removeDuplicates = Boolean(rawRule.removeDuplicates);
+  return {
+    subject: normalizeText(cleanText(rawRule.subject, 80)),
+    titleContains: normalizeText(cleanText(rawRule.titleContains, 90)),
+    dateFrom: cleanDate(rawRule.dateFrom),
+    dateUntil: cleanDate(rawRule.dateUntil),
+    deleteAll,
+    keepWeekdays,
+    deleteWeekdays,
+    removeDuplicates,
+    hasAction: deleteAll || keepWeekdays.length > 0 || deleteWeekdays.length > 0 || removeDuplicates
+  };
+}
+
+function cleanWeekdays(value) {
+  return [...new Set(Array.isArray(value) ? value.map(Number) : [])]
+    .filter((day) => Number.isInteger(day) && day >= 0 && day <= 6)
+    .sort();
+}
+
+function matchesDeleteRuleScope(item, rule) {
+  const itemSubject = normalizeText(item.subject);
+  const itemTitle = normalizeText(item.title);
+  if (rule.subject && itemSubject !== rule.subject && !itemTitle.includes(rule.subject)) return false;
+  if (rule.titleContains && !itemTitle.includes(rule.titleContains)) return false;
+  if (rule.dateFrom && item.date < rule.dateFrom) return false;
+  if (rule.dateUntil && item.date > rule.dateUntil) return false;
+  return true;
 }
 
 function sanitizeSchedule(item) {
