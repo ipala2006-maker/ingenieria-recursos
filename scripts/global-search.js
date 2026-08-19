@@ -205,7 +205,7 @@
     if (document.querySelector('script[src*="scripts/pomodoro.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/pomodoro.js?v=20260819-desktop-pip-responsive`;
+    script.src = `${rootPath}scripts/pomodoro.js?v=20260819-desktop-pip-compact-fix`;
     script.defer = true;
     document.head.appendChild(script);
   }
