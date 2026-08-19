@@ -173,16 +173,19 @@
   }
 
   async function initialize() {
+    let stage = "config";
     try {
       const response = await fetch(`${getRootPath()}api/account-config`, { cache: "no-store" });
       const config = await response.json().catch(() => ({}));
       if (!response.ok || !config.enabled || !config.url || !config.publishableKey) throw new Error("not-configured");
+      stage = "library";
       await loadSupabaseLibrary();
       client = window.supabase.createClient(config.url, config.publishableKey, {
         auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
       });
       configAvailable = true;
 
+      stage = "session";
       const result = await client.auth.getSession();
       if (result.error) throw result.error;
       session = result.data.session;
@@ -204,6 +207,13 @@
       });
     } catch (error) {
       configAvailable = false;
+      const message = stage === "config"
+        ? "La sincronización de cuentas está casi lista, pero falta conectar el almacenamiento seguro."
+        : stage === "library"
+          ? "No pudimos cargar el servicio de cuentas. Revisá tu conexión y recargá la página."
+          : "No pudimos iniciar tu cuenta en este momento. Recargá la página para volver a intentar.";
+      const unavailable = document.querySelector("[data-account-unavailable] p");
+      if (unavailable) unavailable.textContent = message;
       renderAccountState();
     }
   }
