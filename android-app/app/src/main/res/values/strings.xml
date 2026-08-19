@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Estudiemos</string>
-    <string name="agenda_widget_name">Agenda de Estudiemos</string>
-    <string name="agenda_widget_description">Próximas clases, tareas y exámenes de tu agenda.</string>
+    <string name="agenda_widget_name">Agenda académica</string>
+    <string name="agenda_widget_description">Próximas tareas, parciales, exámenes y trabajos.</string>
+    <string name="calendar_widget_name">Calendario académico</string>
+    <string name="calendar_widget_description">Calendario mensual con tus horarios de clase.</string>
 </resources>

@@ -1011,6 +1011,7 @@ img{ max-width: 100%; display:block; }
 }
 .agenda-toolbar__today,
 .agenda-assistant-btn,
+.agenda-widget-sync-btn,
 .agenda-create-btn,
 .agenda-save-btn{
   min-height:36px;
@@ -1035,6 +1036,7 @@ img{ max-width: 100%; display:block; }
 }
 .agenda-create-btn svg,
 .agenda-assistant-btn svg,
+.agenda-widget-sync-btn svg,
 .agenda-save-btn svg{
   width:15px;
   height:15px;
@@ -1042,6 +1044,7 @@ img{ max-width: 100%; display:block; }
 }
 .agenda-toolbar__today:hover,
 .agenda-assistant-btn:hover,
+.agenda-widget-sync-btn:hover,
 .agenda-create-btn:hover,
 .agenda-save-btn:hover{
   border-color:rgba(110,231,255,.38);
@@ -1190,6 +1193,13 @@ img{ max-width: 100%; display:block; }
 .agenda-assistant-btn{
   border-color:rgba(167,139,250,.28);
   background:rgba(167,139,250,.10);
+}
+.agenda-widget-sync-btn{
+  border-color:rgba(96,165,250,.28);
+  background:rgba(96,165,250,.10);
+}
+.agenda-widget-sync-btn[hidden]{
+  display:none;
 }
 .agenda-assistant-btn:hover{
   border-color:rgba(167,139,250,.42);
@@ -1581,6 +1591,7 @@ img{ max-width: 100%; display:block; }
   }
   .agenda-toolbar__today,
   .agenda-assistant-btn,
+  .agenda-widget-sync-btn,
   .agenda-create-btn{
     min-height:34px;
     padding:7px 10px;
@@ -1590,6 +1601,9 @@ img{ max-width: 100%; display:block; }
     flex-direction:column;
     overflow-x:hidden;
     overflow-y:auto;
+  }
+  .agenda-widget-sync-btn span{
+    display:none;
   }
   .agenda-calendar{
     border-right:0;

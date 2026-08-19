@@ -21,6 +21,25 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".SyncAgendaActivity"
+            android:exported="true"
+            android:noHistory="true"
+            android:theme="@style/Theme.Estudiemos.Sync">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="estudiemos" android:host="sync" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".OpenAgendaActivity"
+            android:exported="false"
+            android:noHistory="true"
+            android:theme="@style/Theme.Estudiemos.Sync" />
+
         <receiver
             android:name=".AgendaWidgetProvider"
             android:exported="true">
@@ -31,5 +50,21 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/agenda_widget_info" />
         </receiver>
+
+        <receiver
+            android:name=".CalendarWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/calendar_widget_info" />
+        </receiver>
+
+        <service
+            android:name=".CalendarWidgetService"
+            android:exported="false"
+            android:permission="android.permission.BIND_REMOTEVIEWS" />
     </application>
 </manifest>

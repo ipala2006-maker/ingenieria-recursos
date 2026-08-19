@@ -35,7 +35,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
-        android:text="Próximos en tu agenda"
+        android:text="Tareas, parciales y entregas"
         android:textColor="#94A3B8"
         android:textSize="12sp" />
 

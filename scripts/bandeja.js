@@ -35,6 +35,8 @@
   restoreTrayState();
   markActiveTheme();
   observeLateCards();
+  revealAndroidWidgetSync();
+  openAgendaFromUrl();
   syncAgendaWithAndroid(readList(STORAGE_KEYS.agenda));
   window.addEventListener("estudiemos-android-ready", () => {
     syncAgendaWithAndroid(readList(STORAGE_KEYS.agenda));
@@ -101,6 +103,7 @@
           </div>
           <div class="agenda-toolbar__actions">
             <button class="agenda-assistant-btn" type="button" data-agenda-assistant>${icon("sparkles")}<span>Organizar</span></button>
+            <button class="agenda-widget-sync-btn" type="button" data-agenda-widget-sync hidden>${icon("calendar")}<span>Widgets</span></button>
             <button class="agenda-create-btn" type="button" data-agenda-create>${icon("plus")}<span>Crear</span></button>
             <button class="tray-close" type="button" data-agenda-close aria-label="Cerrar agenda">${icon("lineClose")}</button>
           </div>
@@ -337,6 +340,7 @@
       const agendaAssistant = event.target.closest("[data-agenda-assistant]");
       const agendaAssistantClose = event.target.closest("[data-agenda-assistant-close]");
       const agendaAssistantConfirm = event.target.closest("[data-agenda-assistant-confirm]");
+      const agendaWidgetSync = event.target.closest("[data-agenda-widget-sync]");
 
       if (agendaClose) {
         closeAgendaBoard();
@@ -366,6 +370,11 @@
 
       if (agendaAssistantConfirm) {
         saveAgendaAssistantItems();
+        return;
+      }
+
+      if (agendaWidgetSync) {
+        syncWidgetsFromAgenda(agendaWidgetSync);
         return;
       }
 
@@ -1591,6 +1600,53 @@
     } catch (_) {
       // The regular web and PWA versions work without the optional Android bridge.
     }
+  }
+
+  function revealAndroidWidgetSync() {
+    const button = document.querySelector("[data-agenda-widget-sync]");
+    if (button && /Android/i.test(navigator.userAgent)) button.hidden = false;
+  }
+
+  function syncWidgetsFromAgenda(button) {
+    const items = readList(STORAGE_KEYS.agenda).map((item) => ({
+      id: item.id,
+      title: item.title,
+      type: item.type,
+      date: item.date,
+      subject: item.subject || "",
+      horaInicio: item.horaInicio || "",
+      horaFin: item.horaFin || "",
+      done: Boolean(item.done)
+    }));
+
+    if (window.EstudiemosAndroid && typeof window.EstudiemosAndroid.postMessage === "function") {
+      syncAgendaWithAndroid(items);
+      showWidgetSyncFeedback(button);
+      return;
+    }
+
+    const destination = `estudiemos://sync?data=${encodeURIComponent(JSON.stringify(items))}`;
+    showWidgetSyncFeedback(button);
+    window.location.href = destination;
+  }
+
+  function showWidgetSyncFeedback(button) {
+    const label = button?.querySelector("span");
+    if (!label) return;
+    const previous = label.textContent;
+    label.textContent = "Actualizado";
+    window.setTimeout(() => { label.textContent = previous; }, 1800);
+  }
+
+  function openAgendaFromUrl() {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("agenda") !== "1") return;
+    const date = url.searchParams.get("date") || "";
+    openAgendaBoard();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) selectAgendaDate(date);
+    url.searchParams.delete("agenda");
+    url.searchParams.delete("date");
+    history.replaceState(history.state, "", `${url.pathname}${url.search}${url.hash}`);
   }
 
   function normalizeItem(item) {

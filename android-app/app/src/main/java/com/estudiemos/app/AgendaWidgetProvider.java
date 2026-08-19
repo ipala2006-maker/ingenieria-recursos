@@ -19,10 +19,11 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.text.Normalizer;
 
 public class AgendaWidgetProvider extends AppWidgetProvider {
-    private static final String PREFS = "estudiemos_widget";
-    private static final String KEY_AGENDA = "agenda_json";
+    static final String PREFS = "estudiemos_widget";
+    static final String KEY_AGENDA = "agenda_json";
     private static final DateTimeFormatter HEADER_FORMAT = DateTimeFormatter.ofPattern("EEE d MMM", new Locale("es", "AR"));
     private static final DateTimeFormatter DAY_FORMAT = DateTimeFormatter.ofPattern("EEE d MMM", new Locale("es", "AR"));
 
@@ -37,6 +38,15 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
             if (!"agenda-sync".equals(message.optString("type"))) return;
             JSONArray items = message.optJSONArray("items");
             if (items == null) return;
+            storeAgendaItems(context, items.toString());
+        } catch (Exception ignored) {
+            // Invalid messages never replace the last valid widget data.
+        }
+    }
+
+    static void storeAgendaItems(Context context, String rawItems) {
+        try {
+            JSONArray items = new JSONArray(rawItems);
             context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                     .edit()
                     .putString(KEY_AGENDA, items.toString())
@@ -46,8 +56,9 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
             ComponentName component = new ComponentName(context, AgendaWidgetProvider.class);
             int[] ids = manager.getAppWidgetIds(component);
             for (int id : ids) updateWidget(context, manager, id);
+            CalendarWidgetProvider.notifyDataChanged(context);
         } catch (Exception ignored) {
-            // Invalid messages never replace the last valid widget data.
+            // Keep the last valid copy when Android receives incomplete data.
         }
     }
 
@@ -73,8 +84,7 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
     }
 
     private static PendingIntent openAgendaIntent(Context context) {
-        Intent intent = new Intent(context, MainActivity.class)
-                .putExtra(MainActivity.EXTRA_OPEN_AGENDA, true)
+        Intent intent = new Intent(context, OpenAgendaActivity.class)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         return PendingIntent.getActivity(
                 context,
@@ -93,6 +103,8 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
             for (int i = 0; i < array.length(); i += 1) {
                 JSONObject item = array.optJSONObject(i);
                 if (item == null || item.optBoolean("done", false)) continue;
+                String type = item.optString("type", "Tarea").trim();
+                if (!isAgendaType(type)) continue;
                 LocalDate date;
                 try {
                     date = LocalDate.parse(item.optString("date"));
@@ -102,7 +114,6 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
                 if (date.isBefore(today)) continue;
                 String title = item.optString("title", "Pendiente").trim();
                 String subject = item.optString("subject", "").trim();
-                String type = item.optString("type", "Tarea").trim();
                 String time = item.optString("horaInicio", "").trim();
                 entries.add(new AgendaEntry(title, subject, type, time, date));
             }
@@ -111,6 +122,17 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
         }
         entries.sort(Comparator.comparing((AgendaEntry item) -> item.date).thenComparing(item -> item.time));
         return entries;
+    }
+
+    private static boolean isAgendaType(String value) {
+        String type = Normalizer.normalize(value, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .toLowerCase(new Locale("es", "AR"));
+        return type.equals("tarea") ||
+                type.equals("parcial") ||
+                type.equals("examen") ||
+                type.equals("entrega") ||
+                type.equals("trabajo");
     }
 
     private static void bindEntry(RemoteViews views, int index, AgendaEntry entry) {
