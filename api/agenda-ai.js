@@ -1,3 +1,4 @@
+// This function keeps the model credential on Vercel and out of the browser.
 const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 const MAX_AGENDA_ITEMS = 500;
 const MAX_INSTRUCTION_LENGTH = 1200;
