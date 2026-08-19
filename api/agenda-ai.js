@@ -122,10 +122,12 @@ module.exports = async function agendaAi(request, response) {
     const payload = await modelResponse.json().catch(() => null);
     if (!modelResponse.ok) {
       const unavailable = modelResponse.status === 429 || modelResponse.status >= 500;
+      const providerMessage = cleanText(payload?.error?.message, 300);
       return response.status(unavailable ? 503 : 502).json({
         error: unavailable
           ? "La IA esta ocupada en este momento. Proba nuevamente en unos segundos."
-          : "No se pudo interpretar la instruccion."
+          : "No se pudo interpretar la instruccion.",
+        details: providerMessage
       });
     }
 
