@@ -196,7 +196,7 @@
     if (document.querySelector('script[src*="scripts/bandeja.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/bandeja.js?v=20260809-space-grotesk`;
+    script.src = `${rootPath}scripts/bandeja.js?v=20260819-agenda-language`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -205,7 +205,7 @@
     if (document.querySelector('script[src*="scripts/pomodoro.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/pomodoro.js?v=20260819-agenda-assistant`;
+    script.src = `${rootPath}scripts/pomodoro.js?v=20260819-agenda-language`;
     script.defer = true;
     document.head.appendChild(script);
   }

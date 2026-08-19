@@ -17,13 +17,13 @@
   const MAX_ASSISTANT_RANGE_DAYS = 370;
   const AGENDA_DAY_NAMES = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
   const AGENDA_DAY_ALIASES = [
-    { day: 0, aliases: ["domingo", "dom"] },
+    { day: 0, aliases: ["domingo", "domingos", "dom"] },
     { day: 1, aliases: ["lunes", "lun"] },
     { day: 2, aliases: ["martes", "mar"] },
     { day: 3, aliases: ["miercoles", "mie"] },
     { day: 4, aliases: ["jueves", "jue"] },
     { day: 5, aliases: ["viernes", "vie"] },
-    { day: 6, aliases: ["sabado", "sab"] }
+    { day: 6, aliases: ["sabado", "sabados", "sab"] }
   ];
   let refreshQueued = false;
   let agendaFilter = "day";
@@ -134,7 +134,7 @@
                   Tus horarios
                   <textarea id="agendaAssistantPrompt" rows="5" maxlength="700" placeholder="Física I: lunes y miércoles de 8 a 10&#10;Análisis Matemático I: martes de 14:30 a 16"></textarea>
                 </label>
-                <p class="agenda-assistant__hint">Escribí una materia por línea.</p>
+                <p class="agenda-assistant__hint">Podés escribir varias materias y horarios en un solo mensaje.</p>
 
                 <div class="agenda-assistant__dates">
                   <label class="tray-field">
@@ -825,64 +825,174 @@
   }
 
   function parseAgendaAssistantPrompt(prompt) {
-    const lines = String(prompt)
-      .split(/\n|;/)
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .slice(0, 12);
+    const source = String(prompt || "").trim();
+    const normalizedSource = normalizeAssistantSource(source);
+    const dayPattern = "(?:lunes|martes|miercoles|jueves|viernes|sabados?|domingos?|lun|mar|mie|jue|vie|sab|dom)";
+    const dayGroupPattern = `(?:(?:cada|todos?)\\s+)?(?:los?\\s+)?${dayPattern}(?:\\s*(?:,|y)\\s*(?:(?:cada|todos?)\\s+)?(?:los?\\s+)?${dayPattern})*`;
+    const timePattern = "(?:(?:de|desde)\\s+|a\\s+las?\\s+)?(\\d{1,2})(?::(\\d{2}))?\\s*(?:(?:de\\s+la\\s+)?(manana|tarde|noche|mediodia|am|pm))?\\s*(?:hs|hrs|horas?)?\\s*(?:a|hasta|-)\\s*(?:las?\\s+)?(\\d{1,2})(?::(\\d{2}))?\\s*(?:(?:de\\s+la\\s+)?(manana|tarde|noche|mediodia|am|pm))?\\s*(?:hs|hrs|horas?)?";
+    const schedulePattern = new RegExp(`(${dayGroupPattern})\\s*,?\\s*${timePattern}`, "gi");
     const schedules = [];
     const errors = [];
+    let previousEnd = 0;
+    let activeSubjects = [];
+    let match;
 
-    lines.forEach((line, index) => {
-      const normalizedLine = normalizeAssistantText(line);
-      const days = AGENDA_DAY_ALIASES
-        .filter((entry) => entry.aliases.some((alias) => new RegExp(`\\b${alias}\\b`, "i").test(normalizedLine)))
-        .map((entry) => entry.day);
-      const timeMatch = normalizedLine.match(/(?:de|desde)?\s*(\d{1,2})(?::(\d{2}))?\s*(?:a|hasta|-)\s*(\d{1,2})(?::(\d{2}))?/i);
-      const subject = findAssistantSubject(line, normalizedLine);
+    while ((match = schedulePattern.exec(normalizedSource)) !== null) {
+      const subjectContext = source.slice(previousEnd, match.index);
+      const detectedSubjects = extractAssistantSubjects(subjectContext);
+      if (detectedSubjects.length) activeSubjects = detectedSubjects;
 
-      if (!subject || !days.length || !timeMatch) {
-        errors.push(`No pude interpretar la línea ${index + 1}. Usá el formato “Materia: lunes de 8 a 10”.`);
-        return;
+      const days = extractAssistantDays(match[1]);
+      const times = normalizeAssistantTimeRange({
+        startHour: match[2],
+        startMinute: match[3],
+        startPeriod: match[4],
+        endHour: match[5],
+        endMinute: match[6],
+        endPeriod: match[7]
+      });
+
+      if (!activeSubjects.length) {
+        errors.push(`No pude reconocer la materia asociada a ${match[1]}.`);
+      } else if (!days.length || !times) {
+        errors.push(`Revisá el horario cercano a “${match[0].trim()}”.`);
+      } else {
+        activeSubjects.forEach((subject) => {
+          schedules.push({ subject, days, horaInicio: times.horaInicio, horaFin: times.horaFin });
+        });
       }
+      previousEnd = schedulePattern.lastIndex;
+    }
 
-      const horaInicio = normalizeAssistantTime(timeMatch[1], timeMatch[2]);
-      const horaFin = normalizeAssistantTime(timeMatch[3], timeMatch[4]);
-      if (!horaInicio || !horaFin || horaInicio >= horaFin) {
-        errors.push(`Revisá las horas de la línea ${index + 1}.`);
-        return;
-      }
+    if (!schedules.length && !errors.length) {
+      errors.push("No pude encontrar horarios completos. Probá con “Física: lunes de 8 a 10”.");
+    }
 
-      schedules.push({ subject, days: [...new Set(days)], horaInicio, horaFin });
-    });
-
-    if (!lines.length) errors.push("Escribí al menos un horario.");
-    return { schedules, errors };
+    return { schedules: dedupeAssistantSchedules(schedules), errors: [...new Set(errors)] };
   }
 
-  function findAssistantSubject(originalLine, normalizedLine) {
-    const subjects = getSubjects()
-      .map((subject) => ({ title: subject.title, slug: subject.slug, normalized: normalizeAssistantText(subject.title) }))
-      .sort((a, b) => b.normalized.length - a.normalized.length);
-    const exact = subjects.find((subject) => normalizedLine.includes(subject.normalized));
+  function extractAssistantSubjects(context) {
+    const cleaned = String(context || "")
+      .replace(/[.;\n]+/g, " ")
+      .replace(/\b(?:por\s+(?:último|ultimo)|finalmente|además|ademas|también|tambien)\b/gi, " ")
+      .replace(/\b(?:tengo|curso|cursaré|cursare|cursando|cursada|clases?\s+de)\b/gi, " ")
+      .replace(/\b(?:hs|hrs|horas?)\b/gi, " ")
+      .replace(/^[\s,:-]*(?:y\s+)?|[\s,:-]+$/gi, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!cleaned) return [];
+
+    const knownWhole = resolveAssistantSubject(cleaned, true);
+    if (knownWhole) return [knownWhole];
+
+    const parts = cleaned
+      .split(/\s+y\s+/i)
+      .map((part) => part.replace(/^[\s,:-]+|[\s,:-]+$/g, "").trim())
+      .filter((part) => part.length >= 2);
+    const candidates = parts.length > 1 ? parts : [cleaned];
+    return [...new Set(candidates.map((candidate) => resolveAssistantSubject(candidate, false)).filter(Boolean))];
+  }
+
+  function resolveAssistantSubject(value, knownOnly) {
+    const normalized = normalizeAssistantText(value);
+    if (!normalized) return "";
+    const subjects = getSubjects().map((subject) => ({
+      title: subject.title,
+      slug: subject.slug,
+      normalized: normalizeAssistantText(subject.title)
+    }));
+    const exact = subjects.find((subject) => subject.normalized === normalized);
     if (exact) return exact.title;
 
-    const aliases = [
-      { words: ["fisica"], slug: "fisica-1" },
-      { words: ["analisis", "calculo"], slug: "analisis-matematico-1" },
-      { words: ["quimica"], slug: "quimica" }
-    ];
-    const alias = aliases.find((entry) => entry.words.some((word) => new RegExp(`\\b${word}\\b`, "i").test(normalizedLine)));
-    const aliasSubject = alias && subjects.find((subject) => subject.slug === alias.slug);
+    const aliases = {
+      fisica: "fisica-1",
+      "fisica 1": "fisica-1",
+      "analisis": "analisis-matematico-1",
+      "analisis matematico": "analisis-matematico-1",
+      "analisis matematico 1": "analisis-matematico-1",
+      quimica: "quimica"
+    };
+    const aliasSlug = aliases[normalized];
+    const aliasSubject = aliasSlug && subjects.find((subject) => subject.slug === aliasSlug);
     if (aliasSubject) return aliasSubject.title;
+    if (knownOnly) return "";
+    return formatAssistantSubject(value);
+  }
 
-    const dayMatch = normalizeAssistantText(originalLine).match(/\b(lunes|lun|martes|mar|miercoles|mie|jueves|jue|viernes|vie|sabado|sab|domingo|dom)\b/i);
-    if (!dayMatch || typeof dayMatch.index !== "number") return "";
-    const prefix = originalLine.slice(0, dayMatch.index)
-      .replace(/^(tengo|curso|cursada|clases?\s+de)\s+/i, "")
-      .replace(/[,:-]+\s*$/, "")
-      .trim();
-    return prefix.length >= 2 ? sentenceCase(prefix) : "";
+  function formatAssistantSubject(value) {
+    const accentWords = {
+      analisis: "Análisis",
+      calculo: "Cálculo",
+      computacion: "Computación",
+      fisica: "Física",
+      matematica: "Matemática",
+      matematico: "Matemático",
+      numerico: "Numérico",
+      quimica: "Química"
+    };
+    return String(value || "")
+      .trim()
+      .split(/\s+/)
+      .map((word) => {
+        const normalized = normalizeAssistantText(word);
+        if (/^(i|ii|iii|iv|v|vi)$/i.test(word)) return word.toUpperCase();
+        if (accentWords[normalized]) return accentWords[normalized];
+        if (/^\d+$/.test(word)) return word;
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+      })
+      .join(" ");
+  }
+
+  function extractAssistantDays(value) {
+    const normalized = normalizeAssistantText(value);
+    return AGENDA_DAY_ALIASES
+      .filter((entry) => entry.aliases.some((alias) => new RegExp(`\\b${alias}\\b`, "i").test(normalized)))
+      .map((entry) => entry.day);
+  }
+
+  function normalizeAssistantTimeRange(values) {
+    const startPeriod = values.startPeriod || values.endPeriod || "";
+    const endPeriod = values.endPeriod || values.startPeriod || "";
+    let startHour = assistantHourNumber(values.startHour, startPeriod);
+    let endHour = assistantHourNumber(values.endHour, endPeriod);
+    const startMinute = Number(values.startMinute || 0);
+    const endMinute = Number(values.endMinute || 0);
+    if (![startHour, endHour, startMinute, endMinute].every(Number.isInteger)) return null;
+    if (startHour < 0 || startHour > 23 || endHour < 0 || endHour > 23 || startMinute < 0 || startMinute > 59 || endMinute < 0 || endMinute > 59) return null;
+    if (!startPeriod && !endPeriod && endHour <= startHour && endHour <= 12) endHour += 12;
+    if (endHour > 23) return null;
+
+    const horaInicio = normalizeAssistantTime(startHour, startMinute);
+    const horaFin = normalizeAssistantTime(endHour, endMinute);
+    if (!horaInicio || !horaFin || horaInicio >= horaFin) return null;
+    return { horaInicio, horaFin };
+  }
+
+  function assistantHourNumber(value, period) {
+    let hour = Number(value);
+    if (!Number.isInteger(hour)) return NaN;
+    const normalizedPeriod = normalizeAssistantText(period);
+    if ((normalizedPeriod === "manana" || normalizedPeriod === "am") && hour === 12) hour = 0;
+    if (["tarde", "noche", "pm"].includes(normalizedPeriod) && hour < 12) hour += 12;
+    if (normalizedPeriod === "mediodia" && hour < 12) hour += 12;
+    return hour;
+  }
+
+  function dedupeAssistantSchedules(schedules) {
+    const seen = new Set();
+    return schedules.filter((schedule) => {
+      const key = [normalizeAssistantText(schedule.subject), schedule.days.join(","), schedule.horaInicio, schedule.horaFin].join("|");
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  function normalizeAssistantSource(value) {
+    return String(value || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
   }
 
   function normalizeAssistantText(value) {
