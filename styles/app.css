@@ -4202,3 +4202,59 @@ html.theme-light .agenda-manual{
     padding-right:12px;
   }
 }
+
+/* Comodidad en tablets tactiles, sin afectar escritorio ni celulares. */
+@media (min-width:700px) and (max-width:1366px) and (pointer:coarse){
+  .topbar{
+    gap:16px;
+    padding:18px 22px;
+  }
+
+  .brand{
+    font-size:18px;
+  }
+
+  .container{
+    width:min(var(--maxw), calc(100% - 48px));
+    padding-top:30px;
+  }
+
+  .hero{
+    margin-top:14px;
+    padding:18px 22px;
+  }
+
+  .hero h1{
+    font-size:36px;
+  }
+
+  .section{
+    margin-top:22px;
+  }
+
+  .section__head h2{
+    font-size:20px;
+  }
+
+  .section__hint{
+    font-size:15px;
+  }
+
+  .cards-grid{
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    gap:16px;
+  }
+
+  .card{
+    min-height:108px;
+    padding:17px 18px;
+  }
+
+  .card__title{
+    font-size:17px;
+  }
+
+  .card__desc{
+    font-size:14px;
+  }
+}

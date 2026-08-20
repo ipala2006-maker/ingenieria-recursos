@@ -29,8 +29,8 @@ const RESPONSE_SCHEMA = {
           weekdays: { type: "array", items: { type: "integer" } },
           dateFrom: { type: "string" },
           dateUntil: { type: "string" },
-          horaInicio: { type: "string" },
-          horaFin: { type: "string" },
+          horaInicio: { type: "string", description: "Hora HH:MM solo si el usuario la indico; en otro caso cadena vacia." },
+          horaFin: { type: "string", description: "Hora HH:MM solo si el usuario la indico; en otro caso cadena vacia." },
           note: { type: "string" }
         },
         required: ["title", "subject", "eventType", "weekdays", "dateFrom", "dateUntil", "horaInicio", "horaFin", "note"]
@@ -47,8 +47,8 @@ const RESPONSE_SCHEMA = {
           date: { type: "string" },
           subject: { type: "string" },
           note: { type: "string" },
-          horaInicio: { type: "string" },
-          horaFin: { type: "string" },
+          horaInicio: { type: "string", description: "Hora HH:MM solo si el usuario la indico; en otro caso cadena vacia." },
+          horaFin: { type: "string", description: "Hora HH:MM solo si el usuario la indico; en otro caso cadena vacia." },
           done: { type: "boolean" }
         },
         required: ["title", "eventType", "date", "subject", "note", "horaInicio", "horaFin", "done"]
@@ -272,8 +272,10 @@ Reglas de razonamiento:
 - Para horarios semanales usa createSchedules. El domingo es 0, lunes 1, martes 2, miercoles 3, jueves 4, viernes 5 y sabado 6.
 - Si varias materias comparten dias y horario, crea un horario separado para cada materia. Nunca combines dos materias conocidas en un mismo title o subject.
 - Para eventos de una sola fecha usa createEvents.
+- Las horas son opcionales. Si el usuario no menciona una hora concreta, devuelve horaInicio y horaFin como cadenas vacias. Nunca inventes horarios para tareas, parciales, entregas, recordatorios ni sesiones de estudio.
+- Solo completa horaInicio y horaFin cuando la instruccion incluye una hora o un rango horario explicito. Expresiones generales como "manana", "por la tarde" o "cuando pueda" no autorizan a inferir una hora exacta.
 - Si el usuario no indica el periodo de una recurrencia, usa el rango predeterminado recibido.
-- Si una hora es ambigua, usa el contexto habitual universitario; si no hay contexto suficiente, pedi una aclaracion.
+- Si el usuario proporciona una hora pero su formato es realmente ambiguo, pedi una aclaracion. No completes la ambiguedad por tu cuenta.
 - Ejecuta toda la orden solicitada en un solo plan. No agregues acciones no pedidas.
 - Si falta un dato indispensable o hay dos interpretaciones peligrosas, completa clarification y deja todas las acciones vacias.
 - agendaActualGrupos agrupa anotaciones con los mismos datos para evitar repeticiones. Lee datos y eventos segun sus listas de campos; cada evento conserva su ID, fecha y orden de creacion exactos.
@@ -345,15 +347,26 @@ function sanitizePlan(raw, input) {
     .slice(0, MAX_AGENDA_ITEMS);
   const deleted = new Set(deleteIds);
 
+  const keepGeneratedTimes = instructionHasExplicitTime(input.instruction);
   const sanitizedSchedules = Array.isArray(source.createSchedules)
     ? source.createSchedules.map(sanitizeSchedule).filter(Boolean).slice(0, 50)
     : [];
-  const createSchedules = splitCombinedSchedules(sanitizedSchedules, input.subjects).slice(0, 50);
+  const createSchedules = splitCombinedSchedules(sanitizedSchedules, input.subjects)
+    .map((item) => applyInstructionTimePolicy(item, keepGeneratedTimes))
+    .slice(0, 50);
   const createEvents = Array.isArray(source.createEvents)
-    ? source.createEvents.map(sanitizeCreatedEvent).filter(Boolean).slice(0, 100)
+    ? source.createEvents
+      .map(sanitizeCreatedEvent)
+      .filter(Boolean)
+      .map((item) => applyInstructionTimePolicy(item, keepGeneratedTimes))
+      .slice(0, 100)
     : [];
   const updates = Array.isArray(source.updates)
-    ? source.updates.map((item) => sanitizeUpdate(item, validIds)).filter((item) => item && !deleted.has(item.id)).slice(0, 100)
+    ? source.updates
+      .map((item) => sanitizeUpdate(item, validIds))
+      .filter((item) => item && !deleted.has(item.id))
+      .map((item) => applyInstructionTimePolicy(item, keepGeneratedTimes, true))
+      .slice(0, 100)
     : [];
 
   return {
@@ -364,6 +377,31 @@ function sanitizePlan(raw, input) {
     deleteIds,
     updates
   };
+}
+
+function applyInstructionTimePolicy(item, keepTimes, preserveExisting = false) {
+  if (keepTimes) return item;
+  const result = { ...item };
+  if (preserveExisting) {
+    delete result.horaInicio;
+    delete result.horaFin;
+  } else {
+    if (Object.prototype.hasOwnProperty.call(result, "horaInicio")) result.horaInicio = "";
+    if (Object.prototype.hasOwnProperty.call(result, "horaFin")) result.horaFin = "";
+  }
+  return result;
+}
+
+function instructionHasExplicitTime(value) {
+  const text = normalizeText(value);
+  const original = String(value || "").toLowerCase();
+  return (
+    /\b(?:[01]?\d|2[0-3]):[0-5]\d\b/.test(original) ||
+    /\b(?:a\s+las?|desde\s+las?|hasta\s+las?)\s+(?:[01]?\d|2[0-3])\b/.test(text) ||
+    /\b(?:de|entre)\s+(?:las?\s+)?(?:[01]?\d|2[0-3])\s+(?:a|y)\s+(?:las?\s+)?(?:[01]?\d|2[0-3])\b/.test(text) ||
+    /\b(?:[01]?\d|2[0-3])\s*(?:h|hs|am|pm)\b/.test(text) ||
+    /\b(?:mediodia|medianoche)\b/.test(text)
+  );
 }
 
 function splitCombinedSchedules(schedules, subjects) {
