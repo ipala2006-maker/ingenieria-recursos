@@ -29,7 +29,8 @@ module.exports = async function handler(request, response) {
     });
 
     if (!upstream.ok) {
-      return response.status(upstream.status === 403 ? 403 : 502).send("Registry unavailable");
+      const status = upstream.status >= 400 && upstream.status < 500 ? 403 : 502;
+      return response.status(status).send("Registry unavailable");
     }
 
     const users = await upstream.json();
