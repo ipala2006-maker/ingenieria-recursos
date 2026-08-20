@@ -497,7 +497,7 @@
 
   function shouldCloseMobileTray(event) {
     if (!document.body.classList.contains("tray-open")) return false;
-    if (!window.matchMedia("(max-width: 760px)").matches) return false;
+    if (!window.matchMedia("(max-width: 1024px)").matches) return false;
     if (event.target.closest(".tray-shell")) return false;
     if (event.target.closest(".agenda-board")) return false;
     if (event.target.closest("[data-agenda-open]")) return false;

@@ -4203,58 +4203,58 @@ html.theme-light .agenda-manual{
   }
 }
 
-/* Comodidad en tablets tactiles, sin afectar escritorio ni celulares. */
-@media (min-width:700px) and (max-width:1366px) and (pointer:coarse){
+/* La interfaz se reorganiza por ancho disponible, tambien en pantalla dividida. */
+@media (max-width:900px){
+  .topbar__nav > a.topbar__link,
+  .topbar__nav > .topbar__link--soon{
+    display:none;
+  }
+
+  .topbar__nav{
+    width:auto;
+    min-width:0;
+  }
+}
+
+@media (max-width:1024px){
+  .tray-shell{
+    width:min(320px, 80vw);
+  }
+
+  .tray-open,
+  html.tray-preopen body{
+    padding-left:0;
+  }
+
+  html.tray-preopen::before{
+    display:none;
+  }
+}
+
+@media (max-width:420px){
   .topbar{
-    gap:16px;
-    padding:24px 22px 18px;
+    padding:12px;
   }
 
-  .brand{
-    font-size:18px;
+  .brand__text{
+    display:none;
+  }
+}
+
+@media (max-width:760px), (pointer:coarse){
+  .global-search__results,
+  .tray-content,
+  .pomodoro-menu__panel,
+  .app-install-sheet__panel,
+  .account-panel{
+    scrollbar-width:none;
   }
 
-  .container{
-    width:min(var(--maxw), calc(100% - 48px));
-    padding-top:30px;
-  }
-
-  .hero{
-    margin-top:14px;
-    padding:18px 22px;
-  }
-
-  .hero h1{
-    font-size:36px;
-  }
-
-  .section{
-    margin-top:22px;
-  }
-
-  .section__head h2{
-    font-size:20px;
-  }
-
-  .section__hint{
-    font-size:15px;
-  }
-
-  .cards-grid{
-    grid-template-columns:repeat(2, minmax(0, 1fr));
-    gap:16px;
-  }
-
-  .card{
-    min-height:108px;
-    padding:17px 18px;
-  }
-
-  .card__title{
-    font-size:17px;
-  }
-
-  .card__desc{
-    font-size:14px;
+  .global-search__results::-webkit-scrollbar,
+  .tray-content::-webkit-scrollbar,
+  .pomodoro-menu__panel::-webkit-scrollbar,
+  .app-install-sheet__panel::-webkit-scrollbar,
+  .account-panel::-webkit-scrollbar{
+    display:none;
   }
 }
