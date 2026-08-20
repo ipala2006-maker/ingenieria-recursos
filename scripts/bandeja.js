@@ -1241,7 +1241,7 @@
           <span class="agenda-day__number">${day}</span>
           <span class="agenda-day__items">
             ${dayItems.slice(0, 3).map((item) => `
-              <span class="agenda-event-pill ${agendaTypeClass(item.type)}">
+              <span class="agenda-event-pill ${agendaTypeClass(item.type)}" title="${escapeAttr(formatAgendaCalendarSummary(item))}" aria-label="${escapeAttr(formatAgendaCalendarSummary(item))}">
                 <i aria-hidden="true"></i>
                 <span>${escapeHtml(formatAgendaCalendarSummary(item))}</span>
               </span>
@@ -1384,9 +1384,11 @@
   }
 
   function formatAgendaCalendarSummary(item) {
-    const prefix = item.subject || item.type;
+    const title = item.title || item.subject || item.type;
+    const context = item.subject || item.type;
     const time = formatAgendaTimeRange(item);
-    return `${time ? `${time} ` : ""}${prefix}: ${item.title}`;
+    const showContext = context && !normalizeAssistantText(title).includes(normalizeAssistantText(context));
+    return [title, showContext ? context : "", time].filter(Boolean).join(" · ");
   }
 
   function formatFullDate(value) {

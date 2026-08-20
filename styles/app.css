@@ -4258,3 +4258,31 @@ html.theme-light .agenda-manual{
     display:none;
   }
 }
+
+/* En tablets hay espacio suficiente para leer las anotaciones del mes. */
+@media (min-width:600px) and (pointer:coarse){
+  .agenda-calendar__grid{
+    grid-auto-rows:92px;
+  }
+
+  .agenda-day__items{
+    display:grid;
+    gap:3px;
+  }
+
+  .agenda-event-pill{
+    width:auto;
+    height:auto;
+    display:flex !important;
+    align-items:center;
+    gap:4px;
+    padding:3px 5px !important;
+    border-radius:7px !important;
+    background:color-mix(in srgb, var(--agenda-type-color) 16%, transparent) !important;
+  }
+
+  .agenda-event-pill i,
+  .agenda-event-pill span{
+    display:block;
+  }
+}

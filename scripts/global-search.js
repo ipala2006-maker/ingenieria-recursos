@@ -197,7 +197,7 @@
     if (document.querySelector('script[src*="scripts/bandeja.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/bandeja.js?v=20260820-responsive-flow`;
+    script.src = `${rootPath}scripts/bandeja.js?v=20260820-calendar-content`;
     script.defer = true;
     document.head.appendChild(script);
   }
