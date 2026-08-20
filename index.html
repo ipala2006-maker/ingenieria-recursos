@@ -3,14 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="App de productividad académica para organizar materias, agenda y sesiones de estudio." />
+    <meta name="description" content="Plataforma educativa gratuita para estudiantes de ingeniería." />
     <meta name="application-name" content="Estudiemos" />
     <meta name="theme-color" content="#0f172a" />
     <meta name="color-scheme" content="light dark" />
     <meta property="og:site_name" content="Estudiemos" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content="Estudiemos" />
-    <meta property="og:description" content="App de productividad académica para organizar materias, agenda y sesiones de estudio." />
+    <meta property="og:description" content="Plataforma educativa gratuita para estudiantes de ingeniería." />
     <meta property="og:url" content="https://estudiemos-app.vercel.app/" />
     <link rel="canonical" href="https://estudiemos-app.vercel.app/" />
     <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
@@ -21,7 +21,7 @@
     <link rel="apple-touch-icon" href="./assets/icon-180.png" />
     <title>Estudiemos</title>
     <script src="./scripts/theme-init.js?v=20260811-floating-timer"></script>
-    <link rel="stylesheet" href="./styles/app.css?v=20260820-productivity-home-2" />
+    <link rel="stylesheet" href="./styles/app.css?v=20260820-calendar-content" />
   </head>
 
   <body>
@@ -44,49 +44,12 @@
 
       <section class="hero">
         <h1>Estudiemos</h1>
-        <p>Organizá tus materias, tu agenda y tus sesiones de estudio.</p>
       </section>
 
-      <section class="section home-productivity" aria-labelledby="productivityTitle">
+      <section class="section">
         <div class="section__head">
-          <h2 id="productivityTitle">Tu estudio, en orden</h2>
-          <p class="section__hint">Herramientas simples para cada día.</p>
-        </div>
-
-        <div class="home-tools">
-          <button class="home-tool home-tool--action" type="button" data-agenda-open>
-            <strong class="home-tool__title">Agenda</strong>
-            <span class="home-tool__desc">Planificá tareas, parciales y objetivos.</span>
-          </button>
-
-          <button class="home-tool home-tool--action" type="button" data-agenda-open>
-            <strong class="home-tool__title">Calendario</strong>
-            <span class="home-tool__desc">Visualizá tu semana de estudio.</span>
-          </button>
-
-          <article class="home-tool">
-            <span class="home-tool__status">Próximamente</span>
-            <strong class="home-tool__title">Modo enfoque</strong>
-            <span class="home-tool__desc">Estudiá por bloques sin distracciones.</span>
-          </article>
-
-          <a class="home-tool home-tool--action" href="#materias">
-            <strong class="home-tool__title">Materias</strong>
-            <span class="home-tool__desc">Seguimiento simple de tus materias.</span>
-          </a>
-
-          <article class="home-tool">
-            <span class="home-tool__status">Próximamente</span>
-            <strong class="home-tool__title">Material recomendado</strong>
-            <span class="home-tool__desc">Recursos útiles para complementar tu estudio.</span>
-          </article>
-        </div>
-      </section>
-
-      <section id="materias" class="section">
-        <div class="section__head">
-          <h2>Carreras y materias</h2>
-          <p class="section__hint">Explorá tus materias y organizá mejor cómo estudiarlas.</p>
+          <h2>Carreras</h2>
+          <p class="section__hint">Haz clic para ver las materias.</p>
         </div>
 
         <div id="materiasGrid" class="cards-grid">

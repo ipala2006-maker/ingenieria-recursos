@@ -185,70 +185,6 @@ img{ max-width: 100%; display:block; }
   line-height: 1.5;
 }
 
-.home-tools{
-  display:grid;
-  grid-template-columns:repeat(5,minmax(0,1fr));
-  gap:10px;
-}
-
-.home-tool{
-  position:relative;
-  min-width:0;
-  min-height:108px;
-  display:flex;
-  flex-direction:column;
-  justify-content:flex-end;
-  align-items:flex-start;
-  gap:5px;
-  padding:14px;
-  border:1px solid rgba(255,255,255,.10);
-  border-radius:var(--radius);
-  background:rgba(255,255,255,.035);
-  color:var(--text);
-  font:inherit;
-  text-align:left;
-  box-shadow:none;
-}
-
-.home-tool--action{
-  cursor:pointer;
-  transition:border-color .15s ease, background .15s ease;
-}
-
-.home-tool--action:hover{
-  border-color:rgba(110,231,255,.30);
-  background:rgba(110,231,255,.07);
-}
-
-.home-tool__title{
-  font-size:14px;
-  line-height:1.25;
-}
-
-.home-tool__desc{
-  color:var(--muted);
-  font-size:12.5px;
-  line-height:1.35;
-}
-
-.home-tool__status{
-  margin-bottom:1px;
-  color:var(--muted);
-  font-size:9px;
-  font-weight:700;
-  text-transform:uppercase;
-}
-
-@media (max-width:1100px){
-  .home-tools{ grid-template-columns:repeat(3,minmax(0,1fr)); }
-}
-
-@media (max-width:620px){
-  .home-tools{ grid-template-columns:repeat(2,minmax(0,1fr)); }
-  .home-tool{ min-height:102px; }
-  .home-tool:last-child{ grid-column:1 / -1; }
-}
-
 .section{ margin-top: 18px; }
 .section__head{
   display:flex;
@@ -2263,7 +2199,6 @@ html.theme-light .topbar{
 
 html.theme-light .hero,
 html.theme-light .panel,
-html.theme-light .home-tool,
 html.theme-light .card,
 html.theme-light .topic-card,
 html.theme-light .resource-card,
@@ -2286,7 +2221,6 @@ html.theme-light .agenda-day{
 
 html.theme-light .hero h1,
 html.theme-light .panel h1,
-html.theme-light .home-tool__title,
 html.theme-light .section__head h2,
 html.theme-light .topic-page-head h1,
 html.theme-light .card__title,
@@ -2303,8 +2237,6 @@ html.theme-light .btn{
 
 html.theme-light .hero p,
 html.theme-light .section__hint,
-html.theme-light .home-tool__desc,
-html.theme-light .home-tool__status,
 html.theme-light .muted,
 html.theme-light .card__desc,
 html.theme-light .topic-card__meta,
