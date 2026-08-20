@@ -4207,7 +4207,7 @@ html.theme-light .agenda-manual{
 @media (min-width:700px) and (max-width:1366px) and (pointer:coarse){
   .topbar{
     gap:16px;
-    padding:18px 22px;
+    padding:24px 22px 18px;
   }
 
   .brand{
