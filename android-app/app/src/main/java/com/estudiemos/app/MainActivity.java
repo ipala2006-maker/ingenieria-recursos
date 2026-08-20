@@ -13,6 +13,7 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.FrameLayout;
 
 import androidx.annotation.NonNull;
 import androidx.webkit.JavaScriptReplyProxy;
@@ -37,11 +38,17 @@ public class MainActivity extends Activity {
 
         webView = new WebView(this);
         webView.setBackgroundColor(Color.rgb(15, 23, 42));
-        setContentView(webView, new ViewGroup.LayoutParams(
+        FrameLayout rootView = new FrameLayout(this);
+        rootView.setBackgroundColor(Color.rgb(15, 23, 42));
+        rootView.addView(webView, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
         ));
-        applySystemBarInsets();
+        setContentView(rootView, new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+        ));
+        applySystemBarInsets(rootView);
 
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
@@ -82,8 +89,8 @@ public class MainActivity extends Activity {
         else webView.restoreState(savedInstanceState);
     }
 
-    private void applySystemBarInsets() {
-        webView.setOnApplyWindowInsetsListener((view, windowInsets) -> {
+    private void applySystemBarInsets(FrameLayout rootView) {
+        rootView.setOnApplyWindowInsetsListener((view, windowInsets) -> {
             int left;
             int top;
             int right;
@@ -107,7 +114,7 @@ public class MainActivity extends Activity {
             view.setPadding(left, top, right, bottom);
             return windowInsets;
         });
-        webView.requestApplyInsets();
+        rootView.requestApplyInsets();
     }
 
     private void handleWebMessage(
