@@ -1123,6 +1123,8 @@
     }
     agendaAssistantPreview = [];
     agendaAssistantAction = null;
+    const promptInput = document.getElementById("agendaAssistantPrompt");
+    if (promptInput) promptInput.value = "";
     document.getElementById("agendaAssistantPreview")?.setAttribute("hidden", "");
     document.getElementById("agendaAssistantConfirm")?.setAttribute("hidden", "");
     document.getElementById("agendaAssistantConfirm")?.classList.remove("is-delete");
