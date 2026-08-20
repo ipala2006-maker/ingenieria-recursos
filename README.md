@@ -83,6 +83,14 @@ Configuración inicial:
 
 La Publishable key está diseñada para usarse en el navegador y queda limitada por las políticas de la tabla. No se debe usar ni publicar una Secret key o `service_role`.
 
+### Registro administrativo de usuarios
+
+El archivo privado de Google Sheets puede mostrar un registro de cuentas en una hoja llamada `Usuarios`. La fuente real sigue siendo Supabase Auth y solamente se exportan ID, correo y fechas de registro, confirmación y último acceso. Nunca se exportan contraseñas, agenda ni recursos guardados.
+
+- `supabase/user-registry.sql` crea una copia administrativa bloqueada y una exportación protegida por un token privado.
+- `api/user-registry.js` entrega el registro como CSV para la función `IMPORTDATA` de Google Sheets.
+- El token de exportación se guarda únicamente en la hoja privada y no debe publicarse ni agregarse al repositorio.
+
 ## Widgets de Android
 
 La PWA instalada desde Chrome sigue siendo la aplicación principal. Como Android no permite que una PWA cree widgets del sistema por sí sola, la carpeta `android-app/` contiene un complemento nativo liviano que habilita dos widgets sin base de datos ni permisos sensibles:

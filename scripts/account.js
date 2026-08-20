@@ -220,19 +220,21 @@
 
   function loadSupabaseLibrary() {
     if (window.supabase?.createClient) return Promise.resolve();
+    const sameOriginClient = `${getRootPath()}api/supabase-client`;
+    return loadScript(sameOriginClient).catch(() => loadScript(SUPABASE_CDN));
+  }
+
+  function loadScript(source) {
     return new Promise((resolve, reject) => {
-      const existing = document.querySelector('script[data-supabase-client]');
-      if (existing) {
-        existing.addEventListener("load", resolve, { once: true });
-        existing.addEventListener("error", reject, { once: true });
-        return;
-      }
       const script = document.createElement("script");
-      script.src = SUPABASE_CDN;
+      script.src = source;
       script.async = true;
       script.dataset.supabaseClient = "true";
-      script.onload = resolve;
-      script.onerror = reject;
+      script.onload = () => window.supabase?.createClient ? resolve() : reject(new Error("invalid-client"));
+      script.onerror = () => {
+        script.remove();
+        reject(new Error("client-load-failed"));
+      };
       document.head.appendChild(script);
     });
   }
