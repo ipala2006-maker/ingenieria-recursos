@@ -61,7 +61,7 @@
             <p class="tray-kicker">Recursos</p>
             <h2>Accesos rápidos</h2>
           </div>
-          <button class="tray-close" type="button" aria-label="Cerrar">${icon("lineClose")}</button>
+          <button class="tray-close" type="button" data-tray-close aria-label="Cerrar recursos">${icon("lineClose")}</button>
         </div>
         <div class="tray-content">
           ${traySection("favorites", "Favoritos", "Recursos marcados para volver rápido.", "favoritesList", "trayStar")}
@@ -110,9 +110,9 @@
             </div>
           </div>
           <div class="agenda-toolbar__actions">
-            <button class="agenda-assistant-btn" type="button" data-agenda-assistant>${icon("sparkles")}<span>Organizar</span></button>
+            <button class="agenda-assistant-btn" type="button" data-agenda-assistant>${icon("sparkles")}<span>Organizar con IA</span></button>
             <button class="agenda-widget-sync-btn" type="button" data-agenda-widget-sync hidden>${icon("calendar")}<span>Widgets</span></button>
-            <button class="agenda-create-btn" type="button" data-agenda-create>${icon("plus")}<span>Crear</span></button>
+            <button class="agenda-create-btn" type="button" data-agenda-create>${icon("plus")}<span>Anotar</span></button>
             <button class="tray-close" type="button" data-agenda-close aria-label="Cerrar agenda">${icon("lineClose")}</button>
           </div>
         </header>
@@ -163,54 +163,54 @@
               <p class="agenda-assistant__privacy">Solo se envían esta instrucción y los datos necesarios de la agenda. Los cambios requieren confirmación.</p>
             </section>
 
-            <div class="agenda-selected-day">
-              <p class="tray-kicker">Día seleccionado</p>
-              <h3 id="agendaSelectedLabel"></h3>
-            </div>
+            <details class="agenda-manual" data-agenda-manual>
+              <summary class="agenda-manual__summary">
+                ${icon("plus")}
+                <span><strong>Anotar manualmente</strong><small>Para una tarea o recordatorio rápido</small></span>
+                ${icon("chevronDown")}
+              </summary>
 
-            <form id="agendaForm" class="agenda-form">
-              <label class="tray-field">
-                Qué querés anotar
-                <input id="agendaTitle" type="text" maxlength="90" placeholder="Ej: Entrega de ejercicios" required />
-              </label>
-
-              <div class="agenda-form__row agenda-form__row--type">
-                <label class="tray-field">
-                  Tipo
-                  <select id="agendaType">
-                    ${agendaTypeOptions()}
-                  </select>
-                </label>
-                <label class="tray-field">
-                  Fecha
-                  <input id="agendaDate" type="date" />
-                </label>
-                <label class="tray-field">
-                  Materia
-                  <select id="agendaSubject">
-                    ${agendaSubjectOptions()}
-                  </select>
-                </label>
+              <div class="agenda-selected-day">
+                <p class="tray-kicker">Día seleccionado</p>
+                <h3 id="agendaSelectedLabel"></h3>
               </div>
 
-              <div class="agenda-form__row agenda-form__row--time">
+              <form id="agendaForm" class="agenda-form">
                 <label class="tray-field">
-                  Hora inicio
-                  <input id="agendaStartTime" type="time" />
+                  Qué querés anotar
+                  <input id="agendaTitle" type="text" maxlength="90" placeholder="Ej: Entrega de ejercicios" required />
                 </label>
-                <label class="tray-field">
-                  Hora fin
-                  <input id="agendaEndTime" type="time" />
-                </label>
-              </div>
 
-              <label class="tray-field">
-                Nota breve
-                <textarea id="agendaNote" rows="2" maxlength="160" placeholder="Ej: revisar guía 2 y fórmulas principales"></textarea>
-              </label>
+                <div class="agenda-form__row agenda-form__row--type">
+                  <label class="tray-field">
+                    Tipo
+                    <select id="agendaType">
+                      ${agendaTypeOptions()}
+                    </select>
+                  </label>
+                  <label class="tray-field">
+                    Fecha
+                    <input id="agendaDate" type="date" />
+                  </label>
+                  <label class="tray-field">
+                    Materia
+                    <select id="agendaSubject">
+                      ${agendaSubjectOptions()}
+                    </select>
+                  </label>
+                </div>
 
-              <button class="agenda-save-btn" type="submit" disabled>${icon("plus")}<span>Agregar</span></button>
-            </form>
+                <details class="agenda-note-details">
+                  <summary>Agregar nota opcional</summary>
+                  <label class="tray-field">
+                    Nota breve
+                    <textarea id="agendaNote" rows="2" maxlength="160" placeholder="Ej: revisar guía 2 y fórmulas principales"></textarea>
+                  </label>
+                </details>
+
+                <button class="agenda-save-btn" type="submit" disabled>${icon("plus")}<span>Agregar</span></button>
+              </form>
+            </details>
 
             <div class="agenda-filter" aria-label="Filtrar agenda">
               <button class="agenda-filter__btn is-active" type="button" data-agenda-filter="day">Este día</button>
@@ -287,12 +287,6 @@
       if (isOpen) renderTray();
     });
 
-    document.querySelector(".tray-close")?.addEventListener("click", () => {
-      document.body.classList.add("tray-transition-enabled");
-      closeAgendaBoard();
-      setTrayOpen(false, true);
-    });
-
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
         if (document.body.classList.contains("agenda-open")) {
@@ -306,9 +300,19 @@
 
     document.querySelector(".tray-shell")?.addEventListener("click", (event) => {
       const trigger = event.target.closest(".tray-accordion__trigger");
+      const close = event.target.closest("[data-tray-close]");
       const remove = event.target.closest("[data-bandeja-remove]");
       const agendaOpen = event.target.closest("[data-agenda-open]");
       const theme = event.target.closest("[data-theme-choice]");
+
+      if (close) {
+        event.preventDefault();
+        event.stopPropagation();
+        document.body.classList.add("tray-transition-enabled");
+        closeAgendaBoard();
+        setTrayOpen(false, true);
+        return;
+      }
 
       if (trigger) {
         const section = trigger.closest(".tray-accordion");
@@ -520,7 +524,7 @@
     document.querySelector(".agenda-board")?.setAttribute("aria-hidden", "false");
     if (document.getElementById("agendaDate")) document.getElementById("agendaDate").value = selectedAgendaDate;
     renderAgenda();
-    setTimeout(() => document.querySelector("[data-agenda-create]")?.focus(), 0);
+    setTimeout(() => document.querySelector("[data-agenda-assistant]")?.focus(), 0);
   }
 
   function closeAgendaBoard() {
@@ -704,8 +708,6 @@
     const dateInput = document.getElementById("agendaDate");
     const subjectInput = document.getElementById("agendaSubject");
     const noteInput = document.getElementById("agendaNote");
-    const startTimeInput = document.getElementById("agendaStartTime");
-    const endTimeInput = document.getElementById("agendaEndTime");
     const title = titleInput?.value.trim();
     if (!title) return;
 
@@ -717,8 +719,8 @@
       date: dateInput?.value || selectedAgendaDate,
       subject: subjectInput?.value || "",
       note: noteInput?.value.trim() || "",
-      horaInicio: startTimeInput?.value || "",
-      horaFin: endTimeInput?.value || "",
+      horaInicio: "",
+      horaFin: "",
       done: false,
       createdAt: Date.now()
     });
@@ -727,8 +729,6 @@
     titleInput.value = "";
     if (dateInput) dateInput.value = selectedAgendaDate;
     if (noteInput) noteInput.value = "";
-    if (startTimeInput) startTimeInput.value = "";
-    if (endTimeInput) endTimeInput.value = "";
     updateAgendaSubmitState();
     renderAgenda();
   }
@@ -738,11 +738,13 @@
     const panel = document.getElementById("agendaAssistant");
     if (!editor || !panel) return;
     setAgendaAssistantDateDefaults();
+    const manual = document.querySelector("[data-agenda-manual]");
+    if (manual) manual.open = false;
     editor.classList.add("is-assistant-open");
     document.querySelector(".agenda-board")?.classList.add("is-assistant-open");
     panel.hidden = false;
     requestAnimationFrame(() => {
-      if (window.matchMedia("(max-width: 720px)").matches) panel.scrollIntoView({ block: "start" });
+      if (window.matchMedia("(max-width: 980px), (pointer: coarse)").matches) panel.scrollIntoView({ block: "start" });
       document.getElementById("agendaAssistantPrompt")?.focus();
     });
   }
@@ -1283,8 +1285,16 @@
   }
 
   function focusAgendaForm() {
+    closeAgendaAssistant();
+    const manual = document.querySelector("[data-agenda-manual]");
+    if (manual) manual.open = true;
     if (document.getElementById("agendaDate")) document.getElementById("agendaDate").value = selectedAgendaDate;
-    document.getElementById("agendaTitle")?.focus();
+    requestAnimationFrame(() => {
+      document.getElementById("agendaTitle")?.focus();
+      if (window.matchMedia("(max-width: 980px), (pointer: coarse)").matches) {
+        manual?.scrollIntoView({ block: "start", behavior: "smooth" });
+      }
+    });
   }
 
   function selectAgendaDate(value, syncInput = true) {

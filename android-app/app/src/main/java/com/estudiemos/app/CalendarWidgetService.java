@@ -47,7 +47,9 @@ public class CalendarWidgetService extends RemoteViewsService {
             for (int index = 0; index < 42; index += 1) {
                 LocalDate date = gridStart.plusDays(index);
                 List<ClassEntry> entries = classes.getOrDefault(date, new ArrayList<>());
-                entries.sort(Comparator.comparing((ClassEntry entry) -> entry.start).thenComparing(entry -> entry.title));
+                entries.sort(Comparator
+                        .comparing((ClassEntry entry) -> entry.start.isEmpty() ? "99:99" : entry.start)
+                        .thenComparing(entry -> entry.title));
                 days.add(new CalendarDay(date, date.getMonthValue() == today.getMonthValue(), date.equals(today), entries));
             }
         }
@@ -88,7 +90,10 @@ public class CalendarWidgetService extends RemoteViewsService {
             int visible = Math.min(2, entries.size());
             for (int index = 0; index < visible; index += 1) {
                 ClassEntry entry = entries.get(index);
-                lines.add(entry.start + "-" + entry.end + " " + entry.title);
+                String time = entry.start.isEmpty()
+                        ? ""
+                        : entry.start + (entry.end.isEmpty() ? "" : "-" + entry.end) + " ";
+                lines.add(time + entry.title);
             }
             if (entries.size() > visible) lines.add("+" + (entries.size() - visible) + " más");
             return String.join("\n", lines);
@@ -106,7 +111,6 @@ public class CalendarWidgetService extends RemoteViewsService {
                     if (!"clase".equals(item.optString("type").trim().toLowerCase(new Locale("es", "AR")))) continue;
                     String start = item.optString("horaInicio").trim();
                     String end = item.optString("horaFin").trim();
-                    if (start.isEmpty() || end.isEmpty()) continue;
 
                     LocalDate date;
                     try {

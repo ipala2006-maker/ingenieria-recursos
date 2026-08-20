@@ -197,7 +197,7 @@
     if (document.querySelector('script[src*="scripts/bandeja.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/bandeja.js?v=20260819-agenda-semantic`;
+    script.src = `${rootPath}scripts/bandeja.js?v=20260820-agenda-mobile`;
     script.defer = true;
     document.head.appendChild(script);
   }
