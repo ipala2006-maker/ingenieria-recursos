@@ -4210,6 +4210,14 @@ html.theme-light .agenda-manual{
     padding:24px 22px 18px;
   }
 
+  .tray-panel .tray-head{
+    padding-top:max(34px, calc(18px + env(safe-area-inset-top)));
+  }
+
+  .tray-panel .tray-footer{
+    padding-bottom:max(28px, calc(14px + env(safe-area-inset-bottom)));
+  }
+
   .brand{
     font-size:18px;
   }
