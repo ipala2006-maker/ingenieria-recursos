@@ -5,7 +5,9 @@ import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Color;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.view.WindowInsets;
 import android.view.ViewGroup;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
@@ -39,6 +41,7 @@ public class MainActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
         ));
+        applySystemBarInsets();
 
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
@@ -77,6 +80,34 @@ public class MainActivity extends Activity {
 
         if (savedInstanceState == null) webView.loadUrl(APP_URL);
         else webView.restoreState(savedInstanceState);
+    }
+
+    private void applySystemBarInsets() {
+        webView.setOnApplyWindowInsetsListener((view, windowInsets) -> {
+            int left;
+            int top;
+            int right;
+            int bottom;
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                android.graphics.Insets systemBars = windowInsets.getInsets(
+                        WindowInsets.Type.systemBars()
+                );
+                left = systemBars.left;
+                top = systemBars.top;
+                right = systemBars.right;
+                bottom = systemBars.bottom;
+            } else {
+                left = windowInsets.getSystemWindowInsetLeft();
+                top = windowInsets.getSystemWindowInsetTop();
+                right = windowInsets.getSystemWindowInsetRight();
+                bottom = windowInsets.getSystemWindowInsetBottom();
+            }
+
+            view.setPadding(left, top, right, bottom);
+            return windowInsets;
+        });
+        webView.requestApplyInsets();
     }
 
     private void handleWebMessage(
