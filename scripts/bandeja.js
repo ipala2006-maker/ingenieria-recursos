@@ -60,6 +60,11 @@
           ${traySection("subjects", "Mis materias", "Acceso rápido a tus materias elegidas.", "mySubjectsQuick", "trayBook")}
           ${traySection("recent", "Recientes", "Últimos temas visitados.", "recentList", "trayClock")}
           ${traySection("saved", "Guardados para después", "Material para revisar después.", "savedList", "trayBookmark")}`;
+    const installedApp = window.matchMedia?.("(display-mode: standalone)").matches || window.navigator.standalone === true;
+    const installAction = workspaceHome && !installedApp ? `
+          <button class="tray-install-action" type="button" data-tray-install>
+            ${icon("download")}<span>Instalar Estudiemos</span>
+          </button>` : "";
     shell.innerHTML = `
       <div class="tray-panel" aria-label="Accesos rápidos">
         <div class="tray-head">
@@ -83,6 +88,7 @@
           </section>
         </div>
         <div class="tray-footer">
+          ${installAction}
           <p class="tray-footer__label">Tema</p>
           <div class="theme-switcher" aria-label="Cambiar tema">
             <button class="theme-switcher__btn" type="button" data-theme-choice="light" aria-label="Tema claro" title="Tema claro">${icon("sun")}</button>
@@ -250,14 +256,20 @@
     if (!topbar || topbar.querySelector("[data-bandeja-trigger]")) return;
 
     const button = document.createElement("button");
-    button.className = "topbar__link tray-trigger";
+    button.className = workspaceHome
+      ? "topbar__link topbar-icon-btn tray-trigger workspace-more-btn"
+      : "topbar__link tray-trigger";
     button.type = "button";
     button.dataset.bandejaTrigger = "true";
-    button.setAttribute("aria-label", "Abrir recursos");
-    button.innerHTML = '<span class="tray-trigger__bar"></span><span class="tray-trigger__bar"></span><span class="tray-trigger__bar"></span>';
+    button.setAttribute("aria-label", workspaceHome ? "Abrir más opciones" : "Abrir recursos");
+    button.title = workspaceHome ? "Más opciones" : "Recursos";
+    button.innerHTML = workspaceHome
+      ? '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="8" cy="7" r="1.7" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="11" cy="17" r="1.7" fill="currentColor" stroke="none"/></svg>'
+      : '<span class="tray-trigger__bar"></span><span class="tray-trigger__bar"></span><span class="tray-trigger__bar"></span>';
 
     const brand = topbar.querySelector(".brand");
-    topbar.insertBefore(button, brand || topbar.firstChild);
+    if (workspaceHome) topbar.querySelector(".topbar__nav")?.appendChild(button);
+    else topbar.insertBefore(button, brand || topbar.firstChild);
   }
 
   function addAgendaButton() {
@@ -307,6 +319,14 @@
       const remove = event.target.closest("[data-bandeja-remove]");
       const agendaOpen = event.target.closest("[data-agenda-open]");
       const theme = event.target.closest("[data-theme-choice]");
+      const install = event.target.closest("[data-tray-install]");
+
+      if (install) {
+        const installButton = document.querySelector("[data-app-install]");
+        if (installButton) installButton.click();
+        else install.hidden = true;
+        return;
+      }
 
       if (close) {
         event.preventDefault();
@@ -1794,7 +1814,8 @@
       chevronLeft: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.8 5.4 1.4 1.4-5.2 5.2 5.2 5.2-1.4 1.4L8.2 12l6.6-6.6Z"/></svg>',
       chevronRight: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.2 18.6-1.4-1.4 5.2-5.2-5.2-5.2 1.4-1.4 6.6 6.6-6.6 6.6Z"/></svg>',
       sun: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5.2a1 1 0 0 1-1-1V2.8a1 1 0 1 1 2 0v1.4a1 1 0 0 1-1 1Zm0 16a1 1 0 0 1-1-1v-1.4a1 1 0 1 1 2 0v1.4a1 1 0 0 1-1 1Zm6.8-8.2a1 1 0 1 1 0-2h1.4a1 1 0 1 1 0 2h-1.4ZM3.8 13a1 1 0 1 1 0-2h1.4a1 1 0 1 1 0 2H3.8Zm13-5.8a1 1 0 0 1 0-1.4l1-1a1 1 0 1 1 1.4 1.4l-1 1a1 1 0 0 1-1.4 0ZM4.8 19.2a1 1 0 0 1 0-1.4l1-1a1 1 0 0 1 1.4 1.4l-1 1a1 1 0 0 1-1.4 0Zm13 0-1-1a1 1 0 0 1 1.4-1.4l1 1a1 1 0 1 1-1.4 1.4ZM5.8 7.2l-1-1a1 1 0 1 1 1.4-1.4l1 1a1 1 0 0 1-1.4 1.4ZM12 16.5a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9Z"/></svg>',
-      moon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.3 14.7a8.3 8.3 0 0 1-11-11 1 1 0 0 0-1.1-1.4A10.2 10.2 0 1 0 21.7 15.8a1 1 0 0 0-1.4-1.1ZM12 20.1a8.2 8.2 0 0 1-5.6-14.2 10.3 10.3 0 0 0 11.7 11.7 8.1 8.1 0 0 1-6.1 2.5Z"/></svg>'
+      moon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.3 14.7a8.3 8.3 0 0 1-11-11 1 1 0 0 0-1.1-1.4A10.2 10.2 0 1 0 21.7 15.8a1 1 0 0 0-1.4-1.1ZM12 20.1a8.2 8.2 0 0 1-5.6-14.2 10.3 10.3 0 0 0 11.7 11.7 8.1 8.1 0 0 1-6.1 2.5Z"/></svg>',
+      download: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 20h14"/></svg>'
     };
     return icons[name] || "";
   }

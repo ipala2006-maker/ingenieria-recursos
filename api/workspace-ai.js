@@ -140,6 +140,9 @@ Reglas obligatorias:
 - Podés proponer crear carpetas, mover elementos y cambiar nombres.
 - Nunca borres archivos ni carpetas.
 - No cambies extensiones de archivo. Si newName no es necesario, devolvé una cadena vacía.
+- Corregí ortografía, acentos y mayúsculas en todos los nombres de carpetas que crees o renombres. Por ejemplo: "fisica" debe quedar "Física".
+- Usá nombres académicos claros y breves. Si un nombre largo tiene una abreviatura inequívoca y útil, podés usarla. Por ejemplo: "Computación y Cálculo Numérico" debe quedar "CyCN".
+- No abrevies automáticamente nombres de archivos; conservá su nombre y extensión salvo que el usuario pida renombrarlos.
 - Para una carpeta nueva usá una key corta y única. Sus hijos pueden referenciarla mediante parentKey o destinationFolderKey.
 - Para una carpeta existente usá su ID exacto. Una ubicación raíz se representa con cadenas vacías.
 - No muevas una carpeta dentro de sí misma ni dentro de sus descendientes.
@@ -175,7 +178,7 @@ function sanitizePlan(raw, items) {
 
   const acceptedKeys = new Set();
   for (const candidate of candidates) {
-    const name = cleanName(candidate?.name);
+    const name = formatFolderName(candidate?.name);
     let key = cleanKey(candidate?.key);
     const parentId = cleanId(candidate?.parentId);
     const parentKey = cleanKey(candidate?.parentKey);
@@ -211,7 +214,10 @@ function sanitizePlan(raw, items) {
     if (destinationFolderKey && !resolvedKeys.has(destinationFolderKey)) continue;
     if (destinationFolderId && destinationFolderKey) continue;
     if (original.kind === "folder" && destinationFolderId === original.id) continue;
-    const newName = preserveExtension(original, cleanName(candidate?.newName));
+    const proposedName = original.kind === "folder"
+      ? formatFolderName(candidate?.newName)
+      : cleanName(candidate?.newName);
+    const newName = preserveExtension(original, proposedName);
     const destination = destinationFolderId || destinationFolderKey || "";
     if (!newName && (destinationFolderId || "") === (original.parentId || "") && !destinationFolderKey) continue;
     changedIds.add(itemId);
@@ -236,6 +242,38 @@ function preserveExtension(item, proposed) {
   const newMatch = proposed.match(/(\.[^.]{1,12})$/);
   if (!newMatch) return `${proposed}${oldMatch[1]}`.slice(0, 120);
   return newMatch[1].toLowerCase() === oldExtension ? proposed : "";
+}
+
+function formatFolderName(value) {
+  const name = cleanName(value);
+  if (!name) return "";
+  const normalized = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
+  const academicNames = new Map([
+    ["fisica", "Física"],
+    ["fisica 1", "Física I"],
+    ["fisica i", "Física I"],
+    ["fisica 2", "Física II"],
+    ["fisica ii", "Física II"],
+    ["quimica", "Química"],
+    ["computacion", "Computación"],
+    ["calculo numerico", "Cálculo Numérico"],
+    ["computacion y calculo numerico", "CyCN"],
+    ["computacion calculo numerico", "CyCN"],
+    ["analisis matematico", "Análisis Matemático"],
+    ["analisis matematico 1", "Análisis Matemático I"],
+    ["analisis matematico i", "Análisis Matemático I"],
+    ["analisis matematico 2", "Análisis Matemático II"],
+    ["analisis matematico ii", "Análisis Matemático II"]
+  ]);
+  if (academicNames.has(normalized)) return academicNames.get(normalized);
+
+  return name
+    .replace(/\bcomputaci[oó]n\s+y\s+c[aá]lculo\s+num[eé]rico\b/gi, "CyCN")
+    .replace(/\bf[ií]sica\b/gi, "Física")
+    .replace(/\bqu[ií]mica\b/gi, "Química")
+    .replace(/\bcomputaci[oó]n\b/gi, "Computación")
+    .replace(/\bc[aá]lculo\s+num[eé]rico\b/gi, "Cálculo Numérico")
+    .replace(/\ban[aá]lisis\s+matem[aá]tico\b/gi, "Análisis Matemático");
 }
 
 function isSameOriginRequest(request) {

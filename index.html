@@ -22,7 +22,7 @@
     <title>Estudiemos</title>
     <script src="./scripts/theme-init.js?v=20260811-floating-timer"></script>
     <link rel="stylesheet" href="./styles/app.css?v=20260820-calendar-content" />
-    <link rel="stylesheet" href="./styles/workspace.css?v=20260821-workspace-2" />
+    <link rel="stylesheet" href="./styles/workspace.css?v=20260821-workspace-3" />
   </head>
 
   <body class="workspace-home">
@@ -32,13 +32,7 @@
         <span class="brand__text">Estudiemos</span>
       </a>
 
-      <nav class="topbar__nav" aria-label="Navegacion principal">
-        <a class="topbar__link" href="./about.html">Acerca de</a>
-        <span class="topbar__link topbar__link--soon" aria-disabled="true">
-          Modo enfoque
-          <span class="topbar__soon">Próximamente</span>
-        </span>
-      </nav>
+      <nav class="topbar__nav" aria-label="Herramientas de Estudiemos"></nav>
     </header>
 
     <main class="workspace-page">
@@ -49,20 +43,6 @@
           <p>Organizá archivos, apuntes y proyectos a tu manera.</p>
         </div>
 
-        <div class="workspace-heading__actions" aria-label="Acciones del espacio">
-          <button class="workspace-btn workspace-btn--ai" type="button" data-workspace-ai>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 1.2 4.1L17 9l-3.8 1.9L12 15l-1.2-4.1L7 9l3.8-1.9L12 3Zm6 11 .7 2.3L21 17.5l-2.3 1.2L18 21l-.7-2.3-2.3-1.2 2.3-1.2L18 14Z"/></svg>
-            <span>Organizar con IA</span>
-          </button>
-          <button class="workspace-btn" type="button" data-workspace-new-folder>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5h6l2 2h10v10H3v-12Zm9 5v4m-2-2h4"/></svg>
-            <span>Nueva carpeta</span>
-          </button>
-          <button class="workspace-btn workspace-btn--primary" type="button" data-workspace-upload>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v5h14v-5"/></svg>
-            <span>Subir archivos</span>
-          </button>
-        </div>
       </section>
 
       <section class="workspace-browser" aria-label="Archivos y carpetas">
@@ -70,6 +50,9 @@
           <nav class="workspace-breadcrumbs" aria-label="Ruta de carpetas" data-workspace-breadcrumbs></nav>
 
           <div class="workspace-toolbar__controls">
+            <button class="workspace-tool-icon workspace-tool-icon--ai" type="button" data-workspace-ai aria-label="Organizar con IA" title="Organizar con IA">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 1.2 4.1L17 9l-3.8 1.9L12 15l-1.2-4.1L7 9l3.8-1.9L12 3Zm6 11 .7 2.3L21 17.5l-2.3 1.2L18 21l-.7-2.3-2.3-1.2 2.3-1.2L18 14Z"/></svg>
+            </button>
             <label class="workspace-search">
               <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
               <span class="sr-only">Buscar en mi espacio</span>
@@ -116,9 +99,9 @@
 
     <!-- DATA SIEMPRE PRIMERO -->
     <script src="./data/data.js?v=20260804-quimica-completa"></script>
-    <script src="./scripts/global-search.js?v=20260821-workspace-1"></script>
+    <script src="./scripts/global-search.js?v=20260821-workspace-2"></script>
 
-    <script src="./scripts/workspace.js?v=20260821-workspace-2"></script>
+    <script src="./scripts/workspace.js?v=20260821-workspace-3"></script>
 
     <script>
       document.getElementById("year").textContent = new Date().getFullYear();

@@ -46,6 +46,8 @@
     document.addEventListener("click", (event) => {
       const upload = event.target.closest("[data-workspace-upload]");
       const folder = event.target.closest("[data-workspace-new-folder]");
+      const add = event.target.closest("[data-workspace-add]");
+      const addAction = event.target.closest("[data-workspace-add-action]");
       const ai = event.target.closest("[data-workspace-ai]");
       const view = event.target.closest("[data-workspace-view]");
       const breadcrumb = event.target.closest("[data-workspace-folder]");
@@ -55,6 +57,12 @@
 
       if (upload) runAuthenticated(() => elements.fileInput?.click());
       if (folder) runAuthenticated(openNewFolderModal);
+      if (add) runAuthenticated(openAddModal);
+      if (addAction) {
+        closeModal();
+        if (addAction.dataset.workspaceAddAction === "folder") runAuthenticated(openNewFolderModal);
+        if (addAction.dataset.workspaceAddAction === "upload") runAuthenticated(() => elements.fileInput?.click());
+      }
       if (ai) runAuthenticated(openAiModal);
       if (signIn) window.EstudiemosAccount?.open();
       if (view) setView(view.dataset.workspaceView);
@@ -160,24 +168,29 @@
   function renderItems() {
     if (!state.user) return showSignedOut();
     const visible = getVisibleItems();
+    const searching = Boolean(state.query);
     elements.items.classList.toggle("is-list", state.view === "list");
-    elements.items.hidden = !visible.length;
 
-    if (!visible.length) {
-      const searching = Boolean(state.query);
+    if (!visible.length && searching) {
       return showState(
-        searching ? "No encontramos coincidencias" : "Este espacio está vacío",
-        searching
-          ? "Probá con otro nombre o borrá la búsqueda."
-          : "Creá una carpeta o subí tus primeros archivos para empezar.",
+        "No encontramos coincidencias",
+        "Probá con otro nombre o borrá la búsqueda.",
         "empty",
-        searching ? "" : `<button class="workspace-btn workspace-btn--primary" type="button" data-workspace-upload>${icon("upload")}<span>Subir archivos</span></button>`
+        ""
       );
     }
 
     elements.state.hidden = true;
     elements.items.hidden = false;
-    elements.items.innerHTML = visible.map(renderItem).join("");
+    elements.items.innerHTML = `${searching ? "" : renderAddTile()}${visible.map(renderItem).join("")}`;
+  }
+
+  function renderAddTile() {
+    return `
+      <button class="workspace-add-tile" type="button" data-workspace-add aria-label="Agregar carpeta o archivo">
+        <span class="workspace-add-tile__icon">${icon("plus")}</span>
+        <span class="workspace-add-tile__copy"><strong>Agregar</strong><small>Carpeta o archivo</small></span>
+      </button>`;
   }
 
   function getVisibleItems() {
@@ -358,6 +371,18 @@
     form.id = "workspace-folder-form";
     form.addEventListener("submit", createFolder);
     form.elements.name.focus();
+  }
+
+  function openAddModal() {
+    openModal({
+      eyebrow: "Mi espacio",
+      title: "Agregar",
+      body: `<div class="workspace-modal__body"><div class="workspace-action-list">
+        <button type="button" data-workspace-add-action="folder">${icon("folder")}<span><strong>Nueva carpeta</strong><small>Creá un espacio para ordenar tus archivos.</small></span></button>
+        <button type="button" data-workspace-add-action="upload">${icon("upload")}<span><strong>Subir archivos</strong><small>Elegí uno o varios archivos del dispositivo.</small></span></button>
+      </div></div>`,
+      actions: ""
+    });
   }
 
   async function createFolder(event) {
@@ -761,7 +786,8 @@
       edit: '<path d="m4 20 4.5-1 10-10-3.5-3.5-10 10L4 20Zm9.5-13 3.5 3.5"/>',
       move: '<path d="M5 7h8m0 0-3-3m3 3-3 3M19 17h-8m0 0 3-3m-3 3 3 3"/>',
       trash: '<path d="M4 7h16M9 7V4h6v3m-9 0 1 14h10l1-14M10 11v6m4-6v6"/>',
-      sparkles: '<path d="m12 3 1.2 4.1L17 9l-3.8 1.9L12 15l-1.2-4.1L7 9l3.8-1.9L12 3Zm6 11 .7 2.3L21 17.5l-2.3 1.2L18 21l-.7-2.3-2.3-1.2 2.3-1.2L18 14Z"/>'
+      sparkles: '<path d="m12 3 1.2 4.1L17 9l-3.8 1.9L12 15l-1.2-4.1L7 9l3.8-1.9L12 3Zm6 11 .7 2.3L21 17.5l-2.3 1.2L18 21l-.7-2.3-2.3-1.2 2.3-1.2L18 14Z"/>',
+      plus: '<path d="M12 5v14M5 12h14"/>'
     };
     return `<svg viewBox="0 0 24 24" aria-hidden="true">${paths[name] || paths.file}</svg>`;
   }

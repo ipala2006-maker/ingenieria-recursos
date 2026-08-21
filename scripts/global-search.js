@@ -11,6 +11,7 @@
   preserveNavigationState();
   applySavedTheme();
   loadProfessionalStyle();
+  if (workspaceHome) prepareProductivityTopbar();
   loadAccountScript();
   addLightTrayButton();
   loadPomodoroScript();
@@ -144,7 +145,7 @@
 
     const link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = `${rootPath}styles/professional.css?v=20260809-space-grotesk`;
+    link.href = `${rootPath}styles/professional.css?v=20260821-workspace-toolbar`;
     document.head.appendChild(link);
   }
 
@@ -152,14 +153,20 @@
     if (topbar.querySelector("[data-bandeja-trigger]")) return;
 
     const button = document.createElement("button");
-    button.className = "topbar__link tray-trigger";
+    button.className = workspaceHome
+      ? "topbar__link topbar-icon-btn tray-trigger workspace-more-btn"
+      : "topbar__link tray-trigger";
     button.type = "button";
     button.dataset.bandejaTrigger = "true";
-    button.setAttribute("aria-label", "Abrir recursos");
-    button.innerHTML = '<span class="tray-trigger__bar"></span><span class="tray-trigger__bar"></span><span class="tray-trigger__bar"></span>';
+    button.setAttribute("aria-label", workspaceHome ? "Abrir más opciones" : "Abrir recursos");
+    button.title = workspaceHome ? "Más opciones" : "Recursos";
+    button.innerHTML = workspaceHome
+      ? '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="8" cy="7" r="1.7" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="11" cy="17" r="1.7" fill="currentColor" stroke="none"/></svg>'
+      : '<span class="tray-trigger__bar"></span><span class="tray-trigger__bar"></span><span class="tray-trigger__bar"></span>';
 
     const brand = topbar.querySelector(".brand");
-    topbar.insertBefore(button, brand || topbar.firstChild);
+    if (workspaceHome) topbar.querySelector(".topbar__nav")?.appendChild(button);
+    else topbar.insertBefore(button, brand || topbar.firstChild);
 
     button.addEventListener("click", () => {
       try { localStorage.setItem("bandeja_abierta", "true"); } catch (error) {}
@@ -200,7 +207,7 @@
     if (document.querySelector('script[src*="scripts/bandeja.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/bandeja.js?v=20260821-workspace-1`;
+    script.src = `${rootPath}scripts/bandeja.js?v=20260821-workspace-2`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -212,6 +219,35 @@
     script.src = `${rootPath}scripts/pomodoro.js?v=20260819-agenda-semantic`;
     script.defer = true;
     document.head.appendChild(script);
+  }
+
+  function prepareProductivityTopbar() {
+    const nav = topbar.querySelector(".topbar__nav");
+    if (!nav) return;
+    nav.querySelectorAll(".topbar__link--soon").forEach((item) => item.remove());
+
+    if (!nav.querySelector(".suggestion-top-btn")) {
+      const suggestion = document.createElement("a");
+      suggestion.className = "topbar__link topbar-icon-btn suggestion-top-btn";
+      suggestion.href = "https://docs.google.com/forms/d/e/1FAIpQLSc8KLH9N0kcYRryZa0tNtLSRIMe0ol_wKWVUwBt9T-3m9WD1A/viewform?usp=header";
+      suggestion.target = "_blank";
+      suggestion.rel = "noopener noreferrer";
+      suggestion.setAttribute("aria-label", "Enviar sugerencia");
+      suggestion.title = "Sugerencias";
+      suggestion.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h14v11H9l-4 3V5Z"/><path d="M8 9h8M8 12h5"/></svg>';
+      nav.appendChild(suggestion);
+    }
+
+    if (!nav.querySelector(".about-top-btn")) {
+      const about = document.createElement("a");
+      about.className = "topbar__link topbar-icon-btn about-top-btn";
+      about.href = `${rootPath}about.html`;
+      about.setAttribute("aria-label", "Acerca de Estudiemos");
+      about.title = "Acerca de";
+      if (location.pathname.endsWith("/about.html")) about.setAttribute("aria-current", "page");
+      about.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.7 9a2.5 2.5 0 1 1 3.2 2.4c-.7.3-.9.8-.9 1.6M12 17h.01"/></svg>';
+      nav.appendChild(about);
+    }
   }
 
   function loadAccountScript() {

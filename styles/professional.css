@@ -81,6 +81,66 @@ html.theme-dark .topbar{
   font-weight:760;
 }
 
+.workspace-home .topbar,
+.productivity-page .topbar{
+  justify-content:flex-start;
+  gap:14px;
+  padding-block:10px;
+}
+
+.workspace-home .topbar__nav,
+.productivity-page .topbar__nav{
+  margin-left:auto;
+  gap:4px;
+}
+
+.workspace-home .topbar-icon-btn,
+.productivity-page .topbar-icon-btn{
+  width:36px;
+  height:36px;
+  border-color:transparent;
+  background:transparent;
+  color:var(--muted);
+}
+
+.workspace-home .topbar-icon-btn:hover,
+.productivity-page .topbar-icon-btn:hover{
+  border-color:var(--border);
+  background:var(--panel-2);
+  color:var(--text);
+}
+
+.workspace-home .pomodoro-top-btn,
+.productivity-page .pomodoro-top-btn{order:1}
+.workspace-home .agenda-top-btn,
+.productivity-page .agenda-top-btn{order:2}
+.workspace-home .suggestion-top-btn,
+.productivity-page .suggestion-top-btn{order:3}
+.workspace-home .about-top-btn,
+.productivity-page .about-top-btn{order:4}
+.workspace-home .account-top-btn,
+.productivity-page .account-top-btn{order:5}
+.workspace-home .workspace-more-btn,
+.productivity-page .workspace-more-btn{order:6;margin:0}
+.workspace-home .app-install-btn,
+.productivity-page .app-install-btn{display:none!important}
+
+.workspace-home .suggestion-top-btn svg,
+.workspace-home .about-top-btn svg,
+.workspace-home .workspace-more-btn svg,
+.productivity-page .suggestion-top-btn svg,
+.productivity-page .about-top-btn svg,
+.productivity-page .workspace-more-btn svg{
+  fill:none;
+  stroke:currentColor;
+}
+
+.workspace-home .workspace-more-btn svg circle,
+.productivity-page .workspace-more-btn svg circle{
+  fill:currentColor;
+  stroke:none;
+}
+
 .topbar__link,
 .tray-trigger,
 .btn,
@@ -355,6 +415,41 @@ html.theme-dark .tray-accordion__trigger:hover{
   background:color-mix(in srgb, var(--panel) 94%, var(--panel-2));
 }
 
+.tray-install-action{
+  min-height:34px;
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  padding:6px 8px;
+  border:0;
+  border-radius:7px;
+  background:transparent;
+  color:var(--muted);
+  font:inherit;
+  font-size:12px;
+  font-weight:700;
+  cursor:pointer;
+}
+
+.tray-install-action:hover{
+  background:var(--panel-2);
+  color:var(--text);
+}
+
+.tray-install-action svg{
+  width:16px;
+  height:16px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.8;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+.tray-install-action + .tray-footer__label{
+  margin-left:auto;
+}
+
 .tray-footer__label{
   margin:0;
   color:var(--muted-2);
@@ -563,5 +658,31 @@ html.theme-dark .theme-switcher__btn.is-active{
 
   .tray-footer{
     padding:12px 14px;
+  }
+}
+
+@media(max-width:900px){
+  .workspace-home .topbar__nav > a.topbar__link,
+  .productivity-page .topbar__nav > a.topbar__link{
+    display:inline-grid!important;
+  }
+}
+
+@media(max-width:520px){
+  .workspace-home .topbar,
+  .productivity-page .topbar{
+    gap:6px;
+    padding-inline:10px;
+  }
+
+  .workspace-home .topbar__nav,
+  .productivity-page .topbar__nav{
+    gap:1px;
+  }
+
+  .workspace-home .topbar-icon-btn,
+  .productivity-page .topbar-icon-btn{
+    width:34px;
+    height:34px;
   }
 }
