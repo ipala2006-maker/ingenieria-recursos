@@ -16,6 +16,7 @@
   const MAX_AGENDA_ITEMS = 500;
   const MAX_ASSISTANT_RANGE_DAYS = 370;
   const AGENDA_DAY_NAMES = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+  const workspaceHome = document.body.classList.contains("workspace-home") || document.body.classList.contains("productivity-page");
   let refreshQueued = false;
   let agendaFilter = "day";
   let agendaMonth = new Date().getMonth();
@@ -54,20 +55,22 @@
     const shell = document.createElement("aside");
     shell.className = "tray-shell";
     shell.setAttribute("aria-hidden", "true");
+    const resourceSections = workspaceHome ? "" : `
+          ${traySection("favorites", "Favoritos", "Recursos marcados para volver rápido.", "favoritesList", "trayStar")}
+          ${traySection("subjects", "Mis materias", "Acceso rápido a tus materias elegidas.", "mySubjectsQuick", "trayBook")}
+          ${traySection("recent", "Recientes", "Últimos temas visitados.", "recentList", "trayClock")}
+          ${traySection("saved", "Guardados para después", "Material para revisar después.", "savedList", "trayBookmark")}`;
     shell.innerHTML = `
-      <div class="tray-panel" aria-label="Recursos rápidos">
+      <div class="tray-panel" aria-label="Accesos rápidos">
         <div class="tray-head">
           <div>
-            <p class="tray-kicker">Recursos</p>
+            <p class="tray-kicker">${workspaceHome ? "Estudiemos" : "Recursos"}</p>
             <h2>Accesos rápidos</h2>
           </div>
           <button class="tray-close" type="button" data-tray-close aria-label="Cerrar recursos">${icon("lineClose")}</button>
         </div>
         <div class="tray-content">
-          ${traySection("favorites", "Favoritos", "Recursos marcados para volver rápido.", "favoritesList", "trayStar")}
-          ${traySection("subjects", "Mis materias", "Acceso rápido a tus materias elegidas.", "mySubjectsQuick", "trayBook")}
-          ${traySection("recent", "Recientes", "Últimos temas visitados.", "recentList", "trayClock")}
-          ${traySection("saved", "Guardados para después", "Material para revisar después.", "savedList", "trayBookmark")}
+          ${resourceSections}
           <section class="tray-accordion" data-tray-section="suggestions">
             <button class="tray-accordion__trigger" type="button" aria-expanded="false">
               <span class="tray-accordion__label">${icon("trayMessage")}<span>Sugerencias</span></span>

@@ -3,14 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Plataforma educativa gratuita para estudiantes de ingeniería." />
+    <meta name="description" content="Aplicación de productividad para organizar archivos, agenda y sesiones de estudio." />
     <meta name="application-name" content="Estudiemos" />
     <meta name="theme-color" content="#0f172a" />
     <meta name="color-scheme" content="light dark" />
     <meta property="og:site_name" content="Estudiemos" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content="Estudiemos" />
-    <meta property="og:description" content="Plataforma educativa gratuita para estudiantes de ingeniería." />
+    <meta property="og:description" content="Aplicación de productividad para organizar archivos, agenda y sesiones de estudio." />
     <meta property="og:url" content="https://estudiemos-app.vercel.app/" />
     <link rel="canonical" href="https://estudiemos-app.vercel.app/" />
     <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
@@ -22,9 +22,10 @@
     <title>Estudiemos</title>
     <script src="./scripts/theme-init.js?v=20260811-floating-timer"></script>
     <link rel="stylesheet" href="./styles/app.css?v=20260820-calendar-content" />
+    <link rel="stylesheet" href="./styles/workspace.css?v=20260821-workspace-2" />
   </head>
 
-  <body>
+  <body class="workspace-home">
     <header class="topbar">
       <a class="brand" href="./">
         <span class="brand__mark" aria-hidden="true">&sum;</span>
@@ -40,47 +41,84 @@
       </nav>
     </header>
 
-    <main class="container">
-
-      <section class="hero">
-        <h1>Estudiemos</h1>
-      </section>
-
-      <section class="section">
-        <div class="section__head">
-          <h2>Carreras</h2>
-          <p class="section__hint">Haz clic para ver las materias.</p>
+    <main class="workspace-page">
+      <section class="workspace-heading">
+        <div>
+          <p class="workspace-eyebrow">Tu espacio personal</p>
+          <h1>Mi espacio</h1>
+          <p>Organizá archivos, apuntes y proyectos a tu manera.</p>
         </div>
 
-        <div id="materiasGrid" class="cards-grid">
-          <div class="loading-placeholder">Cargando carreras...</div>
+        <div class="workspace-heading__actions" aria-label="Acciones del espacio">
+          <button class="workspace-btn workspace-btn--ai" type="button" data-workspace-ai>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 1.2 4.1L17 9l-3.8 1.9L12 15l-1.2-4.1L7 9l3.8-1.9L12 3Zm6 11 .7 2.3L21 17.5l-2.3 1.2L18 21l-.7-2.3-2.3-1.2 2.3-1.2L18 14Z"/></svg>
+            <span>Organizar con IA</span>
+          </button>
+          <button class="workspace-btn" type="button" data-workspace-new-folder>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5h6l2 2h10v10H3v-12Zm9 5v4m-2-2h4"/></svg>
+            <span>Nueva carpeta</span>
+          </button>
+          <button class="workspace-btn workspace-btn--primary" type="button" data-workspace-upload>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v5h14v-5"/></svg>
+            <span>Subir archivos</span>
+          </button>
         </div>
       </section>
+
+      <section class="workspace-browser" aria-label="Archivos y carpetas">
+        <header class="workspace-toolbar">
+          <nav class="workspace-breadcrumbs" aria-label="Ruta de carpetas" data-workspace-breadcrumbs></nav>
+
+          <div class="workspace-toolbar__controls">
+            <label class="workspace-search">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
+              <span class="sr-only">Buscar en mi espacio</span>
+              <input type="search" placeholder="Buscar en mi espacio" autocomplete="off" data-workspace-search />
+            </label>
+
+            <label class="workspace-sort">
+              <span class="sr-only">Ordenar archivos</span>
+              <select data-workspace-sort aria-label="Ordenar archivos">
+                <option value="updated">Más recientes</option>
+                <option value="name">Nombre</option>
+                <option value="type">Tipo</option>
+              </select>
+            </label>
+
+            <div class="workspace-view-toggle" role="group" aria-label="Vista">
+              <button type="button" data-workspace-view="grid" aria-label="Vista de cuadrícula" title="Cuadrícula">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><rect x="14" y="14" width="6" height="6"/></svg>
+              </button>
+              <button type="button" data-workspace-view="list" aria-label="Vista de lista" title="Lista">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="5" cy="6" r="1"/><circle cx="5" cy="12" r="1"/><circle cx="5" cy="18" r="1"/></svg>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <div class="workspace-dropzone" data-workspace-dropzone>
+          <div class="workspace-state" data-workspace-state>
+            <span class="workspace-spinner" aria-hidden="true"></span>
+            <p>Preparando tu espacio...</p>
+          </div>
+          <div class="workspace-items" data-workspace-items hidden></div>
+        </div>
+
+        <p class="workspace-status" data-workspace-status role="status" aria-live="polite"></p>
+      </section>
+
+      <input type="file" multiple hidden data-workspace-file-input />
 
       <footer class="footer">
         <span>© <span id="year"></span> Estudiemos</span>
       </footer>
-
     </main>
 
     <!-- DATA SIEMPRE PRIMERO -->
     <script src="./data/data.js?v=20260804-quimica-completa"></script>
-    <script src="./scripts/global-search.js?v=20260820-calendar-content"></script>
+    <script src="./scripts/global-search.js?v=20260821-workspace-1"></script>
 
-    <script>
-      const grid = document.getElementById("materiasGrid");
-
-      const data = DATA.carreras;
-
-      grid.innerHTML = data.map(m => `
-        <a class="card" href="./pages/carrera/${m.slug}.html">
-          <div class="card__body">
-            <h3 class="card__title">${m.title}</h3>
-            <p class="card__desc">${m.description}</p>
-          </div>
-        </a>
-      `).join("");
-    </script>
+    <script src="./scripts/workspace.js?v=20260821-workspace-2"></script>
 
     <script>
       document.getElementById("year").textContent = new Date().getFullYear();

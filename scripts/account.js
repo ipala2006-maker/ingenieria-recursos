@@ -25,6 +25,9 @@
   let applyingCloud = false;
   let lastPullAt = 0;
   let recoveryMode = false;
+  let readySettled = false;
+  let resolveReady;
+  const readyPromise = new Promise((resolve) => { resolveReady = resolve; });
 
   addAccountButton();
   addAccountDialog();
@@ -33,7 +36,11 @@
 
   window.EstudiemosAccount = {
     sync: () => synchronize("manual"),
-    getUser: () => session?.user || null
+    getUser: () => session?.user || null,
+    getSession: () => session,
+    getClient: () => client,
+    whenReady: () => readyPromise,
+    open: () => openDialog()
   };
 
   function getRootPath() {
@@ -111,9 +118,9 @@
             </div>
           </div>
           <div class="account-benefits">
-            <p>${checkIcon()} Agenda y horarios</p>
-            <p>${checkIcon()} Favoritos y guardados</p>
-            <p>${checkIcon()} Mis materias y tema visual</p>
+            <p>${checkIcon()} Agenda y organización</p>
+            <p>${checkIcon()} Archivos y carpetas personales</p>
+            <p>${checkIcon()} Tema y preferencias</p>
           </div>
           <form class="account-password-form" data-account-password-form hidden>
             <label>
@@ -190,6 +197,7 @@
       if (result.error) throw result.error;
       session = result.data.session;
       renderAccountState();
+      finishReady(true);
       if (session) await synchronize("startup");
 
       client.auth.onAuthStateChange((event, nextSession) => {
@@ -215,7 +223,18 @@
       const unavailable = document.querySelector("[data-account-unavailable] p");
       if (unavailable) unavailable.textContent = message;
       renderAccountState();
+      finishReady(false);
     }
+  }
+
+  function finishReady(available) {
+    if (!readySettled) {
+      readySettled = true;
+      resolveReady({ available, client, session });
+    }
+    window.dispatchEvent(new CustomEvent("estudiemos:account-ready", {
+      detail: { available, user: session?.user || null }
+    }));
   }
 
   function loadSupabaseLibrary() {
@@ -487,6 +506,9 @@
     const email = document.querySelector("[data-account-email]");
     if (email) email.textContent = session?.user?.email || "";
     updateAccountIndicator(Boolean(session));
+    window.dispatchEvent(new CustomEvent("estudiemos:account-change", {
+      detail: { available: configAvailable, user: session?.user || null }
+    }));
   }
 
   function updateAccountIndicator(connected) {

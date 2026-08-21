@@ -5,6 +5,7 @@
   if (!topbar || document.querySelector(".global-search")) return;
 
   const rootPath = getRootPath();
+  const workspaceHome = document.body.classList.contains("workspace-home") || document.body.classList.contains("productivity-page");
   let resources = null;
 
   preserveNavigationState();
@@ -15,6 +16,8 @@
   loadPomodoroScript();
   loadInstallAppScript();
   loadTrayAfterPageSettles();
+
+  if (workspaceHome) return;
 
   const search = document.createElement("div");
   search.className = "global-search";
@@ -197,7 +200,7 @@
     if (document.querySelector('script[src*="scripts/bandeja.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/bandeja.js?v=20260820-calendar-content`;
+    script.src = `${rootPath}scripts/bandeja.js?v=20260821-workspace-1`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -215,7 +218,7 @@
     if (document.querySelector('script[src*="scripts/account.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/account.js?v=20260820-account-sync-3`;
+    script.src = `${rootPath}scripts/account.js?v=20260821-workspace-1`;
     script.defer = true;
     document.head.appendChild(script);
   }

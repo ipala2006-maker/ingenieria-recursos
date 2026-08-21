@@ -1,20 +1,20 @@
 # Estudiemos
 
-Plataforma educativa gratuita para estudiantes de ingeniería.
+Aplicación de productividad para organizar archivos, agenda y sesiones de estudio.
 
 Sitio público: [https://estudiemos-app.vercel.app](https://estudiemos-app.vercel.app)
 
 ## Estructura
 
 - `index.html`: página principal.
-- `data/data.js`: carreras, materias, temas y recursos.
-- `pages/`: páginas de carreras, materias y temas.
-- `scripts/`: buscador, bandeja, agenda, tema y navegación.
+- `scripts/workspace.js`: espacio privado de carpetas y archivos.
+- `data/data.js` y `pages/`: contenido educativo anterior conservado para no romper enlaces existentes.
+- `scripts/`: espacio personal, bandeja, agenda, cuenta, temporizador y navegación.
 - `styles/`: estilos visuales.
 - `pdfs/`: material descargable.
 - `android-app/`: soporte Android para los widgets nativos de agenda y calendario.
 
-El proyecto usa HTML, CSS y JavaScript sin framework ni dependencias. Vercel publica los archivos estáticos y ejecuta una función pequeña para el asistente inteligente de la agenda.
+El proyecto usa HTML, CSS y JavaScript sin framework ni dependencias. Vercel publica los archivos estáticos y ejecuta funciones pequeñas para los asistentes inteligentes.
 
 ## Seguridad
 
@@ -22,7 +22,7 @@ El proyecto usa HTML, CSS y JavaScript sin framework ni dependencias. Vercel pub
 - `.gitignore` evita subir archivos locales sensibles como `.env` o `.vercel`.
 - `SECURITY.md` resume las reglas simples para mantener el proyecto seguro.
 - GitHub y Vercel deben mantenerse con verificación en dos pasos activada.
-- La clave de Gemini se usa únicamente en `api/agenda-ai.js` y debe guardarse como variable secreta de Vercel.
+- La clave de Gemini se usa únicamente en las funciones de `api/` y debe guardarse como variable secreta de Vercel.
 
 ## Ejecutar localmente
 
@@ -55,9 +55,9 @@ Configuración del proyecto:
 
 Vercel está conectado al repositorio de GitHub. Cada cambio enviado a `main` inicia automáticamente una nueva publicación.
 
-## Asistente inteligente de agenda
+## Asistentes inteligentes
 
-La interpretación natural de órdenes usa Gemini desde la función `api/agenda-ai.js`. La clave nunca se envía al navegador.
+La interpretación natural de órdenes usa Gemini desde `api/agenda-ai.js` y `api/workspace-ai.js`. La clave nunca se envía al navegador. El asistente del espacio personal recibe solamente nombres, tipos y ubicaciones; no recibe el contenido de los archivos y muestra un plan antes de mover o renombrar elementos.
 
 Variables de Vercel:
 
@@ -70,18 +70,21 @@ El archivo `.env.example` muestra los nombres esperados sin contener secretos re
 
 ## Cuentas y sincronización
 
-Las cuentas usan Supabase Auth y una tabla privada protegida con Row Level Security. Se sincronizan la agenda, los horarios, favoritos, guardados, materias elegidas, recientes y tema visual. La copia local se conserva para que Estudiemos continúe funcionando sin conexión.
+Las cuentas usan Supabase Auth y tablas privadas protegidas con Row Level Security. Se sincronizan la agenda, las preferencias y el tema visual. Los archivos se guardan aparte en almacenamiento privado para que sigan disponibles en todos los dispositivos.
 
 Configuración inicial:
 
 1. Crear un proyecto gratuito en Supabase.
 2. Abrir **SQL Editor**, pegar el contenido de `supabase/schema.sql` y ejecutarlo una vez.
-3. En **Authentication → URL Configuration**, usar `https://estudiemos-app.vercel.app` como Site URL y agregar `https://estudiemos-app.vercel.app/**` a Redirect URLs.
-4. Copiar la Project URL y la Publishable key desde **Project Settings → API Keys**.
-5. En Vercel agregar para Production las variables `SUPABASE_URL` y `SUPABASE_PUBLISHABLE_KEY`.
-6. Volver a desplegar el último commit.
+3. En el mismo editor, ejecutar `supabase/workspace.sql` para crear el espacio privado de archivos y sus reglas de acceso.
+4. En **Authentication → URL Configuration**, usar `https://estudiemos-app.vercel.app` como Site URL y agregar `https://estudiemos-app.vercel.app/**` a Redirect URLs.
+5. Copiar la Project URL y la Publishable key desde **Project Settings → API Keys**.
+6. En Vercel agregar para Production las variables `SUPABASE_URL` y `SUPABASE_PUBLISHABLE_KEY`.
+7. Volver a desplegar el último commit.
 
 La Publishable key está diseñada para usarse en el navegador y queda limitada por las políticas de la tabla. No se debe usar ni publicar una Secret key o `service_role`.
+
+Los archivos se guardan en el bucket privado `workspace-files`, con un máximo de 50 MB por archivo. Cada ruta comienza con el ID de la cuenta y las políticas RLS impiden acceder a archivos de otra persona.
 
 ### Registro administrativo de usuarios
 
