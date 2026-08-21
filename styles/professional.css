@@ -86,6 +86,15 @@ html.theme-dark .topbar{
   justify-content:flex-start;
   gap:14px;
   padding-block:10px;
+  border-bottom-color:color-mix(in srgb,var(--border) 38%,transparent);
+  box-shadow:none;
+}
+
+.workspace-home .brand__mark,
+.productivity-page .brand__mark{
+  border-color:transparent;
+  background:color-mix(in srgb,var(--accent) 11%,var(--panel-2));
+  box-shadow:0 7px 20px rgba(3,9,22,.13);
 }
 
 .workspace-home .topbar__nav,
@@ -105,9 +114,19 @@ html.theme-dark .topbar{
 
 .workspace-home .topbar-icon-btn:hover,
 .productivity-page .topbar-icon-btn:hover{
-  border-color:var(--border);
-  background:var(--panel-2);
+  border-color:transparent;
+  background:color-mix(in srgb,var(--accent) 8%,var(--panel-2));
   color:var(--text);
+}
+
+.workspace-home .tray-panel{
+  border-right-color:color-mix(in srgb,var(--border) 42%,transparent);
+  box-shadow:14px 0 42px rgba(3,9,22,.18);
+}
+
+.workspace-home .tray-head,
+.workspace-home .tray-footer{
+  border-color:color-mix(in srgb,var(--border) 34%,transparent);
 }
 
 .workspace-home .pomodoro-top-btn,

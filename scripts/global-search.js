@@ -145,7 +145,7 @@
 
     const link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = `${rootPath}styles/professional.css?v=20260821-workspace-toolbar`;
+    link.href = `${rootPath}styles/professional.css?v=20260821-workspace-soft`;
     document.head.appendChild(link);
   }
 
