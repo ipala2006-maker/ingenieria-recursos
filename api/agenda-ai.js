@@ -241,8 +241,9 @@ function sanitizeAgendaItem(item) {
   if (!item || typeof item !== "object") return null;
   const id = cleanText(item.id, 180);
   const title = cleanText(item.title, 90);
-  const date = cleanDate(item.date);
-  if (!id || !title || !date) return null;
+  const rawDate = String(item.date || "").trim();
+  const date = cleanDate(rawDate);
+  if (!id || !title || (rawDate && !date)) return null;
   return {
     id,
     title,
@@ -272,6 +273,7 @@ Reglas de razonamiento:
 - Para horarios semanales usa createSchedules. El domingo es 0, lunes 1, martes 2, miercoles 3, jueves 4, viernes 5 y sabado 6.
 - Si varias materias comparten dias y horario, crea un horario separado para cada materia. Nunca combines dos materias conocidas en un mismo title o subject.
 - Para eventos de una sola fecha usa createEvents.
+- Si el usuario pide expresamente una tarea o anotacion "sin fecha", usa createEvents y deja date como cadena vacia. No inventes una fecha.
 - Las horas son opcionales. Si el usuario no menciona una hora concreta, devuelve horaInicio y horaFin como cadenas vacias. Nunca inventes horarios para tareas, parciales, entregas, recordatorios ni sesiones de estudio.
 - Solo completa horaInicio y horaFin cuando la instruccion incluye una hora o un rango horario explicito. Expresiones generales como "manana", "por la tarde" o "cuando pueda" no autorizan a inferir una hora exacta.
 - Si el usuario no indica el periodo de una recurrencia, usa el rango predeterminado recibido.
@@ -526,10 +528,11 @@ function sanitizeSchedule(item) {
 function sanitizeCreatedEvent(item) {
   if (!item || typeof item !== "object") return null;
   const title = cleanText(item.title, 90);
-  const date = cleanDate(item.date);
+  const rawDate = String(item.date || "").trim();
+  const date = cleanDate(rawDate);
   const horaInicio = cleanTime(item.horaInicio);
   const horaFin = cleanTime(item.horaFin);
-  if (!title || !date) return null;
+  if (!title || (rawDate && !date)) return null;
   if ((horaInicio || horaFin) && (!horaInicio || !horaFin || horaInicio >= horaFin)) return null;
   return {
     title,

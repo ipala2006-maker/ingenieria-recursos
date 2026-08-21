@@ -133,14 +133,18 @@ html.theme-dark .topbar{
 .productivity-page .pomodoro-top-btn{order:1}
 .workspace-home .agenda-top-btn,
 .productivity-page .agenda-top-btn{order:2}
+.workspace-home .quick-note-top-btn,
+.productivity-page .quick-note-top-btn{order:3}
+.workspace-home .general-ai-top-btn,
+.productivity-page .general-ai-top-btn{order:4}
 .workspace-home .suggestion-top-btn,
-.productivity-page .suggestion-top-btn{order:3}
+.productivity-page .suggestion-top-btn{order:5}
 .workspace-home .about-top-btn,
-.productivity-page .about-top-btn{order:4}
+.productivity-page .about-top-btn{order:6}
 .workspace-home .account-top-btn,
-.productivity-page .account-top-btn{order:5}
+.productivity-page .account-top-btn{order:7}
 .workspace-home .workspace-more-btn,
-.productivity-page .workspace-more-btn{order:6;margin:0}
+.productivity-page .workspace-more-btn{order:8;margin:0}
 .workspace-home .app-install-btn,
 .productivity-page .app-install-btn{display:none!important}
 
@@ -156,6 +160,21 @@ html.theme-dark .topbar{
 
 .workspace-home .workspace-more-btn svg circle,
 .productivity-page .workspace-more-btn svg circle{
+  fill:currentColor;
+  stroke:none;
+}
+
+.workspace-home .quick-note-top-btn svg,
+.productivity-page .quick-note-top-btn svg{
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.7;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+.workspace-home .general-ai-top-btn svg,
+.productivity-page .general-ai-top-btn svg{
   fill:currentColor;
   stroke:none;
 }
@@ -701,7 +720,28 @@ html.theme-dark .theme-switcher__btn.is-active{
 
   .workspace-home .topbar-icon-btn,
   .productivity-page .topbar-icon-btn{
-    width:34px;
-    height:34px;
+    width:31px;
+    height:31px;
+    padding:6px;
+  }
+}
+
+@media(max-width:360px){
+  .workspace-home .topbar,
+  .productivity-page .topbar{
+    gap:2px;
+    padding-inline:7px;
+  }
+
+  .workspace-home .topbar__nav,
+  .productivity-page .topbar__nav{
+    gap:0;
+  }
+
+  .workspace-home .topbar-icon-btn,
+  .productivity-page .topbar-icon-btn{
+    width:29px;
+    height:29px;
+    padding:6px;
   }
 }

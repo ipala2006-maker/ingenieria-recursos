@@ -28,6 +28,7 @@
   };
 
   addModal();
+  initializeWorkspaceHistory();
   bindEvents();
   initialize();
 
@@ -123,6 +124,18 @@
       if (nextUser.id !== previousId) await loadItems();
     });
 
+    window.addEventListener("popstate", (event) => {
+      const folderId = typeof event.state?.workspaceFolderId === "string"
+        ? event.state.workspaceFolderId
+        : null;
+      const nextFolderId = folderId && getItem(folderId)?.kind === "folder" ? folderId : null;
+      if (nextFolderId === state.currentFolderId) return;
+      state.currentFolderId = nextFolderId;
+      state.query = "";
+      if (elements.search) elements.search.value = "";
+      render();
+    });
+
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape") closeModal();
     });
@@ -155,8 +168,15 @@
     }
 
     state.items = result.data || [];
+    const historyFolderId = typeof history.state?.workspaceFolderId === "string"
+      ? history.state.workspaceFolderId
+      : null;
+    if (historyFolderId && getItem(historyFolderId)?.kind === "folder") {
+      state.currentFolderId = historyFolderId;
+    }
     if (state.currentFolderId && !getItem(state.currentFolderId)) state.currentFolderId = null;
     render();
+    notifyWorkspaceUpdate();
   }
 
   function render() {
@@ -249,6 +269,7 @@
   }
 
   function showSignedOut() {
+    notifyWorkspaceUpdate();
     renderBreadcrumbs();
     showState(
       "Ingresá para abrir tu espacio",
@@ -291,12 +312,35 @@
     return Promise.resolve(callback());
   }
 
-  function openFolder(id) {
+  function initializeWorkspaceHistory() {
+    const current = history.state && typeof history.state === "object" ? history.state : {};
+    if (Object.prototype.hasOwnProperty.call(current, "workspaceFolderId")) return;
+    history.replaceState({ ...current, estudiemosUi: current.estudiemosUi || "home", workspaceFolderId: null }, "", location.href);
+  }
+
+  function openFolder(id, options = {}) {
     if (id && getItem(id)?.kind !== "folder") return;
-    state.currentFolderId = id || null;
+    const nextFolderId = id || null;
+    if (nextFolderId === state.currentFolderId) return;
+    state.currentFolderId = nextFolderId;
     state.query = "";
     if (elements.search) elements.search.value = "";
+    if (options.history !== false) {
+      history.pushState({
+        ...(history.state || {}),
+        estudiemosUi: nextFolderId ? "workspace-folder" : "home",
+        workspaceFolderId: nextFolderId
+      }, "", location.href);
+    }
     render();
+  }
+
+  function notifyWorkspaceUpdate() {
+    const folders = state.items.filter((item) => item.kind === "folder").length;
+    const files = state.items.filter((item) => item.kind === "file").length;
+    window.dispatchEvent(new CustomEvent("estudiemos:workspace-update", {
+      detail: { user: Boolean(state.user), folders, files }
+    }));
   }
 
   async function openItem(id) {

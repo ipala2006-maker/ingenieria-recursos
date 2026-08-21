@@ -38,7 +38,9 @@
   observeLateCards();
   revealAndroidWidgetSync();
   openAgendaFromUrl();
+  restoreAgendaHistoryState();
   syncAgendaWithAndroid(readList(STORAGE_KEYS.agenda));
+  window.dispatchEvent(new CustomEvent("estudiemos:bandeja-ready"));
   window.addEventListener("estudiemos-android-ready", () => {
     syncAgendaWithAndroid(readList(STORAGE_KEYS.agenda));
   });
@@ -119,7 +121,7 @@
             </div>
           </div>
           <div class="agenda-toolbar__actions">
-            <button class="agenda-assistant-btn" type="button" data-agenda-assistant>${icon("sparkles")}<span>Organizar con IA</span></button>
+            <button class="agenda-general-ai-btn" type="button" data-general-ai-open aria-label="Abrir asistente de Estudiemos" title="Asistente">${icon("sparkles")}</button>
             <button class="agenda-widget-sync-btn" type="button" data-agenda-widget-sync hidden>${icon("calendar")}<span>Widgets</span></button>
             <button class="agenda-create-btn" type="button" data-agenda-create>${icon("plus")}<span>Anotar</span></button>
             <button class="tray-close" type="button" data-agenda-close aria-label="Cerrar agenda">${icon("lineClose")}</button>
@@ -373,6 +375,7 @@
       const agendaToday = event.target.closest("[data-agenda-today]");
       const agendaCreate = event.target.closest("[data-agenda-create]");
       const agendaAssistant = event.target.closest("[data-agenda-assistant]");
+      const generalAssistant = event.target.closest("[data-general-ai-open]");
       const agendaAssistantClose = event.target.closest("[data-agenda-assistant-close]");
       const agendaAssistantConfirm = event.target.closest("[data-agenda-assistant-confirm]");
       const agendaWidgetSync = event.target.closest("[data-agenda-widget-sync]");
@@ -395,6 +398,11 @@
 
       if (agendaAssistant) {
         openAgendaAssistant();
+        return;
+      }
+
+      if (generalAssistant) {
+        window.dispatchEvent(new CustomEvent("estudiemos:open-general-ai"));
         return;
       }
 
@@ -508,6 +516,29 @@
       markActiveTheme();
     });
 
+    window.addEventListener("popstate", (event) => {
+      if (event.state?.estudiemosUi === "agenda") {
+        openAgendaBoard({ history: false });
+      } else if (document.body.classList.contains("agenda-open")) {
+        closeAgendaBoard({ history: false });
+      }
+    });
+
+    window.addEventListener("estudiemos:open-agenda", (event) => {
+      const detail = event.detail || {};
+      openAgendaBoard();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(detail.date || "")) selectAgendaDate(detail.date);
+      if (!detail.assistant) return;
+      openAgendaAssistant();
+      requestAnimationFrame(() => {
+        const prompt = document.getElementById("agendaAssistantPrompt");
+        if (prompt) prompt.value = String(detail.prompt || "").slice(0, 1200);
+        if (detail.submit && prompt?.value.trim()) document.getElementById("agendaAssistantForm")?.requestSubmit();
+      });
+    });
+
+    window.addEventListener("estudiemos:close-agenda", () => closeAgendaBoard());
+
     document.addEventListener("estudiemos:navigation", () => {
       refreshPageActions();
       syncActionButtons();
@@ -531,26 +562,36 @@
   function shouldCloseAgendaBoard(event) {
     if (!document.body.classList.contains("agenda-open")) return false;
     if (event.target.closest(".agenda-board__panel")) return false;
+    if (event.target.closest(".quick-panel-shell")) return false;
     if (event.target.closest("[data-agenda-open]")) return false;
+    if (event.target.closest("[data-dashboard-agenda-open],[data-dashboard-date]")) return false;
     return true;
   }
 
   function setTrayOpen(isOpen, shouldSave) {
     document.body.classList.toggle("tray-open", isOpen);
     document.querySelector(".tray-shell")?.setAttribute("aria-hidden", String(!isOpen));
-    if (!isOpen) closeAgendaBoard();
+    if (!isOpen) closeAgendaBoard({ history: false });
     if (shouldSave) localStorage.setItem(STORAGE_KEYS.open, String(isOpen));
   }
 
-  function openAgendaBoard() {
+  function openAgendaBoard(options = {}) {
+    const wasOpen = document.body.classList.contains("agenda-open");
     document.body.classList.add("agenda-open");
     document.querySelector(".agenda-board")?.setAttribute("aria-hidden", "false");
+    if (!wasOpen && options.history !== false && history.state?.estudiemosUi !== "agenda") {
+      history.pushState({ ...(history.state || {}), estudiemosUi: "agenda" }, "", location.href);
+    }
     if (document.getElementById("agendaDate")) document.getElementById("agendaDate").value = selectedAgendaDate;
     renderAgenda();
     setTimeout(() => document.querySelector("[data-agenda-assistant]")?.focus(), 0);
   }
 
-  function closeAgendaBoard() {
+  function closeAgendaBoard(options = {}) {
+    if (options.history !== false && history.state?.estudiemosUi === "agenda") {
+      history.back();
+      return;
+    }
     document.body.classList.remove("agenda-open");
     document.querySelector(".agenda-board")?.setAttribute("aria-hidden", "true");
   }
@@ -960,15 +1001,16 @@
   function createAgendaAssistantItem(event) {
     if (!event || typeof event !== "object") return null;
     const title = String(event.title || "").trim().slice(0, 90);
-    const date = parseDateValue(event.date);
+    const dateValue = String(event.date || "").trim();
+    const date = dateValue ? parseDateValue(dateValue) : null;
     const horaInicio = validAgendaAssistantTime(event.horaInicio);
     const horaFin = validAgendaAssistantTime(event.horaFin);
-    if (!title || !date || ((horaInicio || horaFin) && (!horaInicio || !horaFin || horaInicio >= horaFin))) return null;
+    if (!title || (dateValue && !date) || ((horaInicio || horaFin) && (!horaInicio || !horaFin || horaInicio >= horaFin))) return null;
     return {
       id: `agenda:${Date.now()}:ai:${cryptoRandomId()}`,
       title,
       type: AGENDA_TYPES.includes(event.type) ? event.type : "Tarea",
-      date: event.date,
+      date: dateValue,
       subject: String(event.subject || "").trim().slice(0, 80),
       note: String(event.note || "").trim().slice(0, 240),
       horaInicio,
@@ -1366,12 +1408,12 @@
 
   function compareAgendaItems(a, b) {
     if (a.done !== b.done) return a.done ? 1 : -1;
+    if (!a.date && b.date) return -1;
+    if (a.date && !b.date) return 1;
     if (a.date && b.date && a.date !== b.date) return a.date.localeCompare(b.date);
     if (a.horaInicio && b.horaInicio && a.horaInicio !== b.horaInicio) return a.horaInicio.localeCompare(b.horaInicio);
     if (a.horaInicio && !b.horaInicio) return -1;
     if (!a.horaInicio && b.horaInicio) return 1;
-    if (a.date && !b.date) return -1;
-    if (!a.date && b.date) return 1;
     return b.createdAt - a.createdAt;
   }
 
@@ -1688,11 +1730,15 @@
     const url = new URL(window.location.href);
     if (url.searchParams.get("agenda") !== "1") return;
     const date = url.searchParams.get("date") || "";
-    openAgendaBoard();
+    openAgendaBoard({ history: false });
     if (/^\d{4}-\d{2}-\d{2}$/.test(date)) selectAgendaDate(date);
     url.searchParams.delete("agenda");
     url.searchParams.delete("date");
     history.replaceState(history.state, "", `${url.pathname}${url.search}${url.hash}`);
+  }
+
+  function restoreAgendaHistoryState() {
+    if (history.state?.estudiemosUi === "agenda") openAgendaBoard({ history: false });
   }
 
   function normalizeItem(item) {

@@ -145,7 +145,7 @@
 
     const link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = `${rootPath}styles/professional.css?v=20260821-workspace-soft`;
+    link.href = `${rootPath}styles/professional.css?v=20260821-dashboard-1`;
     document.head.appendChild(link);
   }
 
@@ -207,7 +207,7 @@
     if (document.querySelector('script[src*="scripts/bandeja.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/bandeja.js?v=20260821-workspace-2`;
+    script.src = `${rootPath}scripts/bandeja.js?v=20260821-dashboard-history`;
     script.defer = true;
     document.head.appendChild(script);
   }
