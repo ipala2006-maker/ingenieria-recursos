@@ -182,7 +182,7 @@
 
     elements.state.hidden = true;
     elements.items.hidden = false;
-    elements.items.innerHTML = `${searching ? "" : renderAddTile()}${visible.map(renderItem).join("")}`;
+    elements.items.innerHTML = `${visible.map(renderItem).join("")}${searching ? "" : renderAddTile()}`;
   }
 
   function renderAddTile() {
