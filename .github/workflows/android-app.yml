@@ -7,6 +7,7 @@ on:
     paths:
       - "android-app/**"
       - "scripts/bandeja.js"
+      - "scripts/pomodoro.js"
       - ".github/workflows/android-app.yml"
 
 permissions:

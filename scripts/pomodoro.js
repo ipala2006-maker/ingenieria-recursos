@@ -8,11 +8,14 @@
 
   const SCRIPT_URL = document.currentScript?.src || new URL("scripts/pomodoro.js", location.href).href;
   const STORAGE_KEY = "estudiemos_pomodoro";
+  const STREAK_STORAGE_KEY = "estudiemos_pomodoro_streak";
   const MOBILE_FLOATING_KEY = "estudiemos_pomodoro_mobile_floating";
   const DEFAULT_CONFIG = { blocks: 4, study: 25, break: 5 };
+  const PRESENCE_MINUTES = 25;
   const MAX_MINUTES = 59;
   const MINUTE_VALUES = MAX_MINUTES + 1;
   let state = loadState();
+  let streakState = loadStreakState();
   let timerId = 0;
   let audioContext = null;
   let alarmInterval = 0;
@@ -40,6 +43,8 @@
   render();
   startTickerIfNeeded();
   restoreMobileFloating();
+  syncStreakWithAndroid();
+  maybeShowStreakReminder();
   if (state.running) requestWakeLock();
 
   function addButton() {
@@ -108,6 +113,15 @@
           <button class="pomodoro-secondary-btn" type="button" data-pomodoro-reset aria-label="Reiniciar bloque actual" title="Reiniciar bloque">${icon("reset")}</button>
           <button class="pomodoro-start-btn" type="button" data-pomodoro-toggle>${icon("play")}<span>Empezar</span></button>
           <button class="pomodoro-secondary-btn" type="button" data-pomodoro-skip aria-label="Pasar al siguiente bloque" title="Siguiente bloque">${icon("skip")}</button>
+        </div>
+
+        <div class="pomodoro-streak" data-pomodoro-streak-panel>
+          <span class="pomodoro-streak__icon" aria-hidden="true">${icon("streak")}</span>
+          <span class="pomodoro-streak__copy">
+            <strong data-pomodoro-streak>Racha: 0 días</strong>
+            <small data-pomodoro-streak-message>Completá 25 min para iniciar tu racha.</small>
+          </span>
+          <span class="pomodoro-streak__today" data-pomodoro-streak-today>0/25 min</span>
         </div>
 
         <button class="pomodoro-settings-toggle" type="button" data-pomodoro-config-toggle aria-expanded="false">
@@ -236,11 +250,21 @@
     window.addEventListener("pointercancel", stopDragging, { passive: true });
     window.addEventListener("estudiemos:theme-change", renderPipControls);
     window.addEventListener("storage", (event) => {
-      if (event.key !== STORAGE_KEY) return;
-      state = loadState();
+      if (event.key !== STORAGE_KEY && event.key !== STREAK_STORAGE_KEY) return;
+      if (event.key === STORAGE_KEY) state = loadState();
+      if (event.key === STREAK_STORAGE_KEY) streakState = loadStreakState();
       reconcileTimer(false);
       render();
       startTickerIfNeeded();
+    });
+    window.addEventListener("estudiemos-android-ready", () => {
+      syncStreakWithAndroid();
+      renderDeviceAlerts();
+    });
+    window.addEventListener("estudiemos:cloud-restored", () => {
+      streakState = loadStreakState();
+      render();
+      syncStreakWithAndroid();
     });
     document.addEventListener("visibilitychange", () => {
       if (videoPip) syncVideoPipPlayback();
@@ -885,6 +909,7 @@
     if (completed && previousPhase === "study") {
       normalizeDailyCount();
       state.completedToday += 1;
+      recordStudyPresence(durationSeconds("study") / 60);
     }
 
     if (previousPhase === "study") {
@@ -988,6 +1013,7 @@
     if (cycle) cycle.textContent = `Bloque ${state.currentBlock} de ${state.config.blocks}`;
     if (phase) phase.textContent = state.phase === "study" ? "Estudio" : "Descanso";
     if (count) count.textContent = String(state.completedToday);
+    renderStreak();
 
     const auto = document.querySelector("[data-pomodoro-auto]");
     if (auto) auto.checked = state.autoStart;
@@ -1436,6 +1462,13 @@
   }
 
   async function requestDeviceAlerts() {
+    if (window.EstudiemosAndroid && typeof window.EstudiemosAndroid.postMessage === "function") {
+      try {
+        window.EstudiemosAndroid.postMessage(JSON.stringify({ type: "pomodoro-reminder-enable" }));
+      } catch (error) {}
+      renderDeviceAlerts();
+      return;
+    }
     if (!("Notification" in window)) {
       renderDeviceAlerts();
       return;
@@ -1453,7 +1486,15 @@
     const row = document.querySelector("[data-pomodoro-device-alerts-row]");
     const button = document.querySelector("[data-pomodoro-device-alerts]");
     if (!row || !button) return;
-    const supported = "Notification" in window && "serviceWorker" in navigator;
+    const nativeAndroid = Boolean(window.EstudiemosAndroid && typeof window.EstudiemosAndroid.postMessage === "function");
+    const supported = nativeAndroid || ("Notification" in window && "serviceWorker" in navigator);
+    if (nativeAndroid) {
+      button.disabled = false;
+      button.textContent = "Activar";
+      row.dataset.status = "native";
+      row.title = "Activa un único recordatorio diario para cuidar tu racha.";
+      return;
+    }
     const permission = supported ? Notification.permission : "unsupported";
     button.disabled = permission === "granted" || permission === "denied" || !supported;
     button.textContent = permission === "granted"
@@ -1486,6 +1527,129 @@
     } catch (error) {
       try { new Notification(title, options); } catch (notificationError) {}
     }
+  }
+
+  function loadStreakState() {
+    let saved = {};
+    try {
+      saved = JSON.parse(localStorage.getItem(STREAK_STORAGE_KEY) || "{}");
+    } catch (error) {}
+    const days = {};
+    if (saved.days && typeof saved.days === "object") {
+      Object.entries(saved.days).forEach(([key, value]) => {
+        const minutes = Math.max(0, Math.floor(Number(value) || 0));
+        if (/^\d{4}-\d{2}-\d{2}$/.test(key) && minutes > 0) days[key] = minutes;
+      });
+    }
+    return {
+      version: 1,
+      days,
+      reminderDate: /^\d{4}-\d{2}-\d{2}$/.test(saved.reminderDate || "") ? saved.reminderDate : ""
+    };
+  }
+
+  function saveStreakState() {
+    pruneStreakHistory();
+    try {
+      localStorage.setItem(STREAK_STORAGE_KEY, JSON.stringify(streakState));
+      window.dispatchEvent(new CustomEvent("estudiemos:data-change", {
+        detail: { key: STREAK_STORAGE_KEY }
+      }));
+    } catch (error) {}
+    syncStreakWithAndroid();
+  }
+
+  function recordStudyPresence(minutes) {
+    const amount = Math.max(0, Math.floor(Number(minutes) || 0));
+    if (!amount) return;
+    const today = dateKey(0);
+    streakState.days[today] = (streakState.days[today] || 0) + amount;
+    saveStreakState();
+  }
+
+  function streakSummary() {
+    const today = dateKey(0);
+    const todayMinutes = streakState.days[today] || 0;
+    const todayActive = todayMinutes >= PRESENCE_MINUTES;
+    let cursor = todayActive ? 0 : -1;
+    let currentStreak = 0;
+    while ((streakState.days[dateKey(cursor)] || 0) >= PRESENCE_MINUTES) {
+      currentStreak += 1;
+      cursor -= 1;
+    }
+    let activeLast7 = 0;
+    for (let offset = 0; offset > -7; offset -= 1) {
+      if ((streakState.days[dateKey(offset)] || 0) >= PRESENCE_MINUTES) activeLast7 += 1;
+    }
+    return { today, todayMinutes, todayActive, currentStreak, activeLast7 };
+  }
+
+  function renderStreak() {
+    const summary = streakSummary();
+    const streak = document.querySelector("[data-pomodoro-streak]");
+    const message = document.querySelector("[data-pomodoro-streak-message]");
+    const today = document.querySelector("[data-pomodoro-streak-today]");
+    const panel = document.querySelector("[data-pomodoro-streak-panel]");
+    const dayLabel = summary.currentStreak === 1 ? "día" : "días";
+    if (streak) streak.textContent = `Racha: ${summary.currentStreak} ${dayLabel}`;
+    if (today) today.textContent = summary.todayActive
+      ? "Presencia registrada"
+      : `${Math.min(PRESENCE_MINUTES, summary.todayMinutes)}/${PRESENCE_MINUTES} min`;
+    if (message) {
+      if (summary.todayActive) {
+        message.textContent = `Últimos 7 días: ${summary.activeLast7} activos.`;
+      } else if (summary.currentStreak > 0) {
+        message.textContent = `Todavía estás a tiempo de mantener tu racha. ${PRESENCE_MINUTES} min alcanzan · Últimos 7 días: ${summary.activeLast7} activos.`;
+      } else if (summary.activeLast7 > 0) {
+        message.textContent = `Perdiste la racha, pero podés recuperar el ritmo con una sesión hoy · Últimos 7 días: ${summary.activeLast7} activos.`;
+      } else {
+        message.textContent = `Completá ${PRESENCE_MINUTES} min para iniciar tu racha.`;
+      }
+    }
+    if (panel) {
+      panel.classList.toggle("is-active", summary.todayActive);
+      panel.classList.toggle("is-recovery", !summary.todayActive && summary.currentStreak === 0 && summary.activeLast7 > 0);
+    }
+  }
+
+  function syncStreakWithAndroid() {
+    try {
+      if (!window.EstudiemosAndroid || typeof window.EstudiemosAndroid.postMessage !== "function") return;
+      window.EstudiemosAndroid.postMessage(JSON.stringify({
+        type: "pomodoro-streak-sync",
+        threshold: PRESENCE_MINUTES,
+        days: streakState.days
+      }));
+    } catch (error) {}
+  }
+
+  async function maybeShowStreakReminder() {
+    if (window.EstudiemosAndroid || new Date().getHours() < 20) return;
+    const summary = streakSummary();
+    if (summary.todayActive || summary.activeLast7 === 0 || streakState.reminderDate === summary.today) return;
+    if (!("Notification" in window) || Notification.permission !== "granted") return;
+    streakState.reminderDate = summary.today;
+    saveStreakState();
+    await showDeviceNotification(
+      "Tu racha sigue disponible",
+      summary.currentStreak > 0
+        ? "Todavía estás a tiempo de mantener tu racha. 25 min alcanzan."
+        : "Perdiste la racha, pero podés recuperar el ritmo con una sesión hoy."
+    );
+  }
+
+  function pruneStreakHistory() {
+    const oldest = dateKey(-730);
+    Object.keys(streakState.days).forEach((key) => {
+      if (key < oldest) delete streakState.days[key];
+    });
+  }
+
+  function dateKey(offset) {
+    const date = new Date();
+    date.setHours(12, 0, 0, 0);
+    date.setDate(date.getDate() + offset);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
   }
 
   async function requestWakeLock() {
@@ -1952,6 +2116,7 @@
       music: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 3v12.2A3.5 3.5 0 1 1 17 12V6.1l-8 1.8v9.3A3.5 3.5 0 1 1 7 14V6.3L19 3ZM5.5 16A1.5 1.5 0 1 0 7 17.5V16H5.5Zm10 0a1.5 1.5 0 1 0 1.5 1.5V16h-1.5Z"/></svg>',
       popout: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6h-2V7.4l-7.3 7.3-1.4-1.4L16.6 6H14V4ZM5 6h6v2H7v9h9v-4h2v6H5V6Z"/></svg>',
       settings: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.7 4.1a2.3 2.3 0 0 1 4.6 0 2.3 2.3 0 0 0 3.3 1.9 2.3 2.3 0 0 1 2.3 4 2.3 2.3 0 0 0 0 3.8 2.3 2.3 0 0 1-2.3 4 2.3 2.3 0 0 0-3.3 1.9 2.3 2.3 0 0 1-4.6 0 2.3 2.3 0 0 0-3.3-1.9 2.3 2.3 0 0 1-2.3-4 2.3 2.3 0 0 0 0-3.8 2.3 2.3 0 0 1 2.3-4 2.3 2.3 0 0 0 3.3-1.9ZM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/></svg>',
+      streak: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 1-10 10A10 10 0 0 1 12 2Zm0 2a8 8 0 1 0 8 8 8 8 0 0 0-8-8Zm1 3v4.6l3.2 1.9-1 1.7-4.2-2.5V7h2Z"/></svg>',
       chevronUp: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5.4 14.8 1.4 1.4 5.2-5.2 5.2 5.2 1.4-1.4L12 8.2l-6.6 6.6Z"/></svg>',
       chevronDown: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5.4 9.2 1.4-1.4 5.2 5.2 5.2-5.2 1.4 1.4L12 15.8 5.4 9.2Z"/></svg>'
     };

@@ -1,8 +1,10 @@
 package com.estudiemos.app;
 
 import android.annotation.SuppressLint;
+import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
@@ -22,19 +24,24 @@ import androidx.webkit.WebViewCompat;
 
 import java.util.Collections;
 
+import org.json.JSONObject;
+
 public class MainActivity extends Activity {
     private static final String APP_URL = "https://estudiemos-app.vercel.app/";
     private static final String APP_ORIGIN = "https://estudiemos-app.vercel.app";
     public static final String EXTRA_OPEN_AGENDA = "open_agenda";
+    public static final String EXTRA_OPEN_POMODORO = "open_pomodoro";
 
     private WebView webView;
     private boolean openAgendaRequested;
+    private boolean openPomodoroRequested;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         openAgendaRequested = getIntent().getBooleanExtra(EXTRA_OPEN_AGENDA, false);
+        openPomodoroRequested = getIntent().getBooleanExtra(EXTRA_OPEN_POMODORO, false);
 
         webView = new WebView(this);
         webView.setBackgroundColor(Color.rgb(15, 23, 42));
@@ -82,6 +89,7 @@ public class MainActivity extends Activity {
                 super.onPageFinished(view, url);
                 notifyWebAppReady();
                 openAgendaIfRequested();
+                openPomodoroIfRequested();
             }
         });
 
@@ -129,7 +137,18 @@ public class MainActivity extends Activity {
                 !"https".equals(sourceOrigin.getScheme()) ||
                 !"estudiemos-app.vercel.app".equals(sourceOrigin.getHost())
         ) return;
-        AgendaWidgetProvider.storeAgendaAndUpdate(this, message.getData());
+        try {
+            String type = new JSONObject(message.getData()).optString("type");
+            if ("agenda-sync".equals(type)) {
+                AgendaWidgetProvider.storeAgendaAndUpdate(this, message.getData());
+            } else if ("pomodoro-streak-sync".equals(type)) {
+                StreakWidgetProvider.storeStreakAndUpdate(this, message.getData());
+            } else if ("pomodoro-reminder-enable".equals(type)) {
+                enableStreakReminder();
+            }
+        } catch (Exception ignored) {
+            // Invalid web messages cannot modify native data.
+        }
     }
 
     private void notifyWebAppReady() {
@@ -148,12 +167,33 @@ public class MainActivity extends Activity {
         );
     }
 
+    private void openPomodoroIfRequested() {
+        if (!openPomodoroRequested) return;
+        openPomodoroRequested = false;
+        webView.evaluateJavascript(
+                "document.querySelector('[data-pomodoro-open]')?.click();",
+                null
+        );
+    }
+
+    private void enableStreakReminder() {
+        StreakReminderReceiver.setEnabled(this, true);
+        if (
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(new String[] { Manifest.permission.POST_NOTIFICATIONS }, 4101);
+        }
+    }
+
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
         openAgendaRequested = intent.getBooleanExtra(EXTRA_OPEN_AGENDA, false);
+        openPomodoroRequested = intent.getBooleanExtra(EXTRA_OPEN_POMODORO, false);
         openAgendaIfRequested();
+        openPomodoroIfRequested();
     }
 
     @Override

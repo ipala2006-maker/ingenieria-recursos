@@ -8,9 +8,10 @@
     "bandeja_materias",
     "bandeja_recientes",
     "bandeja_agenda",
+    "estudiemos_pomodoro_streak",
     "estudiemos_theme"
   ];
-  const LIST_KEYS = new Set(SYNC_KEYS.filter((key) => key !== "estudiemos_theme"));
+  const LIST_KEYS = new Set(SYNC_KEYS.filter((key) => !["estudiemos_theme", "estudiemos_pomodoro_streak"].includes(key)));
   const SUBJECTS_KEY = "bandeja_materias";
   const LINKED_USER_KEY = "estudiemos_cloud_user";
   const LOCAL_CHANGED_KEY = "estudiemos_cloud_local_changed";
@@ -428,7 +429,7 @@
     const values = {};
     SYNC_KEYS.forEach((key) => {
       if (!LIST_KEYS.has(key)) {
-        values[key] = cloudValues[key] || localValues[key] || "dark";
+        values[key] = cloudValues[key] || localValues[key] || (key === "estudiemos_theme" ? "dark" : "{}");
         return;
       }
       const localList = Array.isArray(localValues[key]) ? localValues[key] : [];

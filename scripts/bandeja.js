@@ -1691,7 +1691,8 @@
       return;
     }
 
-    const destination = `estudiemos://sync?data=${encodeURIComponent(JSON.stringify(items))}`;
+    const streak = localStorage.getItem("estudiemos_pomodoro_streak") || "{}";
+    const destination = `estudiemos://sync?data=${encodeURIComponent(JSON.stringify(items))}&streak=${encodeURIComponent(streak)}`;
     showWidgetSyncFeedback(button);
     window.location.href = destination;
   }

@@ -96,10 +96,11 @@ El archivo privado de Google Sheets puede mostrar un registro de cuentas en una 
 
 ## Widgets de Android
 
-La PWA instalada desde Chrome sigue siendo la aplicación principal. Como Android no permite que una PWA cree widgets del sistema por sí sola, la carpeta `android-app/` contiene un complemento nativo liviano que habilita dos widgets sin base de datos ni permisos sensibles:
+La PWA instalada desde Chrome sigue siendo la aplicación principal. Como Android no permite que una PWA cree widgets del sistema por sí sola, la carpeta `android-app/` contiene un complemento nativo liviano que habilita tres widgets:
 
 - **Agenda académica:** muestra únicamente tareas, parciales, exámenes, entregas y trabajos pendientes.
 - **Calendario académico:** muestra únicamente clases que tengan hora de inicio y hora de finalización.
+- **Racha de estudio:** registra presencia al completar 25 minutos de Pomodoro, muestra la actividad de los últimos siete días y abre el temporizador al tocarlo.
 
 Cada cambio relacionado con Android genera un APK de prueba en GitHub:
 
@@ -107,11 +108,11 @@ Cada cambio relacionado con Android genera un APK de prueba en GitHub:
 2. Entrar en la ejecución **Build Android app** más reciente.
 3. Descargar el archivo **Estudiemos-Android** en la sección de artefactos.
 4. Descomprimirlo e instalar `app-debug.apk` en Android.
-5. Mantener presionada la pantalla de inicio, elegir **Widgets** y agregar **Agenda académica**, **Calendario académico** o ambos.
+5. Mantener presionada la pantalla de inicio, elegir **Widgets** y agregar **Agenda académica**, **Calendario académico** o **Racha de estudio**.
 6. Abrir Estudiemos desde Chrome o desde la PWA instalada.
-7. Entrar en la agenda y tocar **Widgets** cada vez que se quieran enviar los cambios a los widgets del teléfono.
+7. Entrar en la agenda y tocar **Widgets** cada vez que se quieran enviar la agenda y la racha desde la PWA a los widgets del teléfono.
 
-Los datos se copian localmente entre la PWA y los widgets; no se envían a un servidor. Al tocar un día o una anotación, se abre la agenda de la PWA. Los cambios visuales de la web llegan sin reinstalar; los cambios del código Android requieren instalar un APK nuevo.
+Los datos se copian localmente entre la PWA y los widgets. La racha también se sincroniza entre dispositivos cuando el usuario inició sesión. Desde la configuración del Pomodoro se puede activar un único recordatorio diario a las 20:00; nunca se envía si la presencia del día ya está completa. Los cambios visuales de la web llegan sin reinstalar; los cambios del código Android requieren instalar un APK nuevo.
 
 ## Tareas
 

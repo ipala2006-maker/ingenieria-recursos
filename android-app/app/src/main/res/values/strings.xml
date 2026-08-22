@@ -5,4 +5,6 @@
     <string name="agenda_widget_description">Próximas tareas, parciales, exámenes y trabajos.</string>
     <string name="calendar_widget_name">Calendario académico</string>
     <string name="calendar_widget_description">Calendario mensual con tus horarios de clase.</string>
+    <string name="streak_widget_name">Racha de estudio</string>
+    <string name="streak_widget_description">Tu racha de Pomodoro y la actividad de los últimos siete días.</string>
 </resources>

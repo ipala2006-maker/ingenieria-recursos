@@ -219,7 +219,7 @@
     if (document.querySelector('script[src*="scripts/pomodoro.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/pomodoro.js?v=20260819-agenda-semantic`;
+    script.src = `${rootPath}scripts/pomodoro.js?v=20260821-study-streak`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -257,7 +257,7 @@
     if (document.querySelector('script[src*="scripts/account.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/account.js?v=20260821-workspace-1`;
+    script.src = `${rootPath}scripts/account.js?v=20260821-study-streak`;
     script.defer = true;
     document.head.appendChild(script);
   }
