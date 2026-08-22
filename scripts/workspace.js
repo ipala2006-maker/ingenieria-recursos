@@ -4,6 +4,12 @@
   const BUCKET = "workspace-files";
   const MAX_FILE_SIZE = 50 * 1024 * 1024;
   const VIEW_KEY = "estudiemos_workspace_view";
+  const PLAN_PREVIEW_KEY = "estudiemos_workspace_plan_preview";
+  const PLANS = {
+    initial: { name: "Plan inicial", limit: 250 * 1024 * 1024 },
+    plus: { name: "Estudiemos Plus", limit: 5 * 1024 * 1024 * 1024 },
+    pro: { name: "Estudiemos Pro", limit: 20 * 1024 * 1024 * 1024 }
+  };
   const state = {
     client: null,
     user: null,
@@ -13,7 +19,8 @@
     sort: "updated",
     view: readView(),
     busy: false,
-    aiPlan: null
+    aiPlan: null,
+    planPreview: readPlanPreview()
   };
 
   const elements = {
@@ -24,7 +31,9 @@
     search: document.querySelector("[data-workspace-search]"),
     sort: document.querySelector("[data-workspace-sort]"),
     dropzone: document.querySelector("[data-workspace-dropzone]"),
-    fileInput: document.querySelector("[data-workspace-file-input]")
+    fileInput: document.querySelector("[data-workspace-file-input]"),
+    planName: document.querySelector("[data-workspace-plan-name]"),
+    planUsage: document.querySelector("[data-workspace-plan-usage]")
   };
 
   addModal();
@@ -55,6 +64,8 @@
       const open = event.target.closest("[data-workspace-open]");
       const menu = event.target.closest("[data-workspace-menu]");
       const signIn = event.target.closest("[data-workspace-signin]");
+      const plans = event.target.closest("[data-workspace-plans]");
+      const planSelect = event.target.closest("[data-workspace-plan-select]");
 
       if (upload) runAuthenticated(() => elements.fileInput?.click());
       if (folder) runAuthenticated(openNewFolderModal);
@@ -66,6 +77,8 @@
       }
       if (ai) runAuthenticated(openAiModal);
       if (signIn) window.EstudiemosAccount?.open();
+      if (plans) openPlansModal();
+      if (planSelect) selectPlanPreview(planSelect.dataset.workspacePlanSelect);
       if (view) setView(view.dataset.workspaceView);
       if (breadcrumb) openFolder(breadcrumb.dataset.workspaceFolder || null);
       if (open) openItem(open.dataset.workspaceOpen);
@@ -183,6 +196,7 @@
     renderBreadcrumbs();
     renderItems();
     renderViewButtons();
+    renderPlanSummary();
   }
 
   function renderItems() {
@@ -270,6 +284,7 @@
 
   function showSignedOut() {
     notifyWorkspaceUpdate();
+    renderPlanSummary();
     renderBreadcrumbs();
     showState(
       "Ingresá para abrir tu espacio",
@@ -280,7 +295,52 @@
   }
 
   function showUnavailable() {
+    renderPlanSummary();
     showState("No pudimos preparar tu espacio", "Revisá tu conexión y recargá la página.", "error");
+  }
+
+  function renderPlanSummary() {
+    const plan = PLANS[state.planPreview] || PLANS.initial;
+    const used = state.items
+      .filter((item) => item.kind === "file")
+      .reduce((total, item) => total + Math.max(0, Number(item.size_bytes) || 0), 0);
+    if (elements.planName) elements.planName.textContent = plan.name;
+    if (elements.planUsage) elements.planUsage.textContent = `${formatSize(used)} de ${formatSize(plan.limit)}`;
+  }
+
+  function openPlansModal() {
+    const selected = state.planPreview;
+    const planCard = (id, name, storage, price, description) => `
+      <article class="workspace-plan-card ${selected === id ? "is-selected" : ""}">
+        <header><div><small>${selected === id ? "Plan seleccionado" : "Plan de prueba"}</small><h3>${name}</h3></div><strong>${price}</strong></header>
+        <p>${storage} de almacenamiento · Organizador inteligente incluido.</p>
+        <span>${description}</span>
+        <button class="workspace-btn ${selected === id ? "" : "workspace-btn--primary"}" type="button" data-workspace-plan-select="${id}" ${selected === id ? "disabled" : ""}>${selected === id ? "Seleccionado" : `Probar ${name}`}</button>
+      </article>`;
+    openModal({
+      eyebrow: "Vista previa",
+      title: "Planes de Estudiemos",
+      wide: true,
+      body: `<div class="workspace-modal__body workspace-plans-preview">
+        <p class="workspace-plans-preview__notice">Esta es una simulación para evaluar la experiencia. No pide tarjeta y no realiza ningún cobro.</p>
+        <div class="workspace-plan-grid">
+          ${planCard("initial", "Inicial", "250 MB", "Gratis", "Para empezar y ordenar los archivos esenciales.")}
+          ${planCard("plus", "Plus", "5 GB", "USD 5,99/mes", "Más espacio para apuntes, PDFs y entregas.")}
+          ${planCard("pro", "Pro", "20 GB", "USD 9,99/mes", "Para una biblioteca académica más completa.")}
+        </div>
+        <p class="workspace-plans-preview__foot">La IA está incluida en todos los planes. Los precios y límites todavía son de prueba.</p>
+      </div>`,
+      actions: '<button class="workspace-btn" type="button" data-workspace-modal-close>Cerrar</button>'
+    });
+  }
+
+  function selectPlanPreview(planId) {
+    if (!PLANS[planId]) return;
+    state.planPreview = planId;
+    try { localStorage.setItem(PLAN_PREVIEW_KEY, planId); } catch (error) {}
+    renderPlanSummary();
+    closeModal();
+    setStatus(`Vista previa cambiada a ${PLANS[planId].name}. No se realizó ningún cobro.`, "success");
   }
 
   function showState(title, message, type, action = "") {
@@ -731,6 +791,15 @@
     try { return localStorage.getItem(VIEW_KEY) === "list" ? "list" : "grid"; } catch (error) { return "grid"; }
   }
 
+  function readPlanPreview() {
+    try {
+      const saved = localStorage.getItem(PLAN_PREVIEW_KEY);
+      return PLANS[saved] ? saved : "initial";
+    } catch (error) {
+      return "initial";
+    }
+  }
+
   function getItem(id) {
     return state.items.find((item) => item.id === id) || null;
   }
@@ -781,7 +850,8 @@
     const bytes = Number(value) || 0;
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(bytes >= 10 * 1024 * 1024 ? 0 : 1)} MB`;
+    return `${(bytes / 1024 / 1024 / 1024).toFixed(bytes >= 10 * 1024 * 1024 * 1024 ? 0 : 1)} GB`;
   }
 
   function cleanName(value) {

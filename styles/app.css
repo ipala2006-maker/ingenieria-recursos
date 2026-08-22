@@ -3282,6 +3282,23 @@ html.theme-light .agenda-day__streak{
   border-radius:999px;
   background:#34d399;
 }
+.notification-alert-top-btn{
+  position:relative;
+  color:#ef4444 !important;
+  background:color-mix(in srgb,#ef4444 7%,transparent) !important;
+}
+.notification-alert-top-btn[hidden]{display:none!important}
+.notification-alert-top-btn svg{
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.8;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.notification-alert-top-btn:hover{
+  border-color:color-mix(in srgb,#ef4444 24%,transparent) !important;
+  background:color-mix(in srgb,#ef4444 12%,transparent) !important;
+}
 .streak-menu{
   position:fixed;
   inset:0;

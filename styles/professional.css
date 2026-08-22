@@ -154,11 +154,12 @@ html.theme-dark .topbar{
 .topbar .quick-note-top-btn{order:3}
 .topbar .general-ai-top-btn{order:4}
 .topbar .streak-top-btn{order:5}
-.topbar .theme-top-btn{order:6}
-.topbar .suggestion-top-btn{order:7}
-.topbar .about-top-btn{order:8}
-.topbar .app-install-btn{display:inline-grid!important;order:9}
-.topbar .account-top-btn{order:10}
+.topbar .notification-alert-top-btn{order:6}
+.topbar .theme-top-btn{order:7}
+.topbar .suggestion-top-btn{order:8}
+.topbar .about-top-btn{order:9}
+.topbar .app-install-btn{display:inline-grid!important;order:10}
+.topbar .account-top-btn{order:11}
 .workspace-home .workspace-more-btn{display:none!important}
 
 .workspace-home .suggestion-top-btn svg,

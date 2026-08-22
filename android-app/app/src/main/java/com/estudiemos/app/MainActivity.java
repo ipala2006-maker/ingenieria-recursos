@@ -3,6 +3,7 @@ package com.estudiemos.app;
 import android.annotation.SuppressLint;
 import android.Manifest;
 import android.app.Activity;
+import android.app.NotificationManager;
 import android.appwidget.AppWidgetManager;
 import android.content.ComponentName;
 import android.content.Intent;
@@ -63,6 +64,7 @@ public class MainActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT
         ));
         applySystemBarInsets(rootView);
+        if (StreakReminderReceiver.isEnabled(this)) StreakReminderReceiver.scheduleNext(this);
 
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
@@ -96,6 +98,7 @@ public class MainActivity extends Activity {
                 super.onPageFinished(view, url);
                 webReady = true;
                 notifyWebAppReady();
+                sendNotificationStatusToWeb();
                 notifyPendingAgendaCompletions();
                 openAgendaIfRequested();
                 openPomodoroIfRequested();
@@ -162,6 +165,8 @@ public class MainActivity extends Activity {
                 StreakWidgetProvider.storeStreakAndUpdate(this, message.getData());
             } else if ("pomodoro-reminder-enable".equals(type)) {
                 enableStreakReminder();
+            } else if ("pomodoro-notification-status".equals(type)) {
+                sendNotificationStatusToWeb();
             } else if ("widget-pin".equals(type)) {
                 requestWidgetPin(payload.optString("widget"));
             }
@@ -173,6 +178,22 @@ public class MainActivity extends Activity {
     private void notifyWebAppReady() {
         webView.evaluateJavascript(
                 "window.dispatchEvent(new CustomEvent('estudiemos-android-ready'));",
+                null
+        );
+    }
+
+    private void sendNotificationStatusToWeb() {
+        if (!webReady || webView == null) return;
+        NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        boolean systemEnabled = manager != null && manager.areNotificationsEnabled();
+        boolean permissionGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
+                || checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED;
+        String permission = systemEnabled && permissionGranted && StreakReminderReceiver.isEnabled(this)
+                ? "granted"
+                : (!systemEnabled || !permissionGranted) ? "denied" : "default";
+        String detail = "{permission:" + JSONObject.quote(permission) + "}";
+        webView.evaluateJavascript(
+                "window.dispatchEvent(new CustomEvent('estudiemos-android-notification-status',{detail:" + detail + "}));",
                 null
         );
     }
@@ -226,7 +247,15 @@ public class MainActivity extends Activity {
                 checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) {
             requestPermissions(new String[] { Manifest.permission.POST_NOTIFICATIONS }, 4101);
+        } else {
+            sendNotificationStatusToWeb();
         }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == 4101) sendNotificationStatusToWeb();
     }
 
     private void requestWidgetPin(String widget) {

@@ -21,8 +21,8 @@
     <link rel="apple-touch-icon" href="./assets/icon-180.png" />
     <title>Estudiemos</title>
     <script src="./scripts/theme-init.js?v=20260822-install-update"></script>
-    <link rel="stylesheet" href="./styles/app.css?v=20260822-account-isolation" />
-    <link rel="stylesheet" href="./styles/workspace.css?v=20260821-workspace-soft" />
+    <link rel="stylesheet" href="./styles/app.css?v=20260822-streak-reminders" />
+    <link rel="stylesheet" href="./styles/workspace.css?v=20260822-plan-preview" />
     <link rel="stylesheet" href="./styles/dashboard.css?v=20260822-home-compact" />
   </head>
 
@@ -40,11 +40,18 @@
       <div class="home-layout">
         <section class="workspace-section" id="mi-espacio" aria-labelledby="workspaceSectionTitle">
           <header class="workspace-section__head">
-            <div>
+            <div class="workspace-section__intro">
               <p class="workspace-eyebrow">Archivos personales</p>
               <h1 id="workspaceSectionTitle">Mi espacio</h1>
+              <p>Guardá y ordená lo que necesitás.</p>
             </div>
-            <p>Guardá y ordená lo que necesitás.</p>
+            <button class="workspace-plan-summary" type="button" data-workspace-plans aria-label="Ver planes y almacenamiento">
+              <span>
+                <small data-workspace-plan-name>Plan inicial</small>
+                <strong data-workspace-plan-usage>0 MB de 250 MB</strong>
+              </span>
+              <span class="workspace-plan-summary__action">Ver planes</span>
+            </button>
           </header>
 
           <section class="workspace-browser" aria-label="Archivos y carpetas">
@@ -140,9 +147,9 @@
 
     <!-- DATA SIEMPRE PRIMERO -->
     <script src="./data/data.js?v=20260804-quimica-completa"></script>
-    <script src="./scripts/global-search.js?v=20260822-inbox"></script>
+    <script src="./scripts/global-search.js?v=20260822-streak-reminders"></script>
 
-    <script src="./scripts/workspace.js?v=20260821-dashboard-history"></script>
+    <script src="./scripts/workspace.js?v=20260822-plan-preview"></script>
     <script src="./scripts/dashboard.js?v=20260822-inbox"></script>
 
     <script>

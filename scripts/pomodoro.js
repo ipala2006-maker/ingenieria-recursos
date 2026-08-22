@@ -12,6 +12,13 @@
   const MOBILE_FLOATING_KEY = "estudiemos_pomodoro_mobile_floating";
   const DEFAULT_CONFIG = { blocks: 4, study: 25, break: 5 };
   const PRESENCE_MINUTES = 25;
+  const STREAK_REMINDER_SLOTS = [
+    { id: "12:00", minutes: 12 * 60 },
+    { id: "14:30", minutes: 14 * 60 + 30 },
+    { id: "17:00", minutes: 17 * 60 },
+    { id: "19:30", minutes: 19 * 60 + 30 },
+    { id: "22:00", minutes: 22 * 60 }
+  ];
   const MAX_MINUTES = 59;
   const MINUTE_VALUES = MAX_MINUTES + 1;
   let state = loadState();
@@ -36,10 +43,13 @@
   let serviceWorkerRegistration = null;
   let streakViewMonth = new Date().getMonth();
   let streakViewYear = new Date().getFullYear();
+  let streakReminderTimer = 0;
+  let androidNotificationPermission = "unknown";
 
   addButton();
   addMenu();
   addStreakButton();
+  addNotificationAlertButton();
   addStreakMenu();
   bindEvents();
   registerDeviceSupport();
@@ -48,7 +58,7 @@
   startTickerIfNeeded();
   restoreMobileFloating();
   syncStreakWithAndroid();
-  maybeShowStreakReminder();
+  startStreakReminderChecks();
   if (state.running) requestWakeLock();
 
   function addButton() {
@@ -88,6 +98,20 @@
     button.title = "Racha de estudio";
     button.innerHTML = icon("streak");
     nav.appendChild(button);
+  }
+
+  function addNotificationAlertButton() {
+    const nav = topbar.querySelector(".topbar__nav");
+    if (!nav || nav.querySelector("[data-streak-notification-enable]")) return;
+    const button = document.createElement("button");
+    button.className = "topbar__link topbar-icon-btn notification-alert-top-btn";
+    button.type = "button";
+    button.dataset.streakNotificationEnable = "true";
+    button.setAttribute("aria-label", "Activar recordatorios de estudio");
+    button.title = "Activar recordatorios de estudio";
+    button.innerHTML = icon("alert");
+    nav.appendChild(button);
+    renderNotificationAlert();
   }
 
   function addStreakMenu() {
@@ -325,7 +349,13 @@
     });
     window.addEventListener("estudiemos-android-ready", () => {
       syncStreakWithAndroid();
+      requestAndroidNotificationStatus();
       renderDeviceAlerts();
+    });
+    window.addEventListener("estudiemos-android-notification-status", (event) => {
+      androidNotificationPermission = event.detail?.permission || "unknown";
+      renderDeviceAlerts();
+      renderNotificationAlert();
     });
     window.addEventListener("estudiemos:cloud-restored", () => {
       streakState = loadStreakState();
@@ -338,6 +368,12 @@
       reconcileTimer(true);
       render();
       syncWakeLock();
+      renderNotificationAlert();
+      maybeShowStreakReminder();
+    });
+    window.addEventListener("focus", () => {
+      renderNotificationAlert();
+      maybeShowStreakReminder();
     });
     document.addEventListener("estudiemos:navigation", () => {
       if (isOpen()) placeMenu();
@@ -357,8 +393,16 @@
   function handleDocumentClick(event) {
     const openButton = event.target.closest("[data-pomodoro-open]");
     const streakOpenButton = event.target.closest("[data-streak-open]");
+    const notificationAlertButton = event.target.closest("[data-streak-notification-enable]");
     const menu = document.querySelector(".pomodoro-menu");
     const streakMenu = document.querySelector(".streak-menu__panel");
+
+    if (notificationAlertButton) {
+      event.preventDefault();
+      event.stopPropagation();
+      requestDeviceAlerts();
+      return;
+    }
 
     if (streakOpenButton) {
       event.preventDefault();
@@ -1600,7 +1644,7 @@
       try {
         window.EstudiemosAndroid.postMessage(JSON.stringify({ type: "pomodoro-reminder-enable" }));
       } catch (error) {}
-      renderDeviceAlerts();
+      window.setTimeout(requestAndroidNotificationStatus, 300);
       return;
     }
     if (!("Notification" in window)) {
@@ -1614,6 +1658,35 @@
       }
     } catch (error) {}
     renderDeviceAlerts();
+    renderNotificationAlert();
+  }
+
+  function requestAndroidNotificationStatus() {
+    if (!window.EstudiemosAndroid || typeof window.EstudiemosAndroid.postMessage !== "function") return;
+    try {
+      window.EstudiemosAndroid.postMessage(JSON.stringify({ type: "pomodoro-notification-status" }));
+    } catch (error) {}
+  }
+
+  function currentNotificationPermission() {
+    if (window.EstudiemosAndroid && typeof window.EstudiemosAndroid.postMessage === "function") {
+      return androidNotificationPermission;
+    }
+    if (!("Notification" in window) || !("serviceWorker" in navigator)) return "unsupported";
+    return Notification.permission;
+  }
+
+  function renderNotificationAlert() {
+    const button = document.querySelector("[data-streak-notification-enable]");
+    if (!button) return;
+    const permission = currentNotificationPermission();
+    button.hidden = permission === "granted";
+    button.dataset.permission = permission;
+    button.title = permission === "denied"
+      ? "Las notificaciones están bloqueadas. Habilitalas en los ajustes del dispositivo."
+      : permission === "unsupported"
+        ? "Instalá Estudiemos para activar recordatorios."
+        : "Activar recordatorios de estudio";
   }
 
   function renderDeviceAlerts() {
@@ -1623,10 +1696,11 @@
     const nativeAndroid = Boolean(window.EstudiemosAndroid && typeof window.EstudiemosAndroid.postMessage === "function");
     const supported = nativeAndroid || ("Notification" in window && "serviceWorker" in navigator);
     if (nativeAndroid) {
-      button.disabled = false;
-      button.textContent = "Activar";
-      row.dataset.status = "native";
-      row.title = "Activa un único recordatorio diario para cuidar tu racha.";
+      const permission = androidNotificationPermission;
+      button.disabled = permission === "granted";
+      button.textContent = permission === "granted" ? "Activos" : permission === "denied" ? "Revisar ajustes" : "Activar";
+      row.dataset.status = permission;
+      row.title = "Activa recordatorios de racha entre las 12:00 y las 22:00.";
       return;
     }
     const permission = supported ? Notification.permission : "unsupported";
@@ -1642,15 +1716,15 @@
       : "En iPhone, agregá Estudiemos a la pantalla de inicio para activar avisos.";
   }
 
-  async function showDeviceNotification(title, body) {
-    if (!("Notification" in window) || Notification.permission !== "granted") return;
+  async function showDeviceNotification(title, body, overrides = {}) {
+    if (!("Notification" in window) || Notification.permission !== "granted") return false;
     const options = {
       body,
       icon: new URL("../assets/icon-192.png", SCRIPT_URL).href,
       badge: new URL("../assets/icon-192.png", SCRIPT_URL).href,
-      tag: "estudiemos-pomodoro",
+      tag: overrides.tag || "estudiemos-pomodoro",
       renotify: true,
-      requireInteraction: true,
+      requireInteraction: overrides.requireInteraction ?? true,
       vibrate: [180, 90, 180, 90, 260],
       data: { url: location.href }
     };
@@ -1658,8 +1732,14 @@
       const registration = serviceWorkerRegistration || await navigator.serviceWorker?.ready;
       if (registration) await registration.showNotification(title, options);
       else new Notification(title, options);
+      return true;
     } catch (error) {
-      try { new Notification(title, options); } catch (notificationError) {}
+      try {
+        new Notification(title, options);
+        return true;
+      } catch (notificationError) {
+        return false;
+      }
     }
   }
 
@@ -1676,9 +1756,9 @@
       });
     }
     return {
-      version: 1,
+      version: 2,
       days,
-      reminderDate: /^\d{4}-\d{2}-\d{2}$/.test(saved.reminderDate || "") ? saved.reminderDate : ""
+      reminderSlots: saved.reminderSlots && typeof saved.reminderSlots === "object" ? saved.reminderSlots : {}
     };
   }
 
@@ -1813,19 +1893,44 @@
     } catch (error) {}
   }
 
+  function startStreakReminderChecks() {
+    window.clearInterval(streakReminderTimer);
+    maybeShowStreakReminder();
+    streakReminderTimer = window.setInterval(maybeShowStreakReminder, 60 * 1000);
+    requestAndroidNotificationStatus();
+    renderNotificationAlert();
+  }
+
   async function maybeShowStreakReminder() {
-    if (window.EstudiemosAndroid || new Date().getHours() < 20) return;
+    if (window.EstudiemosAndroid) return;
     const summary = streakSummary();
-    if (summary.todayActive || summary.activeLast7 === 0 || streakState.reminderDate === summary.today) return;
+    if (summary.todayActive) return;
     if (!("Notification" in window) || Notification.permission !== "granted") return;
-    streakState.reminderDate = summary.today;
-    saveStreakState();
-    await showDeviceNotification(
-      "Tu racha sigue disponible",
-      summary.currentStreak > 0
-        ? "Todavía estás a tiempo de mantener tu racha. 25 min alcanzan."
-        : "Perdiste la racha, pero podés recuperar el ritmo con una sesión hoy."
+    const now = new Date();
+    const minutes = now.getHours() * 60 + now.getMinutes();
+    const delivered = Array.isArray(streakState.reminderSlots[summary.today])
+      ? streakState.reminderSlots[summary.today]
+      : [];
+    const eligible = STREAK_REMINDER_SLOTS.filter((slot) => slot.minutes <= minutes && !delivered.includes(slot.id));
+    if (!eligible.length) return;
+
+    const latest = eligible[eligible.length - 1];
+    const shown = await showDeviceNotification(
+      "Momento de estudiar",
+      "Todavía estás a tiempo de mantener tu racha. 25 min alcanzan.",
+      { tag: `estudiemos-streak-${summary.today}-${latest.id}`, requireInteraction: false }
     );
+    if (!shown) return;
+    streakState.reminderSlots[summary.today] = Array.from(new Set([...delivered, ...eligible.map((slot) => slot.id)]));
+    pruneReminderHistory();
+    saveStreakState();
+  }
+
+  function pruneReminderHistory() {
+    const oldest = dateKey(-14);
+    Object.keys(streakState.reminderSlots).forEach((key) => {
+      if (key < oldest) delete streakState.reminderSlots[key];
+    });
   }
 
   function pruneStreakHistory() {
@@ -2311,6 +2416,7 @@
       popout: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6h-2V7.4l-7.3 7.3-1.4-1.4L16.6 6H14V4ZM5 6h6v2H7v9h9v-4h2v6H5V6Z"/></svg>',
       settings: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.7 4.1a2.3 2.3 0 0 1 4.6 0 2.3 2.3 0 0 0 3.3 1.9 2.3 2.3 0 0 1 2.3 4 2.3 2.3 0 0 0 0 3.8 2.3 2.3 0 0 1-2.3 4 2.3 2.3 0 0 0-3.3 1.9 2.3 2.3 0 0 1-4.6 0 2.3 2.3 0 0 0-3.3-1.9 2.3 2.3 0 0 1-2.3-4 2.3 2.3 0 0 0 0-3.8 2.3 2.3 0 0 1 2.3-4 2.3 2.3 0 0 0 3.3-1.9ZM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/></svg>',
       streak: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.2 2.2c.4 3-1 4.7-2.4 6.3-1.2-2.2-2.9-3.8-5-5.4.3 3.8-2.4 5.7-2.4 10.3A8.6 8.6 0 0 0 12 22a8.6 8.6 0 0 0 8.6-8.6c0-4.1-2.3-7.8-7.4-11.2ZM12 19.7a4.2 4.2 0 0 1-4.2-4.2c0-1.8.9-3.1 2.1-4.4.2 1.5.9 2.4 1.7 3.2 1.1-1.4 1.8-2.8 1.8-4.7 1.8 1.5 2.8 3.4 2.8 5.9a4.2 4.2 0 0 1-4.2 4.2Z"/></svg>',
+      alert: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 21 20H3L12 3.5Z"/><path d="M12 9v5.2M12 17.2v.2"/></svg>',
       chevronUp: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5.4 14.8 1.4 1.4 5.2-5.2 5.2 5.2 1.4-1.4L12 8.2l-6.6 6.6Z"/></svg>',
       chevronDown: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5.4 9.2 1.4-1.4 5.2 5.2 5.2-5.2 1.4 1.4L12 15.8 5.4 9.2Z"/></svg>'
     };

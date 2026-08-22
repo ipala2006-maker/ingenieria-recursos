@@ -52,7 +52,7 @@
     if (document.querySelector('link[href*="styles/professional.css"]')) return;
     var link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = getRootPath() + "styles/professional.css?v=20260822-install-update";
+    link.href = getRootPath() + "styles/professional.css?v=20260822-streak-reminders";
     document.head.appendChild(link);
   }
 

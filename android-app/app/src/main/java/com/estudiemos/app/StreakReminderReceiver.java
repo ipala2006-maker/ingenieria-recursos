@@ -21,16 +21,18 @@ public class StreakReminderReceiver extends BroadcastReceiver {
     private static final String KEY_LAST_NOTICE = "pomodoro_streak_last_notice";
     private static final String CHANNEL_ID = "study_streak";
     private static final int NOTIFICATION_ID = 4201;
+    private static final String EXTRA_SLOT = "reminder_slot";
+    private static final int[] SLOT_MINUTES = { 12 * 60, 14 * 60 + 30, 17 * 60, 19 * 60 + 30, 22 * 60 };
 
     @Override
     public void onReceive(Context context, Intent intent) {
         if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
-            scheduleDaily(context);
+            scheduleNext(context);
             return;
         }
         if (!ACTION_REMIND.equals(intent.getAction())) return;
-        showReminderIfNeeded(context);
-        scheduleDaily(context);
+        showReminderIfNeeded(context, intent.getStringExtra(EXTRA_SLOT));
+        scheduleNext(context);
     }
 
     static void setEnabled(Context context, boolean enabled) {
@@ -38,32 +40,58 @@ public class StreakReminderReceiver extends BroadcastReceiver {
                 .edit()
                 .putBoolean(KEY_ENABLED, enabled)
                 .apply();
-        if (enabled) scheduleDaily(context);
+        if (enabled) scheduleNext(context);
         else cancel(context);
     }
 
-    static void scheduleDaily(Context context) {
+    static boolean isEnabled(Context context) {
+        return context.getSharedPreferences(StreakWidgetProvider.PREFS, Context.MODE_PRIVATE)
+                .getBoolean(KEY_ENABLED, false);
+    }
+
+    static void scheduleNext(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(StreakWidgetProvider.PREFS, Context.MODE_PRIVATE);
         if (!prefs.getBoolean(KEY_ENABLED, false)) return;
         AlarmManager manager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (manager == null) return;
 
-        Calendar next = Calendar.getInstance();
-        next.set(Calendar.HOUR_OF_DAY, 20);
-        next.set(Calendar.MINUTE, 0);
-        next.set(Calendar.SECOND, 0);
-        next.set(Calendar.MILLISECOND, 0);
-        if (next.getTimeInMillis() <= System.currentTimeMillis()) next.add(Calendar.DAY_OF_YEAR, 1);
-        manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next.getTimeInMillis(), reminderIntent(context));
+        long now = System.currentTimeMillis();
+        Calendar next = null;
+        int nextSlot = SLOT_MINUTES[0];
+        for (int slot : SLOT_MINUTES) {
+            Calendar candidate = Calendar.getInstance();
+            candidate.set(Calendar.HOUR_OF_DAY, slot / 60);
+            candidate.set(Calendar.MINUTE, slot % 60);
+            candidate.set(Calendar.SECOND, 0);
+            candidate.set(Calendar.MILLISECOND, 0);
+            if (candidate.getTimeInMillis() > now) {
+                next = candidate;
+                nextSlot = slot;
+                break;
+            }
+        }
+        if (next == null) {
+            next = Calendar.getInstance();
+            next.add(Calendar.DAY_OF_YEAR, 1);
+            next.set(Calendar.HOUR_OF_DAY, SLOT_MINUTES[0] / 60);
+            next.set(Calendar.MINUTE, SLOT_MINUTES[0] % 60);
+            next.set(Calendar.SECOND, 0);
+            next.set(Calendar.MILLISECOND, 0);
+            nextSlot = SLOT_MINUTES[0];
+        }
+        String slotId = String.format(java.util.Locale.ROOT, "%02d:%02d", nextSlot / 60, nextSlot % 60);
+        manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next.getTimeInMillis(), reminderIntent(context, slotId));
     }
 
     private static void cancel(Context context) {
         AlarmManager manager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-        if (manager != null) manager.cancel(reminderIntent(context));
+        if (manager != null) manager.cancel(reminderIntent(context, ""));
     }
 
-    private static PendingIntent reminderIntent(Context context) {
-        Intent intent = new Intent(context, StreakReminderReceiver.class).setAction(ACTION_REMIND);
+    private static PendingIntent reminderIntent(Context context, String slotId) {
+        Intent intent = new Intent(context, StreakReminderReceiver.class)
+                .setAction(ACTION_REMIND)
+                .putExtra(EXTRA_SLOT, slotId);
         return PendingIntent.getBroadcast(
                 context,
                 4200,
@@ -72,17 +100,18 @@ public class StreakReminderReceiver extends BroadcastReceiver {
         );
     }
 
-    private static void showReminderIfNeeded(Context context) {
+    private static void showReminderIfNeeded(Context context, String slotId) {
         if (
                 Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                 context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) return;
 
         StreakWidgetProvider.StreakSummary summary = StreakWidgetProvider.readSummary(context);
-        if (summary.activeToday || summary.activeLast7 == 0) return;
+        if (summary.activeToday) return;
         SharedPreferences prefs = context.getSharedPreferences(StreakWidgetProvider.PREFS, Context.MODE_PRIVATE);
         String today = LocalDate.now().toString();
-        if (today.equals(prefs.getString(KEY_LAST_NOTICE, ""))) return;
+        String noticeKey = today + "|" + (slotId == null ? "" : slotId);
+        if (noticeKey.equals(prefs.getString(KEY_LAST_NOTICE, ""))) return;
 
         NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         if (manager == null) return;
@@ -92,7 +121,7 @@ public class StreakReminderReceiver extends BroadcastReceiver {
                     "Racha de estudio",
                     NotificationManager.IMPORTANCE_DEFAULT
             );
-            channel.setDescription("Un recordatorio diario para cuidar tu ritmo de estudio.");
+            channel.setDescription("Recordatorios suaves para completar 25 minutos de estudio al día.");
             manager.createNotificationChannel(channel);
         }
 
@@ -105,18 +134,16 @@ public class StreakReminderReceiver extends BroadcastReceiver {
                 openIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
-        String body = summary.currentStreak > 0
-                ? "Todavía estás a tiempo de mantener tu racha. 25 min alcanzan."
-                : "Perdiste la racha, pero podés recuperar el ritmo con una sesión hoy.";
+        String body = "Todavía estás a tiempo de mantener tu racha. 25 min alcanzan.";
         android.app.Notification notification = new android.app.Notification.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle("Tu racha sigue disponible")
+                .setContentTitle("Momento de estudiar")
                 .setContentText(body)
                 .setStyle(new android.app.Notification.BigTextStyle().bigText(body))
                 .setContentIntent(contentIntent)
                 .setAutoCancel(true)
                 .build();
         manager.notify(NOTIFICATION_ID, notification);
-        prefs.edit().putString(KEY_LAST_NOTICE, today).apply();
+        prefs.edit().putString(KEY_LAST_NOTICE, noticeKey).apply();
     }
 }

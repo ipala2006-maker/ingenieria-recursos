@@ -158,7 +158,7 @@
 
     const link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = `${rootPath}styles/professional.css?v=20260822-install-update`;
+    link.href = `${rootPath}styles/professional.css?v=20260822-streak-reminders`;
     document.head.appendChild(link);
   }
 
@@ -229,7 +229,7 @@
     if (document.querySelector('script[src*="scripts/pomodoro.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/pomodoro.js?v=20260821-study-streak`;
+    script.src = `${rootPath}scripts/pomodoro.js?v=20260822-streak-reminders`;
     script.defer = true;
     document.head.appendChild(script);
   }
