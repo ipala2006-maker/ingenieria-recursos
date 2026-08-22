@@ -44,6 +44,7 @@
 
         <receiver
             android:name=".AgendaWidgetProvider"
+            android:label="@string/agenda_widget_name"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -55,6 +56,7 @@
 
         <receiver
             android:name=".CalendarWidgetProvider"
+            android:label="@string/calendar_widget_name"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />

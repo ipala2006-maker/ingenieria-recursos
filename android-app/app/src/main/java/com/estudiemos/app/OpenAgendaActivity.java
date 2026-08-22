@@ -2,7 +2,6 @@ package com.estudiemos.app;
 
 import android.app.Activity;
 import android.content.Intent;
-import android.net.Uri;
 import android.os.Bundle;
 
 public class OpenAgendaActivity extends Activity {
@@ -12,11 +11,13 @@ public class OpenAgendaActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         String date = getIntent().getStringExtra(EXTRA_DATE);
-        StringBuilder url = new StringBuilder("https://estudiemos-app.vercel.app/?agenda=1");
+        Intent openAgenda = new Intent(this, MainActivity.class)
+                .putExtra(MainActivity.EXTRA_OPEN_AGENDA, true)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         if (date != null && date.matches("\\d{4}-\\d{2}-\\d{2}")) {
-            url.append("&date=").append(Uri.encode(date));
+            openAgenda.putExtra(MainActivity.EXTRA_AGENDA_DATE, date);
         }
-        startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url.toString())));
+        startActivity(openAgenda);
         finish();
     }
 }

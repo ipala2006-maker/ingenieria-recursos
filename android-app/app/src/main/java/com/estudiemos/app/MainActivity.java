@@ -30,10 +30,12 @@ public class MainActivity extends Activity {
     private static final String APP_URL = "https://estudiemos-app.vercel.app/";
     private static final String APP_ORIGIN = "https://estudiemos-app.vercel.app";
     public static final String EXTRA_OPEN_AGENDA = "open_agenda";
+    public static final String EXTRA_AGENDA_DATE = "agenda_date";
     public static final String EXTRA_OPEN_POMODORO = "open_pomodoro";
 
     private WebView webView;
     private boolean openAgendaRequested;
+    private String agendaDateRequested;
     private boolean openPomodoroRequested;
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -41,6 +43,7 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         openAgendaRequested = getIntent().getBooleanExtra(EXTRA_OPEN_AGENDA, false);
+        agendaDateRequested = getIntent().getStringExtra(EXTRA_AGENDA_DATE);
         openPomodoroRequested = getIntent().getBooleanExtra(EXTRA_OPEN_POMODORO, false);
 
         webView = new WebView(this);
@@ -161,8 +164,16 @@ public class MainActivity extends Activity {
     private void openAgendaIfRequested() {
         if (!openAgendaRequested) return;
         openAgendaRequested = false;
+        String date = agendaDateRequested;
+        agendaDateRequested = null;
+        String selectDate = "";
+        if (date != null && date.matches("\\d{4}-\\d{2}-\\d{2}")) {
+            String selector = "[data-agenda-date=\\\"" + date + "\\\"]";
+            selectDate = "window.setTimeout(function(){document.querySelector(" +
+                    JSONObject.quote(selector) + ")?.click();},80);";
+        }
         webView.evaluateJavascript(
-                "document.querySelector('[data-agenda-open]')?.click();",
+                "document.querySelector('[data-agenda-open]')?.click();" + selectDate,
                 null
         );
     }
@@ -191,6 +202,7 @@ public class MainActivity extends Activity {
         super.onNewIntent(intent);
         setIntent(intent);
         openAgendaRequested = intent.getBooleanExtra(EXTRA_OPEN_AGENDA, false);
+        agendaDateRequested = intent.getStringExtra(EXTRA_AGENDA_DATE);
         openPomodoroRequested = intent.getBooleanExtra(EXTRA_OPEN_POMODORO, false);
         openAgendaIfRequested();
         openPomodoroIfRequested();
