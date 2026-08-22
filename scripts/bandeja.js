@@ -1191,9 +1191,9 @@
 
     const visibleItems = items.filter((item) => {
       if (agendaFilter === "day") return item.date === selectedAgendaDate;
-      if (agendaFilter === "done") return item.done;
+      if (agendaFilter === "done") return isCompletableAgendaItem(item) && item.done;
       if (agendaFilter === "all") return true;
-      return !item.done;
+      return isCompletableAgendaItem(item) && !item.done;
     });
 
     document.querySelectorAll("[data-agenda-filter]").forEach((button) => {
@@ -1207,13 +1207,18 @@
 
     container.innerHTML = visibleItems.map((item) => `
       <article class="agenda-item ${agendaTypeClass(item.type)} ${item.done ? "is-done" : ""}">
-        <label class="agenda-item__check">
+        ${isCompletableAgendaItem(item) ? `<label class="agenda-item__check">
           <input type="checkbox" data-agenda-done="${escapeAttr(item.id)}" ${item.done ? "checked" : ""} />
           <span>
             <strong>${escapeHtml(item.title)}</strong>
             ${item.note ? `<small>${escapeHtml(item.note)}</small>` : ""}
           </span>
-        </label>
+        </label>` : `<div class="agenda-item__check agenda-item__check--event">
+          <span>
+            <strong>${escapeHtml(item.title)}</strong>
+            ${item.note ? `<small>${escapeHtml(item.note)}</small>` : ""}
+          </span>
+        </div>`}
         <div class="agenda-item__meta">
           <span class="agenda-type-badge ${agendaTypeClass(item.type)}">${escapeHtml(item.type)}</span>
           ${item.date ? `<span>${escapeHtml(formatAgendaDate(item.date))}</span>` : ""}
@@ -1229,7 +1234,7 @@
     const container = document.getElementById("agendaMiniList");
     if (!container) return;
 
-    const nextItems = items.filter((item) => !item.done).slice(0, 3);
+    const nextItems = items.filter((item) => isCompletableAgendaItem(item) && !item.done).slice(0, 3);
     if (!nextItems.length) {
       container.innerHTML = `<p class="tray-empty">Sin pendientes próximos.</p>`;
       return;
@@ -1347,6 +1352,7 @@
   function toggleAgendaDone(id) {
     const items = readList(STORAGE_KEYS.agenda).map((item) => {
       if (item.id !== id) return item;
+      if (!isCompletableAgendaItem(normalizeAgendaItem(item) || item)) return item;
       return { ...item, done: !item.done };
     });
     writeList(STORAGE_KEYS.agenda, items);
@@ -1383,6 +1389,10 @@
     if (a.horaInicio && !b.horaInicio) return -1;
     if (!a.horaInicio && b.horaInicio) return 1;
     return b.createdAt - a.createdAt;
+  }
+
+  function isCompletableAgendaItem(item) {
+    return item?.type !== "Clase";
   }
 
   function normalizeAgendaType(type) {

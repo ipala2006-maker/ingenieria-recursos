@@ -120,7 +120,7 @@
       window.EstudiemosRoot = rootPath || "./";
     }
     var script = document.createElement("script");
-    script.src = rootPath + "scripts/smooth-nav.js?v=20260822-shell-stable";
+    script.src = rootPath + "scripts/smooth-nav.js?v=20260822-history-fix";
     script.defer = true;
     document.head.appendChild(script);
   }

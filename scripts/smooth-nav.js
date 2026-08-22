@@ -7,6 +7,7 @@
   const MAX_IDLE_PREFETCH = 12;
   const MAIN_SELECTOR = "main.container";
   let navigating = false;
+  let renderedUrl = location.href;
 
   saveCurrentHistoryState();
   bindNavigationHints();
@@ -22,12 +23,10 @@
 
     window.addEventListener("popstate", (event) => {
       const url = event.state?.url || location.href;
+      if (url === renderedUrl) return;
       if (canSwapUrl(url)) {
         swapTo(url, { push: false, restoreScroll: true });
-        return;
       }
-
-      if (event.state?.url && url === location.href) location.reload();
     });
 
     window.addEventListener("pageshow", () => {
@@ -148,6 +147,7 @@
       else saveCurrentHistoryState();
 
       currentMain.replaceWith(next.main);
+      renderedUrl = new URL(url, location.href).href;
 
       if (options.restoreScroll) {
         requestAnimationFrame(() => scrollTo(0, Number(history.state?.scroll || 0)));

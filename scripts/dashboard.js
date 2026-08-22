@@ -323,7 +323,7 @@
   function renderAgenda() {
     const container = document.querySelector("[data-dashboard-agenda]");
     if (!container) return;
-    const items = readAgenda().filter((item) => !item.done).sort(compareAgenda).slice(0, 4);
+    const items = readAgenda().filter((item) => isCompletable(item) && !item.done).sort(compareAgenda).slice(0, 4);
     if (!items.length) {
       container.innerHTML = '<p class="dashboard-agenda__empty">No tenés tareas pendientes.</p>';
       return;
@@ -345,6 +345,10 @@
 
   function toggleDone(id) {
     writeAgenda(readAgenda().map((item) => item.id === id ? { ...item, done: !item.done } : item));
+  }
+
+  function isCompletable(item) {
+    return item.type !== "Clase";
   }
 
   function updateSpaceSummary(event) {
