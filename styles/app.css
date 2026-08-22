@@ -306,6 +306,102 @@ img{ max-width: 100%; display:block; }
 }
 .btn:hover{ border-color: rgba(110,231,255,.35); background: rgba(110,231,255,.08); }
 
+.about-legal{
+  margin:22px 0 18px;
+  padding-top:20px;
+  border-top:1px solid var(--border);
+}
+.about-legal__head{
+  margin-bottom:12px;
+}
+.about-legal__eyebrow{
+  margin:0 0 4px;
+  color:var(--accent);
+  font-size:11px;
+  font-weight:700;
+  text-transform:uppercase;
+}
+.about-legal h2{
+  margin:0 0 4px;
+  font-size:18px;
+}
+.about-legal__head .muted{
+  margin:0;
+}
+.legal-disclosure{
+  border-top:1px solid var(--border);
+}
+.legal-disclosure:last-of-type{
+  border-bottom:1px solid var(--border);
+}
+.legal-disclosure summary{
+  min-height:52px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  padding:12px 4px;
+  color:var(--text);
+  font-weight:700;
+  cursor:pointer;
+  list-style:none;
+}
+.legal-disclosure summary::-webkit-details-marker{
+  display:none;
+}
+.legal-disclosure summary:focus-visible{
+  outline:2px solid var(--accent);
+  outline-offset:3px;
+  border-radius:8px;
+}
+.legal-disclosure__hint{
+  color:var(--muted);
+  font-size:12px;
+  font-weight:600;
+}
+.legal-disclosure[open] .legal-disclosure__hint::before{
+  content:"Cerrar";
+}
+.legal-disclosure[open] .legal-disclosure__hint{
+  font-size:0;
+}
+.legal-disclosure[open] .legal-disclosure__hint::before{
+  font-size:12px;
+}
+.legal-copy{
+  max-width:78ch;
+  padding:2px 4px 18px;
+  color:var(--muted);
+  line-height:1.65;
+}
+.legal-copy h3{
+  margin:18px 0 5px;
+  color:var(--text);
+  font-size:15px;
+}
+.legal-copy p{
+  margin:0 0 10px;
+}
+.legal-copy__notice{
+  margin-top:16px !important;
+  padding:12px 14px;
+  border-left:3px solid var(--accent);
+  background:rgba(110,231,255,.06);
+  color:var(--text);
+}
+.about-back{
+  margin-top:2px;
+}
+
+@media(max-width:520px){
+  .legal-disclosure summary{
+    min-height:48px;
+  }
+  .legal-copy{
+    font-size:14px;
+  }
+}
+
 .ai-professor-card{
   display:flex;
   align-items:center;
