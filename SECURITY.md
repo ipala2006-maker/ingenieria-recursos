@@ -1,6 +1,6 @@
 # Seguridad de Estudiemos
 
-Estudiemos usa una función de Vercel para el asistente de agenda y Supabase para las cuentas y la sincronización entre dispositivos.
+Estudiemos usa una función de Vercel para el asistente de Inbox y calendario, y Supabase para las cuentas y la sincronización entre dispositivos.
 
 ## Reglas para mantenerlo seguro
 

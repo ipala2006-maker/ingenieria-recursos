@@ -2,7 +2,7 @@
   "id": "/",
   "name": "Estudiemos",
   "short_name": "Estudiemos",
-  "description": "Aplicación de productividad para organizar archivos, agenda y sesiones de estudio.",
+  "description": "Aplicación de productividad para organizar archivos, Inbox, calendario y sesiones de estudio.",
   "lang": "es-AR",
   "start_url": "/",
   "scope": "/",

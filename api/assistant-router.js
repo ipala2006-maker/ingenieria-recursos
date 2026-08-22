@@ -102,7 +102,7 @@ function sanitizeRoute(raw) {
   const destination = ["agenda", "workspace"].includes(raw?.destination) ? raw.destination : "none";
   let clarification = cleanText(raw?.clarification, 300);
   if (destination === "none" && !clarification) {
-    clarification = "¿Querés que te ayude con la agenda o con tus carpetas y archivos?";
+    clarification = "¿Querés que te ayude con Inbox, el calendario o tus carpetas y archivos?";
   }
   return {
     destination,

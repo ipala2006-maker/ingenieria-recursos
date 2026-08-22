@@ -82,7 +82,7 @@
           </header>
           <form class="quick-panel__form" data-general-ai-form>
             <label class="quick-panel__field">Tu indicación<textarea name="instruction" maxlength="1200" rows="5" required placeholder="Ej: Agendá el parcial de Física para el viernes, o creá carpetas para ordenar mis apuntes."></textarea></label>
-            <p class="quick-panel__hint">Puede ayudarte con la agenda, las tareas, las carpetas y los archivos. Siempre revisás los cambios antes de aplicarlos.</p>
+            <p class="quick-panel__hint">Puede ayudarte con Inbox, el calendario, las carpetas y los archivos. Siempre revisás los cambios antes de aplicarlos.</p>
             <p class="quick-panel__status" data-general-ai-status role="status" aria-live="polite"></p>
             <button class="quick-panel__submit" type="submit"><svg viewBox="0 0 24 24"><path d="m12 3 1.3 4.2L17 9l-3.7 1.8L12 15l-1.3-4.2L7 9l3.7-1.8L12 3Z"/></svg><span>Continuar</span></button>
           </form>
@@ -251,7 +251,7 @@
       }
       const destination = result.route?.destination;
       if (!['agenda', 'workspace'].includes(destination)) {
-        setAssistantStatus("¿Querés organizar tu agenda o tus archivos?", "info");
+        setAssistantStatus("¿Querés organizar tu Inbox, calendario o archivos?", "info");
         return;
       }
       closeActivePanel();

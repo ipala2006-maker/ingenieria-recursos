@@ -76,7 +76,7 @@
         android:layout_height="wrap_content"
         android:gravity="end"
         android:paddingTop="6dp"
-        android:text="Tocá un día para abrir la agenda"
+        android:text="Tocá un día para abrir el calendario"
         android:textColor="#8BB5FF"
         android:textSize="10sp"
         android:textStyle="bold" />

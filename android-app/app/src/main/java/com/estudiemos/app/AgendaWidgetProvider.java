@@ -95,10 +95,10 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
 
         if (entries.isEmpty()) {
             views.setViewVisibility(R.id.widget_empty, View.VISIBLE);
-            views.setTextViewText(R.id.widget_footer, "Tocá para abrir la agenda");
+            views.setTextViewText(R.id.widget_footer, "Tocá para abrir Inbox");
         } else {
             views.setViewVisibility(R.id.widget_empty, View.GONE);
-            views.setTextViewText(R.id.widget_footer, entries.size() > 3 ? "+" + (entries.size() - 3) + " próximos" : "Abrir agenda");
+            views.setTextViewText(R.id.widget_footer, entries.size() > 3 ? "+" + (entries.size() - 3) + " próximos" : "Abrir Inbox");
         }
         manager.updateAppWidget(appWidgetId, views);
     }

@@ -112,7 +112,7 @@
     panel.className = "agenda-board";
     panel.setAttribute("aria-hidden", "true");
     panel.innerHTML = `
-      <div class="agenda-board__panel" role="dialog" aria-modal="false" aria-label="Agenda de estudio">
+      <div class="agenda-board__panel" role="dialog" aria-modal="false" aria-label="Calendario e Inbox">
         <header class="agenda-toolbar">
           <div class="agenda-toolbar__main">
             <button class="agenda-toolbar__today" type="button" data-agenda-today>Hoy</button>
@@ -121,7 +121,7 @@
               <button class="agenda-calendar__nav" type="button" data-agenda-month="next" aria-label="Mes siguiente">${icon("chevronRight")}</button>
             </div>
             <div>
-              <p class="tray-kicker">Agenda</p>
+              <p class="tray-kicker">Inbox</p>
               <h2 id="agendaMonthLabel"></h2>
             </div>
           </div>
@@ -129,7 +129,7 @@
             <button class="agenda-general-ai-btn" type="button" data-general-ai-open aria-label="Abrir asistente de Estudiemos" title="Asistente">${icon("sparkles")}</button>
             <button class="agenda-widget-sync-btn" type="button" data-agenda-widget-sync hidden>${icon("calendar")}<span>Widgets</span></button>
             <button class="agenda-create-btn" type="button" data-agenda-create>${icon("plus")}<span>Anotar</span></button>
-            <button class="tray-close" type="button" data-agenda-close aria-label="Cerrar agenda">${icon("lineClose")}</button>
+            <button class="tray-close" type="button" data-agenda-close aria-label="Cerrar Inbox y calendario">${icon("lineClose")}</button>
           </div>
         </header>
 
@@ -141,23 +141,23 @@
             <div id="agendaCalendarGrid" class="agenda-calendar__grid"></div>
           </section>
 
-          <aside class="agenda-editor" aria-label="Detalle de agenda">
+          <aside class="agenda-editor" aria-label="Detalle de Inbox">
             <section class="agenda-assistant" id="agendaAssistant" hidden>
               <div class="agenda-assistant__head">
                 <div>
                   <p class="tray-kicker">Asistente inteligente</p>
-                  <h3>Organizar cursado</h3>
+                  <h3>Organizar Inbox y calendario</h3>
                 </div>
                 <button class="agenda-assistant__close" type="button" data-agenda-assistant-close aria-label="Cerrar asistente">${icon("lineClose")}</button>
               </div>
-              <p class="agenda-assistant__intro">Decile qué necesitás organizar. Puede crear, corregir o eliminar anotaciones usando el contexto de tu agenda.</p>
+              <p class="agenda-assistant__intro">Decile qué necesitás organizar. Puede crear, corregir o eliminar anotaciones usando el contexto de tu Inbox y calendario.</p>
 
               <form id="agendaAssistantForm" class="agenda-assistant__form">
                 <label class="tray-field">
-                  Tus horarios
-                  <textarea id="agendaAssistantPrompt" rows="5" maxlength="1200" placeholder="Ej: Eliminá los horarios de Química que no sean lunes o martes y quitá también los duplicados."></textarea>
+                  Tu indicación
+                  <textarea id="agendaAssistantPrompt" rows="5" maxlength="1200" placeholder="Ej: Anotá comprar los materiales de Física."></textarea>
                 </label>
-                <p class="agenda-assistant__hint">Escribí con naturalidad. La IA revisará el resultado con vos antes de modificar la agenda.</p>
+                <p class="agenda-assistant__hint">Escribí con naturalidad. Si no indicás una fecha, la tarea quedará en Inbox.</p>
 
                 <div class="agenda-assistant__dates">
                   <label class="tray-field">
@@ -175,8 +175,8 @@
 
               <div id="agendaAssistantStatus" class="agenda-assistant__status" role="status" aria-live="polite"></div>
               <div id="agendaAssistantPreview" class="agenda-assistant__preview" hidden></div>
-              <button id="agendaAssistantConfirm" class="agenda-assistant__confirm" type="button" data-agenda-assistant-confirm hidden>Guardar en la agenda</button>
-              <p class="agenda-assistant__privacy">Solo se envían esta instrucción y los datos necesarios de la agenda. Los cambios requieren confirmación.</p>
+              <button id="agendaAssistantConfirm" class="agenda-assistant__confirm" type="button" data-agenda-assistant-confirm hidden>Guardar cambios</button>
+              <p class="agenda-assistant__privacy">Solo se envían esta instrucción y los datos necesarios de Inbox y calendario. Los cambios requieren confirmación.</p>
             </section>
 
             <details class="agenda-manual" data-agenda-manual>
@@ -200,7 +200,7 @@
               </form>
             </details>
 
-            <div class="agenda-filter" aria-label="Filtrar agenda">
+            <div class="agenda-filter" aria-label="Filtrar Inbox">
               <button class="agenda-filter__btn is-active" type="button" data-agenda-filter="day">Este día</button>
               <button class="agenda-filter__btn" type="button" data-agenda-filter="pending">Pendientes</button>
               <button class="agenda-filter__btn" type="button" data-agenda-filter="all">Todo</button>
@@ -267,8 +267,8 @@
     button.className = "topbar__link topbar-icon-btn agenda-top-btn";
     button.type = "button";
     button.dataset.agendaOpen = "true";
-    button.setAttribute("aria-label", "Abrir agenda");
-    button.title = "Agenda";
+    button.setAttribute("aria-label", "Abrir Inbox y calendario");
+    button.title = "Inbox";
     button.innerHTML = icon("calendar");
     nav.prepend(button);
   }
@@ -847,7 +847,7 @@
     }
 
     setAgendaAssistantLoading(interpret, true);
-    setAgendaAssistantStatus("La IA está revisando tu agenda...", "info");
+    setAgendaAssistantStatus("La IA está revisando tu Inbox y calendario...", "info");
 
     try {
       const response = await fetch(`${getRootPath()}api/agenda-ai`, {
@@ -877,7 +877,7 @@
         return;
       }
       if (!plan.changeCount) {
-        setAgendaAssistantStatus("No hay cambios nuevos para aplicar. Es posible que ya estén reflejados en la agenda.", "info");
+        setAgendaAssistantStatus("No hay cambios nuevos para aplicar. Es posible que ya estén reflejados en Inbox o el calendario.", "info");
         return;
       }
 
@@ -1138,7 +1138,7 @@
   }
 
   function agendaAssistantItemKey(item) {
-    return [item.type, normalizeAssistantText(item.subject), item.date, item.horaInicio, item.horaFin].join("|");
+    return [item.type, normalizeAssistantText(item.subject), normalizeAssistantText(item.title), item.date, item.horaInicio, item.horaFin].join("|");
   }
 
   function saveAgendaAssistantItems() {
@@ -1171,7 +1171,7 @@
     document.getElementById("agendaAssistantPreview")?.setAttribute("hidden", "");
     document.getElementById("agendaAssistantConfirm")?.setAttribute("hidden", "");
     document.getElementById("agendaAssistantConfirm")?.classList.remove("is-delete");
-    setAgendaAssistantStatus(appliedCount === 1 ? "Listo. Se aplicó 1 cambio en tu agenda." : `Listo. Se aplicaron ${appliedCount} cambios en tu agenda.`, "success");
+    setAgendaAssistantStatus(appliedCount === 1 ? "Listo. Se aplicó 1 cambio." : `Listo. Se aplicaron ${appliedCount} cambios.`, "success");
     renderAgenda();
   }
 

@@ -220,7 +220,7 @@
     if (document.querySelector('script[src*="scripts/bandeja.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/bandeja.js?v=20260822-widget-complete`;
+    script.src = `${rootPath}scripts/bandeja.js?v=20260822-inbox`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -237,7 +237,7 @@
   function loadDashboardScript() {
     if (document.querySelector('script[src*="scripts/dashboard.js"]')) return;
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/dashboard.js?v=20260822-streak-toolbar`;
+    script.src = `${rootPath}scripts/dashboard.js?v=20260822-inbox`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -275,7 +275,7 @@
     if (document.querySelector('script[src*="scripts/account.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/account.js?v=20260822-account-isolation`;
+    script.src = `${rootPath}scripts/account.js?v=20260822-inbox`;
     script.defer = true;
     document.head.appendChild(script);
   }

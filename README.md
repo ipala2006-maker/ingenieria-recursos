@@ -1,6 +1,6 @@
 # Estudiemos
 
-Aplicación de productividad para organizar archivos, agenda y sesiones de estudio.
+Aplicación de productividad para organizar archivos, Inbox, calendario y sesiones de estudio.
 
 Sitio público: [https://estudiemos-app.vercel.app](https://estudiemos-app.vercel.app)
 
@@ -9,10 +9,10 @@ Sitio público: [https://estudiemos-app.vercel.app](https://estudiemos-app.verce
 - `index.html`: página principal.
 - `scripts/workspace.js`: espacio privado de carpetas y archivos.
 - `data/data.js` y `pages/`: contenido educativo anterior conservado para no romper enlaces existentes.
-- `scripts/`: espacio personal, bandeja, agenda, cuenta, temporizador y navegación.
+- `scripts/`: espacio personal, Inbox, calendario, cuenta, temporizador y navegación.
 - `styles/`: estilos visuales.
 - `pdfs/`: material descargable.
-- `android-app/`: soporte Android para los widgets nativos de agenda y calendario.
+- `android-app/`: soporte Android para los widgets nativos de Inbox y calendario.
 
 El proyecto usa HTML, CSS y JavaScript sin framework ni dependencias. Vercel publica los archivos estáticos y ejecuta funciones pequeñas para los asistentes inteligentes.
 
@@ -70,7 +70,7 @@ El archivo `.env.example` muestra los nombres esperados sin contener secretos re
 
 ## Cuentas y sincronización
 
-Las cuentas usan Supabase Auth y tablas privadas protegidas con Row Level Security. Se sincronizan la agenda, las preferencias y el tema visual. Los archivos se guardan aparte en almacenamiento privado para que sigan disponibles en todos los dispositivos.
+Las cuentas usan Supabase Auth y tablas privadas protegidas con Row Level Security. Se sincronizan Inbox, el calendario, las preferencias y el tema visual. Los archivos se guardan aparte en almacenamiento privado para que sigan disponibles en todos los dispositivos.
 
 Configuración inicial:
 
@@ -98,7 +98,7 @@ El archivo privado de Google Sheets puede mostrar un registro de cuentas en una 
 
 La PWA instalada desde Chrome sigue siendo la aplicación principal. Como Android no permite que una PWA cree widgets del sistema por sí sola, la carpeta `android-app/` contiene un complemento nativo liviano que habilita tres widgets:
 
-- **Agenda académica:** muestra únicamente tareas, parciales, exámenes, entregas y trabajos pendientes.
+- **Inbox:** muestra únicamente tareas, parciales, exámenes, entregas y trabajos pendientes, incluso cuando no tienen fecha.
 - **Calendario académico:** muestra únicamente clases que tengan hora de inicio y hora de finalización.
 - **Racha de estudio:** registra presencia al completar 25 minutos de Pomodoro, muestra la actividad de los últimos siete días y abre el temporizador al tocarlo.
 
@@ -108,10 +108,10 @@ Cada cambio relacionado con Android genera un APK de prueba en GitHub:
 2. Entrar en la ejecución **Build Android app** más reciente.
 3. Descargar el archivo **Estudiemos-Android** en la sección de artefactos.
 4. Descomprimirlo e instalar `app-debug.apk` en Android.
-5. Abrir el perfil dentro de la aplicación y, en **Widgets de Android**, elegir **Agenda**, **Calendario** o **Racha**. Android mostrará la confirmación para colocarlo en la pantalla de inicio.
+5. Abrir el perfil dentro de la aplicación y, en **Widgets de Android**, elegir **Inbox**, **Calendario** o **Racha**. Android mostrará la confirmación para colocarlo en la pantalla de inicio.
    Si el teléfono no admite esa confirmación directa, mantener presionada la pantalla de inicio, elegir **Widgets** y buscar **Estudiemos**.
 6. Abrir Estudiemos desde Chrome o desde la PWA instalada.
-7. Entrar en la agenda y tocar **Widgets** cada vez que se quieran enviar la agenda y la racha desde la PWA a los widgets del teléfono.
+7. Entrar en Inbox y tocar **Widgets** cada vez que se quieran enviar Inbox, el calendario y la racha desde la PWA a los widgets del teléfono.
 
 Los datos se copian localmente entre la PWA y los widgets. La racha también se sincroniza entre dispositivos cuando el usuario inició sesión. Desde la configuración del Pomodoro se puede activar un único recordatorio diario a las 20:00; nunca se envía si la presencia del día ya está completa. Los cambios visuales de la web llegan sin reinstalar; los cambios del código Android requieren instalar un APK nuevo.
 

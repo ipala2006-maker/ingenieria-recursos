@@ -44,7 +44,7 @@ const RESPONSE_SCHEMA = {
         properties: {
           title: { type: "string" },
           eventType: { type: "string", enum: ["Tarea", "Parcial", "Clase", "Entrega", "Estudio", "Recordatorio"] },
-          date: { type: "string" },
+          date: { type: "string", description: "Fecha YYYY-MM-DD solo si el usuario menciono una fecha o dia; en otro caso cadena vacia para guardar en Inbox." },
           subject: { type: "string" },
           note: { type: "string" },
           horaInicio: { type: "string", description: "Hora HH:MM solo si el usuario la indico; en otro caso cadena vacia." },
@@ -61,11 +61,11 @@ const RESPONSE_SCHEMA = {
     },
     deleteRules: {
       type: "array",
-      description: "Reglas para borrados masivos o condicionales. El servidor las aplica de forma exacta sobre la agenda.",
+      description: "Reglas para borrados masivos o condicionales. El servidor las aplica de forma exacta sobre Inbox y calendario.",
       items: {
         type: "object",
         properties: {
-          subject: { type: "string", description: "Materia afectada. Vacio solamente si la orden abarca toda la agenda." },
+          subject: { type: "string", description: "Materia afectada. Vacio solamente si la orden abarca todo Inbox y calendario." },
           titleContains: { type: "string", description: "Texto que debe contener el titulo. Vacio si no corresponde." },
           dateFrom: { type: "string", description: "Fecha inicial YYYY-MM-DD. Vacio si no hay limite." },
           dateUntil: { type: "string", description: "Fecha final YYYY-MM-DD. Vacio si no hay limite." },
@@ -204,7 +204,7 @@ function isSameOriginRequest(request) {
 
 function validateInput(body) {
   const source = body && typeof body === "object" ? body : {};
-  if (JSON.stringify(source).length > 200000) return { ok: false, error: "La agenda enviada es demasiado grande." };
+  if (JSON.stringify(source).length > 200000) return { ok: false, error: "Los datos de Inbox y calendario son demasiado grandes." };
   const instruction = cleanText(source.instruction, MAX_INSTRUCTION_LENGTH);
   if (instruction.length < 3) return { ok: false, error: "Escribi una instruccion mas completa." };
 
@@ -259,11 +259,12 @@ function sanitizeAgendaItem(item) {
 }
 
 function buildModelRequest(input) {
-  const systemInstruction = `Sos el asistente de agenda academica de Estudiemos. Tu trabajo es comprender ordenes naturales en espanol rioplatense y convertirlas en un plan exacto de cambios, no conversar ni copiar la orden como titulo.
+  const systemInstruction = `Sos el asistente de organizacion academica de Estudiemos. Tu trabajo es comprender ordenes naturales en espanol rioplatense y convertirlas en un plan exacto de cambios, no conversar ni copiar la orden como titulo.
 
 Reglas de razonamiento:
+- Inbox es la lista de tareas, recordatorios y anotaciones pendientes. Es completamente valido crear elementos de Inbox sin fecha.
 - Interpreta la intencion completa, incluyendo negaciones, excepciones, pronombres, plurales, materias compartidas y varias acciones en una misma frase.
-- Usa la agenda recibida como unica fuente de verdad para borrar o editar. En deleteIds usa solamente IDs que existan.
+- Usa Inbox y el calendario recibidos como unica fuente de verdad para borrar o editar. En deleteIds usa solamente IDs que existan.
 - Si piden borrar eventos fuera de determinados dias, conserva los de los dias permitidos y selecciona todos los demas de esa materia.
 - Si piden quitar duplicados, conserva el registro mas antiguo de cada coincidencia por materia, fecha y horario, y elimina los posteriores.
 - Para borrados masivos, por materia, por dias, por rango o de duplicados usa deleteRules y deja deleteIds vacio. El servidor elegira los IDs exactos.
@@ -271,9 +272,12 @@ Reglas de razonamiento:
 - Usa deleteIds solamente cuando el usuario identifica una o pocas anotaciones concretas y no hace falta una regla.
 - No conviertas frases como "elimina...", "cambia..." o "mueve..." en eventos nuevos.
 - Para horarios semanales usa createSchedules. El domingo es 0, lunes 1, martes 2, miercoles 3, jueves 4, viernes 5 y sabado 6.
+- No uses createSchedules para una tarea o anotacion comun si el usuario no indico dias recurrentes.
 - Si varias materias comparten dias y horario, crea un horario separado para cada materia. Nunca combines dos materias conocidas en un mismo title o subject.
-- Para eventos de una sola fecha usa createEvents.
-- Si el usuario pide expresamente una tarea o anotacion "sin fecha", usa createEvents y deja date como cadena vacia. No inventes una fecha.
+- Para tareas, recordatorios y anotaciones usa createEvents, tengan fecha o no.
+- Si el usuario no menciona una fecha, un dia o una expresion temporal concreta, deja date como cadena vacia. No uses hoy ni el rango predeterminado y no pidas una fecha: la anotacion pertenece a Inbox.
+- Solo completa date cuando la instruccion menciona una fecha o un dia concreto, por ejemplo "hoy", "manana", "el viernes" o "23 de agosto".
+- Si el usuario pide expresamente una tarea o anotacion "sin fecha", deja date como cadena vacia.
 - Las horas son opcionales. Si el usuario no menciona una hora concreta, devuelve horaInicio y horaFin como cadenas vacias. Nunca inventes horarios para tareas, parciales, entregas, recordatorios ni sesiones de estudio.
 - Solo completa horaInicio y horaFin cuando la instruccion incluye una hora o un rango horario explicito. Expresiones generales como "manana", "por la tarde" o "cuando pueda" no autorizan a inferir una hora exacta.
 - Si el usuario no indica el periodo de una recurrencia, usa el rango predeterminado recibido.
@@ -350,6 +354,7 @@ function sanitizePlan(raw, input) {
   const deleted = new Set(deleteIds);
 
   const keepGeneratedTimes = instructionHasExplicitTime(input.instruction);
+  const keepGeneratedDates = instructionHasExplicitDate(input.instruction);
   const sanitizedSchedules = Array.isArray(source.createSchedules)
     ? source.createSchedules.map(sanitizeSchedule).filter(Boolean).slice(0, 50)
     : [];
@@ -360,6 +365,7 @@ function sanitizePlan(raw, input) {
     ? source.createEvents
       .map(sanitizeCreatedEvent)
       .filter(Boolean)
+      .map((item) => applyInstructionDatePolicy(item, keepGeneratedDates))
       .map((item) => applyInstructionTimePolicy(item, keepGeneratedTimes))
       .slice(0, 100)
     : [];
@@ -392,6 +398,27 @@ function applyInstructionTimePolicy(item, keepTimes, preserveExisting = false) {
     if (Object.prototype.hasOwnProperty.call(result, "horaFin")) result.horaFin = "";
   }
   return result;
+}
+
+function applyInstructionDatePolicy(item, keepDate) {
+  return keepDate ? item : { ...item, date: "" };
+}
+
+function instructionHasExplicitDate(value) {
+  const text = normalizeText(value);
+  const original = String(value || "").toLowerCase();
+  if (/\bsin\s+fecha\b/.test(text)) return false;
+  return (
+    /\b\d{4}-\d{2}-\d{2}\b/.test(original) ||
+    /\b\d{1,2}[\/-]\d{1,2}(?:[\/-]\d{2,4})?\b/.test(original) ||
+    /\b(?:hoy|manana|pasado manana|esta noche|este fin de semana|fin de mes)\b/.test(text) ||
+    /\b(?:lunes|martes|miercoles|jueves|viernes|sabado|domingo)\b/.test(text) ||
+    /\b(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\b/.test(text) ||
+    /\b(?:esta|proxima|siguiente)\s+(?:semana|quincena|mes)\b/.test(text) ||
+    /\b(?:la\s+)?(?:semana|quincena|mes)\s+que\s+viene\b/.test(text) ||
+    /\b(?:dentro de|en)\s+\d+\s+(?:dia|dias|semana|semanas|mes|meses)\b/.test(text) ||
+    /\b(?:el|para el|dia)\s+\d{1,2}\b/.test(text)
+  );
 }
 
 function instructionHasExplicitTime(value) {

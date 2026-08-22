@@ -121,7 +121,7 @@
             </div>
           </div>
           <div class="account-benefits">
-            <p>${checkIcon()} Agenda y organización</p>
+            <p>${checkIcon()} Inbox y organización</p>
             <p>${checkIcon()} Archivos y carpetas personales</p>
             <p>${checkIcon()} Tema y preferencias</p>
           </div>
@@ -154,7 +154,7 @@
           <strong>Widgets de Android</strong>
           <small>Elegí cuál querés agregar a la pantalla de inicio.</small>
           <div>
-            <button class="account-secondary" type="button" data-account-widget="agenda">Agenda</button>
+            <button class="account-secondary" type="button" data-account-widget="agenda">Inbox</button>
             <button class="account-secondary" type="button" data-account-widget="calendar">Calendario</button>
             <button class="account-secondary" type="button" data-account-widget="streak">Racha</button>
           </div>
