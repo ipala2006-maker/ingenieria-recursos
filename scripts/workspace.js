@@ -5,10 +5,11 @@
   const MAX_FILE_SIZE = 50 * 1024 * 1024;
   const VIEW_KEY = "estudiemos_workspace_view";
   const PLAN_PREVIEW_KEY = "estudiemos_workspace_plan_preview";
+  const PRICING_CURRENCY_KEY = "estudiemos_pricing_currency";
   const PLANS = {
-    initial: { name: "Plan inicial", limit: 250 * 1024 * 1024 },
-    plus: { name: "Estudiemos Plus", limit: 5 * 1024 * 1024 * 1024 },
-    pro: { name: "Estudiemos Pro", limit: 20 * 1024 * 1024 * 1024 }
+    initial: { name: "Plan inicial", limit: 250 * 1024 * 1024, price: 0 },
+    plus: { name: "Estudiemos Plus", limit: 5 * 1024 * 1024 * 1024, price: 5.99 },
+    pro: { name: "Estudiemos Pro", limit: 20 * 1024 * 1024 * 1024, price: 14.99 }
   };
   const state = {
     client: null,
@@ -20,7 +21,11 @@
     view: readView(),
     busy: false,
     aiPlan: null,
-    planPreview: readPlanPreview()
+    planPreview: readPlanPreview(),
+    pricingCurrency: readPricingCurrency(),
+    exchangeRate: null,
+    exchangeMeta: null,
+    exchangeLoading: false
   };
 
   const elements = {
@@ -66,6 +71,7 @@
       const signIn = event.target.closest("[data-workspace-signin]");
       const plans = event.target.closest("[data-workspace-plans]");
       const planSelect = event.target.closest("[data-workspace-plan-select]");
+      const pricingCurrency = event.target.closest("[data-workspace-pricing-currency]");
 
       if (upload) runAuthenticated(() => elements.fileInput?.click());
       if (folder) runAuthenticated(openNewFolderModal);
@@ -79,6 +85,7 @@
       if (signIn) window.EstudiemosAccount?.open();
       if (plans) openPlansModal();
       if (planSelect) selectPlanPreview(planSelect.dataset.workspacePlanSelect);
+      if (pricingCurrency) setPricingCurrency(pricingCurrency.dataset.workspacePricingCurrency);
       if (view) setView(view.dataset.workspaceView);
       if (breadcrumb) openFolder(breadcrumb.dataset.workspaceFolder || null);
       if (open) openItem(open.dataset.workspaceOpen);
@@ -310,12 +317,15 @@
 
   function openPlansModal() {
     const selected = state.planPreview;
-    const planCard = (id, name, storage, price, description) => `
-      <article class="workspace-plan-card ${selected === id ? "is-selected" : ""}">
-        <header><div><small>${selected === id ? "Plan seleccionado" : "Plan de prueba"}</small><h3>${name}</h3></div><strong>${price}</strong></header>
-        <p>${storage} de almacenamiento · Organizador inteligente incluido.</p>
-        <span>${description}</span>
-        <button class="workspace-btn ${selected === id ? "" : "workspace-btn--primary"}" type="button" data-workspace-plan-select="${id}" ${selected === id ? "disabled" : ""}>${selected === id ? "Seleccionado" : `Probar ${name}`}</button>
+    const planCard = (id, name, features, featured = false) => `
+      <article class="workspace-plan-card ${featured ? "workspace-plan-card--featured" : ""} ${selected === id ? "is-selected" : ""}">
+        ${featured ? '<span class="workspace-plan-badge">Más popular</span>' : ""}
+        <header>
+          <div><small>${selected === id ? "Plan seleccionado" : id === "pro" ? "Máximo rendimiento" : "Plan de prueba"}</small><h3>${name}</h3></div>
+          <strong data-workspace-plan-price="${id}">${id === "initial" ? "Gratis" : "Calculando..."}</strong>
+        </header>
+        <ul class="workspace-plan-features">${features.map((feature) => `<li>${icon("check")}<span>${feature}</span></li>`).join("")}</ul>
+        <button class="workspace-btn ${featured && selected !== id ? "workspace-btn--primary" : ""}" type="button" data-workspace-plan-select="${id}" ${selected === id ? "disabled" : ""}>${selected === id ? "Plan seleccionado" : id === "initial" ? "Elegir Inicial" : `Elegir ${name}`}</button>
       </article>`;
     openModal({
       eyebrow: "Vista previa",
@@ -323,15 +333,86 @@
       wide: true,
       body: `<div class="workspace-modal__body workspace-plans-preview">
         <p class="workspace-plans-preview__notice">Esta es una simulación para evaluar la experiencia. No pide tarjeta y no realiza ningún cobro.</p>
-        <div class="workspace-plan-grid">
-          ${planCard("initial", "Inicial", "250 MB", "Gratis", "Para empezar y ordenar los archivos esenciales.")}
-          ${planCard("plus", "Plus", "5 GB", "USD 5,99/mes", "Más espacio para apuntes, PDFs y entregas.")}
-          ${planCard("pro", "Pro", "20 GB", "USD 9,99/mes", "Para una biblioteca académica más completa.")}
+        <div class="workspace-pricing-tools">
+          <span>Moneda de referencia</span>
+          <div class="workspace-pricing-toggle" role="group" aria-label="Moneda de los precios">
+            <button type="button" data-workspace-pricing-currency="usd">USD</button>
+            <button type="button" data-workspace-pricing-currency="ars">ARS</button>
+          </div>
         </div>
-        <p class="workspace-plans-preview__foot">La IA está incluida en todos los planes. Los precios y límites todavía son de prueba.</p>
+        <div class="workspace-plan-grid">
+          ${planCard("initial", "Inicial", ["250 MB de almacenamiento", "Organizador con IA básico", "Consultas diarias limitadas"])}
+          ${planCard("plus", "Plus", ["5 GB de almacenamiento", "Organizador IA sin límites diarios", "Pensado para el uso académico cotidiano"], true)}
+          ${planCard("pro", "Pro", ["20 GB de almacenamiento", "IA con velocidad preferencial", "Soporte prioritario"])}
+        </div>
+        <p class="workspace-plans-preview__foot" data-workspace-rate-note>La IA está incluida en todos los planes. Los precios y límites todavía son de prueba.</p>
       </div>`,
       actions: '<button class="workspace-btn" type="button" data-workspace-modal-close>Cerrar</button>'
     });
+    renderPricingCurrency();
+    if (state.pricingCurrency === "ars") loadExchangeRate();
+  }
+
+  function setPricingCurrency(currency) {
+    if (!["usd", "ars"].includes(currency)) return;
+    state.pricingCurrency = currency;
+    try { localStorage.setItem(PRICING_CURRENCY_KEY, currency); } catch (error) {}
+    renderPricingCurrency();
+    if (currency === "ars") loadExchangeRate();
+  }
+
+  function renderPricingCurrency() {
+    document.querySelectorAll("[data-workspace-pricing-currency]").forEach((button) => {
+      const active = button.dataset.workspacePricingCurrency === state.pricingCurrency;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-pressed", String(active));
+    });
+    document.querySelectorAll("[data-workspace-plan-price]").forEach((target) => {
+      const plan = PLANS[target.dataset.workspacePlanPrice];
+      if (!plan) return;
+      if (!plan.price) {
+        target.textContent = "Gratis";
+      } else if (state.pricingCurrency === "usd") {
+        target.textContent = `$${plan.price.toFixed(2)} USD/mes`;
+      } else if (state.exchangeRate) {
+        const amount = Math.round(plan.price * state.exchangeRate);
+        target.textContent = `≈ $${new Intl.NumberFormat("es-AR").format(amount)} ARS/mes`;
+      } else {
+        target.textContent = state.exchangeLoading ? "Calculando..." : "ARS no disponible";
+      }
+    });
+
+    const note = document.querySelector("[data-workspace-rate-note]");
+    if (!note) return;
+    if (state.pricingCurrency === "usd") {
+      note.textContent = "La IA está incluida en todos los planes. Los precios y límites todavía son de prueba.";
+    } else if (state.exchangeRate && state.exchangeMeta) {
+      note.textContent = `Conversión orientativa con ${state.exchangeMeta.reference.toLowerCase()} ($${new Intl.NumberFormat("es-AR").format(state.exchangeRate)} ARS por USD). El cobro real todavía no está activo.`;
+    } else if (state.exchangeLoading) {
+      note.textContent = "Consultando la cotización de referencia del día...";
+    } else {
+      note.textContent = "No pudimos obtener la cotización del día. Podés seguir consultando los precios en USD.";
+    }
+  }
+
+  async function loadExchangeRate() {
+    if (state.exchangeRate || state.exchangeLoading) return;
+    state.exchangeLoading = true;
+    renderPricingCurrency();
+    try {
+      const result = await fetch(new URL("./api/exchange-rate", location.href), { headers: { Accept: "application/json" } });
+      const payload = await result.json().catch(() => null);
+      const rate = Number(payload?.rate);
+      if (!result.ok || !Number.isFinite(rate) || rate <= 0) throw new Error("invalid-rate");
+      state.exchangeRate = rate;
+      state.exchangeMeta = payload;
+    } catch (error) {
+      state.exchangeRate = null;
+      state.exchangeMeta = null;
+    } finally {
+      state.exchangeLoading = false;
+      renderPricingCurrency();
+    }
   }
 
   function selectPlanPreview(planId) {
@@ -800,6 +881,14 @@
     }
   }
 
+  function readPricingCurrency() {
+    try {
+      return localStorage.getItem(PRICING_CURRENCY_KEY) === "ars" ? "ars" : "usd";
+    } catch (error) {
+      return "usd";
+    }
+  }
+
   function getItem(id) {
     return state.items.find((item) => item.id === id) || null;
   }
@@ -901,6 +990,7 @@
       move: '<path d="M5 7h8m0 0-3-3m3 3-3 3M19 17h-8m0 0 3-3m-3 3 3 3"/>',
       trash: '<path d="M4 7h16M9 7V4h6v3m-9 0 1 14h10l1-14M10 11v6m4-6v6"/>',
       sparkles: '<path d="m12 3 1.2 4.1L17 9l-3.8 1.9L12 15l-1.2-4.1L7 9l3.8-1.9L12 3Zm6 11 .7 2.3L21 17.5l-2.3 1.2L18 21l-.7-2.3-2.3-1.2 2.3-1.2L18 14Z"/>',
+      check: '<path d="m5 12.5 4.2 4.2L19 7"/>',
       plus: '<path d="M12 5v14M5 12h14"/>'
     };
     return `<svg viewBox="0 0 24 24" aria-hidden="true">${paths[name] || paths.file}</svg>`;

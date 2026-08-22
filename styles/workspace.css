@@ -802,10 +802,13 @@
 .workspace-plan-grid{
   display:grid;
   grid-template-columns:repeat(3,minmax(0,1fr));
-  gap:8px;
+  align-items:stretch;
+  gap:10px;
+  padding-top:8px;
 }
 
 .workspace-plan-card{
+  position:relative;
   min-width:0;
   display:flex;
   flex-direction:column;
@@ -814,6 +817,7 @@
   border:1px solid var(--workspace-edge-soft);
   border-radius:8px;
   background:var(--workspace-surface-soft);
+  transition:border-color .16s ease,background .16s ease,transform .16s ease,box-shadow .16s ease;
 }
 
 .workspace-plan-card.is-selected{
@@ -821,14 +825,100 @@
   box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 10%,transparent);
 }
 
+.workspace-plan-card--featured{
+  z-index:1;
+  border-color:color-mix(in srgb,var(--accent) 58%,var(--workspace-edge-soft));
+  background:color-mix(in srgb,var(--accent) 6%,var(--workspace-surface-soft));
+  box-shadow:0 12px 30px color-mix(in srgb,var(--accent) 12%,transparent);
+  transform:translateY(-7px) scale(1.025);
+}
+
+.workspace-plan-badge{
+  position:absolute;
+  top:-11px;
+  left:50%;
+  padding:4px 9px;
+  border-radius:999px;
+  background:var(--accent);
+  color:#fff;
+  font-size:9px;
+  font-weight:850;
+  white-space:nowrap;
+  transform:translateX(-50%);
+}
+
 .workspace-plan-card header{display:grid;gap:7px}
 .workspace-plan-card header > div{display:grid;gap:2px}
 .workspace-plan-card header small{color:var(--accent);font-size:9px;font-weight:800;text-transform:uppercase}
 .workspace-plan-card h3{margin:0;font-size:16px}
-.workspace-plan-card header > strong{font-size:12px;line-height:1.3}
-.workspace-plan-card p,.workspace-plan-card > span{margin:0;color:var(--muted);font-size:11.5px;line-height:1.4}
-.workspace-plan-card > span{min-height:32px}
+.workspace-plan-card header > strong{min-height:34px;color:var(--text);font-size:14px;line-height:1.25}
 .workspace-plan-card .workspace-btn{width:100%;margin-top:auto}
+
+.workspace-plan-features{
+  display:grid;
+  gap:8px;
+  margin:0;
+  padding:2px 0 7px;
+  list-style:none;
+}
+
+.workspace-plan-features li{
+  display:flex;
+  align-items:flex-start;
+  gap:7px;
+  color:var(--muted);
+  font-size:11.5px;
+  line-height:1.35;
+}
+
+.workspace-plan-features svg{
+  width:15px;
+  height:15px;
+  flex:0 0 auto;
+  color:var(--accent-2);
+  fill:none;
+  stroke:currentColor;
+  stroke-width:2;
+}
+
+.workspace-pricing-tools{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  color:var(--muted);
+  font-size:11.5px;
+  font-weight:700;
+}
+
+.workspace-pricing-toggle{
+  display:flex;
+  gap:2px;
+  padding:3px;
+  border:1px solid var(--workspace-edge-soft);
+  border-radius:999px;
+  background:var(--workspace-surface-soft);
+}
+
+.workspace-pricing-toggle button{
+  min-width:48px;
+  min-height:28px;
+  padding:0 10px;
+  border:0;
+  border-radius:999px;
+  background:transparent;
+  color:var(--muted);
+  font:inherit;
+  font-size:10.5px;
+  font-weight:800;
+  cursor:pointer;
+}
+
+.workspace-pricing-toggle button.is-active{
+  background:var(--panel);
+  color:var(--text);
+  box-shadow:0 2px 8px rgba(3,9,22,.12);
+}
 
 .workspace-ai-plan{
   display:grid;
@@ -945,9 +1035,11 @@ html.theme-light .workspace-btn--ai{
   .workspace-section__intro > p:last-child{display:none}
   .workspace-plan-summary{min-width:0;padding:7px 9px}
   .workspace-plan-summary__action{display:none}
-  .workspace-plan-grid{grid-template-columns:1fr}
+  .workspace-plan-grid{grid-template-columns:1fr;gap:9px;padding-top:4px}
   .workspace-plan-card{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center}
-  .workspace-plan-card p,.workspace-plan-card > span{grid-column:1/-1}
+  .workspace-plan-card--featured{margin-top:8px;transform:none}
+  .workspace-plan-card header{grid-column:1/-1}
+  .workspace-plan-features{grid-column:1/-1}
   .workspace-plan-card .workspace-btn{grid-column:1/-1}
 }
 
