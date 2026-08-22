@@ -11,7 +11,7 @@ on:
       - ".github/workflows/android-app.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -42,3 +42,15 @@ jobs:
           name: Estudiemos-Android
           path: android-app/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
+      - name: Publish permanent Android download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp android-app/app/build/outputs/apk/debug/app-debug.apk "${RUNNER_TEMP}/Estudiemos-Android.apk"
+          gh release delete android-latest --yes --cleanup-tag || true
+          gh release create android-latest \
+            "${RUNNER_TEMP}/Estudiemos-Android.apk" \
+            --target "${GITHUB_SHA}" \
+            --title "Estudiemos para Android" \
+            --notes "Última versión instalable de Estudiemos para Android."

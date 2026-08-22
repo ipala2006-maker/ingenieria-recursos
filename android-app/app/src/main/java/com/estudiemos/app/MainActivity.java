@@ -108,8 +108,8 @@ public class MainActivity extends Activity {
             int bottom;
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                android.graphics.Insets systemBars = windowInsets.getInsets(
-                        WindowInsets.Type.systemBars()
+                android.graphics.Insets systemBars = windowInsets.getInsetsIgnoringVisibility(
+                        WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout()
                 );
                 left = systemBars.left;
                 top = systemBars.top;
@@ -120,9 +120,16 @@ public class MainActivity extends Activity {
                 top = windowInsets.getSystemWindowInsetTop();
                 right = windowInsets.getSystemWindowInsetRight();
                 bottom = windowInsets.getSystemWindowInsetBottom();
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && windowInsets.getDisplayCutout() != null) {
+                    left = Math.max(left, windowInsets.getDisplayCutout().getSafeInsetLeft());
+                    top = Math.max(top, windowInsets.getDisplayCutout().getSafeInsetTop());
+                    right = Math.max(right, windowInsets.getDisplayCutout().getSafeInsetRight());
+                    bottom = Math.max(bottom, windowInsets.getDisplayCutout().getSafeInsetBottom());
+                }
             }
 
-            view.setPadding(left, top, right, bottom);
+            int topBreathingRoom = Math.round(4 * getResources().getDisplayMetrics().density);
+            view.setPadding(left, top + topBreathingRoom, right, bottom);
             return windowInsets;
         });
         rootView.requestApplyInsets();

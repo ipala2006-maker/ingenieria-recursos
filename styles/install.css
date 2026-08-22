@@ -1,0 +1,99 @@
+.install-page{
+  min-height:100vh;
+  background:var(--bg);
+  color:var(--text);
+}
+
+.install-header{
+  width:min(1040px,calc(100% - 32px));
+  margin:0 auto;
+  padding:24px 0 8px;
+}
+
+.install-main{
+  width:min(1040px,calc(100% - 32px));
+  margin:0 auto;
+  padding:40px 0 64px;
+}
+
+.install-intro{
+  max-width:620px;
+  margin-bottom:34px;
+}
+
+.install-intro p,
+.install-option__platform{
+  display:block;
+  margin:0 0 8px;
+  color:var(--accent);
+  font-size:12px;
+  font-weight:800;
+}
+
+.install-intro h1{
+  margin:0 0 10px;
+  font-size:clamp(30px,5vw,48px);
+  letter-spacing:0;
+}
+
+.install-intro span,
+.install-option p,
+.install-option small{
+  color:var(--muted);
+}
+
+.install-options{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:14px;
+}
+
+.install-option{
+  display:flex;
+  min-height:250px;
+  flex-direction:column;
+  padding:22px;
+  border:1px solid var(--border);
+  border-radius:12px;
+  background:var(--panel);
+}
+
+.install-option h2{
+  margin:0 0 8px;
+  font-size:20px;
+  letter-spacing:0;
+}
+
+.install-option p{
+  margin:0 0 22px;
+  line-height:1.5;
+}
+
+.install-option__button{
+  display:inline-flex;
+  min-height:42px;
+  margin-top:auto;
+  align-items:center;
+  justify-content:center;
+  padding:10px 14px;
+  border:1px solid color-mix(in srgb,var(--accent) 44%,var(--border));
+  border-radius:8px;
+  background:color-mix(in srgb,var(--accent) 14%,var(--panel));
+  color:var(--text);
+  font-weight:750;
+}
+
+.install-option__button:hover{
+  background:color-mix(in srgb,var(--accent) 21%,var(--panel));
+}
+
+.install-option small{
+  margin-top:12px;
+  line-height:1.4;
+}
+
+@media(max-width:760px){
+  .install-main{padding-top:28px}
+  .install-options{grid-template-columns:1fr}
+  .install-option{min-height:220px}
+}
