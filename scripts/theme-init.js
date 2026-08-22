@@ -52,7 +52,7 @@
     if (document.querySelector('link[href*="styles/professional.css"]')) return;
     var link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = getRootPath() + "styles/professional.css?v=20260822-shell-stable";
+    link.href = getRootPath() + "styles/professional.css?v=20260822-install-update";
     document.head.appendChild(link);
   }
 
