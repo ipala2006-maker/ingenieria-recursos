@@ -158,7 +158,7 @@
 
     const link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = `${rootPath}styles/professional.css?v=20260822-streak-toolbar`;
+    link.href = `${rootPath}styles/professional.css?v=20260822-install-update`;
     document.head.appendChild(link);
   }
 
@@ -275,7 +275,7 @@
     if (document.querySelector('script[src*="scripts/account.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/account.js?v=20260821-study-streak`;
+    script.src = `${rootPath}scripts/account.js?v=20260822-install-update`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -284,7 +284,7 @@
     if (document.querySelector('script[src*="scripts/install-app.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/install-app.js?v=20260813-install-ios`;
+    script.src = `${rootPath}scripts/install-app.js?v=20260822-install-update`;
     script.defer = true;
     document.head.appendChild(script);
   }

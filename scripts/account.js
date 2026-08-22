@@ -33,6 +33,7 @@
   addAccountButton();
   addAccountDialog();
   bindAccountEvents();
+  cleanUpdateMarker();
   initialize();
 
   window.EstudiemosAccount = {
@@ -41,7 +42,8 @@
     getSession: () => session,
     getClient: () => client,
     whenReady: () => readyPromise,
-    open: () => openDialog()
+    open: () => openDialog(),
+    updateApp: () => updateApplication()
   };
 
   function getRootPath() {
@@ -138,6 +140,16 @@
           <p>La sincronización de cuentas está casi lista, pero falta conectar el almacenamiento seguro.</p>
         </div>
 
+        <div class="account-app-actions">
+          <button class="account-update" type="button" data-account-update>
+            ${updateIcon()}
+            <span>
+              <strong data-account-update-label>Actualizar Estudiemos</strong>
+              <small>Buscar y aplicar la versión más reciente</small>
+            </span>
+          </button>
+        </div>
+
         <p class="account-status" data-account-status role="status" aria-live="polite"></p>
         <p class="account-privacy">Tus datos privados solo pueden ser leídos por tu propia cuenta.</p>
       </div>`;
@@ -152,6 +164,7 @@
       if (event.target.closest("[data-account-reset]")) resetPassword();
       if (event.target.closest("[data-account-signout]")) signOut();
       if (event.target.closest("[data-account-sync]")) synchronize("manual");
+      if (event.target.closest("[data-account-update]")) updateApplication();
     });
 
     document.querySelector("[data-account-form]")?.addEventListener("submit", (event) => {
@@ -535,13 +548,60 @@
     status.dataset.type = type || "info";
   }
 
+  async function updateApplication() {
+    const button = document.querySelector("[data-account-update]");
+    const label = document.querySelector("[data-account-update-label]");
+    if (!button || button.disabled) return;
+
+    button.disabled = true;
+    if (label) label.textContent = "Buscando actualización...";
+    setStatus("Comprobando la versión publicada.", "info");
+
+    try {
+      if ("serviceWorker" in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registrations.map((registration) => registration.update().catch(() => null)));
+        registrations.forEach((registration) => {
+          registration.waiting?.postMessage({ type: "SKIP_WAITING" });
+        });
+      }
+
+      const currentUrl = new URL(location.href);
+      currentUrl.searchParams.set("actualizar", String(Date.now()));
+      sessionStorage.setItem("estudiemos_app_update_pending", "true");
+      if (label) label.textContent = "Actualización lista";
+      setStatus("Abriendo la versión más reciente...", "success");
+      window.setTimeout(() => location.replace(currentUrl.href), 280);
+    } catch (_) {
+      button.disabled = false;
+      if (label) label.textContent = "Actualizar Estudiemos";
+      setStatus("No pudimos comprobar la actualización. Revisá tu conexión e intentá nuevamente.", "error");
+    }
+  }
+
+  function cleanUpdateMarker() {
+    const url = new URL(location.href);
+    if (!url.searchParams.has("actualizar")) return;
+    url.searchParams.delete("actualizar");
+    history.replaceState(history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    if (sessionStorage.getItem("estudiemos_app_update_pending") === "true") {
+      sessionStorage.removeItem("estudiemos_app_update_pending");
+      sessionStorage.setItem("estudiemos_app_update_complete", "true");
+    }
+  }
+
   function openDialog() {
     const shell = document.querySelector(".account-shell");
     if (!shell) return;
     shell.hidden = false;
     shell.setAttribute("aria-hidden", "false");
     document.body.classList.add("account-open");
-    setStatus("", "info");
+    if (sessionStorage.getItem("estudiemos_app_update_complete") === "true") {
+      sessionStorage.removeItem("estudiemos_app_update_complete");
+      setStatus("Estudiemos está actualizado.", "success");
+    } else {
+      setStatus("", "info");
+    }
     window.setTimeout(() => shell.querySelector("input, button")?.focus(), 0);
   }
 
@@ -564,5 +624,9 @@
 
   function checkIcon() {
     return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.2 16.2-4.4-4.4 1.4-1.4 3 3 8.6-8.6 1.4 1.4-10 10Z"/></svg>';
+  }
+
+  function updateIcon() {
+    return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 8V4l-1.6 1.6A8 8 0 1 0 20 12h-2a6 6 0 1 1-2-4.5L13.5 10H19V8Z"/></svg>';
   }
 })();

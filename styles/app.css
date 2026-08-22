@@ -4324,6 +4324,43 @@ html.theme-light .app-install-sheet__close{
   font-size:13px;
 }
 .account-benefits svg{width:16px;height:16px;flex:0 0 auto;fill:#34d399}
+.account-app-actions{
+  margin-top:16px;
+  padding-top:14px;
+  border-top:1px solid rgba(255,255,255,.08);
+}
+.account-update{
+  width:100%;
+  min-height:58px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:10px 12px;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:12px;
+  background:rgba(255,255,255,.035);
+  color:var(--text);
+  font:inherit;
+  text-align:left;
+  cursor:pointer;
+  transition:background .16s ease,border-color .16s ease,transform .16s ease;
+}
+.account-update:hover{
+  border-color:rgba(110,231,255,.28);
+  background:rgba(110,231,255,.07);
+}
+.account-update:active{transform:scale(.99)}
+.account-update:disabled{cursor:wait;opacity:.65}
+.account-update>svg{
+  width:21px;
+  height:21px;
+  flex:0 0 auto;
+  fill:currentColor;
+  color:var(--accent);
+}
+.account-update>span{min-width:0;display:grid;gap:3px}
+.account-update strong{font-size:13px}
+.account-update small{color:var(--muted);font-size:11px;line-height:1.35}
 .account-status{
   min-height:20px;
   margin:14px 0 0;
@@ -4350,6 +4387,8 @@ html.theme-light .account-form input{border-color:rgba(86,105,130,.22)}
 html.theme-light .account-password-form input{border-color:rgba(86,105,130,.22)}
 html.theme-light .account-primary{color:#fff}
 html.theme-light .account-secondary,html.theme-light .account-identity{border-color:rgba(86,105,130,.18)}
+html.theme-light .account-app-actions{border-color:rgba(86,105,130,.14)}
+html.theme-light .account-update{border-color:rgba(86,105,130,.18);background:rgba(86,105,130,.035)}
 html.theme-light .account-status[data-type="error"]{color:#b3261e}
 html.theme-light .account-status[data-type="success"]{color:#137333}
 

@@ -144,9 +144,9 @@ html.theme-dark .topbar{
 .workspace-home .theme-top-btn,
 .productivity-page .theme-top-btn{order:7}
 .workspace-home .account-top-btn,
-.productivity-page .account-top-btn{order:8}
+.productivity-page .account-top-btn{order:10}
 .workspace-home .app-install-btn,
-.productivity-page .app-install-btn{display:none!important}
+.productivity-page .app-install-btn{display:inline-grid!important;order:9}
 
 /* Orden estable de herramientas en todas las paginas. */
 .topbar .pomodoro-top-btn{order:1}
@@ -157,8 +157,8 @@ html.theme-dark .topbar{
 .topbar .theme-top-btn{order:6}
 .topbar .suggestion-top-btn{order:7}
 .topbar .about-top-btn{order:8}
-.topbar .account-top-btn{order:9}
-.topbar .app-install-btn{display:none!important}
+.topbar .app-install-btn{display:inline-grid!important;order:9}
+.topbar .account-top-btn{order:10}
 .workspace-home .workspace-more-btn{display:none!important}
 
 .workspace-home .suggestion-top-btn svg,

@@ -4,6 +4,10 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(self.clients.claim());
 });
 
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") self.skipWaiting();
+});
+
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const destination = event.notification.data?.url || new URL("./", self.registration.scope).href;
