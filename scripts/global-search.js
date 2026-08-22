@@ -284,7 +284,7 @@
     if (document.querySelector('script[src*="scripts/install-app.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/install-app.js?v=20260822-install-update`;
+    script.src = `${rootPath}scripts/install-app.js?v=20260822-android-direct`;
     script.defer = true;
     document.head.appendChild(script);
   }

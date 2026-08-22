@@ -2,7 +2,7 @@
   if (window.__estudiemosInstallGuideInstalled) return;
 
   const topbar = document.querySelector(".topbar");
-  if (!topbar || isStandalone()) return;
+  if (!topbar || isStandalone() || isNativeAndroidApp()) return;
 
   let nav = topbar.querySelector(".topbar__nav");
   if (!nav) {
@@ -15,14 +15,16 @@
   window.__estudiemosInstallGuideInstalled = true;
 
   const SCRIPT_URL = document.currentScript?.src || location.href;
+  const ANDROID_APK_URL = "https://github.com/ipala2006-maker/ingenieria-recursos/releases/download/android-latest/Estudiemos-Android.apk";
   let installPrompt = null;
   const ios = isIOS();
+  const android = isAndroid();
   const button = document.createElement("button");
   button.className = "topbar__link topbar-icon-btn app-install-btn";
   button.type = "button";
   button.dataset.appInstall = "true";
-  button.setAttribute("aria-label", "Instalar Estudiemos");
-  button.title = "Instalar Estudiemos";
+  button.setAttribute("aria-label", android ? "Descargar Estudiemos para Android" : "Instalar Estudiemos");
+  button.title = android ? "Descargar Estudiemos para Android" : "Instalar Estudiemos";
   button.innerHTML = icon("install");
   nav.prepend(button);
 
@@ -57,6 +59,10 @@
   });
 
   async function handleInstall() {
+    if (android) {
+      location.href = ANDROID_APK_URL;
+      return;
+    }
     if (installPrompt) {
       const prompt = installPrompt;
       installPrompt = null;
@@ -121,6 +127,14 @@
 
   function isIOS() {
     return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  }
+
+  function isAndroid() {
+    return /Android/i.test(navigator.userAgent);
+  }
+
+  function isNativeAndroidApp() {
+    return Boolean(window.EstudiemosAndroid && typeof window.EstudiemosAndroid.postMessage === "function");
   }
 
   function rootUrl(path) {
