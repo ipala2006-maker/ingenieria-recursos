@@ -37,6 +37,7 @@ public class MainActivity extends Activity {
     private boolean openAgendaRequested;
     private String agendaDateRequested;
     private boolean openPomodoroRequested;
+    private boolean webReady;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -90,7 +91,9 @@ public class MainActivity extends Activity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
+                webReady = true;
                 notifyWebAppReady();
+                notifyPendingAgendaCompletions();
                 openAgendaIfRequested();
                 openPomodoroIfRequested();
             }
@@ -168,6 +171,22 @@ public class MainActivity extends Activity {
         );
     }
 
+    private void notifyPendingAgendaCompletions() {
+        if (!webReady) return;
+        for (String itemId : AgendaWidgetProvider.getPendingCompletions(this)) {
+            String detail = "{id:" + JSONObject.quote(itemId) + "}";
+            webView.evaluateJavascript(
+                    "(function sendCompletion(attempt){" +
+                            "if(window.__estudiemosAgendaInstalled){" +
+                            "window.dispatchEvent(new CustomEvent('estudiemos-android-agenda-complete',{detail:" + detail + "}));" +
+                            "return;}" +
+                            "if(attempt<40)window.setTimeout(function(){sendCompletion(attempt+1);},50);" +
+                            "})(0);",
+                    null
+            );
+        }
+    }
+
     private void openAgendaIfRequested() {
         if (!openAgendaRequested) return;
         openAgendaRequested = false;
@@ -213,6 +232,12 @@ public class MainActivity extends Activity {
         openPomodoroRequested = intent.getBooleanExtra(EXTRA_OPEN_POMODORO, false);
         openAgendaIfRequested();
         openPomodoroIfRequested();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        notifyPendingAgendaCompletions();
     }
 
     @Override

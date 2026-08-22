@@ -220,7 +220,7 @@
     if (document.querySelector('script[src*="scripts/bandeja.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/bandeja.js?v=20260822-agenda-fix`;
+    script.src = `${rootPath}scripts/bandeja.js?v=20260822-widget-complete`;
     script.defer = true;
     document.head.appendChild(script);
   }

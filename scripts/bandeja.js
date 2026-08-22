@@ -42,6 +42,9 @@
   window.addEventListener("estudiemos-android-ready", () => {
     syncAgendaWithAndroid(readList(STORAGE_KEYS.agenda));
   });
+  window.addEventListener("estudiemos-android-agenda-complete", (event) => {
+    completeAgendaItemFromAndroid(event.detail?.id);
+  });
   window.addEventListener("estudiemos:cloud-restored", () => {
     renderAgenda();
     syncActionButtons();
@@ -1408,6 +1411,22 @@
     if (a.horaInicio && !b.horaInicio) return -1;
     if (!a.horaInicio && b.horaInicio) return 1;
     return b.createdAt - a.createdAt;
+  }
+
+  function completeAgendaItemFromAndroid(id) {
+    if (!id) return;
+    let changed = false;
+    const items = readList(STORAGE_KEYS.agenda).map((item) => {
+      if (item.id !== id || item.done || !isCompletableAgendaItem(item)) return item;
+      changed = true;
+      return { ...item, done: true };
+    });
+    if (!changed) {
+      syncAgendaWithAndroid(items);
+      return;
+    }
+    writeList(STORAGE_KEYS.agenda, items);
+    renderAgenda();
   }
 
   function isCompletableAgendaItem(item) {
