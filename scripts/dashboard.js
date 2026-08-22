@@ -1,8 +1,11 @@
 (function () {
-  if (!document.body.classList.contains("workspace-home")) return;
+  if (window.__estudiemosDashboardInstalled) return;
+  window.__estudiemosDashboardInstalled = true;
 
   const AGENDA_KEY = "bandeja_agenda";
   const SUBJECTS_KEY = "bandeja_materias";
+  const STREAK_KEY = "estudiemos_pomodoro_streak";
+  const workspaceHome = document.body.classList.contains("workspace-home");
   const MAX_AGENDA_ITEMS = 500;
   const state = {
     month: new Date().getMonth(),
@@ -14,6 +17,7 @@
   bindEvents();
   renderDashboard();
   syncPanelsWithHistory();
+  restorePendingAssistant();
 
   function addTopbarActions() {
     const nav = document.querySelector(".topbar__nav");
@@ -132,12 +136,12 @@
 
     window.addEventListener("popstate", syncPanelsWithHistory);
     window.addEventListener("storage", (event) => {
-      if ([AGENDA_KEY, SUBJECTS_KEY].includes(event.key)) {
+      if ([AGENDA_KEY, SUBJECTS_KEY, STREAK_KEY].includes(event.key)) {
         renderDashboard();
       }
     });
     window.addEventListener("estudiemos:data-change", (event) => {
-      if (!event.detail?.key || [AGENDA_KEY, SUBJECTS_KEY].includes(event.detail.key)) {
+      if (!event.detail?.key || [AGENDA_KEY, SUBJECTS_KEY, STREAK_KEY].includes(event.detail.key)) {
         renderDashboard();
       }
     });
@@ -265,6 +269,11 @@
       return;
     }
     window.dispatchEvent(new CustomEvent("estudiemos:close-agenda"));
+    if (!document.querySelector("[data-workspace-ai]")) {
+      sessionStorage.setItem("estudiemos_pending_workspace_ai", instruction);
+      location.href = document.querySelector(".brand")?.href || "/";
+      return;
+    }
     window.setTimeout(() => {
       const trigger = document.querySelector("[data-workspace-ai]");
       trigger?.click();
@@ -273,6 +282,14 @@
         input.closest("form")?.requestSubmit();
       });
     }, 120);
+  }
+
+  function restorePendingAssistant() {
+    if (!workspaceHome) return;
+    const instruction = sessionStorage.getItem("estudiemos_pending_workspace_ai") || "";
+    if (!instruction) return;
+    sessionStorage.removeItem("estudiemos_pending_workspace_ai");
+    window.setTimeout(() => handOffToAssistant("workspace", instruction), 180);
   }
 
   function setAssistantStatus(message, type) {
@@ -307,6 +324,7 @@
     label.textContent = new Intl.DateTimeFormat("es-AR", { month: "long", year: "numeric" }).format(new Date(state.year, state.month, 1));
     label.textContent = label.textContent.charAt(0).toUpperCase() + label.textContent.slice(1);
     const dated = new Set(readAgenda().filter((item) => item.date).map((item) => item.date));
+    const streakDays = readStreakDays();
     const first = new Date(state.year, state.month, 1);
     const offset = (first.getDay() + 6) % 7;
     const start = new Date(state.year, state.month, 1 - offset);
@@ -315,7 +333,8 @@
     for (let index = 0; index < 42; index += 1) {
       const date = new Date(start.getFullYear(), start.getMonth(), start.getDate() + index);
       const value = toDateValue(date);
-      cells.push(`<button class="dashboard-calendar__day ${date.getMonth() !== state.month ? "is-outside" : ""} ${value === today ? "is-today" : ""} ${dated.has(value) ? "has-items" : ""}" type="button" data-dashboard-date="${value}" aria-label="${formatFullDate(value)}">${date.getDate()}</button>`);
+      const hasStreak = (streakDays[value] || 0) >= 25;
+      cells.push(`<button class="dashboard-calendar__day ${date.getMonth() !== state.month ? "is-outside" : ""} ${value === today ? "is-today" : ""} ${dated.has(value) ? "has-items" : ""} ${hasStreak ? "has-study-streak" : ""}" type="button" data-dashboard-date="${value}" aria-label="${formatFullDate(value)}${hasStreak ? ", presencia de estudio registrada" : ""}"><span>${date.getDate()}</span>${hasStreak ? flameIcon() : ""}</button>`);
     }
     grid.innerHTML = cells.join("");
   }
@@ -374,6 +393,19 @@
       done: Boolean(item.done),
       createdAt: Number(item.createdAt) || 0
     }));
+  }
+
+  function readStreakDays() {
+    try {
+      const value = JSON.parse(localStorage.getItem(STREAK_KEY) || "{}");
+      return value?.days && typeof value.days === "object" ? value.days : {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function flameIcon() {
+    return '<svg class="study-streak-flame" viewBox="0 0 24 24" aria-hidden="true"><path d="M13.2 2.2c.4 3-1 4.7-2.4 6.3-1.2-2.2-2.9-3.8-5-5.4.3 3.8-2.4 5.7-2.4 10.3A8.6 8.6 0 0 0 12 22a8.6 8.6 0 0 0 8.6-8.6c0-4.1-2.3-7.8-7.4-11.2ZM12 19.7a4.2 4.2 0 0 1-4.2-4.2c0-1.8.9-3.1 2.1-4.4.2 1.5.9 2.4 1.7 3.2 1.1-1.4 1.8-2.8 1.8-4.7 1.8 1.5 2.8 3.4 2.8 5.9a4.2 4.2 0 0 1-4.2 4.2Z"/></svg>';
   }
 
   function writeAgenda(items) {

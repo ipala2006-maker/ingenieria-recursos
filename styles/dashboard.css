@@ -201,6 +201,23 @@
   background:#08101f;
 }
 
+.dashboard-calendar__day.has-study-streak{
+  color:var(--text);
+}
+
+.dashboard-calendar__day .study-streak-flame{
+  position:absolute;
+  top:2px;
+  right:2px;
+  width:7px;
+  height:7px;
+  fill:#f59e0b;
+}
+
+.dashboard-calendar__day.is-today .study-streak-flame{
+  fill:#8b4a00;
+}
+
 .dashboard-agenda{
   display:flex;
   flex-direction:column;

@@ -757,6 +757,7 @@ img{ max-width: 100%; display:block; }
   gap:6px;
 }
 .agenda-day{
+  position:relative;
   min-width:0;
   display:flex;
   flex-direction:column;
@@ -3181,6 +3182,30 @@ html.theme-light .pomodoro-wheel-control input{
 .pomodoro-controls{
   margin-top:7px;
 }
+.agenda-day__streak{
+  position:absolute;
+  top:8px;
+  right:8px;
+  width:18px;
+  height:18px;
+  display:grid;
+  place-items:center;
+  border-radius:7px;
+  background:rgba(245,158,11,.1);
+  color:#f59e0b;
+}
+.agenda-day__streak svg{
+  width:11px;
+  height:11px;
+  fill:currentColor;
+}
+.agenda-day.has-study-streak{
+  background-image:linear-gradient(135deg,rgba(245,158,11,.035),transparent 45%);
+}
+html.theme-light .agenda-day__streak{
+  background:rgba(217,119,6,.09);
+  color:#c66a03;
+}
 .pomodoro-streak{
   min-width:0;
   display:grid;
@@ -3236,6 +3261,236 @@ html.theme-light .pomodoro-wheel-control input{
 .pomodoro-streak.is-recovery .pomodoro-streak__icon{
   color:#f5c86b;
 }
+.streak-top-btn{
+  position:relative;
+  color:#f59e0b !important;
+}
+.streak-top-btn svg{
+  fill:currentColor;
+}
+.streak-top-btn.has-streak{
+  background:rgba(245,158,11,.08) !important;
+}
+.streak-top-btn.is-complete::after{
+  content:"";
+  position:absolute;
+  right:4px;
+  bottom:4px;
+  width:6px;
+  height:6px;
+  border:2px solid var(--panel);
+  border-radius:999px;
+  background:#34d399;
+}
+.streak-menu{
+  position:fixed;
+  inset:0;
+  z-index:85;
+  visibility:hidden;
+  pointer-events:none;
+}
+.streak-open .streak-menu{
+  visibility:visible;
+}
+.streak-menu__panel{
+  position:fixed;
+  max-height:calc(100vh - 20px);
+  overflow:auto;
+  padding:14px;
+  border:1px solid rgba(255,255,255,.11);
+  border-radius:16px;
+  background:rgba(11,16,32,.97);
+  box-shadow:0 20px 54px rgba(0,0,0,.36);
+  color:var(--text);
+  opacity:0;
+  pointer-events:none;
+  transform:translateY(-6px) scale(.985);
+  transform-origin:top right;
+  transition:opacity .16s ease,transform .16s ease;
+  backdrop-filter:blur(18px);
+  scrollbar-width:none;
+}
+.streak-menu__panel::-webkit-scrollbar{
+  display:none;
+}
+.streak-open .streak-menu__panel{
+  opacity:1;
+  pointer-events:auto;
+  transform:translateY(0) scale(1);
+}
+.streak-menu__head,
+.streak-menu__summary,
+.streak-menu__footer,
+.streak-calendar__head{
+  display:flex;
+  align-items:center;
+}
+.streak-menu__head{
+  justify-content:space-between;
+  gap:12px;
+}
+.streak-menu__head h2{
+  margin:2px 0 0;
+  font-size:17px;
+}
+.streak-menu__close,
+.streak-calendar__head button{
+  display:grid;
+  place-items:center;
+  border:1px solid rgba(255,255,255,.09);
+  background:transparent;
+  color:var(--muted);
+  cursor:pointer;
+}
+.streak-menu__close{
+  width:34px;
+  height:34px;
+  border-radius:999px;
+}
+.streak-menu__close:hover,
+.streak-calendar__head button:hover{
+  background:rgba(255,255,255,.055);
+  color:var(--text);
+}
+.streak-menu__close svg,
+.streak-calendar__head button svg{
+  width:15px;
+  height:15px;
+  fill:currentColor;
+}
+.streak-menu__summary{
+  display:grid;
+  grid-template-columns:38px minmax(0,1fr) auto;
+  gap:10px;
+  margin-top:13px;
+  padding:10px;
+  border-radius:12px;
+  background:rgba(245,158,11,.065);
+}
+.streak-menu__mark{
+  width:38px;
+  height:38px;
+  display:grid;
+  place-items:center;
+  border-radius:11px;
+  background:rgba(245,158,11,.12);
+  color:#f59e0b;
+}
+.streak-menu__mark svg{
+  width:21px;
+  height:21px;
+  fill:currentColor;
+}
+.streak-menu__main{
+  min-width:0;
+  display:grid;
+  gap:1px;
+}
+.streak-menu__main small{
+  color:var(--muted-2);
+  font-size:9.5px;
+  font-weight:700;
+  text-transform:uppercase;
+}
+.streak-menu__main strong{
+  font-size:17px;
+}
+.streak-menu__progress{
+  max-width:86px;
+  color:#f6b94e;
+  font-size:10px;
+  font-weight:800;
+  line-height:1.25;
+  text-align:right;
+}
+.streak-menu__message{
+  min-height:30px;
+  margin:8px 2px 10px;
+  color:var(--muted);
+  font-size:10.5px;
+  line-height:1.4;
+}
+.streak-calendar{
+  padding:10px;
+  border:1px solid rgba(255,255,255,.075);
+  border-radius:13px;
+  background:rgba(255,255,255,.018);
+}
+.streak-calendar__head{
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:8px;
+}
+.streak-calendar__head>strong{
+  font-size:12px;
+}
+.streak-calendar__head>span{
+  display:flex;
+  gap:4px;
+}
+.streak-calendar__head button{
+  width:27px;
+  height:27px;
+  border-radius:8px;
+}
+.streak-calendar__head button:first-child svg{
+  transform:rotate(-90deg);
+}
+.streak-calendar__head button:last-child svg{
+  transform:rotate(-90deg);
+}
+.streak-calendar__weekdays,
+.streak-calendar__grid{
+  display:grid;
+  grid-template-columns:repeat(7,minmax(0,1fr));
+}
+.streak-calendar__weekdays span{
+  padding:2px 0 5px;
+  color:var(--muted-2);
+  font-size:9px;
+  font-weight:800;
+  text-align:center;
+}
+.streak-calendar__day{
+  position:relative;
+  min-height:30px;
+  display:grid;
+  place-items:center;
+  border-radius:8px;
+  color:var(--muted);
+  font-size:10px;
+  font-weight:700;
+}
+.streak-calendar__day.is-outside{
+  opacity:.32;
+}
+.streak-calendar__day.is-today{
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 46%,transparent);
+  color:var(--text);
+}
+.streak-calendar__day.is-active{
+  background:rgba(245,158,11,.11);
+  color:#ffd58a;
+}
+.streak-calendar__day svg{
+  position:absolute;
+  right:3px;
+  bottom:3px;
+  width:8px;
+  height:8px;
+  fill:#f59e0b;
+}
+.streak-menu__footer{
+  justify-content:space-between;
+  gap:10px;
+  margin-top:9px;
+  padding:7px 2px 0;
+  color:var(--muted);
+  font-size:10.5px;
+}
+.streak-menu__footer strong{
+  color:var(--text);
+}
 html.theme-light .pomodoro-streak{
   border-color:var(--border);
   background:var(--panel-2);
@@ -3246,6 +3501,38 @@ html.theme-light .pomodoro-streak.is-active .pomodoro-streak__icon{
 }
 html.theme-light .pomodoro-streak.is-recovery .pomodoro-streak__icon{
   color:#9a6700;
+}
+html.theme-light .streak-menu__panel{
+  border-color:var(--border);
+  background:rgba(247,249,251,.98);
+  box-shadow:0 18px 46px rgba(15,23,42,.16);
+}
+html.theme-light .streak-menu__summary{
+  background:rgba(217,119,6,.07);
+}
+html.theme-light .streak-menu__progress{
+  color:#9a6700;
+}
+html.theme-light .streak-calendar{
+  border-color:var(--border);
+  background:var(--panel-2);
+}
+html.theme-light .streak-calendar__day.is-active{
+  background:rgba(217,119,6,.1);
+  color:#7c4a03;
+}
+
+@media(max-width:420px){
+  .streak-menu__panel{
+    padding:12px;
+  }
+  .streak-menu__summary{
+    margin-top:10px;
+    padding:8px;
+  }
+  .streak-calendar{
+    padding:8px;
+  }
 }
 .pomodoro-secondary-btn{
   width:38px;

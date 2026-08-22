@@ -18,6 +18,8 @@
   loadPomodoroScript();
   loadInstallAppScript();
   loadBandejaScript();
+  loadDashboardStyle();
+  loadDashboardScript();
 
   if (workspaceHome) return;
 
@@ -156,7 +158,15 @@
 
     const link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = `${rootPath}styles/professional.css?v=20260822-shell-stable`;
+    link.href = `${rootPath}styles/professional.css?v=20260822-streak-toolbar`;
+    document.head.appendChild(link);
+  }
+
+  function loadDashboardStyle() {
+    if (document.querySelector('link[href*="styles/dashboard.css"]')) return;
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = `${rootPath}styles/dashboard.css?v=20260822-streak-toolbar`;
     document.head.appendChild(link);
   }
 
@@ -220,6 +230,14 @@
 
     const script = document.createElement("script");
     script.src = `${rootPath}scripts/pomodoro.js?v=20260821-study-streak`;
+    script.defer = true;
+    document.head.appendChild(script);
+  }
+
+  function loadDashboardScript() {
+    if (document.querySelector('script[src*="scripts/dashboard.js"]')) return;
+    const script = document.createElement("script");
+    script.src = `${rootPath}scripts/dashboard.js?v=20260822-streak-toolbar`;
     script.defer = true;
     document.head.appendChild(script);
   }

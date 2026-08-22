@@ -9,6 +9,7 @@
     subjects: "bandeja_materias",
     recent: "bandeja_recientes",
     agenda: "bandeja_agenda",
+    streak: "estudiemos_pomodoro_streak",
     open: "bandeja_abierta"
   };
 
@@ -46,6 +47,12 @@
     syncActionButtons();
     syncSubjectButtons();
     syncAgendaWithAndroid(readList(STORAGE_KEYS.agenda));
+  });
+  window.addEventListener("storage", (event) => {
+    if (event.key === STORAGE_KEYS.streak) renderAgenda();
+  });
+  window.addEventListener("estudiemos:data-change", (event) => {
+    if (event.detail?.key === STORAGE_KEYS.streak) renderAgenda();
   });
 
   function addTray() {
@@ -1260,6 +1267,7 @@
     if (dateInput && !dateInput.value) dateInput.value = selectedAgendaDate;
 
     const byDate = groupAgendaByDate(items);
+    const streakDays = readStreakDays();
     const firstDay = new Date(agendaYear, agendaMonth, 1);
     const startOffset = (firstDay.getDay() + 6) % 7;
     const startDate = new Date(agendaYear, agendaMonth, 1 - startOffset);
@@ -1273,10 +1281,12 @@
       const isSelected = date === selectedAgendaDate;
       const isToday = date === toDateValue(new Date());
       const isOutside = currentDate.getMonth() !== agendaMonth;
+      const hasStreak = (streakDays[date] || 0) >= 25;
 
       cells.push(`
-        <button class="agenda-day ${isOutside ? "is-outside" : ""} ${isSelected ? "is-selected" : ""} ${isToday ? "is-today" : ""}" type="button" data-agenda-date="${escapeAttr(date)}">
+        <button class="agenda-day ${isOutside ? "is-outside" : ""} ${isSelected ? "is-selected" : ""} ${isToday ? "is-today" : ""} ${hasStreak ? "has-study-streak" : ""}" type="button" data-agenda-date="${escapeAttr(date)}" aria-label="${escapeAttr(formatFullDate(date))}${hasStreak ? ", presencia de estudio registrada" : ""}">
           <span class="agenda-day__number">${day}</span>
+          ${hasStreak ? `<span class="agenda-day__streak" aria-hidden="true">${icon("streak")}</span>` : ""}
           <span class="agenda-day__items">
             ${dayItems.slice(0, 3).map((item) => `
               <span class="agenda-event-pill ${agendaTypeClass(item.type)}" title="${escapeAttr(formatAgendaCalendarSummary(item))}" aria-label="${escapeAttr(formatAgendaCalendarSummary(item))}">
@@ -1335,6 +1345,15 @@
         manual?.scrollIntoView({ block: "start", behavior: "smooth" });
       }
     });
+  }
+
+  function readStreakDays() {
+    try {
+      const value = JSON.parse(localStorage.getItem(STORAGE_KEYS.streak) || "{}");
+      return value?.days && typeof value.days === "object" ? value.days : {};
+    } catch (_) {
+      return {};
+    }
   }
 
   function selectAgendaDate(value, syncInput = true) {
@@ -1834,6 +1853,7 @@
       message: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-8l-5 4v-4H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm0 2v9h3v1.8l2.3-1.8H19V6H5Zm3 3h8v2H8V9Z"/></svg>',
       close: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.7 5.3 12 10.6l5.3-5.3 1.4 1.4-5.3 5.3 5.3 5.3-1.4 1.4-5.3-5.3-5.3 5.3-1.4-1.4 5.3-5.3-5.3-5.3 1.4-1.4z"/></svg>',
       calendar: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2h2v2h6V2h2v2h2.2A2.8 2.8 0 0 1 22 6.8v11.4a2.8 2.8 0 0 1-2.8 2.8H4.8A2.8 2.8 0 0 1 2 18.2V6.8A2.8 2.8 0 0 1 4.8 4H7V2Zm12 8H5v8.2c0 .4.4.8.8.8h12.4c.4 0 .8-.4.8-.8V10ZM5.8 6c-.4 0-.8.4-.8.8V8h14V6.8c0-.4-.4-.8-.8-.8H17v2h-2V6H9v2H7V6H5.8Zm1.7 6h3v3h-3v-3Zm5 0h3v3h-3v-3Z"/></svg>',
+      streak: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.2 2.2c.4 3-1 4.7-2.4 6.3-1.2-2.2-2.9-3.8-5-5.4.3 3.8-2.4 5.7-2.4 10.3A8.6 8.6 0 0 0 12 22a8.6 8.6 0 0 0 8.6-8.6c0-4.1-2.3-7.8-7.4-11.2ZM12 19.7a4.2 4.2 0 0 1-4.2-4.2c0-1.8.9-3.1 2.1-4.4.2 1.5.9 2.4 1.7 3.2 1.1-1.4 1.8-2.8 1.8-4.7 1.8 1.5 2.8 3.4 2.8 5.9a4.2 4.2 0 0 1-4.2 4.2Z"/></svg>',
       sparkles: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"><path d="m12 3 1.2 3.8L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.2L12 3ZM18.5 13l.8 2.7 2.7.8-2.7.8-.8 2.7-.8-2.7-2.7-.8 2.7-.8.8-2.7ZM5.5 13l.7 2.3 2.3.7-2.3.7-.7 2.3-.7-2.3-2.3-.7 2.3-.7.7-2.3Z"/></svg>',
       plus: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6V5Z"/></svg>',
       chevronLeft: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.8 5.4 1.4 1.4-5.2 5.2 5.2 5.2-1.4 1.4L8.2 12l6.6-6.6Z"/></svg>',

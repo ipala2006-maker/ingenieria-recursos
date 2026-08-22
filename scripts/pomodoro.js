@@ -34,9 +34,13 @@
   let wakeLock = null;
   let wakeLockRequest = null;
   let serviceWorkerRegistration = null;
+  let streakViewMonth = new Date().getMonth();
+  let streakViewYear = new Date().getFullYear();
 
   addButton();
   addMenu();
+  addStreakButton();
+  addStreakMenu();
   bindEvents();
   registerDeviceSupport();
   reconcileTimer(false);
@@ -70,6 +74,66 @@
     const agendaButton = nav.querySelector(".agenda-top-btn");
     if (agendaButton) agendaButton.insertAdjacentElement("afterend", button);
     else nav.prepend(button);
+  }
+
+  function addStreakButton() {
+    const nav = topbar.querySelector(".topbar__nav");
+    if (!nav || nav.querySelector("[data-streak-open]")) return;
+    const button = document.createElement("button");
+    button.className = "topbar__link topbar-icon-btn streak-top-btn";
+    button.type = "button";
+    button.dataset.streakOpen = "true";
+    button.setAttribute("aria-label", "Abrir racha de estudio");
+    button.setAttribute("aria-expanded", "false");
+    button.title = "Racha de estudio";
+    button.innerHTML = icon("streak");
+    nav.appendChild(button);
+  }
+
+  function addStreakMenu() {
+    if (document.querySelector(".streak-menu")) return;
+    const menu = document.createElement("section");
+    menu.className = "streak-menu";
+    menu.setAttribute("aria-hidden", "true");
+    menu.innerHTML = `
+      <div class="streak-menu__panel" role="dialog" aria-modal="false" aria-label="Racha de estudio">
+        <header class="streak-menu__head">
+          <div>
+            <p class="tray-kicker">Presencia Pomodoro</p>
+            <h2>Racha de estudio</h2>
+          </div>
+          <button class="streak-menu__close" type="button" data-streak-close aria-label="Cerrar racha">${icon("close")}</button>
+        </header>
+
+        <div class="streak-menu__summary">
+          <span class="streak-menu__mark" aria-hidden="true">${icon("streak")}</span>
+          <span class="streak-menu__main">
+            <small>Racha actual</small>
+            <strong data-streak-current>0 días</strong>
+          </span>
+          <span class="streak-menu__progress" data-streak-progress>0/25 min hoy</span>
+        </div>
+        <p class="streak-menu__message" data-streak-detail>Completá 25 min para iniciar tu racha.</p>
+
+        <section class="streak-calendar" aria-label="Calendario de racha">
+          <header class="streak-calendar__head">
+            <strong data-streak-month></strong>
+            <span>
+              <button type="button" data-streak-month-change="-1" aria-label="Mes anterior">${icon("chevronUp")}</button>
+              <button type="button" data-streak-month-change="1" aria-label="Mes siguiente">${icon("chevronDown")}</button>
+            </span>
+          </header>
+          <div class="streak-calendar__weekdays" aria-hidden="true"><span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span></div>
+          <div class="streak-calendar__grid" data-streak-calendar></div>
+        </section>
+
+        <div class="streak-menu__footer">
+          <span>Últimos 7 días</span>
+          <strong data-streak-week>0 activos</strong>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(menu);
   }
 
   function addMenu() {
@@ -235,9 +299,11 @@
     document.addEventListener("click", handleDocumentClick);
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && isOpen()) closeMenu();
+      if (event.key === "Escape" && isStreakOpen()) closeStreakMenu();
     });
     window.addEventListener("resize", () => {
       if (isOpen()) placeMenu();
+      if (isStreakOpen()) placeStreakMenu();
     }, { passive: true });
     window.visualViewport?.addEventListener("resize", () => {
       if (isMobileFloating()) placeMenu();
@@ -275,6 +341,7 @@
     });
     document.addEventListener("estudiemos:navigation", () => {
       if (isOpen()) placeMenu();
+      closeStreakMenu();
       render();
     });
 
@@ -289,7 +356,17 @@
 
   function handleDocumentClick(event) {
     const openButton = event.target.closest("[data-pomodoro-open]");
+    const streakOpenButton = event.target.closest("[data-streak-open]");
     const menu = document.querySelector(".pomodoro-menu");
+    const streakMenu = document.querySelector(".streak-menu__panel");
+
+    if (streakOpenButton) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (isStreakOpen()) closeStreakMenu();
+      else openStreakMenu();
+      return;
+    }
 
     if (openButton) {
       event.preventDefault();
@@ -301,8 +378,21 @@
 
     if (event.target.closest("[data-agenda-open]")) {
       closeMenu();
+      closeStreakMenu();
       return;
     }
+
+    const streakCloseButton = event.target.closest("[data-streak-close]");
+    const streakMonthButton = event.target.closest("[data-streak-month-change]");
+    if (streakCloseButton) {
+      closeStreakMenu();
+      return;
+    }
+    if (streakMonthButton) {
+      moveStreakMonth(Number(streakMonthButton.dataset.streakMonthChange) || 0);
+      return;
+    }
+    if (isStreakOpen() && streakMenu && !streakMenu.contains(event.target)) closeStreakMenu();
 
     if (!menu) return;
     const closeButton = event.target.closest("[data-pomodoro-close]");
@@ -435,6 +525,7 @@
 
   function openMenu() {
     prepareAudio();
+    closeStreakMenu();
     document.body.classList.remove("agenda-open");
     document.querySelector(".agenda-board")?.setAttribute("aria-hidden", "true");
     document.body.classList.add("pomodoro-open");
@@ -453,6 +544,49 @@
 
   function isOpen() {
     return document.body.classList.contains("pomodoro-open");
+  }
+
+  function openStreakMenu() {
+    closeMenu();
+    window.dispatchEvent(new CustomEvent("estudiemos:close-agenda"));
+    const now = new Date();
+    streakViewMonth = now.getMonth();
+    streakViewYear = now.getFullYear();
+    document.body.classList.add("streak-open");
+    document.querySelector(".streak-menu")?.setAttribute("aria-hidden", "false");
+    document.querySelector("[data-streak-open]")?.setAttribute("aria-expanded", "true");
+    renderStreakMenu();
+    requestAnimationFrame(placeStreakMenu);
+  }
+
+  function closeStreakMenu() {
+    document.body.classList.remove("streak-open");
+    document.querySelector(".streak-menu")?.setAttribute("aria-hidden", "true");
+    document.querySelector("[data-streak-open]")?.setAttribute("aria-expanded", "false");
+  }
+
+  function isStreakOpen() {
+    return document.body.classList.contains("streak-open");
+  }
+
+  function placeStreakMenu() {
+    const button = document.querySelector("[data-streak-open]");
+    const panel = document.querySelector(".streak-menu__panel");
+    if (!button || !panel || !isStreakOpen()) return;
+    const buttonRect = button.getBoundingClientRect();
+    const width = Math.min(340, window.innerWidth - 20);
+    const left = Math.min(window.innerWidth - width - 10, Math.max(10, buttonRect.right - width));
+    panel.style.width = `${width}px`;
+    panel.style.left = `${left}px`;
+    panel.style.top = `${Math.min(buttonRect.bottom + 8, Math.max(10, window.innerHeight - panel.offsetHeight - 10))}px`;
+  }
+
+  function moveStreakMonth(direction) {
+    const next = new Date(streakViewYear, streakViewMonth + direction, 1);
+    streakViewMonth = next.getMonth();
+    streakViewYear = next.getFullYear();
+    renderStreakMenu();
+    placeStreakMenu();
   }
 
   function supportsMobileFloating() {
@@ -1610,6 +1744,62 @@
       panel.classList.toggle("is-active", summary.todayActive);
       panel.classList.toggle("is-recovery", !summary.todayActive && summary.currentStreak === 0 && summary.activeLast7 > 0);
     }
+    const topButton = document.querySelector("[data-streak-open]");
+    if (topButton) {
+      topButton.classList.toggle("has-streak", summary.currentStreak > 0);
+      topButton.classList.toggle("is-complete", summary.todayActive);
+      topButton.title = summary.currentStreak > 0
+        ? `Racha de ${summary.currentStreak} ${summary.currentStreak === 1 ? "día" : "días"}`
+        : "Racha de estudio";
+    }
+    renderStreakMenu(summary);
+  }
+
+  function renderStreakMenu(summary = streakSummary()) {
+    const current = document.querySelector("[data-streak-current]");
+    const progress = document.querySelector("[data-streak-progress]");
+    const detail = document.querySelector("[data-streak-detail]");
+    const week = document.querySelector("[data-streak-week]");
+    const month = document.querySelector("[data-streak-month]");
+    const grid = document.querySelector("[data-streak-calendar]");
+    const dayLabel = summary.currentStreak === 1 ? "día" : "días";
+    if (current) current.textContent = `${summary.currentStreak} ${dayLabel}`;
+    if (progress) progress.textContent = summary.todayActive
+      ? "Presencia registrada"
+      : `${Math.min(PRESENCE_MINUTES, summary.todayMinutes)}/${PRESENCE_MINUTES} min hoy`;
+    if (week) week.textContent = `${summary.activeLast7} activos`;
+    if (detail) {
+      detail.textContent = summary.todayActive
+        ? "La presencia de hoy ya está completa."
+        : summary.currentStreak > 0
+          ? `Todavía estás a tiempo de mantener tu racha. ${PRESENCE_MINUTES} min alcanzan.`
+          : summary.activeLast7 > 0
+            ? "Perdiste la racha, pero podés recuperar el ritmo con una sesión hoy."
+            : `Completá ${PRESENCE_MINUTES} min de estudio para iniciar tu racha.`;
+    }
+    if (!month || !grid) return;
+
+    const monthDate = new Date(streakViewYear, streakViewMonth, 1);
+    const monthText = new Intl.DateTimeFormat("es-AR", { month: "long", year: "numeric" }).format(monthDate);
+    month.textContent = monthText.charAt(0).toUpperCase() + monthText.slice(1);
+    const startOffset = (monthDate.getDay() + 6) % 7;
+    const start = new Date(streakViewYear, streakViewMonth, 1 - startOffset);
+    const today = dateValue(new Date());
+    const cells = [];
+    for (let index = 0; index < 42; index += 1) {
+      const date = new Date(start.getFullYear(), start.getMonth(), start.getDate() + index);
+      const value = dateValue(date);
+      const active = (streakState.days[value] || 0) >= PRESENCE_MINUTES;
+      const outside = date.getMonth() !== streakViewMonth;
+      const label = new Intl.DateTimeFormat("es-AR", { weekday: "long", day: "numeric", month: "long" }).format(date);
+      cells.push(`
+        <span class="streak-calendar__day ${outside ? "is-outside" : ""} ${value === today ? "is-today" : ""} ${active ? "is-active" : ""}" aria-label="${label}${active ? ", presencia registrada" : ""}">
+          <span>${date.getDate()}</span>
+          ${active ? icon("streak") : ""}
+        </span>
+      `);
+    }
+    grid.innerHTML = cells.join("");
   }
 
   function syncStreakWithAndroid() {
@@ -1649,6 +1839,10 @@
     const date = new Date();
     date.setHours(12, 0, 0, 0);
     date.setDate(date.getDate() + offset);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  }
+
+  function dateValue(date) {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
   }
 
@@ -2116,7 +2310,7 @@
       music: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 3v12.2A3.5 3.5 0 1 1 17 12V6.1l-8 1.8v9.3A3.5 3.5 0 1 1 7 14V6.3L19 3ZM5.5 16A1.5 1.5 0 1 0 7 17.5V16H5.5Zm10 0a1.5 1.5 0 1 0 1.5 1.5V16h-1.5Z"/></svg>',
       popout: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6h-2V7.4l-7.3 7.3-1.4-1.4L16.6 6H14V4ZM5 6h6v2H7v9h9v-4h2v6H5V6Z"/></svg>',
       settings: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.7 4.1a2.3 2.3 0 0 1 4.6 0 2.3 2.3 0 0 0 3.3 1.9 2.3 2.3 0 0 1 2.3 4 2.3 2.3 0 0 0 0 3.8 2.3 2.3 0 0 1-2.3 4 2.3 2.3 0 0 0-3.3 1.9 2.3 2.3 0 0 1-4.6 0 2.3 2.3 0 0 0-3.3-1.9 2.3 2.3 0 0 1-2.3-4 2.3 2.3 0 0 0 0-3.8 2.3 2.3 0 0 1 2.3-4 2.3 2.3 0 0 0 3.3-1.9ZM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/></svg>',
-      streak: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 1-10 10A10 10 0 0 1 12 2Zm0 2a8 8 0 1 0 8 8 8 8 0 0 0-8-8Zm1 3v4.6l3.2 1.9-1 1.7-4.2-2.5V7h2Z"/></svg>',
+      streak: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.2 2.2c.4 3-1 4.7-2.4 6.3-1.2-2.2-2.9-3.8-5-5.4.3 3.8-2.4 5.7-2.4 10.3A8.6 8.6 0 0 0 12 22a8.6 8.6 0 0 0 8.6-8.6c0-4.1-2.3-7.8-7.4-11.2ZM12 19.7a4.2 4.2 0 0 1-4.2-4.2c0-1.8.9-3.1 2.1-4.4.2 1.5.9 2.4 1.7 3.2 1.1-1.4 1.8-2.8 1.8-4.7 1.8 1.5 2.8 3.4 2.8 5.9a4.2 4.2 0 0 1-4.2 4.2Z"/></svg>',
       chevronUp: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5.4 14.8 1.4 1.4 5.2-5.2 5.2 5.2 1.4-1.4L12 8.2l-6.6 6.6Z"/></svg>',
       chevronDown: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5.4 9.2 1.4-1.4 5.2 5.2 5.2-5.2 1.4 1.4L12 15.8 5.4 9.2Z"/></svg>'
     };
