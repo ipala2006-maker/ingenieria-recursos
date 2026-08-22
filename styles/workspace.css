@@ -799,6 +799,8 @@
   background:color-mix(in srgb,var(--accent) 7%,var(--workspace-surface-soft));
 }
 
+.workspace-plans-preview__notice strong{color:var(--text)}
+
 .workspace-plan-grid{
   display:grid;
   grid-template-columns:repeat(3,minmax(0,1fr));
@@ -852,6 +854,7 @@
 .workspace-plan-card header small{color:var(--accent);font-size:9px;font-weight:800;text-transform:uppercase}
 .workspace-plan-card h3{margin:0;font-size:16px}
 .workspace-plan-card header > strong{min-height:34px;color:var(--text);font-size:14px;line-height:1.25}
+.workspace-plan-card header > strong span{display:block;margin-top:2px;color:var(--muted);font-size:10px;font-weight:650}
 .workspace-plan-card .workspace-btn{width:100%;margin-top:auto}
 
 .workspace-plan-features{
@@ -879,45 +882,6 @@
   fill:none;
   stroke:currentColor;
   stroke-width:2;
-}
-
-.workspace-pricing-tools{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
-  color:var(--muted);
-  font-size:11.5px;
-  font-weight:700;
-}
-
-.workspace-pricing-toggle{
-  display:flex;
-  gap:2px;
-  padding:3px;
-  border:1px solid var(--workspace-edge-soft);
-  border-radius:999px;
-  background:var(--workspace-surface-soft);
-}
-
-.workspace-pricing-toggle button{
-  min-width:48px;
-  min-height:28px;
-  padding:0 10px;
-  border:0;
-  border-radius:999px;
-  background:transparent;
-  color:var(--muted);
-  font:inherit;
-  font-size:10.5px;
-  font-weight:800;
-  cursor:pointer;
-}
-
-.workspace-pricing-toggle button.is-active{
-  background:var(--panel);
-  color:var(--text);
-  box-shadow:0 2px 8px rgba(3,9,22,.12);
 }
 
 .workspace-ai-plan{
