@@ -289,6 +289,7 @@
 
   function canSwapUrl(url) {
     try {
+      if (!document.querySelector(MAIN_SELECTOR)) return false;
       const path = new URL(url, location.href).pathname;
       return path.includes("/pages/carrera/") || path.includes("/pages/materia/");
     } catch (error) {

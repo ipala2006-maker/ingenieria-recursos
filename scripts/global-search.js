@@ -8,15 +8,16 @@
   const workspaceHome = document.body.classList.contains("workspace-home") || document.body.classList.contains("productivity-page");
   let resources = null;
 
+  ensureTopbarNav();
   preserveNavigationState();
   applySavedTheme();
   loadProfessionalStyle();
-  if (workspaceHome) prepareProductivityTopbar();
+  prepareProductivityTopbar();
+  addThemeButton();
   loadAccountScript();
-  addLightTrayButton();
   loadPomodoroScript();
   loadInstallAppScript();
-  loadTrayAfterPageSettles();
+  loadBandejaScript();
 
   if (workspaceHome) return;
 
@@ -45,6 +46,16 @@
   document.addEventListener("click", (event) => {
     if (!search.contains(event.target)) results.hidden = true;
   });
+
+  function ensureTopbarNav() {
+    let nav = topbar.querySelector(".topbar__nav");
+    if (nav) return nav;
+    nav = document.createElement("nav");
+    nav.className = "topbar__nav";
+    nav.setAttribute("aria-label", "Acciones rápidas");
+    topbar.appendChild(nav);
+    return nav;
+  }
 
   function preserveNavigationState() {
     if ("scrollRestoration" in history) history.scrollRestoration = "manual";
@@ -145,49 +156,41 @@
 
     const link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = `${rootPath}styles/professional.css?v=20260821-dashboard-1`;
+    link.href = `${rootPath}styles/professional.css?v=20260822-shell-stable`;
     document.head.appendChild(link);
   }
 
-  function addLightTrayButton() {
-    if (topbar.querySelector("[data-bandeja-trigger]")) return;
+  function addThemeButton() {
+    const nav = topbar.querySelector(".topbar__nav");
+    if (!nav || nav.querySelector("[data-theme-toggle]")) return;
 
     const button = document.createElement("button");
-    button.className = workspaceHome
-      ? "topbar__link topbar-icon-btn tray-trigger workspace-more-btn"
-      : "topbar__link tray-trigger";
+    button.className = "topbar__link topbar-icon-btn theme-top-btn";
     button.type = "button";
-    button.dataset.bandejaTrigger = "true";
-    button.setAttribute("aria-label", workspaceHome ? "Abrir más opciones" : "Abrir recursos");
-    button.title = workspaceHome ? "Más opciones" : "Recursos";
-    button.innerHTML = workspaceHome
-      ? '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="8" cy="7" r="1.7" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="11" cy="17" r="1.7" fill="currentColor" stroke="none"/></svg>'
-      : '<span class="tray-trigger__bar"></span><span class="tray-trigger__bar"></span><span class="tray-trigger__bar"></span>';
+    button.dataset.themeToggle = "true";
+    nav.appendChild(button);
 
-    const brand = topbar.querySelector(".brand");
-    if (workspaceHome) topbar.querySelector(".topbar__nav")?.appendChild(button);
-    else topbar.insertBefore(button, brand || topbar.firstChild);
+    const render = () => {
+      const isDark = document.documentElement.classList.contains("theme-dark");
+      button.setAttribute("aria-label", isDark ? "Cambiar a tema claro" : "Cambiar a tema oscuro");
+      button.title = isDark ? "Tema oscuro" : "Tema claro";
+      button.innerHTML = isDark
+        ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.2A8.2 8.2 0 0 1 8.8 4a8.3 8.3 0 1 0 11.2 11.2Z"/></svg>'
+        : '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.8"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6 6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/></svg>';
+    };
 
     button.addEventListener("click", () => {
-      try { localStorage.setItem("bandeja_abierta", "true"); } catch (error) {}
-      loadBandejaScript();
-    }, { once: true });
-  }
-
-  function loadTrayAfterPageSettles() {
-    try {
-      if (localStorage.getItem("bandeja_abierta") === "true") {
-        loadBandejaScript();
-        return;
-      }
-    } catch (error) {}
-
-    const load = () => loadBandejaScript();
-    if ("requestIdleCallback" in window) {
-      requestIdleCallback(load, { timeout: 1200 });
-      return;
-    }
-    setTimeout(load, 400);
+      const next = document.documentElement.classList.contains("theme-dark") ? "light" : "dark";
+      button.classList.remove("is-switching");
+      void button.offsetWidth;
+      button.classList.add("is-switching");
+      window.EstudiemosTheme?.set(next);
+      render();
+      setTimeout(() => button.classList.remove("is-switching"), 260);
+    });
+    window.addEventListener("estudiemos:theme-change", render);
+    window.addEventListener("pageshow", render);
+    render();
   }
 
   function applySavedTheme() {
@@ -207,7 +210,7 @@
     if (document.querySelector('script[src*="scripts/bandeja.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/bandeja.js?v=20260821-dashboard-history`;
+    script.src = `${rootPath}scripts/bandeja.js?v=20260822-no-sidebar`;
     script.defer = true;
     document.head.appendChild(script);
   }

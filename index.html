@@ -20,10 +20,10 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="apple-touch-icon" href="./assets/icon-180.png" />
     <title>Estudiemos</title>
-    <script src="./scripts/theme-init.js?v=20260811-floating-timer"></script>
+    <script src="./scripts/theme-init.js?v=20260822-shell-stable"></script>
     <link rel="stylesheet" href="./styles/app.css?v=20260820-calendar-content" />
     <link rel="stylesheet" href="./styles/workspace.css?v=20260821-workspace-soft" />
-    <link rel="stylesheet" href="./styles/dashboard.css?v=20260821-dashboard-1" />
+    <link rel="stylesheet" href="./styles/dashboard.css?v=20260822-home-compact" />
   </head>
 
   <body class="workspace-home">
@@ -37,116 +37,99 @@
     </header>
 
     <main class="workspace-page">
-      <section class="home-dashboard" aria-labelledby="homeDashboardTitle">
-        <header class="home-dashboard__heading">
-          <p class="workspace-eyebrow">Tu día, en orden</p>
-          <h1 id="homeDashboardTitle">Inicio</h1>
-        </header>
-
-        <div class="home-dashboard__grid">
-          <button class="dashboard-widget dashboard-space" type="button" data-dashboard-space>
-            <span class="dashboard-widget__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M3 6.5h6l2 2h10v10H3v-12Z"/></svg>
-            </span>
-            <span class="dashboard-space__copy">
-              <span class="dashboard-widget__eyebrow">Archivos</span>
-              <strong>Mi espacio</strong>
-              <small data-dashboard-space-summary>Carpetas y archivos organizados a tu manera.</small>
-            </span>
-            <span class="dashboard-widget__arrow" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg>
-            </span>
-          </button>
-
-          <section class="dashboard-widget dashboard-calendar" aria-label="Calendario mensual">
-            <header class="dashboard-widget__head">
-              <div>
-                <span class="dashboard-widget__eyebrow">Calendario</span>
-                <h2 data-dashboard-month></h2>
-              </div>
-              <div class="dashboard-widget__nav">
-                <button type="button" data-dashboard-month-change="-1" aria-label="Mes anterior">
-                  <svg viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></svg>
-                </button>
-                <button type="button" data-dashboard-month-change="1" aria-label="Mes siguiente">
-                  <svg viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg>
-                </button>
-              </div>
-            </header>
-            <div class="dashboard-calendar__weekdays" aria-hidden="true"><span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span></div>
-            <div class="dashboard-calendar__grid" data-dashboard-calendar></div>
-          </section>
-
-          <section class="dashboard-widget dashboard-agenda" aria-labelledby="dashboardAgendaTitle">
-            <header class="dashboard-widget__head">
-              <div>
-                <span class="dashboard-widget__eyebrow">Pendientes</span>
-                <h2 id="dashboardAgendaTitle">Agenda</h2>
-              </div>
-              <button class="dashboard-widget__action" type="button" data-quick-note-open aria-label="Crear anotación" title="Nueva anotación">
-                <svg viewBox="0 0 24 24"><path d="M4 5h10v14H4V5Zm13 1 2 2-7.5 7.5-3 .7.7-3L17 6Z"/></svg>
-              </button>
-            </header>
-            <div class="dashboard-agenda__list" data-dashboard-agenda></div>
-            <button class="dashboard-agenda__open" type="button" data-dashboard-agenda-open>Ver agenda completa</button>
-          </section>
-        </div>
-      </section>
-
-      <section class="workspace-section" id="mi-espacio" aria-labelledby="workspaceSectionTitle">
-        <header class="workspace-section__head">
-          <div>
-            <p class="workspace-eyebrow">Archivos personales</p>
-            <h2 id="workspaceSectionTitle">Mi espacio</h2>
-          </div>
-          <p>Guardá y ordená lo que necesitás.</p>
-        </header>
-
-        <section class="workspace-browser" aria-label="Archivos y carpetas">
-        <header class="workspace-toolbar">
-          <nav class="workspace-breadcrumbs" aria-label="Ruta de carpetas" data-workspace-breadcrumbs></nav>
-
-          <div class="workspace-toolbar__controls">
-            <button class="workspace-tool-icon workspace-tool-icon--ai" type="button" data-workspace-ai aria-label="Organizar con IA" title="Organizar con IA" hidden>
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 1.2 4.1L17 9l-3.8 1.9L12 15l-1.2-4.1L7 9l3.8-1.9L12 3Zm6 11 .7 2.3L21 17.5l-2.3 1.2L18 21l-.7-2.3-2.3-1.2 2.3-1.2L18 14Z"/></svg>
-            </button>
-            <label class="workspace-search">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
-              <span class="sr-only">Buscar en mi espacio</span>
-              <input type="search" placeholder="Buscar en mi espacio" autocomplete="off" data-workspace-search />
-            </label>
-
-            <label class="workspace-sort">
-              <span class="sr-only">Ordenar archivos</span>
-              <select data-workspace-sort aria-label="Ordenar archivos">
-                <option value="updated">Más recientes</option>
-                <option value="name">Nombre</option>
-                <option value="type">Tipo</option>
-              </select>
-            </label>
-
-            <div class="workspace-view-toggle" role="group" aria-label="Vista">
-              <button type="button" data-workspace-view="grid" aria-label="Vista de cuadrícula" title="Cuadrícula">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><rect x="14" y="14" width="6" height="6"/></svg>
-              </button>
-              <button type="button" data-workspace-view="list" aria-label="Vista de lista" title="Lista">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="5" cy="6" r="1"/><circle cx="5" cy="12" r="1"/><circle cx="5" cy="18" r="1"/></svg>
-              </button>
+      <div class="home-layout">
+        <section class="workspace-section" id="mi-espacio" aria-labelledby="workspaceSectionTitle">
+          <header class="workspace-section__head">
+            <div>
+              <p class="workspace-eyebrow">Archivos personales</p>
+              <h1 id="workspaceSectionTitle">Mi espacio</h1>
             </div>
-          </div>
-        </header>
+            <p>Guardá y ordená lo que necesitás.</p>
+          </header>
 
-        <div class="workspace-dropzone" data-workspace-dropzone>
-          <div class="workspace-state" data-workspace-state>
-            <span class="workspace-spinner" aria-hidden="true"></span>
-            <p>Preparando tu espacio...</p>
-          </div>
-          <div class="workspace-items" data-workspace-items hidden></div>
-        </div>
+          <section class="workspace-browser" aria-label="Archivos y carpetas">
+            <header class="workspace-toolbar">
+              <nav class="workspace-breadcrumbs" aria-label="Ruta de carpetas" data-workspace-breadcrumbs></nav>
 
-        <p class="workspace-status" data-workspace-status role="status" aria-live="polite"></p>
+              <div class="workspace-toolbar__controls">
+                <button class="workspace-tool-icon workspace-tool-icon--ai" type="button" data-workspace-ai aria-label="Organizar con IA" title="Organizar con IA" hidden>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 1.2 4.1L17 9l-3.8 1.9L12 15l-1.2-4.1L7 9l3.8-1.9L12 3Zm6 11 .7 2.3L21 17.5l-2.3 1.2L18 21l-.7-2.3-2.3-1.2 2.3-1.2L18 14Z"/></svg>
+                </button>
+                <label class="workspace-search">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
+                  <span class="sr-only">Buscar en mi espacio</span>
+                  <input type="search" placeholder="Buscar en mi espacio" autocomplete="off" data-workspace-search />
+                </label>
+
+                <label class="workspace-sort">
+                  <span class="sr-only">Ordenar archivos</span>
+                  <select data-workspace-sort aria-label="Ordenar archivos">
+                    <option value="updated">Más recientes</option>
+                    <option value="name">Nombre</option>
+                    <option value="type">Tipo</option>
+                  </select>
+                </label>
+
+                <div class="workspace-view-toggle" role="group" aria-label="Vista">
+                  <button type="button" data-workspace-view="grid" aria-label="Vista de cuadrícula" title="Cuadrícula">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><rect x="14" y="14" width="6" height="6"/></svg>
+                  </button>
+                  <button type="button" data-workspace-view="list" aria-label="Vista de lista" title="Lista">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="5" cy="6" r="1"/><circle cx="5" cy="12" r="1"/><circle cx="5" cy="18" r="1"/></svg>
+                  </button>
+                </div>
+              </div>
+            </header>
+
+            <div class="workspace-dropzone" data-workspace-dropzone>
+              <div class="workspace-state" data-workspace-state>
+                <span class="workspace-spinner" aria-hidden="true"></span>
+                <p>Preparando tu espacio...</p>
+              </div>
+              <div class="workspace-items" data-workspace-items hidden></div>
+            </div>
+
+            <p class="workspace-status" data-workspace-status role="status" aria-live="polite"></p>
+          </section>
         </section>
-      </section>
+
+        <section class="home-dashboard" aria-label="Calendario y agenda">
+          <div class="home-dashboard__grid">
+            <section class="dashboard-widget dashboard-calendar" aria-label="Calendario mensual">
+              <header class="dashboard-widget__head">
+                <div>
+                  <span class="dashboard-widget__eyebrow">Calendario</span>
+                  <h2 data-dashboard-month></h2>
+                </div>
+                <div class="dashboard-widget__nav">
+                  <button type="button" data-dashboard-month-change="-1" aria-label="Mes anterior">
+                    <svg viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></svg>
+                  </button>
+                  <button type="button" data-dashboard-month-change="1" aria-label="Mes siguiente">
+                    <svg viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg>
+                  </button>
+                </div>
+              </header>
+              <div class="dashboard-calendar__weekdays" aria-hidden="true"><span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span></div>
+              <div class="dashboard-calendar__grid" data-dashboard-calendar></div>
+            </section>
+
+            <section class="dashboard-widget dashboard-agenda" aria-labelledby="dashboardAgendaTitle">
+              <header class="dashboard-widget__head">
+                <div>
+                  <span class="dashboard-widget__eyebrow">Pendientes</span>
+                  <h2 id="dashboardAgendaTitle">Agenda</h2>
+                </div>
+                <button class="dashboard-widget__action" type="button" data-quick-note-open aria-label="Crear anotación" title="Nueva anotación">
+                  <svg viewBox="0 0 24 24"><path d="M4 5h10v14H4V5Zm13 1 2 2-7.5 7.5-3 .7.7-3L17 6Z"/></svg>
+                </button>
+              </header>
+              <div class="dashboard-agenda__list" data-dashboard-agenda></div>
+              <button class="dashboard-agenda__open" type="button" data-dashboard-agenda-open>Ver agenda completa</button>
+            </section>
+          </div>
+        </section>
+      </div>
 
       <input type="file" multiple hidden data-workspace-file-input />
 
@@ -157,10 +140,10 @@
 
     <!-- DATA SIEMPRE PRIMERO -->
     <script src="./data/data.js?v=20260804-quimica-completa"></script>
-    <script src="./scripts/global-search.js?v=20260821-dashboard-1"></script>
+    <script src="./scripts/global-search.js?v=20260822-shell-stable"></script>
 
     <script src="./scripts/workspace.js?v=20260821-dashboard-history"></script>
-    <script src="./scripts/dashboard.js?v=20260821-dashboard-1"></script>
+    <script src="./scripts/dashboard.js?v=20260822-home-compact"></script>
 
     <script>
       document.getElementById("year").textContent = new Date().getFullYear();

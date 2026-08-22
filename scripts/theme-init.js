@@ -1,8 +1,13 @@
 (function () {
   var STORAGE_KEY = "estudiemos_theme";
-  var TRAY_OPEN_KEY = "bandeja_abierta";
   var DEFAULT_THEME = "dark";
   var root = document.documentElement;
+
+  function getRootPath() {
+    var currentScript = document.currentScript;
+    var src = currentScript ? currentScript.getAttribute("src") || "" : "";
+    return src.replace(/scripts\/theme-init\.js(?:\?.*)?$/, "");
+  }
 
   function installEarlyThemeStyles() {
     if (document.getElementById("earlyThemeStyles")) return;
@@ -10,6 +15,7 @@
     var style = document.createElement("style");
     style.id = "earlyThemeStyles";
     style.textContent = "\n" +
+      "html,html body{background:#0f172a;color:#e5e7eb;}\n" +
       "html.theme-light{\n" +
       "  --bg:#edf1f5;\n" +
       "  --panel:#f7f9fb;\n" +
@@ -25,6 +31,7 @@
       "  --shadow:0 10px 30px rgba(15,23,42,.08);\n" +
       "  --ring:0 0 0 4px rgba(26,115,232,.14);\n" +
       "  color-scheme:light;\n" +
+      "  background:#edf1f5;\n" +
       "}\n" +
       "html.theme-light body{\n" +
       "  background:radial-gradient(900px 420px at 15% -15%, rgba(26,115,232,.055), transparent 60%), radial-gradient(760px 360px at 95% -10%, rgba(52,168,83,.04), transparent 55%), var(--bg);\n" +
@@ -33,9 +40,20 @@
       "  background:rgba(247,249,251,.94);\n" +
       "  border-bottom-color:rgba(196,207,220,.9);\n" +
       "}\n" +
-      "html.theme-dark{color-scheme:dark;}\n" +
-      "html.theme-syncing,html.theme-syncing *{transition:none!important;}\n";
+      "html.theme-dark{color-scheme:dark;background:#0f172a;}\n" +
+      "html.theme-dark body{background-color:#0f172a;}\n" +
+      "html.theme-syncing,html.theme-syncing *{transition:none!important;}\n" +
+      "@view-transition{navigation:auto;}\n" +
+      "::view-transition-old(root),::view-transition-new(root){animation-duration:.11s;animation-timing-function:ease-out;}\n";
     document.head.appendChild(style);
+  }
+
+  function loadProfessionalStyleEarly() {
+    if (document.querySelector('link[href*="styles/professional.css"]')) return;
+    var link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = getRootPath() + "styles/professional.css?v=20260822-shell-stable";
+    document.head.appendChild(link);
   }
 
   function installSpeculationRules() {
@@ -61,12 +79,6 @@
       theme = localStorage.getItem(STORAGE_KEY) || DEFAULT_THEME;
     } catch (error) {}
     return theme === "dark" ? "dark" : "light";
-  }
-
-  function applyEarlyTrayState() {
-    try {
-      root.classList.toggle("tray-preopen", localStorage.getItem(TRAY_OPEN_KEY) === "true");
-    } catch (error) {}
   }
 
   function applyTheme(theme, notify, instant) {
@@ -101,16 +113,14 @@
   function loadSmoothNavigation() {
     if (document.querySelector('script[src*="scripts/smooth-nav.js"]')) return;
 
-    var currentScript = document.currentScript;
-    var src = currentScript ? currentScript.getAttribute("src") || "" : "";
-    var rootPath = src.replace(/scripts\/theme-init\.js(?:\?.*)?$/, "");
+    var rootPath = getRootPath();
     try {
       window.EstudiemosRoot = new URL(rootPath || "./", location.href).pathname;
     } catch (error) {
       window.EstudiemosRoot = rootPath || "./";
     }
     var script = document.createElement("script");
-    script.src = rootPath + "scripts/smooth-nav.js?v=20260809-pomodoro";
+    script.src = rootPath + "scripts/smooth-nav.js?v=20260822-shell-stable";
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -123,8 +133,8 @@
   }
 
   installEarlyThemeStyles();
-  applyEarlyTrayState();
   applyTheme(readTheme(), false);
+  loadProfessionalStyleEarly();
   installSpeculationRules();
   loadSmoothNavigation();
 

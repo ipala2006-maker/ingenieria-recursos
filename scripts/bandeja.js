@@ -1,6 +1,7 @@
 (function () {
   if (!window.DATA || !Array.isArray(DATA.carreras)) return;
-  if (document.querySelector(".tray-shell")) return;
+  if (window.__estudiemosAgendaInstalled) return;
+  window.__estudiemosAgendaInstalled = true;
 
   const STORAGE_KEYS = {
     favorites: "bandeja_favoritos",
@@ -25,16 +26,12 @@
   let agendaAssistantPreview = [];
   let agendaAssistantAction = null;
 
-  addTray();
   addAgendaPanel();
-  addTrayButton();
   addAgendaButton();
   bindTray();
   trackRecentTopic();
   refreshPageActions();
-  renderTray();
   restoreTrayState();
-  markActiveTheme();
   observeLateCards();
   revealAndroidWidgetSync();
   openAgendaFromUrl();
@@ -45,11 +42,9 @@
     syncAgendaWithAndroid(readList(STORAGE_KEYS.agenda));
   });
   window.addEventListener("estudiemos:cloud-restored", () => {
-    renderTray();
     renderAgenda();
     syncActionButtons();
     syncSubjectButtons();
-    markActiveTheme();
     syncAgendaWithAndroid(readList(STORAGE_KEYS.agenda));
   });
 
@@ -177,7 +172,7 @@
             <details class="agenda-manual" data-agenda-manual>
               <summary class="agenda-manual__summary">
                 ${icon("plus")}
-                <span><strong>Anotar manualmente</strong><small>Para una tarea o recordatorio rápido</small></span>
+                <span><strong>Anotar</strong><small>Agregar una tarea rápida</small></span>
                 ${icon("chevronDown")}
               </summary>
 
@@ -186,39 +181,11 @@
                 <h3 id="agendaSelectedLabel"></h3>
               </div>
 
-              <form id="agendaForm" class="agenda-form">
+              <form id="agendaForm" class="agenda-form agenda-form--quick">
                 <label class="tray-field">
-                  Qué querés anotar
+                  Nueva tarea
                   <input id="agendaTitle" type="text" maxlength="90" placeholder="Ej: Entrega de ejercicios" required />
                 </label>
-
-                <div class="agenda-form__row agenda-form__row--type">
-                  <label class="tray-field">
-                    Tipo
-                    <select id="agendaType">
-                      ${agendaTypeOptions()}
-                    </select>
-                  </label>
-                  <label class="tray-field">
-                    Fecha
-                    <input id="agendaDate" type="date" />
-                  </label>
-                  <label class="tray-field">
-                    Materia
-                    <select id="agendaSubject">
-                      ${agendaSubjectOptions()}
-                    </select>
-                  </label>
-                </div>
-
-                <details class="agenda-note-details">
-                  <summary>Agregar nota opcional</summary>
-                  <label class="tray-field">
-                    Nota breve
-                    <textarea id="agendaNote" rows="2" maxlength="160" placeholder="Ej: revisar guía 2 y fórmulas principales"></textarea>
-                  </label>
-                </details>
-
                 <button class="agenda-save-btn" type="submit" disabled>${icon("plus")}<span>Agregar</span></button>
               </form>
             </details>
@@ -598,8 +565,9 @@
 
   function restoreTrayState() {
     document.body.classList.remove("tray-transition-enabled");
-    setTrayOpen(localStorage.getItem(STORAGE_KEYS.open) === "true", false);
+    document.body.classList.remove("tray-open");
     document.documentElement.classList.remove("tray-preopen");
+    try { localStorage.removeItem(STORAGE_KEYS.open); } catch (error) {}
   }
 
   function setTheme(theme, save) {

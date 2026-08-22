@@ -141,27 +141,47 @@ html.theme-dark .topbar{
 .productivity-page .suggestion-top-btn{order:5}
 .workspace-home .about-top-btn,
 .productivity-page .about-top-btn{order:6}
+.workspace-home .theme-top-btn,
+.productivity-page .theme-top-btn{order:7}
 .workspace-home .account-top-btn,
-.productivity-page .account-top-btn{order:7}
-.workspace-home .workspace-more-btn,
-.productivity-page .workspace-more-btn{order:8;margin:0}
+.productivity-page .account-top-btn{order:8}
 .workspace-home .app-install-btn,
 .productivity-page .app-install-btn{display:none!important}
 
 .workspace-home .suggestion-top-btn svg,
 .workspace-home .about-top-btn svg,
-.workspace-home .workspace-more-btn svg,
+.workspace-home .theme-top-btn svg,
 .productivity-page .suggestion-top-btn svg,
 .productivity-page .about-top-btn svg,
-.productivity-page .workspace-more-btn svg{
+.productivity-page .theme-top-btn svg{
   fill:none;
   stroke:currentColor;
+  stroke-width:1.8;
+  stroke-linecap:round;
+  stroke-linejoin:round;
 }
 
-.workspace-home .workspace-more-btn svg circle,
-.productivity-page .workspace-more-btn svg circle{
-  fill:currentColor;
-  stroke:none;
+.theme-top-btn svg{
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.8;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  transition:transform .24s cubic-bezier(.2,.75,.25,1),opacity .16s ease;
+}
+
+.suggestion-top-btn svg,
+.about-top-btn svg{
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.8;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+.theme-top-btn.is-switching svg{
+  transform:rotate(78deg) scale(.76);
+  opacity:.32;
 }
 
 .workspace-home .quick-note-top-btn svg,
@@ -696,6 +716,37 @@ html.theme-dark .theme-switcher__btn.is-active{
 
   .tray-footer{
     padding:12px 14px;
+  }
+}
+
+.agenda-form--quick{
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:end;
+  gap:9px;
+}
+
+.agenda-form--quick .agenda-save-btn{
+  width:auto;
+  min-width:92px;
+  margin:0;
+  padding-inline:14px;
+}
+
+.agenda-manual .agenda-form--quick{
+  padding-top:8px;
+}
+
+.agenda-manual .agenda-selected-day{
+  padding-top:10px;
+}
+
+@media(max-width:380px){
+  .agenda-form--quick{
+    grid-template-columns:1fr;
+  }
+
+  .agenda-form--quick .agenda-save-btn{
+    width:100%;
   }
 }
 

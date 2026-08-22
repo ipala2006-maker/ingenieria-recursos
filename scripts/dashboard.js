@@ -12,7 +12,6 @@
   addTopbarActions();
   addPanels();
   bindEvents();
-  fillSubjectOptions();
   renderDashboard();
   syncPanelsWithHistory();
 
@@ -53,16 +52,13 @@
       shell.innerHTML = `
         <div class="quick-panel" role="dialog" aria-modal="true" aria-labelledby="quickNoteTitle">
           <header class="quick-panel__head">
-            <div><p>Anotación rápida</p><h2 id="quickNoteTitle">Agregar una tarea</h2></div>
+            <div><p>Anotación rápida</p><h2 id="quickNoteTitle">Nueva tarea</h2></div>
             <button class="quick-panel__close" type="button" data-quick-panel-close aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
           </header>
-          <form class="quick-panel__form" data-quick-note-form>
-            <label class="quick-panel__field">Materia<select name="subject"></select></label>
-            <label class="quick-panel__field">Qué tenés que hacer<input name="title" maxlength="90" required autocomplete="off" placeholder="Ej: Resolver la guía 2" /></label>
-            <label class="quick-panel__field">Detalle opcional<textarea name="note" maxlength="240" rows="3" placeholder="Algo que no quieras olvidar"></textarea></label>
-            <p class="quick-panel__hint">Se guardará en la agenda como una tarea sin fecha.</p>
+          <form class="quick-panel__form quick-panel__form--note" data-quick-note-form>
+            <label class="quick-panel__field">¿Qué tenés que hacer?<input name="title" maxlength="90" required autocomplete="off" placeholder="Ej: Resolver la guía 2" /></label>
             <p class="quick-panel__status" data-quick-note-status role="status" aria-live="polite"></p>
-            <button class="quick-panel__submit" type="submit" disabled><svg viewBox="0 0 24 24"><path d="M5 12.5 9.2 17 19 7"/></svg><span>Guardar anotación</span></button>
+            <button class="quick-panel__submit" type="submit" disabled><svg viewBox="0 0 24 24"><path d="M5 12.5 9.2 17 19 7"/></svg><span>Guardar tarea</span></button>
           </form>
         </div>`;
       document.body.appendChild(shell);
@@ -137,18 +133,15 @@
     window.addEventListener("popstate", syncPanelsWithHistory);
     window.addEventListener("storage", (event) => {
       if ([AGENDA_KEY, SUBJECTS_KEY].includes(event.key)) {
-        fillSubjectOptions();
         renderDashboard();
       }
     });
     window.addEventListener("estudiemos:data-change", (event) => {
       if (!event.detail?.key || [AGENDA_KEY, SUBJECTS_KEY].includes(event.detail.key)) {
-        fillSubjectOptions();
         renderDashboard();
       }
     });
     window.addEventListener("estudiemos:cloud-restored", () => {
-      fillSubjectOptions();
       renderDashboard();
     });
     window.addEventListener("estudiemos:workspace-update", updateSpaceSummary);
@@ -196,20 +189,6 @@
     document.body.classList.add("quick-panel-open");
   }
 
-  function fillSubjectOptions() {
-    const select = document.querySelector('[data-quick-note-form] select[name="subject"]');
-    if (!select || !window.DATA?.carreras) return;
-    const selected = new Set(readList(SUBJECTS_KEY));
-    const subjects = DATA.carreras.flatMap((career) => career.materias || []);
-    subjects.sort((a, b) => {
-      const selectedDifference = Number(selected.has(b.slug)) - Number(selected.has(a.slug));
-      return selectedDifference || a.title.localeCompare(b.title, "es", { sensitivity: "base" });
-    });
-    const previous = select.value;
-    select.innerHTML = `${subjects.map((subject) => `<option value="${escapeHtml(subject.title)}">${escapeHtml(subject.title)}</option>`).join("")}<option value="">Sin materia</option>`;
-    if ([...select.options].some((option) => option.value === previous)) select.value = previous;
-  }
-
   function saveQuickNote(event) {
     event.preventDefault();
     const form = event.currentTarget;
@@ -221,8 +200,8 @@
       title: title.slice(0, 90),
       type: "Tarea",
       date: "",
-      subject: form.elements.subject.value.trim().slice(0, 80),
-      note: form.elements.note.value.trim().slice(0, 240),
+      subject: "",
+      note: "",
       horaInicio: "",
       horaFin: "",
       done: false,
@@ -230,7 +209,6 @@
     });
     writeAgenda(items.slice(0, MAX_AGENDA_ITEMS));
     form.reset();
-    fillSubjectOptions();
     form.querySelector('[type="submit"]').disabled = true;
     closeActivePanel();
   }
