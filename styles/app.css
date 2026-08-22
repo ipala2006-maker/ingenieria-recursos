@@ -4361,6 +4361,21 @@ html.theme-light .app-install-sheet__close{
 .account-update>span{min-width:0;display:grid;gap:3px}
 .account-update strong{font-size:13px}
 .account-update small{color:var(--muted);font-size:11px;line-height:1.35}
+.account-android-widgets{
+  margin-top:12px;
+  display:grid;
+  gap:6px;
+}
+.account-android-widgets[hidden]{display:none}
+.account-android-widgets>strong{font-size:13px}
+.account-android-widgets>small{color:var(--muted);font-size:11px;line-height:1.35}
+.account-android-widgets>div{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+  margin-top:3px;
+}
+.account-android-widgets .account-secondary{min-height:36px;padding:7px 8px;font-size:12px}
 .account-status{
   min-height:20px;
   margin:14px 0 0;

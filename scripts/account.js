@@ -12,7 +12,7 @@
     "estudiemos_theme"
   ];
   const LIST_KEYS = new Set(SYNC_KEYS.filter((key) => !["estudiemos_theme", "estudiemos_pomodoro_streak"].includes(key)));
-  const SUBJECTS_KEY = "bandeja_materias";
+  const PRIVATE_SYNC_KEYS = SYNC_KEYS.filter((key) => key !== "estudiemos_theme");
   const LINKED_USER_KEY = "estudiemos_cloud_user";
   const LOCAL_CHANGED_KEY = "estudiemos_cloud_local_changed";
   const DIRTY_KEY = "estudiemos_cloud_dirty";
@@ -150,10 +150,22 @@
           </button>
         </div>
 
+        <div class="account-android-widgets" data-account-android-widgets hidden>
+          <strong>Widgets de Android</strong>
+          <small>Elegí cuál querés agregar a la pantalla de inicio.</small>
+          <div>
+            <button class="account-secondary" type="button" data-account-widget="agenda">Agenda</button>
+            <button class="account-secondary" type="button" data-account-widget="calendar">Calendario</button>
+            <button class="account-secondary" type="button" data-account-widget="streak">Racha</button>
+          </div>
+        </div>
+
         <p class="account-status" data-account-status role="status" aria-live="polite"></p>
         <p class="account-privacy">Tus datos privados solo pueden ser leídos por tu propia cuenta.</p>
       </div>`;
     document.body.appendChild(shell);
+    const widgetActions = shell.querySelector("[data-account-android-widgets]");
+    if (widgetActions) widgetActions.hidden = !hasAndroidBridge();
   }
 
   function bindAccountEvents() {
@@ -165,6 +177,8 @@
       if (event.target.closest("[data-account-signout]")) signOut();
       if (event.target.closest("[data-account-sync]")) synchronize("manual");
       if (event.target.closest("[data-account-update]")) updateApplication();
+      const widgetButton = event.target.closest("[data-account-widget]");
+      if (widgetButton) requestAndroidWidget(widgetButton.dataset.accountWidget);
     });
 
     document.querySelector("[data-account-form]")?.addEventListener("submit", (event) => {
@@ -210,6 +224,8 @@
       const result = await client.auth.getSession();
       if (result.error) throw result.error;
       session = result.data.session;
+      if (session) prepareLocalAccountSwitch(session.user.id);
+      else if (localStorage.getItem(LINKED_USER_KEY)) clearLocalAccountData();
       renderAccountState();
       finishReady(true);
       if (session) await synchronize("startup");
@@ -223,8 +239,13 @@
             openDialog();
             setStatus("Escribí una contraseña nueva para recuperar tu cuenta.", "info");
           }
+          if (session) prepareLocalAccountSwitch(session.user.id);
           renderAccountState();
-          if (session && session.user.id !== previousUser) await synchronize("signin");
+          if (session && session.user.id !== previousUser) {
+            await synchronize("signin");
+          } else if (!session && previousUser) {
+            clearLocalAccountData();
+          }
         }, 0);
       });
     } catch (error) {
@@ -281,6 +302,7 @@
     setBusy(false);
     if (result.error) return setStatus(authErrorMessage(result.error), "error");
     session = result.data.session;
+    prepareLocalAccountSwitch(session.user.id);
     renderAccountState();
     await synchronize("signin");
     setStatus("Cuenta conectada y datos sincronizados.", "success");
@@ -299,6 +321,7 @@
     if (result.error) return setStatus(authErrorMessage(result.error), "error");
     if (result.data.session) {
       session = result.data.session;
+      prepareLocalAccountSwitch(session.user.id);
       renderAccountState();
       await synchronize("signin");
       setStatus("Cuenta creada y datos sincronizados.", "success");
@@ -340,12 +363,14 @@
   async function signOut() {
     if (!client) return;
     setBusy(true, "Cerrando sesión...");
+    if (session) await synchronize("signout");
     const result = await client.auth.signOut();
     setBusy(false);
     if (result.error) return setStatus("No se pudo cerrar la sesión. Probá nuevamente.", "error");
     session = null;
+    clearLocalAccountData();
     renderAccountState();
-    setStatus("Sesión cerrada. Tus datos locales siguen en este dispositivo.", "info");
+    setStatus("Sesión cerrada. Los datos de la cuenta se retiraron de este dispositivo.", "info");
   }
 
   async function synchronize(reason) {
@@ -366,12 +391,14 @@
       const cloudChangedAt = result.data?.updated_at ? Date.parse(result.data.updated_at) : 0;
       const localDirty = localStorage.getItem(DIRTY_KEY) === "true";
 
-      if (!result.data) {
+      if (linkedUser !== userId) {
+        const accountState = result.data
+          ? normalizeAccountState(result.data.state)
+          : createEmptyAccountState();
+        applyCloudState(accountState);
+        if (!result.data) await uploadState(userId, accountState);
+      } else if (!result.data) {
         await uploadState(userId, localState);
-      } else if (linkedUser !== userId) {
-        const merged = mergeInitialState(localState, result.data.state || {});
-        applyCloudState(merged);
-        await uploadState(userId, merged);
       } else if (localDirty && localChangedAt > cloudChangedAt) {
         await uploadState(userId, localState);
       } else {
@@ -414,18 +441,17 @@
         try { values[key] = Array.isArray(JSON.parse(raw || "[]")) ? JSON.parse(raw || "[]") : []; }
         catch (_) { values[key] = []; }
       } else {
-        values[key] = raw || "dark";
+        values[key] = raw || (key === "estudiemos_theme" ? "dark" : "{}");
       }
     });
     return { version: 1, values };
   }
 
   function applyCloudState(state) {
-    const values = state?.values || {};
+    const values = normalizeAccountState(state).values;
     applyingCloud = true;
     try {
       SYNC_KEYS.forEach((key) => {
-        if (!(key in values)) return;
         const value = LIST_KEYS.has(key) ? JSON.stringify(Array.isArray(values[key]) ? values[key] : []) : String(values[key]);
         localStorage.setItem(key, value);
       });
@@ -436,29 +462,58 @@
     window.dispatchEvent(new CustomEvent("estudiemos:cloud-restored"));
   }
 
-  function mergeInitialState(localState, cloudState) {
-    const localValues = localState?.values || {};
-    const cloudValues = cloudState?.values || {};
+  function createEmptyAccountState() {
+    let theme = "dark";
+    try {
+      const savedTheme = localStorage.getItem("estudiemos_theme");
+      if (savedTheme === "light" || savedTheme === "dark") theme = savedTheme;
+    } catch (_) {}
+
     const values = {};
     SYNC_KEYS.forEach((key) => {
-      if (!LIST_KEYS.has(key)) {
-        values[key] = cloudValues[key] || localValues[key] || (key === "estudiemos_theme" ? "dark" : "{}");
-        return;
-      }
-      const localList = Array.isArray(localValues[key]) ? localValues[key] : [];
-      const cloudList = Array.isArray(cloudValues[key]) ? cloudValues[key] : [];
-      if (key === SUBJECTS_KEY) {
-        values[key] = Array.from(new Set([...cloudList, ...localList]));
-        return;
-      }
-      const merged = new Map();
-      [...localList, ...cloudList].forEach((item) => {
-        const id = item && typeof item === "object" ? item.id : String(item);
-        if (id) merged.set(id, item);
-      });
-      values[key] = Array.from(merged.values());
+      if (LIST_KEYS.has(key)) values[key] = [];
+      else if (key === "estudiemos_theme") values[key] = theme;
+      else values[key] = "{}";
     });
     return { version: 1, values };
+  }
+
+  function normalizeAccountState(state) {
+    const empty = createEmptyAccountState();
+    const source = state?.values && typeof state.values === "object" ? state.values : {};
+    SYNC_KEYS.forEach((key) => {
+      if (!(key in source)) return;
+      if (LIST_KEYS.has(key)) {
+        empty.values[key] = Array.isArray(source[key]) ? source[key] : [];
+      } else if (key === "estudiemos_theme") {
+        empty.values[key] = source[key] === "light" ? "light" : "dark";
+      } else {
+        empty.values[key] = typeof source[key] === "string"
+          ? source[key]
+          : JSON.stringify(source[key] || {});
+      }
+    });
+    return empty;
+  }
+
+  function clearLocalAccountData() {
+    applyingCloud = true;
+    try {
+      PRIVATE_SYNC_KEYS.forEach((key) => {
+        localStorage.setItem(key, LIST_KEYS.has(key) ? "[]" : "{}");
+      });
+      localStorage.removeItem(LINKED_USER_KEY);
+      localStorage.removeItem(LOCAL_CHANGED_KEY);
+      localStorage.removeItem(DIRTY_KEY);
+    } finally {
+      applyingCloud = false;
+    }
+    window.dispatchEvent(new CustomEvent("estudiemos:cloud-restored"));
+  }
+
+  function prepareLocalAccountSwitch(userId) {
+    const linkedUser = localStorage.getItem(LINKED_USER_KEY) || "";
+    if (linkedUser !== userId) clearLocalAccountData();
   }
 
   function markLocalChange() {
@@ -546,6 +601,16 @@
     if (!status) return;
     status.textContent = message || "";
     status.dataset.type = type || "info";
+  }
+
+  function hasAndroidBridge() {
+    return Boolean(window.EstudiemosAndroid && typeof window.EstudiemosAndroid.postMessage === "function");
+  }
+
+  function requestAndroidWidget(widget) {
+    if (!hasAndroidBridge() || !["agenda", "calendar", "streak"].includes(widget)) return;
+    window.EstudiemosAndroid.postMessage(JSON.stringify({ type: "widget-pin", widget }));
+    setStatus("Android abrirá la confirmación para agregar el widget.", "success");
   }
 
   async function updateApplication() {

@@ -108,7 +108,8 @@ Cada cambio relacionado con Android genera un APK de prueba en GitHub:
 2. Entrar en la ejecución **Build Android app** más reciente.
 3. Descargar el archivo **Estudiemos-Android** en la sección de artefactos.
 4. Descomprimirlo e instalar `app-debug.apk` en Android.
-5. Mantener presionada la pantalla de inicio, elegir **Widgets** y agregar **Agenda académica**, **Calendario académico** o **Racha de estudio**.
+5. Abrir el perfil dentro de la aplicación y, en **Widgets de Android**, elegir **Agenda**, **Calendario** o **Racha**. Android mostrará la confirmación para colocarlo en la pantalla de inicio.
+   Si el teléfono no admite esa confirmación directa, mantener presionada la pantalla de inicio, elegir **Widgets** y buscar **Estudiemos**.
 6. Abrir Estudiemos desde Chrome o desde la PWA instalada.
 7. Entrar en la agenda y tocar **Widgets** cada vez que se quieran enviar la agenda y la racha desde la PWA a los widgets del teléfono.
 

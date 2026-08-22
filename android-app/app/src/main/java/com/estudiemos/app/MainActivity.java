@@ -3,6 +3,8 @@ package com.estudiemos.app;
 import android.annotation.SuppressLint;
 import android.Manifest;
 import android.app.Activity;
+import android.appwidget.AppWidgetManager;
+import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -16,6 +18,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.webkit.JavaScriptReplyProxy;
@@ -151,13 +154,16 @@ public class MainActivity extends Activity {
                 !"estudiemos-app.vercel.app".equals(sourceOrigin.getHost())
         ) return;
         try {
-            String type = new JSONObject(message.getData()).optString("type");
+            JSONObject payload = new JSONObject(message.getData());
+            String type = payload.optString("type");
             if ("agenda-sync".equals(type)) {
                 AgendaWidgetProvider.storeAgendaAndUpdate(this, message.getData());
             } else if ("pomodoro-streak-sync".equals(type)) {
                 StreakWidgetProvider.storeStreakAndUpdate(this, message.getData());
             } else if ("pomodoro-reminder-enable".equals(type)) {
                 enableStreakReminder();
+            } else if ("widget-pin".equals(type)) {
+                requestWidgetPin(payload.optString("widget"));
             }
         } catch (Exception ignored) {
             // Invalid web messages cannot modify native data.
@@ -221,6 +227,21 @@ public class MainActivity extends Activity {
         ) {
             requestPermissions(new String[] { Manifest.permission.POST_NOTIFICATIONS }, 4101);
         }
+    }
+
+    private void requestWidgetPin(String widget) {
+        Class<?> providerClass;
+        if ("agenda".equals(widget)) providerClass = AgendaWidgetProvider.class;
+        else if ("calendar".equals(widget)) providerClass = CalendarWidgetProvider.class;
+        else if ("streak".equals(widget)) providerClass = StreakWidgetProvider.class;
+        else return;
+
+        AppWidgetManager manager = AppWidgetManager.getInstance(this);
+        if (!manager.isRequestPinAppWidgetSupported()) {
+            Toast.makeText(this, "Mantené presionada la pantalla de inicio y elegí Widgets.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        manager.requestPinAppWidget(new ComponentName(this, providerClass), null, null);
     }
 
     @Override
