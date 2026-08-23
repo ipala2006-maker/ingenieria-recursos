@@ -8,6 +8,7 @@
     android:padding="16dp">
 
     <LinearLayout
+        android:id="@+id/widget_header"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
@@ -49,17 +50,16 @@
         android:textColor="#CBD5E1"
         android:textSize="14sp" />
 
-    <include
-        android:id="@+id/widget_item_1"
-        layout="@layout/agenda_widget_item" />
-
-    <include
-        android:id="@+id/widget_item_2"
-        layout="@layout/agenda_widget_item_2" />
-
-    <include
-        android:id="@+id/widget_item_3"
-        layout="@layout/agenda_widget_item_3" />
+    <ListView
+        android:id="@+id/agenda_widget_list"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="8dp"
+        android:divider="@android:color/transparent"
+        android:dividerHeight="6dp"
+        android:overScrollMode="never"
+        android:scrollbars="vertical" />
 
     <TextView
         android:id="@+id/widget_footer"

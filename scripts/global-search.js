@@ -14,6 +14,7 @@
   loadProfessionalStyle();
   prepareProductivityTopbar();
   addThemeButton();
+  loadDesktopWidgetsScript();
   loadAccountScript();
   loadPomodoroScript();
   loadInstallAppScript();
@@ -275,8 +276,17 @@
     if (document.querySelector('script[src*="scripts/account.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/account.js?v=20260822-inbox`;
+    script.src = `${rootPath}scripts/account.js?v=20260823-desktop-widgets`;
     script.defer = true;
+    document.head.appendChild(script);
+  }
+
+  function loadDesktopWidgetsScript() {
+    if (document.querySelector('script[src*="scripts/desktop-widgets.js"]')) return;
+
+    const script = document.createElement("script");
+    script.src = `${rootPath}scripts/desktop-widgets.js?v=20260823`;
+    script.async = false;
     document.head.appendChild(script);
   }
 

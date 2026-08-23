@@ -160,12 +160,24 @@
           </div>
         </div>
 
+        <div class="account-android-widgets account-desktop-widgets" data-account-desktop-widgets hidden>
+          <strong>Widgets de escritorio</strong>
+          <small>Abrilos en una ventana compacta que se mantiene visible mientras estudiás.</small>
+          <div>
+            <button class="account-secondary" type="button" data-account-desktop-widget="inbox">Inbox</button>
+            <button class="account-secondary" type="button" data-account-desktop-widget="calendar">Calendario</button>
+            <button class="account-secondary" type="button" data-account-desktop-widget="streak">Racha</button>
+          </div>
+        </div>
+
         <p class="account-status" data-account-status role="status" aria-live="polite"></p>
         <p class="account-privacy">Tus datos privados solo pueden ser leídos por tu propia cuenta.</p>
       </div>`;
     document.body.appendChild(shell);
     const widgetActions = shell.querySelector("[data-account-android-widgets]");
     if (widgetActions) widgetActions.hidden = !hasAndroidBridge();
+    const desktopWidgetActions = shell.querySelector("[data-account-desktop-widgets]");
+    if (desktopWidgetActions) desktopWidgetActions.hidden = !supportsDesktopWidgets();
   }
 
   function bindAccountEvents() {
@@ -179,6 +191,8 @@
       if (event.target.closest("[data-account-update]")) updateApplication();
       const widgetButton = event.target.closest("[data-account-widget]");
       if (widgetButton) requestAndroidWidget(widgetButton.dataset.accountWidget);
+      const desktopWidgetButton = event.target.closest("[data-account-desktop-widget]");
+      if (desktopWidgetButton) openDesktopWidget(desktopWidgetButton.dataset.accountDesktopWidget);
     });
 
     document.querySelector("[data-account-form]")?.addEventListener("submit", (event) => {
@@ -611,6 +625,24 @@
     if (!hasAndroidBridge() || !["agenda", "calendar", "streak"].includes(widget)) return;
     window.EstudiemosAndroid.postMessage(JSON.stringify({ type: "widget-pin", widget }));
     setStatus("Android abrirá la confirmación para agregar el widget.", "success");
+  }
+
+  function supportsDesktopWidgets() {
+    if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || hasAndroidBridge()) return false;
+    return true;
+  }
+
+  async function openDesktopWidget(widget) {
+    const manager = window.EstudiemosDesktopWidgets;
+    if (!manager?.available) {
+      setStatus("Los widgets de escritorio necesitan Chrome o Edge en una computadora.", "error");
+      return;
+    }
+    const opened = await manager.open(widget);
+    setStatus(
+      opened ? "Widget abierto. Podés cambiar entre Inbox, calendario y racha desde esa ventana." : "El navegador bloqueó la ventana. Permití ventanas emergentes e intentá nuevamente.",
+      opened ? "success" : "error"
+    );
   }
 
   async function updateApplication() {

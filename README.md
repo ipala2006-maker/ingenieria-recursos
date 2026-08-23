@@ -115,6 +115,14 @@ Cada cambio relacionado con Android genera un APK de prueba en GitHub:
 
 Los datos se copian localmente entre la PWA y los widgets. La racha también se sincroniza entre dispositivos cuando el usuario inició sesión. Desde la configuración del Pomodoro se puede activar un único recordatorio diario a las 20:00; nunca se envía si la presencia del día ya está completa. Los cambios visuales de la web llegan sin reinstalar; los cambios del código Android requieren instalar un APK nuevo.
 
+El widget **Inbox** usa una lista desplazable: muestra todas las tareas pendientes y permite marcarlas como hechas directamente, sin el límite anterior de tres elementos.
+
+## Widgets de escritorio
+
+En Chrome y Edge para computadora, el perfil incluye **Widgets de escritorio**. Inbox, calendario y racha se abren en una ventana compacta ajustable que permanece encima de las demás ventanas mientras el navegador está abierto. Los tres comparten los datos de la cuenta y se puede cambiar de vista desde la misma ventana.
+
+Esta ventana es la opción inmediata y compatible con la aplicación web actual. Windows 11 también admite widgets de PWA dentro de su panel de Widgets, pero exige diseñar otra interfaz con Adaptive Cards y una integración específica de Windows; no coloca libremente la interfaz web sobre el escritorio. Esa integración queda separada hasta poder probarla y distribuirla correctamente.
+
 ## Tareas
 
 `TASKS.md` se mantiene como una libreta simple para anotar tareas desde el celular. No ejecuta automatizaciones ni usa la API de OpenAI.

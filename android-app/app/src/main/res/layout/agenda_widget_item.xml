@@ -2,7 +2,6 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginTop="8dp"
     android:background="@drawable/widget_item_background"
     android:gravity="center_vertical"
     android:orientation="horizontal"
@@ -16,7 +15,7 @@
         android:orientation="vertical">
 
         <TextView
-            android:id="@+id/widget_item_1_title"
+            android:id="@+id/widget_item_title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:ellipsize="end"
@@ -26,7 +25,7 @@
             android:textStyle="bold" />
 
         <TextView
-            android:id="@+id/widget_item_1_meta"
+            android:id="@+id/widget_item_meta"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:ellipsize="end"
@@ -36,7 +35,7 @@
     </LinearLayout>
 
     <TextView
-        android:id="@+id/widget_item_1_done"
+        android:id="@+id/widget_item_done"
         android:layout_width="30dp"
         android:layout_height="30dp"
         android:layout_marginStart="7dp"

@@ -88,6 +88,11 @@
         </receiver>
 
         <service
+            android:name=".AgendaWidgetService"
+            android:exported="false"
+            android:permission="android.permission.BIND_REMOTEVIEWS" />
+
+        <service
             android:name=".CalendarWidgetService"
             android:exported="false"
             android:permission="android.permission.BIND_REMOTEVIEWS" />
