@@ -4,6 +4,9 @@ const WINDOWS_WIDGET_CACHE = "estudiemos-windows-widget-data-v1";
 
 self.addEventListener("install", () => self.skipWaiting());
 
+// Keep network requests untouched while exposing the standard PWA fetch capability.
+self.addEventListener("fetch", () => {});
+
 self.addEventListener("activate", (event) => {
   event.waitUntil((async () => {
     await self.clients.claim();
