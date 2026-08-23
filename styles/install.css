@@ -92,6 +92,10 @@
   line-height:1.4;
 }
 
+.install-option small strong{
+  color:var(--text);
+}
+
 @media(max-width:760px){
   .install-main{padding-top:28px}
   .install-options{grid-template-columns:1fr}

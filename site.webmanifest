@@ -23,5 +23,73 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
+  ],
+  "widgets": [
+    {
+      "name": "Estudiemos Inbox",
+      "short_name": "Inbox",
+      "description": "Consultá tus tareas pendientes desde el panel de widgets de Windows.",
+      "tag": "estudiemos-inbox",
+      "template": "estudiemos-inbox",
+      "ms_ac_template": "/widgets/inbox-template.json",
+      "data": "/widgets/inbox-data.json",
+      "type": "application/json",
+      "auth": false,
+      "update": 1800,
+      "multiple": false,
+      "screenshots": [
+        {
+          "src": "/assets/widget-inbox-preview.png",
+          "sizes": "300x304",
+          "type": "image/png",
+          "platform": "Windows",
+          "label": "Vista previa del widget Inbox de Estudiemos"
+        }
+      ]
+    },
+    {
+      "name": "Estudiemos Calendario",
+      "short_name": "Calendario",
+      "description": "Consultá las próximas anotaciones de tu calendario académico.",
+      "tag": "estudiemos-calendar",
+      "template": "estudiemos-calendar",
+      "ms_ac_template": "/widgets/calendar-template.json",
+      "data": "/widgets/calendar-data.json",
+      "type": "application/json",
+      "auth": false,
+      "update": 1800,
+      "multiple": false,
+      "screenshots": [
+        {
+          "src": "/assets/widget-calendar-preview.png",
+          "sizes": "300x304",
+          "type": "image/png",
+          "platform": "Windows",
+          "label": "Vista previa del widget Calendario de Estudiemos"
+        }
+      ]
+    },
+    {
+      "name": "Estudiemos Racha",
+      "short_name": "Racha",
+      "description": "Seguí tu presencia de estudio y empezá una sesión Pomodoro.",
+      "tag": "estudiemos-streak",
+      "template": "estudiemos-streak",
+      "ms_ac_template": "/widgets/streak-template.json",
+      "data": "/widgets/streak-data.json",
+      "type": "application/json",
+      "auth": false,
+      "update": 1800,
+      "multiple": false,
+      "screenshots": [
+        {
+          "src": "/assets/widget-streak-preview.png",
+          "sizes": "300x304",
+          "type": "image/png",
+          "platform": "Windows",
+          "label": "Vista previa del widget Racha de Estudiemos"
+        }
+      ]
+    }
   ]
 }

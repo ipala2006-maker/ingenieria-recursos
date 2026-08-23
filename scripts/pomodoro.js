@@ -59,6 +59,7 @@
   restoreMobileFloating();
   syncStreakWithAndroid();
   startStreakReminderChecks();
+  openPomodoroFromUrl();
   if (state.running) requestWakeLock();
 
   function addButton() {
@@ -84,6 +85,14 @@
     const agendaButton = nav.querySelector(".agenda-top-btn");
     if (agendaButton) agendaButton.insertAdjacentElement("afterend", button);
     else nav.prepend(button);
+  }
+
+  function openPomodoroFromUrl() {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("pomodoro") !== "1") return;
+    openMenu();
+    url.searchParams.delete("pomodoro");
+    history.replaceState(history.state, "", `${url.pathname}${url.search}${url.hash}`);
   }
 
   function addStreakButton() {

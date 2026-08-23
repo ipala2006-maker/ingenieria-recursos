@@ -121,7 +121,19 @@ El widget **Inbox** usa una lista desplazable: muestra todas las tareas pendient
 
 En Chrome y Edge para computadora, el perfil incluye **Widgets de escritorio**. Inbox, calendario y racha se abren en una ventana compacta ajustable que permanece encima de las demás ventanas mientras el navegador está abierto. Los tres comparten los datos de la cuenta y se puede cambiar de vista desde la misma ventana.
 
-Esta ventana es la opción inmediata y compatible con la aplicación web actual. Windows 11 también admite widgets de PWA dentro de su panel de Widgets, pero exige diseñar otra interfaz con Adaptive Cards y una integración específica de Windows; no coloca libremente la interfaz web sobre el escritorio. Esa integración queda separada hasta poder probarla y distribuirla correctamente.
+Windows 11 también está preparado con tres widgets nativos para su panel de Widgets:
+
+- **Inbox:** cantidad y próximas tareas pendientes.
+- **Calendario:** próximas anotaciones académicas.
+- **Racha:** progreso diario y acceso al Pomodoro.
+
+La integración vive en `site.webmanifest`, `widgets/` y `service-worker.js`, usando las Adaptive Cards requeridas por Windows. Los datos se copian al service worker cuando cambia Inbox, el calendario o la racha.
+
+Para probar los widgets nativos durante el desarrollo se necesita Windows 11, WinAppSDK y Modo de desarrollador. Para que cualquier usuario pueda agregarlos sin esa preparación, Estudiemos debe publicarse como PWA en Microsoft Store mediante PWABuilder y una cuenta de Microsoft Partner Center. La ventana compacta continúa disponible sin ese trámite.
+
+## Descarga permanente
+
+La página [https://estudiemos-app.vercel.app/instalar.html](https://estudiemos-app.vercel.app/instalar.html) es el punto único para instalar Estudiemos. El botón Android usa siempre la dirección permanente `android-latest`; cada compilación nativa reemplaza el APK anterior sin cambiar el enlace. Los cambios solamente web se actualizan automáticamente y no requieren reinstalar la aplicación.
 
 ## Tareas
 

@@ -230,7 +230,7 @@
     if (document.querySelector('script[src*="scripts/pomodoro.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/pomodoro.js?v=20260822-streak-reminders`;
+    script.src = `${rootPath}scripts/pomodoro.js?v=20260823-windows-widgets`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -285,7 +285,7 @@
     if (document.querySelector('script[src*="scripts/desktop-widgets.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/desktop-widgets.js?v=20260823`;
+    script.src = `${rootPath}scripts/desktop-widgets.js?v=20260823-windows-native`;
     script.async = false;
     document.head.appendChild(script);
   }

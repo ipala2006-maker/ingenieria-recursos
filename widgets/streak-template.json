@@ -1,0 +1,15 @@
+{
+  "type": "AdaptiveCard",
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "version": "1.5",
+  "body": [
+    { "type": "TextBlock", "text": "ESTUDIEMOS", "size": "Small", "weight": "Bolder", "color": "Accent", "horizontalAlignment": "Center" },
+    { "type": "TextBlock", "text": "🔥", "size": "ExtraLarge", "horizontalAlignment": "Center", "spacing": "Large" },
+    { "type": "TextBlock", "text": "Racha: ${streakDays}", "size": "ExtraLarge", "weight": "Bolder", "horizontalAlignment": "Center", "spacing": "Small" },
+    { "type": "TextBlock", "text": "${todayProgress}", "horizontalAlignment": "Center", "color": "Accent", "wrap": true },
+    { "type": "TextBlock", "text": "${weekSummary}", "horizontalAlignment": "Center", "size": "Small", "wrap": true, "separator": true }
+  ],
+  "actions": [
+    { "type": "Action.Execute", "title": "Estudiar 25 minutos", "verb": "open-pomodoro" }
+  ]
+}

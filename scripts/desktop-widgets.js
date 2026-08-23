@@ -10,6 +10,7 @@
     widgetWindow: null,
     refreshTimer: null
   };
+  let nativeSyncTimer = null;
 
   window.EstudiemosDesktopWidgets = {
     available: isDesktopDevice(),
@@ -17,9 +18,11 @@
   };
 
   window.addEventListener("storage", refresh);
-  window.addEventListener("estudiemos:data-change", refresh);
-  window.addEventListener("estudiemos:cloud-restored", refresh);
+  window.addEventListener("estudiemos:data-change", refreshAndSyncNative);
+  window.addEventListener("estudiemos:cloud-restored", refreshAndSyncNative);
   window.addEventListener("estudiemos:theme-change", refresh);
+  window.addEventListener("load", scheduleNativeWindowsSync, { once: true });
+  scheduleNativeWindowsSync();
 
   async function open(view = "inbox") {
     if (!isDesktopDevice()) return false;
@@ -102,6 +105,32 @@
   function refresh() {
     if (!state.widgetWindow || state.widgetWindow.closed) return;
     render();
+  }
+
+  function refreshAndSyncNative() {
+    refresh();
+    scheduleNativeWindowsSync();
+  }
+
+  function scheduleNativeWindowsSync() {
+    if (!("serviceWorker" in navigator)) return;
+    if (nativeSyncTimer) window.clearTimeout(nativeSyncTimer);
+    nativeSyncTimer = window.setTimeout(syncNativeWindowsWidgets, 180);
+  }
+
+  async function syncNativeWindowsWidgets() {
+    nativeSyncTimer = null;
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const worker = registration.active || registration.waiting || registration.installing;
+      worker?.postMessage({
+        type: "ESTUDIEMOS_WIDGET_DATA",
+        state: {
+          agenda: readAgenda(),
+          streak: readStreak()
+        }
+      });
+    } catch (_) {}
   }
 
   function cleanup() {

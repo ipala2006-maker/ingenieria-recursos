@@ -1,0 +1,14 @@
+{
+  "taskCount": "0",
+  "task1": "",
+  "task1Meta": "",
+  "task1Visible": false,
+  "task2": "",
+  "task2Meta": "",
+  "task2Visible": false,
+  "task3": "",
+  "task3Meta": "",
+  "task3Visible": false,
+  "emptyText": "No tenés tareas pendientes.",
+  "emptyVisible": true
+}

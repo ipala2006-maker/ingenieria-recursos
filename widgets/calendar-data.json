@@ -1,0 +1,17 @@
+{
+  "monthLabel": "Calendario académico",
+  "event1Date": "",
+  "event1Title": "",
+  "event1Meta": "",
+  "event1Visible": false,
+  "event2Date": "",
+  "event2Title": "",
+  "event2Meta": "",
+  "event2Visible": false,
+  "event3Date": "",
+  "event3Title": "",
+  "event3Meta": "",
+  "event3Visible": false,
+  "emptyText": "No hay próximas anotaciones.",
+  "emptyVisible": true
+}

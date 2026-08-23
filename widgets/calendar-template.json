@@ -1,0 +1,19 @@
+{
+  "type": "AdaptiveCard",
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "version": "1.5",
+  "body": [
+    { "type": "TextBlock", "text": "ESTUDIEMOS", "size": "Small", "weight": "Bolder", "color": "Accent", "spacing": "None" },
+    { "type": "TextBlock", "text": "${monthLabel}", "size": "Large", "weight": "Bolder", "spacing": "Small" },
+    { "type": "TextBlock", "text": "${event1Date}  ·  ${event1Title}", "weight": "Bolder", "wrap": true, "maxLines": 1, "separator": true, "isVisible": "${event1Visible}" },
+    { "type": "TextBlock", "text": "${event1Meta}", "size": "Small", "color": "Accent", "spacing": "None", "wrap": true, "maxLines": 1, "isVisible": "${event1Visible}" },
+    { "type": "TextBlock", "text": "${event2Date}  ·  ${event2Title}", "weight": "Bolder", "wrap": true, "maxLines": 1, "separator": true, "isVisible": "${event2Visible}" },
+    { "type": "TextBlock", "text": "${event2Meta}", "size": "Small", "color": "Accent", "spacing": "None", "wrap": true, "maxLines": 1, "isVisible": "${event2Visible}" },
+    { "type": "TextBlock", "text": "${event3Date}  ·  ${event3Title}", "weight": "Bolder", "wrap": true, "maxLines": 1, "separator": true, "isVisible": "${event3Visible}" },
+    { "type": "TextBlock", "text": "${event3Meta}", "size": "Small", "color": "Accent", "spacing": "None", "wrap": true, "maxLines": 1, "isVisible": "${event3Visible}" },
+    { "type": "TextBlock", "text": "${emptyText}", "horizontalAlignment": "Center", "spacing": "Large", "isVisible": "${emptyVisible}" }
+  ],
+  "actions": [
+    { "type": "Action.Execute", "title": "Abrir calendario", "verb": "open-calendar" }
+  ]
+}
