@@ -125,6 +125,16 @@
     document.head.appendChild(script);
   }
 
+  function registerServiceWorkerEarly() {
+    if (!("serviceWorker" in navigator) || !window.isSecureContext) return;
+    try {
+      var rootPath = getRootPath();
+      var workerUrl = new URL(rootPath + "service-worker.js", location.href);
+      var scopeUrl = new URL(rootPath || "./", location.href);
+      navigator.serviceWorker.register(workerUrl.href, { scope: scopeUrl.pathname }).catch(function () {});
+    } catch (error) {}
+  }
+
   function syncHomeLinks() {
     var href = window.EstudiemosRoot || "./";
     document.querySelectorAll(".brand").forEach(function (link) {
@@ -136,6 +146,7 @@
   applyTheme(readTheme(), false);
   loadProfessionalStyleEarly();
   installSpeculationRules();
+  registerServiceWorkerEarly();
   loadSmoothNavigation();
 
   if (document.readyState === "loading") {
