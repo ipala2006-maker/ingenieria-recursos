@@ -13,6 +13,7 @@
   applySavedTheme();
   loadProfessionalStyle();
   prepareProductivityTopbar();
+  configureWindowControlsOverlay();
   addThemeButton();
   loadDesktopWidgetsScript();
   loadAccountScript();
@@ -159,8 +160,20 @@
 
     const link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = `${rootPath}styles/professional.css?v=20260822-streak-reminders`;
+    link.href = `${rootPath}styles/professional.css?v=20260824-windows-titlebar`;
     document.head.appendChild(link);
+  }
+
+  function configureWindowControlsOverlay() {
+    const overlay = navigator.windowControlsOverlay;
+    if (!overlay) return;
+
+    const sync = () => {
+      document.documentElement.classList.toggle("has-window-controls-overlay", Boolean(overlay.visible));
+    };
+
+    overlay.addEventListener?.("geometrychange", sync);
+    sync();
   }
 
   function loadDashboardStyle() {

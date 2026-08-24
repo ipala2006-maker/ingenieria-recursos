@@ -797,6 +797,23 @@ html.theme-dark .theme-switcher__btn.is-active{
   }
 }
 
+/* En ventanas PWA angostas, las herramientas bajan debajo de los controles de Windows. */
+@media(max-width:620px){
+  html.has-window-controls-overlay .topbar{
+    padding-top:calc(env(titlebar-area-height, 32px) + 8px);
+  }
+
+  html.has-window-controls-overlay .topbar .brand__text{
+    display:none;
+  }
+
+  html.has-window-controls-overlay .topbar .topbar-icon-btn{
+    width:30px;
+    height:30px;
+    padding:6px;
+  }
+}
+
 @media(max-width:360px){
   .workspace-home .topbar,
   .productivity-page .topbar,

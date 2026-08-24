@@ -3,8 +3,9 @@
 
   const AGENDA_KEY = "bandeja_agenda";
   const STREAK_KEY = "estudiemos_pomodoro_streak";
+  const standaloneHost = document.querySelector("[data-desktop-widget-host]");
   const state = {
-    view: "inbox",
+    view: getInitialView(),
     month: new Date().getMonth(),
     year: new Date().getFullYear(),
     widgetWindow: null,
@@ -23,6 +24,7 @@
   window.addEventListener("estudiemos:theme-change", refresh);
   window.addEventListener("load", scheduleNativeWindowsSync, { once: true });
   scheduleNativeWindowsSync();
+  if (standaloneHost) mountStandalone();
 
   async function open(view = "inbox") {
     if (!isDesktopDevice()) return false;
@@ -85,9 +87,20 @@
     render();
   }
 
+  function mountStandalone() {
+    const style = document.createElement("style");
+    style.dataset.desktopWidgetStyle = "true";
+    style.textContent = widgetStyles();
+    document.head.appendChild(style);
+    document.addEventListener("click", handleWidgetClick);
+    document.addEventListener("change", handleWidgetChange);
+    state.refreshTimer = window.setInterval(render, 5000);
+    render();
+  }
+
   function render() {
-    const popup = state.widgetWindow;
-    if (!popup || popup.closed) return cleanup();
+    const popup = standaloneHost ? window : state.widgetWindow;
+    if (!popup || (!standaloneHost && popup.closed)) return cleanup();
     const doc = popup.document;
     doc.documentElement.dataset.theme = document.documentElement.classList.contains("theme-light") ? "light" : "dark";
     doc.querySelectorAll("[data-widget-view]").forEach((button) => {
@@ -158,18 +171,21 @@
 
     const day = event.target.closest("[data-widget-date]");
     if (day) {
+      if (standaloneHost) return openMainApp(`?agenda=1&date=${encodeURIComponent(day.dataset.widgetDate)}`);
       window.focus();
       window.dispatchEvent(new CustomEvent("estudiemos:open-agenda", { detail: { date: day.dataset.widgetDate } }));
       return;
     }
 
     if (event.target.closest("[data-widget-open-inbox]")) {
+      if (standaloneHost) return openMainApp("?agenda=1");
       window.focus();
       window.dispatchEvent(new CustomEvent("estudiemos:open-agenda"));
       return;
     }
 
     if (event.target.closest("[data-widget-open-pomodoro]")) {
+      if (standaloneHost) return openMainApp("?pomodoro=1");
       window.focus();
       document.querySelector("[data-pomodoro-open]")?.click();
     }
@@ -289,6 +305,15 @@
     return !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && !window.EstudiemosAndroid;
   }
 
+  function getInitialView() {
+    const value = new URL(window.location.href).searchParams.get("view");
+    return ["inbox", "calendar", "streak"].includes(value) ? value : "inbox";
+  }
+
+  function openMainApp(search) {
+    window.open(new URL(search, window.location.origin).href, "estudiemos-main");
+  }
+
   function dateValue(date) {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
   }
@@ -330,7 +355,7 @@
     return `
       :root{color-scheme:dark;--bg:#0c1423;--panel:#111c2e;--line:#263650;--text:#f1f5f9;--muted:#91a0b7;--accent:#8bb5ff;--soft:#192840}
       :root[data-theme="light"]{color-scheme:light;--bg:#edf2f7;--panel:#f9fbfd;--line:#d6dee9;--text:#263244;--muted:#69778b;--accent:#2563a9;--soft:#e5ebf2}
-      *{box-sizing:border-box}html,body{height:100%;margin:0;overflow:hidden}body{display:grid;grid-template-rows:auto minmax(0,1fr) auto;background:var(--bg);color:var(--text);font-family:"Segoe UI",system-ui,sans-serif}
+      *{box-sizing:border-box}html,body{height:100%;margin:0;overflow:hidden}html body{display:grid;grid-template-rows:auto minmax(0,1fr) auto;background:var(--bg);color:var(--text);font-family:"Segoe UI",system-ui,sans-serif}
       button,input{font:inherit}.widget-head{min-width:0;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 12px;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--panel) 94%,transparent)}
       .widget-brand{min-width:0;display:flex;align-items:center;gap:8px}.widget-brand>span{width:29px;height:29px;display:grid;place-items:center;border-radius:8px;background:var(--soft);color:var(--accent);font-size:19px;font-weight:800}.widget-brand strong{font-size:13px;white-space:nowrap}
       nav{display:flex;gap:4px}nav button,.section-head button{width:32px;height:32px;display:grid;place-items:center;padding:0;border:0;border-radius:8px;background:transparent;color:var(--muted);cursor:pointer}nav button:hover,nav button.is-active,.section-head button:hover{background:var(--soft);color:var(--text)}svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}nav button[data-widget-view="streak"] svg,.streak-mark svg,.streak-week svg{fill:currentColor;stroke:none}

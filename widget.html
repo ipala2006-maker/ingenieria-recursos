@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0c1423" />
+    <meta name="robots" content="noindex" />
+    <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="./site.webmanifest" />
+    <title>Widgets de Estudiemos</title>
+    <script src="./scripts/theme-init.js?v=20260823-windows-widgets"></script>
+    <style>html,body{margin:0;height:100%;background:#0c1423}</style>
+  </head>
+  <body data-desktop-widget-host>
+    <header class="widget-head">
+      <div class="widget-brand"><span>&sum;</span><strong>Estudiemos</strong></div>
+      <nav aria-label="Elegir widget">
+        <button data-widget-view="inbox" aria-label="Inbox" title="Inbox"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></svg></button>
+        <button data-widget-view="calendar" aria-label="Calendario" title="Calendario"><svg viewBox="0 0 24 24"><path d="M5 6h14v14H5zM8 3v5M16 3v5M5 10h14"/></svg></button>
+        <button data-widget-view="streak" aria-label="Racha" title="Racha"><svg viewBox="0 0 24 24"><path d="M13.2 2.2c.4 3-1 4.7-2.4 6.3-1.2-2.2-2.9-3.8-5-5.4.3 3.8-2.4 5.7-2.4 10.3A8.6 8.6 0 0 0 12 22a8.6 8.6 0 0 0 8.6-8.6c0-4.1-2.3-7.8-7.4-11.2Z"/></svg></button>
+      </nav>
+    </header>
+    <main id="widgetContent"></main>
+    <footer>Sincronizado con tu cuenta</footer>
+
+    <script src="./scripts/account.js?v=20260823-desktop-widgets"></script>
+    <script src="./scripts/desktop-widgets.js?v=20260824-desktop-page"></script>
+  </body>
+</html>
