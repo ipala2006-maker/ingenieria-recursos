@@ -146,19 +146,46 @@ function buildCalendarWidgetData(agenda) {
 
 function buildStreakWidgetData(streak) {
   const days = streak?.days && typeof streak.days === "object" ? streak.days : {};
-  const current = Math.max(0, Number(streak?.current) || 0);
+  const current = calculateCurrentStreak(days);
   const todayMinutes = Math.max(0, Number(days[dateValue(new Date())]) || 0);
   let activeDays = 0;
+  const weekMinutes = [];
   for (let offset = 0; offset < 7; offset += 1) {
     const date = new Date();
     date.setDate(date.getDate() - offset);
-    if ((Number(days[dateValue(date)]) || 0) >= 25) activeDays += 1;
+    const minutes = Math.max(0, Number(days[dateValue(date)]) || 0);
+    weekMinutes.unshift(minutes);
+    if (minutes >= 25) activeDays += 1;
   }
+  const totalMinutes = weekMinutes.reduce((sum, value) => sum + value, 0);
+  const maximum = Math.max(1, ...weekMinutes);
+  const bars = "▁▂▃▄▅▆▇█";
+  const weekChart = weekMinutes.map((value) => bars[Math.min(bars.length - 1, Math.round((value / maximum) * (bars.length - 1)))]).join("  ");
   return {
     streakDays: `${current} ${current === 1 ? "día" : "días"}`,
     todayProgress: todayMinutes >= 25 ? "Completaste tu presencia de hoy." : `Hoy llevás ${todayMinutes}/25 minutos.`,
-    weekSummary: `Últimos 7 días: ${activeDays} ${activeDays === 1 ? "activo" : "activos"}.`
+    weekSummary: `Últimos 7 días: ${activeDays} ${activeDays === 1 ? "activo" : "activos"}.`,
+    weekChart,
+    weekHours: `${formatStudyTime(totalMinutes)} esta semana`
   };
+}
+
+function calculateCurrentStreak(days) {
+  const cursor = new Date();
+  if ((Number(days[dateValue(cursor)]) || 0) < 25) cursor.setDate(cursor.getDate() - 1);
+  let current = 0;
+  while (current < 730 && (Number(days[dateValue(cursor)]) || 0) >= 25) {
+    current += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return current;
+}
+
+function formatStudyTime(minutes) {
+  const value = Math.max(0, Number(minutes) || 0);
+  if (value < 60) return `${Math.round(value)} min`;
+  const hours = value / 60;
+  return `${Number.isInteger(hours) ? hours.toFixed(0) : hours.toFixed(1).replace(".", ",")} h`;
 }
 
 function compareAgendaItems(a, b) {

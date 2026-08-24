@@ -7,7 +7,7 @@
     <meta name="robots" content="noindex" />
     <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
     <link rel="manifest" href="./site.webmanifest" />
-    <link rel="stylesheet" href="./styles/app.css?v=20260824-rainmeter-widgets" />
+    <link rel="stylesheet" href="./styles/app.css?v=20260824-study-metrics" />
     <title>Widgets de Estudiemos</title>
     <script>
       if (new URLSearchParams(location.search).get("embed") === "rainmeter") {
@@ -28,8 +28,12 @@
     </header>
     <main id="widgetContent"></main>
     <footer>Sincronizado con tu cuenta</footer>
+    <div class="widget-size-controls" aria-label="Tamaño del widget">
+      <button type="button" data-widget-scale="-0.1" aria-label="Achicar widget" title="Achicar">−</button>
+      <button type="button" data-widget-scale="0.1" aria-label="Agrandar widget" title="Agrandar">+</button>
+    </div>
 
     <script src="./scripts/account.js?v=20260823-desktop-widgets"></script>
-    <script src="./scripts/desktop-widgets.js?v=20260824-rainmeter-widgets-2"></script>
+    <script src="./scripts/desktop-widgets.js?v=20260824-study-metrics"></script>
   </body>
 </html>

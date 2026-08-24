@@ -127,6 +127,8 @@ Windows 11 también está preparado con tres widgets nativos para su panel de Wi
 - **Calendario:** próximas anotaciones académicas.
 - **Racha:** progreso diario y acceso al Pomodoro.
 
+La racha incluye una métrica de tiempo real: en la aplicación se puede alternar entre los últimos 7 y 30 días, y los widgets muestran el total semanal junto con un gráfico compacto. Los widgets de escritorio instalados con Rainmeter se pueden achicar o agrandar desde los controles discretos que aparecen al pasar el mouse.
+
 La integración vive en `site.webmanifest`, `widgets/` y `service-worker.js`, usando las Adaptive Cards requeridas por Windows. Los datos se copian al service worker cuando cambia Inbox, el calendario o la racha.
 
 Para probar los widgets nativos durante el desarrollo se necesita Windows 11, WinAppSDK y Modo de desarrollador. Para que cualquier usuario pueda agregarlos sin esa preparación, Estudiemos debe publicarse como PWA en Microsoft Store mediante PWABuilder y una cuenta de Microsoft Partner Center. La ventana compacta continúa disponible sin ese trámite.

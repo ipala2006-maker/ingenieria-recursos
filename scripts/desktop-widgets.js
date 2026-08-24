@@ -199,6 +199,12 @@
 
     if (event.target.closest("[data-widget-account]")) {
       window.EstudiemosAccount?.open?.();
+      return;
+    }
+
+    const scale = event.target.closest("[data-widget-scale]");
+    if (scale) {
+      resizeRainmeterWidget(Number(scale.dataset.widgetScale) || 0);
     }
   }
 
@@ -263,15 +269,36 @@
       const date = new Date();
       date.setDate(date.getDate() - offset);
       const value = dateValue(date);
-      days.push({ label: new Intl.DateTimeFormat("es-AR", { weekday: "short" }).format(date).slice(0, 1).toUpperCase(), active: (Number(streak.days[value]) || 0) >= 25 });
+      days.push({
+        label: new Intl.DateTimeFormat("es-AR", { weekday: "short" }).format(date).slice(0, 1).toUpperCase(),
+        minutes: Math.max(0, Number(streak.days[value]) || 0)
+      });
     }
+    const totalMinutes = days.reduce((sum, day) => sum + day.minutes, 0);
+    const maxMinutes = Math.max(60, ...days.map((day) => day.minutes));
+    const ceiling = Math.max(60, Math.ceil(maxMinutes / 60) * 60);
+    const points = days.map((day, index) => ({
+      x: 12 + index * (256 / 6),
+      y: 66 - (day.minutes / ceiling) * 52
+    }));
+    const line = points.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(" ");
+    const area = `M ${points[0].x.toFixed(1)} 66 L ${line.replaceAll(",", " ")} L ${points[points.length - 1].x.toFixed(1)} 66 Z`;
     return `
       <section class="widget-section widget-streak">
-        <div class="streak-mark">${flameIcon()}</div>
-        <span>PRESENCIA DE ESTUDIO</span>
-        <h1>Racha: ${Number(streak.current) || 0} ${Number(streak.current) === 1 ? "día" : "días"}</h1>
+        <header class="streak-widget-head">
+          <div class="streak-mark">${flameIcon()}</div>
+          <div><span>PRESENCIA DE ESTUDIO</span><h1>Racha: ${streak.current} ${streak.current === 1 ? "día" : "días"}</h1></div>
+          <strong>${formatStudyTime(totalMinutes)}</strong>
+        </header>
         <p>${todayMinutes >= 25 ? "Completaste tu presencia de hoy." : `Hoy llevás ${todayMinutes}/25 minutos.`}</p>
-        <div class="streak-week">${days.map((day) => `<div class="${day.active ? "is-active" : ""}"><i>${day.active ? flameIcon() : ""}</i><small>${day.label}</small></div>`).join("")}</div>
+        <div class="streak-widget-chart" aria-label="${formatStudyTime(totalMinutes)} estudiadas esta semana">
+          <svg viewBox="0 0 280 76" role="img">
+            <line x1="12" y1="14" x2="268" y2="14"></line><line x1="12" y1="40" x2="268" y2="40"></line><line x1="12" y1="66" x2="268" y2="66"></line>
+            <path d="${area}"></path><polyline points="${line}"></polyline>
+            ${points.map((point, index) => `<circle cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="${days[index].minutes ? 2.8 : 1.8}"><title>${days[index].minutes} minutos</title></circle>`).join("")}
+          </svg>
+          <div>${days.map((day) => `<small>${day.label}</small>`).join("")}</div>
+        </div>
         <button class="streak-action" data-widget-open-pomodoro>${todayMinutes >= 25 ? "Abrir Pomodoro" : "Estudiar 25 minutos"}</button>
       </section>`;
   }
@@ -295,10 +322,40 @@
   function readStreak() {
     try {
       const value = JSON.parse(localStorage.getItem(STREAK_KEY) || "{}");
-      return { current: Number(value.current) || 0, days: value.days && typeof value.days === "object" ? value.days : {} };
+      const days = value.days && typeof value.days === "object" ? value.days : {};
+      return { current: calculateCurrentStreak(days), days };
     } catch (_) {
       return { current: 0, days: {} };
     }
+  }
+
+  function calculateCurrentStreak(days) {
+    const today = new Date();
+    const todayActive = (Number(days[dateValue(today)]) || 0) >= 25;
+    const cursor = new Date(today);
+    if (!todayActive) cursor.setDate(cursor.getDate() - 1);
+    let current = 0;
+    while (current < 730 && (Number(days[dateValue(cursor)]) || 0) >= 25) {
+      current += 1;
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    return current;
+  }
+
+  function formatStudyTime(minutes) {
+    const value = Math.max(0, Number(minutes) || 0);
+    if (value < 60) return `${Math.round(value)} min`;
+    const hours = value / 60;
+    return `${Number.isInteger(hours) ? hours.toFixed(0) : hours.toFixed(1).replace(".", ",")} h`;
+  }
+
+  function resizeRainmeterWidget(delta) {
+    if (!document.documentElement.classList.contains("rainmeter-widget") || !window.RainmeterAPI || !delta) return;
+    try {
+      const current = Number(window.RainmeterAPI.GetVariable("Scale")) || 1;
+      const next = Math.min(1.6, Math.max(0.75, Math.round((current + delta) * 10) / 10));
+      window.RainmeterAPI.Bang(`[!SetVariable Scale "${next}"][!WriteKeyValue Variables Scale "${next}"][!UpdateMeasure WebView][!UpdateMeter WidgetBounds][!Redraw]`);
+    } catch (_) {}
   }
 
   function compareAgenda(a, b) {
@@ -373,10 +430,10 @@
       main{min-height:0;overflow:hidden}.widget-section{height:100%;min-height:0;padding:15px 14px}.section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.section-head span,.widget-streak>span{color:var(--muted);font-size:9px;font-weight:800;letter-spacing:.08em}.section-head h1,.widget-streak h1{margin:3px 0 0;font-size:18px;line-height:1.15}.section-head>button{width:auto;padding:0 9px;color:var(--accent);font-size:11px;font-weight:700}
       .task-list{height:calc(100% - 51px);display:grid;align-content:start;gap:6px;overflow:auto;padding-right:3px;scrollbar-width:thin;scrollbar-color:var(--line) transparent}.task-row{min-width:0;display:grid;grid-template-columns:22px minmax(0,1fr);align-items:center;gap:8px;padding:9px 10px;border:1px solid color-mix(in srgb,var(--line) 70%,transparent);border-radius:9px;background:var(--panel);cursor:pointer}.task-row:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}.task-row input{width:15px;height:15px;margin:0;accent-color:var(--accent)}.task-row>span{min-width:0;display:grid;gap:2px}.task-row strong,.task-row small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.task-row strong{font-size:12px}.task-row small{color:var(--muted);font-size:10px}.empty{margin:28px 0;color:var(--muted);font-size:12px;text-align:center}
       .calendar-title>div:last-child{display:flex;gap:3px}.weekdays,.calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}.weekdays span{padding-bottom:6px;color:var(--muted);font-size:9px;font-weight:800;text-align:center}.calendar-grid{height:calc(100% - 75px);grid-template-rows:repeat(6,minmax(0,1fr));gap:3px}.calendar-day{position:relative;min-width:0;min-height:0;display:grid;place-items:center;padding:0;border:0;border-radius:7px;background:transparent;color:var(--text);cursor:pointer}.calendar-day:hover{background:var(--soft)}.calendar-day.is-outside{opacity:.32}.calendar-day.is-today{background:var(--accent);color:#07111f;font-weight:800}.calendar-day span{font-size:10px}.calendar-day small{position:absolute;right:3px;bottom:2px;min-width:13px;height:13px;display:grid;place-items:center;border-radius:99px;background:var(--soft);color:var(--accent);font-size:7px}.calendar-day.is-today small{background:#07111f;color:#fff}
-      .widget-streak{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}.streak-mark{width:64px;height:64px;display:grid;place-items:center;margin-bottom:11px;border-radius:18px;background:color-mix(in srgb,#f59e0b 14%,var(--panel));color:#f59e0b}.streak-mark svg{width:34px;height:34px}.widget-streak h1{font-size:24px}.widget-streak p{margin:7px 0 18px;color:var(--muted);font-size:12px}.streak-week{width:min(100%,310px);display:grid;grid-template-columns:repeat(7,1fr);gap:5px}.streak-week>div{display:grid;gap:4px;justify-items:center}.streak-week i{width:28px;height:28px;display:grid;place-items:center;border-radius:9px;background:var(--soft);color:var(--muted)}.streak-week .is-active i{background:color-mix(in srgb,#f59e0b 18%,var(--panel));color:#f59e0b}.streak-week svg{width:16px;height:16px}.streak-week small{color:var(--muted);font-size:9px}.streak-action{min-height:38px;margin-top:20px;padding:0 18px;border:0;border-radius:9px;background:var(--accent);color:#07111f;font-size:12px;font-weight:800;cursor:pointer}
+      .widget-streak{display:flex;flex-direction:column;justify-content:center}.streak-widget-head{display:grid;grid-template-columns:38px minmax(0,1fr) auto;align-items:center;gap:9px;text-align:left}.streak-mark{width:38px;height:38px;display:grid;place-items:center;border-radius:11px;background:color-mix(in srgb,#f59e0b 14%,var(--panel));color:#f59e0b}.streak-mark svg{width:22px;height:22px}.streak-widget-head>div:nth-child(2){min-width:0;display:grid;gap:1px}.streak-widget-head span{color:var(--muted);font-size:8px;font-weight:800;letter-spacing:.07em}.widget-streak h1{margin:0;font-size:18px}.streak-widget-head>strong{color:#f6b94e;font-size:13px}.widget-streak>p{margin:7px 0 5px;color:var(--muted);font-size:10px;text-align:left}.streak-widget-chart{min-height:0;margin-top:2px}.streak-widget-chart svg{width:100%;height:70px;display:block;overflow:visible}.streak-widget-chart line{stroke:color-mix(in srgb,var(--line) 55%,transparent);stroke-width:1}.streak-widget-chart path{fill:color-mix(in srgb,var(--accent) 9%,transparent);stroke:none}.streak-widget-chart polyline{fill:none;stroke:var(--accent);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.streak-widget-chart circle{fill:var(--accent);stroke:var(--panel);stroke-width:1.5}.streak-widget-chart>div{display:grid;grid-template-columns:repeat(7,1fr);margin-top:-1px;color:var(--muted);font-size:8px;text-align:center}.streak-action{min-height:32px;margin-top:8px;padding:0 16px;border:0;border-radius:9px;background:var(--accent);color:#07111f;font-size:11px;font-weight:800;cursor:pointer}
       footer{padding:7px 12px;border-top:1px solid var(--line);color:var(--muted);font-size:9px;text-align:center}
       @media(max-width:320px){.widget-brand strong{display:none}.widget-section{padding:12px 10px}.task-row{padding:8px}.section-head h1{font-size:16px}}
-      @media(max-height:350px){footer{display:none}.widget-section{padding-block:9px}.streak-mark{width:46px;height:46px;margin-bottom:7px}.streak-mark svg{width:26px;height:26px}.widget-streak p{margin:5px 0 10px}.streak-action{margin-top:10px}}
+      @media(max-height:350px){footer{display:none}.widget-section{padding-block:9px}.streak-widget-chart svg{height:62px}.streak-action{margin-top:6px}}
       .widget-connect{position:absolute;right:15px;bottom:13px;min-height:30px;padding:0 11px;border:1px solid var(--line);border-radius:8px;background:var(--soft);color:var(--text);font-size:10px;font-weight:700;cursor:pointer}
       .rainmeter-widget body{display:block;padding:5px;background:transparent;app-region:drag;-webkit-app-region:drag}
       .rainmeter-widget .widget-head,.rainmeter-widget body>footer{display:none}
@@ -392,6 +449,11 @@
       .rainmeter-widget .account-form label{gap:3px;font-size:10px}
       .rainmeter-widget .account-form input{min-height:38px;padding:8px 10px}
       .rainmeter-widget .account-primary,.rainmeter-widget .account-secondary,.rainmeter-widget .account-link{min-height:34px;padding:7px 10px}
+      .widget-size-controls{display:none}
+      .rainmeter-widget .widget-size-controls{position:fixed;right:10px;bottom:10px;z-index:45;display:flex;gap:3px;opacity:0;transform:translateY(3px);transition:opacity .15s ease,transform .15s ease;app-region:no-drag;-webkit-app-region:no-drag}
+      .rainmeter-widget body:hover .widget-size-controls,.rainmeter-widget .widget-size-controls:focus-within{opacity:1;transform:none}
+      .rainmeter-widget .widget-size-controls button{width:25px;height:25px;display:grid;place-items:center;padding:0;border:1px solid var(--line);border-radius:8px;background:color-mix(in srgb,var(--panel) 94%,transparent);color:var(--muted);font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.18);app-region:no-drag;-webkit-app-region:no-drag}
+      .rainmeter-widget .widget-size-controls button:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--line));color:var(--text)}
     `;
   }
 })();

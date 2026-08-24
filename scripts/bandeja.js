@@ -67,7 +67,9 @@
           ${traySection("subjects", "Mis materias", "Acceso rápido a tus materias elegidas.", "mySubjectsQuick", "trayBook")}
           ${traySection("recent", "Recientes", "Últimos temas visitados.", "recentList", "trayClock")}
           ${traySection("saved", "Guardados para después", "Material para revisar después.", "savedList", "trayBookmark")}`;
-    const installedApp = window.matchMedia?.("(display-mode: standalone)").matches || window.navigator.standalone === true;
+    const installedApp = Boolean(window.EstudiemosAndroid)
+      || window.navigator.standalone === true
+      || ["standalone", "window-controls-overlay", "fullscreen"].some((mode) => window.matchMedia?.(`(display-mode: ${mode})`).matches);
     const installAction = workspaceHome && !installedApp ? `
           <button class="tray-install-action" type="button" data-tray-install>
             ${icon("download")}<span>Instalar Estudiemos</span>

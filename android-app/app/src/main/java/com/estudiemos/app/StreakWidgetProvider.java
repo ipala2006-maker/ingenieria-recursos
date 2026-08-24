@@ -7,6 +7,11 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Path;
 import android.widget.RemoteViews;
 
 import org.json.JSONObject;
@@ -79,10 +84,13 @@ public class StreakWidgetProvider extends AppWidgetProvider {
         }
 
         int activeLast7 = 0;
+        int[] weekMinutes = new int[7];
         for (int offset = 0; offset < 7; offset += 1) {
-            if (minutesFor(days, today.minusDays(offset)) >= threshold) activeLast7 += 1;
+            int minutes = minutesFor(days, today.minusDays(offset));
+            weekMinutes[6 - offset] = minutes;
+            if (minutes >= threshold) activeLast7 += 1;
         }
-        return new StreakSummary(streak, activeLast7, todayMinutes, threshold, activeToday);
+        return new StreakSummary(streak, activeLast7, todayMinutes, threshold, activeToday, weekMinutes);
     }
 
     static void updateAll(Context context) {
@@ -108,10 +116,58 @@ public class StreakWidgetProvider extends AppWidgetProvider {
         );
         views.setTextViewText(
                 R.id.streak_widget_week,
-                "Últimos 7 días: " + summary.activeLast7 + " activos"
+                formatStudyTime(summary.weekTotalMinutes()) + " esta semana · " + summary.activeLast7 + " activos"
         );
+        views.setImageViewBitmap(R.id.streak_widget_chart, buildWeekChart(summary.weekMinutes));
         views.setOnClickPendingIntent(R.id.streak_widget_root, openPomodoroIntent(context));
         manager.updateAppWidget(appWidgetId, views);
+    }
+
+    private static Bitmap buildWeekChart(int[] minutes) {
+        int width = 640;
+        int height = 112;
+        float left = 8f;
+        float right = width - 8f;
+        float top = 10f;
+        float bottom = height - 12f;
+        Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+        Paint grid = new Paint(Paint.ANTI_ALIAS_FLAG);
+        grid.setColor(Color.rgb(42, 57, 82));
+        grid.setStrokeWidth(2f);
+        canvas.drawLine(left, top, right, top, grid);
+        canvas.drawLine(left, (top + bottom) / 2f, right, (top + bottom) / 2f, grid);
+        canvas.drawLine(left, bottom, right, bottom, grid);
+
+        int maximum = 60;
+        for (int value : minutes) maximum = Math.max(maximum, value);
+        maximum = Math.max(60, ((maximum + 59) / 60) * 60);
+
+        Path line = new Path();
+        Paint stroke = new Paint(Paint.ANTI_ALIAS_FLAG);
+        stroke.setColor(Color.rgb(139, 181, 255));
+        stroke.setStrokeWidth(6f);
+        stroke.setStyle(Paint.Style.STROKE);
+        stroke.setStrokeCap(Paint.Cap.ROUND);
+        stroke.setStrokeJoin(Paint.Join.ROUND);
+        Paint point = new Paint(Paint.ANTI_ALIAS_FLAG);
+        point.setColor(Color.rgb(139, 181, 255));
+        for (int index = 0; index < minutes.length; index += 1) {
+            float x = left + (index / 6f) * (right - left);
+            float y = bottom - (Math.max(0, minutes[index]) / (float) maximum) * (bottom - top);
+            if (index == 0) line.moveTo(x, y);
+            else line.lineTo(x, y);
+            canvas.drawCircle(x, y, minutes[index] > 0 ? 7f : 4f, point);
+        }
+        canvas.drawPath(line, stroke);
+        return bitmap;
+    }
+
+    private static String formatStudyTime(int minutes) {
+        if (minutes < 60) return minutes + " min";
+        float hours = minutes / 60f;
+        if (minutes % 60 == 0) return Math.round(hours) + " h";
+        return String.format(java.util.Locale.forLanguageTag("es-AR"), "%.1f h", hours);
     }
 
     private static int minutesFor(JSONObject days, LocalDate date) {
@@ -136,13 +192,21 @@ public class StreakWidgetProvider extends AppWidgetProvider {
         final int todayMinutes;
         final int threshold;
         final boolean activeToday;
+        final int[] weekMinutes;
 
-        StreakSummary(int currentStreak, int activeLast7, int todayMinutes, int threshold, boolean activeToday) {
+        StreakSummary(int currentStreak, int activeLast7, int todayMinutes, int threshold, boolean activeToday, int[] weekMinutes) {
             this.currentStreak = currentStreak;
             this.activeLast7 = activeLast7;
             this.todayMinutes = todayMinutes;
             this.threshold = threshold;
             this.activeToday = activeToday;
+            this.weekMinutes = weekMinutes;
+        }
+
+        int weekTotalMinutes() {
+            int total = 0;
+            for (int value : weekMinutes) total += Math.max(0, value);
+            return total;
         }
     }
 }

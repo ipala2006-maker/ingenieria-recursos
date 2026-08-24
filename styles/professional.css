@@ -163,6 +163,8 @@ html.has-window-controls-overlay .topbar{
 .topbar .suggestion-top-btn{order:8}
 .topbar .about-top-btn{order:9}
 .topbar .app-install-btn{display:inline-grid!important;order:10}
+html.app-installed .app-install-btn,
+html.app-installed .tray-install-action{display:none!important}
 .topbar .account-top-btn{order:11}
 .workspace-home .workspace-more-btn{display:none!important}
 

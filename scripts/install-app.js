@@ -2,7 +2,9 @@
   if (window.__estudiemosInstallGuideInstalled) return;
 
   const topbar = document.querySelector(".topbar");
-  if (!topbar || isStandalone() || isNativeAndroidApp()) return;
+  const installedContext = isInstalledContext();
+  document.documentElement.classList.toggle("app-installed", installedContext);
+  if (!topbar || installedContext) return;
 
   let nav = topbar.querySelector(".topbar__nav");
   if (!nav) {
@@ -16,6 +18,7 @@
 
   const SCRIPT_URL = document.currentScript?.src || location.href;
   const ANDROID_APK_URL = "https://github.com/ipala2006-maker/ingenieria-recursos/releases/download/android-latest/Estudiemos-Android.apk";
+  const ANDROID_OPEN_URL = `intent://open#Intent;scheme=estudiemos;package=com.estudiemos.app;S.browser_fallback_url=${encodeURIComponent(ANDROID_APK_URL)};end`;
   let installPrompt = null;
   const ios = isIOS();
   const android = isAndroid();
@@ -23,8 +26,8 @@
   button.className = "topbar__link topbar-icon-btn app-install-btn";
   button.type = "button";
   button.dataset.appInstall = "true";
-  button.setAttribute("aria-label", android ? "Descargar Estudiemos para Android" : "Instalar Estudiemos");
-  button.title = android ? "Descargar Estudiemos para Android" : "Instalar Estudiemos";
+  button.setAttribute("aria-label", android ? "Abrir o instalar Estudiemos" : "Instalar Estudiemos");
+  button.title = android ? "Abrir o instalar Estudiemos" : "Instalar Estudiemos";
   button.innerHTML = icon("install");
   nav.prepend(button);
 
@@ -54,13 +57,15 @@
     installPrompt = event;
   });
   window.addEventListener("appinstalled", finishInstallation);
-  window.matchMedia("(display-mode: standalone)").addEventListener?.("change", (event) => {
-    if (event.matches) finishInstallation();
+  ["standalone", "window-controls-overlay", "fullscreen"].forEach((mode) => {
+    window.matchMedia(`(display-mode: ${mode})`).addEventListener?.("change", (event) => {
+      if (event.matches) finishInstallation();
+    });
   });
 
   async function handleInstall() {
     if (android) {
-      location.href = ANDROID_APK_URL;
+      location.href = ANDROID_OPEN_URL;
       return;
     }
     if (installPrompt) {
@@ -95,6 +100,7 @@
   function finishInstallation() {
     closeGuide();
     button.remove();
+    document.documentElement.classList.add("app-installed");
   }
 
   function iosGuide() {
@@ -121,8 +127,11 @@
     `;
   }
 
-  function isStandalone() {
-    return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+  function isInstalledContext() {
+    return isNativeAndroidApp()
+      || window.navigator.standalone === true
+      || document.referrer.startsWith("android-app://")
+      || ["standalone", "window-controls-overlay", "fullscreen"].some((mode) => window.matchMedia(`(display-mode: ${mode})`).matches);
   }
 
   function isIOS() {

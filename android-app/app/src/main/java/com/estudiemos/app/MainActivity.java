@@ -280,6 +280,9 @@ public class MainActivity extends Activity {
         openAgendaRequested = intent.getBooleanExtra(EXTRA_OPEN_AGENDA, false);
         agendaDateRequested = intent.getStringExtra(EXTRA_AGENDA_DATE);
         openPomodoroRequested = intent.getBooleanExtra(EXTRA_OPEN_POMODORO, false);
+        if (intent.getData() != null && "estudiemos".equals(intent.getData().getScheme())) {
+            webView.loadUrl(APP_URL);
+        }
         openAgendaIfRequested();
         openPomodoroIfRequested();
     }

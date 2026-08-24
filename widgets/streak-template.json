@@ -4,10 +4,12 @@
   "version": "1.5",
   "body": [
     { "type": "TextBlock", "text": "ESTUDIEMOS", "size": "Small", "weight": "Bolder", "color": "Accent", "horizontalAlignment": "Center" },
-    { "type": "TextBlock", "text": "🔥", "size": "ExtraLarge", "horizontalAlignment": "Center", "spacing": "Large" },
+    { "type": "TextBlock", "text": "🔥", "size": "ExtraLarge", "horizontalAlignment": "Center", "spacing": "Medium" },
     { "type": "TextBlock", "text": "Racha: ${streakDays}", "size": "ExtraLarge", "weight": "Bolder", "horizontalAlignment": "Center", "spacing": "Small" },
     { "type": "TextBlock", "text": "${todayProgress}", "horizontalAlignment": "Center", "color": "Accent", "wrap": true },
-    { "type": "TextBlock", "text": "${weekSummary}", "horizontalAlignment": "Center", "size": "Small", "wrap": true, "separator": true }
+    { "type": "TextBlock", "text": "${weekChart}", "horizontalAlignment": "Center", "fontType": "Monospace", "size": "Large", "color": "Accent", "spacing": "Medium", "separator": true },
+    { "type": "TextBlock", "text": "${weekHours}", "horizontalAlignment": "Center", "weight": "Bolder", "size": "Small", "spacing": "Small" },
+    { "type": "TextBlock", "text": "${weekSummary}", "horizontalAlignment": "Center", "size": "Small", "wrap": true, "spacing": "Small" }
   ],
   "actions": [
     { "type": "Action.Execute", "title": "Estudiar 25 minutos", "verb": "open-pomodoro" }

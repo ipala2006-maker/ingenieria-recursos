@@ -43,6 +43,7 @@
   let serviceWorkerRegistration = null;
   let streakViewMonth = new Date().getMonth();
   let streakViewYear = new Date().getFullYear();
+  let streakChartRange = "week";
   let streakReminderTimer = 0;
   let androidNotificationPermission = "unknown";
 
@@ -147,6 +148,18 @@
           <span class="streak-menu__progress" data-streak-progress>0/25 min hoy</span>
         </div>
         <p class="streak-menu__message" data-streak-detail>Completá 25 min para iniciar tu racha.</p>
+
+        <section class="streak-chart" aria-label="Tiempo de estudio">
+          <header class="streak-chart__head">
+            <div><small>TIEMPO DE ESTUDIO</small><strong data-streak-chart-total>0 h</strong></div>
+            <div class="streak-chart__range" role="group" aria-label="Período del gráfico">
+              <button type="button" data-streak-chart-range="week" aria-pressed="true">Semana</button>
+              <button type="button" data-streak-chart-range="month" aria-pressed="false">Mes</button>
+            </div>
+          </header>
+          <div class="streak-chart__plot" data-streak-chart></div>
+          <footer><span data-streak-chart-period>Últimos 7 días</span><strong data-streak-chart-average>0 min por día</strong></footer>
+        </section>
 
         <section class="streak-calendar" aria-label="Calendario de racha">
           <header class="streak-calendar__head">
@@ -437,12 +450,18 @@
 
     const streakCloseButton = event.target.closest("[data-streak-close]");
     const streakMonthButton = event.target.closest("[data-streak-month-change]");
+    const streakRangeButton = event.target.closest("[data-streak-chart-range]");
     if (streakCloseButton) {
       closeStreakMenu();
       return;
     }
     if (streakMonthButton) {
       moveStreakMonth(Number(streakMonthButton.dataset.streakMonthChange) || 0);
+      return;
+    }
+    if (streakRangeButton) {
+      streakChartRange = streakRangeButton.dataset.streakChartRange === "month" ? "month" : "week";
+      renderStreakChart();
       return;
     }
     if (isStreakOpen() && streakMenu && !streakMenu.contains(event.target)) closeStreakMenu();
@@ -1866,6 +1885,7 @@
             ? "Perdiste la racha, pero podés recuperar el ritmo con una sesión hoy."
             : `Completá ${PRESENCE_MINUTES} min de estudio para iniciar tu racha.`;
     }
+    renderStreakChart();
     if (!month || !grid) return;
 
     const monthDate = new Date(streakViewYear, streakViewMonth, 1);
@@ -1889,6 +1909,88 @@
       `);
     }
     grid.innerHTML = cells.join("");
+  }
+
+  function renderStreakChart() {
+    const plot = document.querySelector("[data-streak-chart]");
+    const total = document.querySelector("[data-streak-chart-total]");
+    const average = document.querySelector("[data-streak-chart-average]");
+    const period = document.querySelector("[data-streak-chart-period]");
+    if (!plot) return;
+
+    const count = streakChartRange === "month" ? 30 : 7;
+    const values = [];
+    for (let offset = count - 1; offset >= 0; offset -= 1) {
+      const date = new Date();
+      date.setHours(12, 0, 0, 0);
+      date.setDate(date.getDate() - offset);
+      values.push({ date, minutes: Math.max(0, Number(streakState.days[dateValue(date)]) || 0) });
+    }
+
+    const totalMinutes = values.reduce((sum, item) => sum + item.minutes, 0);
+    const maxMinutes = Math.max(60, ...values.map((item) => item.minutes));
+    const ceilingMinutes = Math.max(60, Math.ceil(maxMinutes / 60) * 60);
+    const left = 30;
+    const right = 278;
+    const top = 12;
+    const bottom = 86;
+    const width = right - left;
+    const height = bottom - top;
+    const point = (item, index) => ({
+      x: left + (values.length === 1 ? 0 : (index / (values.length - 1)) * width),
+      y: bottom - (item.minutes / ceilingMinutes) * height
+    });
+    const points = values.map(point);
+    const line = points.map((item) => `${item.x.toFixed(1)},${item.y.toFixed(1)}`).join(" ");
+    const area = points.length
+      ? `M ${points[0].x.toFixed(1)} ${bottom} L ${line.replaceAll(",", " ")} L ${points[points.length - 1].x.toFixed(1)} ${bottom} Z`
+      : "";
+    const labelIndexes = streakChartRange === "month" ? [0, 7, 14, 21, 29] : [0, 1, 2, 3, 4, 5, 6];
+    const labels = labelIndexes.map((index) => {
+      const item = values[index];
+      const label = streakChartRange === "month"
+        ? String(item.date.getDate())
+        : new Intl.DateTimeFormat("es-AR", { weekday: "short" }).format(item.date).slice(0, 1).toUpperCase();
+      return `<span style="left:${((points[index].x / 308) * 100).toFixed(2)}%">${label}</span>`;
+    }).join("");
+
+    plot.innerHTML = `
+      <svg viewBox="0 0 308 98" role="img" aria-label="${formatStudyDuration(totalMinutes)} estudiadas en los últimos ${count} días">
+        <line class="streak-chart__grid" x1="${left}" y1="${top}" x2="${right}" y2="${top}"></line>
+        <line class="streak-chart__grid" x1="${left}" y1="${top + height / 2}" x2="${right}" y2="${top + height / 2}"></line>
+        <line class="streak-chart__grid" x1="${left}" y1="${bottom}" x2="${right}" y2="${bottom}"></line>
+        <text x="0" y="${top + 3}">${ceilingMinutes / 60} h</text>
+        <text x="0" y="${top + height / 2 + 3}">${formatAxisHours(ceilingMinutes / 120)}</text>
+        <text x="9" y="${bottom + 3}">0</text>
+        <path class="streak-chart__area" d="${area}"></path>
+        <polyline class="streak-chart__line" points="${line}"></polyline>
+        ${points.map((item, index) => `<circle class="streak-chart__point" cx="${item.x.toFixed(1)}" cy="${item.y.toFixed(1)}" r="${values[index].minutes ? 2.8 : 1.8}"><title>${formatLongStudyDate(values[index].date)}: ${formatStudyDuration(values[index].minutes)}</title></circle>`).join("")}
+      </svg>
+      <div class="streak-chart__labels" aria-hidden="true">${labels}</div>
+    `;
+    if (total) total.textContent = formatStudyDuration(totalMinutes);
+    if (average) average.textContent = `${Math.round(totalMinutes / count)} min por día`;
+    if (period) period.textContent = streakChartRange === "month" ? "Últimos 30 días" : "Últimos 7 días";
+    document.querySelectorAll("[data-streak-chart-range]").forEach((button) => {
+      const active = button.dataset.streakChartRange === streakChartRange;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-pressed", String(active));
+    });
+  }
+
+  function formatStudyDuration(minutes) {
+    const value = Math.max(0, Number(minutes) || 0);
+    if (value < 60) return `${Math.round(value)} min`;
+    const hours = value / 60;
+    return `${hours >= 10 || Number.isInteger(hours) ? hours.toFixed(0) : hours.toFixed(1).replace(".", ",")} h`;
+  }
+
+  function formatAxisHours(hours) {
+    return Number.isInteger(hours) ? `${hours} h` : `${hours.toFixed(1).replace(".", ",")} h`;
+  }
+
+  function formatLongStudyDate(date) {
+    return new Intl.DateTimeFormat("es-AR", { weekday: "long", day: "numeric", month: "short" }).format(date);
   }
 
   function syncStreakWithAndroid() {

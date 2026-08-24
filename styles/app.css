@@ -3523,6 +3523,113 @@ html.theme-light .agenda-day__streak{
   font-size:10.5px;
   line-height:1.4;
 }
+.streak-chart{
+  margin-bottom:10px;
+  padding:10px;
+  border:1px solid rgba(255,255,255,.075);
+  border-radius:13px;
+  background:rgba(255,255,255,.018);
+}
+.streak-chart__head,
+.streak-chart>footer{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.streak-chart__head>div:first-child{
+  display:grid;
+  gap:2px;
+}
+.streak-chart__head small{
+  color:var(--muted-2);
+  font-size:8.5px;
+  font-weight:800;
+  letter-spacing:.06em;
+}
+.streak-chart__head strong{
+  font-size:15px;
+}
+.streak-chart__range{
+  display:flex;
+  gap:2px;
+  padding:2px;
+  border-radius:9px;
+  background:rgba(255,255,255,.045);
+}
+.streak-chart__range button{
+  min-height:26px;
+  padding:0 8px;
+  border:0;
+  border-radius:7px;
+  background:transparent;
+  color:var(--muted);
+  font-size:9.5px;
+  font-weight:750;
+  cursor:pointer;
+}
+.streak-chart__range button.is-active{
+  background:rgba(139,181,255,.13);
+  color:var(--accent);
+}
+.streak-chart__plot{
+  position:relative;
+  margin-top:5px;
+  padding-bottom:14px;
+}
+.streak-chart__plot svg{
+  width:100%;
+  height:98px;
+  display:block;
+  overflow:visible;
+}
+.streak-chart__plot text{
+  fill:var(--muted-2);
+  font-size:8px;
+  font-weight:650;
+}
+.streak-chart__grid{
+  stroke:rgba(255,255,255,.07);
+  stroke-width:1;
+}
+.streak-chart__area{
+  fill:rgba(139,181,255,.08);
+}
+.streak-chart__line{
+  fill:none;
+  stroke:var(--accent);
+  stroke-width:2.2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.streak-chart__point{
+  fill:var(--accent);
+  stroke:var(--panel);
+  stroke-width:1.5;
+}
+.streak-chart__labels{
+  position:absolute;
+  right:0;
+  bottom:0;
+  left:0;
+  height:13px;
+}
+.streak-chart__labels span{
+  position:absolute;
+  transform:translateX(-50%);
+  color:var(--muted-2);
+  font-size:8px;
+  font-weight:700;
+}
+.streak-chart>footer{
+  padding-top:7px;
+  border-top:1px solid rgba(255,255,255,.06);
+  color:var(--muted);
+  font-size:9.5px;
+}
+.streak-chart>footer strong{
+  color:var(--text);
+}
 .streak-calendar{
   padding:10px;
   border:1px solid rgba(255,255,255,.075);
@@ -3629,6 +3736,15 @@ html.theme-light .streak-menu__progress{
 html.theme-light .streak-calendar{
   border-color:var(--border);
   background:var(--panel-2);
+}
+html.theme-light .streak-chart{
+  border-color:var(--border);
+  background:var(--panel-2);
+}
+html.theme-light .streak-chart__grid,
+html.theme-light .streak-chart>footer{
+  border-color:rgba(15,23,42,.08);
+  stroke:rgba(15,23,42,.08);
 }
 html.theme-light .streak-calendar__day.is-active{
   background:rgba(217,119,6,.1);

@@ -160,7 +160,7 @@
 
     const link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = `${rootPath}styles/professional.css?v=20260824-windows-titlebar-2`;
+    link.href = `${rootPath}styles/professional.css?v=20260824-study-metrics`;
     document.head.appendChild(link);
   }
 
@@ -243,7 +243,7 @@
     if (document.querySelector('script[src*="scripts/pomodoro.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/pomodoro.js?v=20260823-windows-widgets`;
+    script.src = `${rootPath}scripts/pomodoro.js?v=20260824-study-metrics`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -307,7 +307,7 @@
     if (document.querySelector('script[src*="scripts/install-app.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/install-app.js?v=20260822-android-direct`;
+    script.src = `${rootPath}scripts/install-app.js?v=20260824-installed-context`;
     script.defer = true;
     document.head.appendChild(script);
   }
