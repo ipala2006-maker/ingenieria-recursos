@@ -96,10 +96,11 @@ El archivo privado de Google Sheets puede mostrar un registro de cuentas en una 
 
 ## Widgets de Android
 
-La PWA instalada desde Chrome sigue siendo la aplicación principal. Como Android no permite que una PWA cree widgets del sistema por sí sola, la carpeta `android-app/` contiene un complemento nativo liviano que habilita tres widgets:
+La PWA instalada desde Chrome sigue siendo la aplicación principal. Como Android no permite que una PWA cree widgets del sistema por sí sola, la carpeta `android-app/` contiene un complemento nativo liviano que habilita cuatro widgets:
 
 - **Inbox:** muestra únicamente tareas, parciales, exámenes, entregas y trabajos pendientes, incluso cuando no tienen fecha.
-- **Calendario académico:** muestra únicamente clases que tengan hora de inicio y hora de finalización.
+- **Calendario académico:** abre en la semana actual, muestra las anotaciones de cada día y permite alternar a vista mensual.
+- **Temporizador Pomodoro:** muestra el bloque y el tiempo actual, y permite empezar, pausar o reiniciar sin abrir la aplicación.
 - **Racha de estudio:** registra presencia al completar 25 minutos de Pomodoro, muestra la actividad de los últimos siete días y abre el temporizador al tocarlo.
 
 Cada cambio relacionado con Android genera un APK de prueba en GitHub:
@@ -108,7 +109,7 @@ Cada cambio relacionado con Android genera un APK de prueba en GitHub:
 2. Entrar en la ejecución **Build Android app** más reciente.
 3. Descargar el archivo **Estudiemos-Android** en la sección de artefactos.
 4. Descomprimirlo e instalar `app-debug.apk` en Android.
-5. Abrir el perfil dentro de la aplicación y, en **Widgets de Android**, elegir **Inbox**, **Calendario** o **Racha**. Android mostrará la confirmación para colocarlo en la pantalla de inicio.
+5. Abrir el perfil dentro de la aplicación y, en **Widgets de Android**, elegir **Inbox**, **Calendario**, **Pomodoro** o **Racha**. Android mostrará la confirmación para colocarlo en la pantalla de inicio.
    Si el teléfono no admite esa confirmación directa, mantener presionada la pantalla de inicio, elegir **Widgets** y buscar **Estudiemos**.
 6. Abrir Estudiemos desde Chrome o desde la PWA instalada.
 7. Entrar en Inbox y tocar **Widgets** cada vez que se quieran enviar Inbox, el calendario y la racha desde la PWA a los widgets del teléfono.
@@ -119,7 +120,7 @@ El widget **Inbox** usa una lista desplazable: muestra todas las tareas pendient
 
 ## Widgets de escritorio
 
-En Chrome y Edge para computadora, el perfil incluye **Widgets de escritorio**. Inbox, calendario y racha se abren en una ventana compacta ajustable que permanece encima de las demás ventanas mientras el navegador está abierto. Los tres comparten los datos de la cuenta y se puede cambiar de vista desde la misma ventana.
+En Chrome y Edge para computadora, el perfil incluye **Widgets de escritorio**. Inbox, calendario, Pomodoro y racha se abren en una ventana compacta ajustable que permanece encima de las demás ventanas mientras el navegador está abierto. Comparten los datos de la cuenta y se puede cambiar de vista desde la misma ventana.
 
 Windows 11 también está preparado con tres widgets nativos para su panel de Widgets:
 

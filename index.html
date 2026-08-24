@@ -21,9 +21,9 @@
     <link rel="apple-touch-icon" href="./assets/icon-180.png" />
     <title>Estudiemos</title>
     <script src="./scripts/theme-init.js?v=20260824-study-metrics"></script>
-    <link rel="stylesheet" href="./styles/app.css?v=20260824-study-metrics" />
+    <link rel="stylesheet" href="./styles/app.css?v=20260824-week-pomodoro" />
     <link rel="stylesheet" href="./styles/workspace.css?v=20260822-pricing-preview-ars" />
-    <link rel="stylesheet" href="./styles/dashboard.css?v=20260822-home-compact" />
+    <link rel="stylesheet" href="./styles/dashboard.css?v=20260824-week-pomodoro" />
   </head>
 
   <body class="workspace-home">
@@ -102,19 +102,25 @@
 
         <section class="home-dashboard" aria-label="Calendario e Inbox">
           <div class="home-dashboard__grid">
-            <section class="dashboard-widget dashboard-calendar" aria-label="Calendario mensual">
+            <section class="dashboard-widget dashboard-calendar" aria-label="Calendario académico" data-dashboard-calendar-widget>
               <header class="dashboard-widget__head">
                 <div>
                   <span class="dashboard-widget__eyebrow">Calendario</span>
                   <h2 data-dashboard-month></h2>
                 </div>
-                <div class="dashboard-widget__nav">
-                  <button type="button" data-dashboard-month-change="-1" aria-label="Mes anterior">
-                    <svg viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></svg>
-                  </button>
-                  <button type="button" data-dashboard-month-change="1" aria-label="Mes siguiente">
-                    <svg viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg>
-                  </button>
+                <div class="dashboard-calendar__controls">
+                  <div class="dashboard-calendar__views" aria-label="Vista del calendario">
+                    <button type="button" data-dashboard-calendar-view="week">Semana</button>
+                    <button type="button" data-dashboard-calendar-view="month">Mes</button>
+                  </div>
+                  <div class="dashboard-widget__nav">
+                    <button type="button" data-dashboard-month-change="-1" aria-label="Período anterior">
+                      <svg viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></svg>
+                    </button>
+                    <button type="button" data-dashboard-month-change="1" aria-label="Período siguiente">
+                      <svg viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg>
+                    </button>
+                  </div>
                 </div>
               </header>
               <div class="dashboard-calendar__weekdays" aria-hidden="true"><span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span></div>
@@ -147,10 +153,10 @@
 
     <!-- DATA SIEMPRE PRIMERO -->
     <script src="./data/data.js?v=20260804-quimica-completa"></script>
-    <script src="./scripts/global-search.js?v=20260824-study-metrics"></script>
+    <script src="./scripts/global-search.js?v=20260824-week-pomodoro"></script>
 
     <script src="./scripts/workspace.js?v=20260822-pricing-preview-ars"></script>
-    <script src="./scripts/dashboard.js?v=20260822-inbox"></script>
+    <script src="./scripts/dashboard.js?v=20260824-week-pomodoro"></script>
 
     <script>
       document.getElementById("year").textContent = new Date().getFullYear();

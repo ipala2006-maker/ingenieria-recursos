@@ -218,6 +218,111 @@
   fill:#8b4a00;
 }
 
+.dashboard-calendar__controls,
+.dashboard-calendar__views{
+  display:flex;
+  align-items:center;
+  gap:5px;
+}
+
+.dashboard-calendar__views{
+  padding:2px;
+  border:1px solid var(--line);
+  border-radius:9px;
+  background:color-mix(in srgb,var(--panel-2) 72%,transparent);
+}
+
+.dashboard-calendar__views button{
+  min-height:26px;
+  padding:4px 8px;
+  border:0;
+  border-radius:7px;
+  background:transparent;
+  color:var(--muted);
+  font:inherit;
+  font-size:10px;
+  font-weight:800;
+  cursor:pointer;
+}
+
+.dashboard-calendar__views button.is-active{
+  background:color-mix(in srgb,var(--accent) 15%,var(--panel));
+  color:var(--text);
+}
+
+.dashboard-calendar[data-view="week"] .dashboard-calendar__grid{
+  gap:5px;
+  padding:3px 0 8px;
+}
+
+.dashboard-calendar[data-view="week"] .dashboard-calendar__day{
+  height:88px;
+  align-content:start;
+  justify-items:start;
+  gap:5px;
+  padding:8px;
+  border:1px solid var(--line);
+  background:color-mix(in srgb,var(--panel-2) 56%,transparent);
+  text-align:left;
+}
+
+.dashboard-calendar[data-view="week"] .dashboard-calendar__day.is-today{
+  border-color:color-mix(in srgb,var(--accent) 55%,var(--line));
+  background:color-mix(in srgb,var(--accent) 13%,var(--panel));
+  color:var(--text);
+}
+
+.dashboard-calendar[data-view="week"] .dashboard-calendar__day small{
+  width:100%;
+  overflow:hidden;
+  color:var(--muted);
+  font-size:9px;
+  font-weight:700;
+  line-height:1.25;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.dashboard-calendar[data-view="week"] .dashboard-calendar__day b{
+  color:var(--accent);
+  font-size:9px;
+}
+
+.dashboard-calendar[data-view="week"] .dashboard-calendar__day.has-items::after{
+  display:none;
+}
+
+.dashboard-calendar[data-view="week"] .dashboard-calendar__day .study-streak-flame{
+  top:8px;
+  right:8px;
+  width:10px;
+  height:10px;
+}
+
+@media (max-width:640px){
+  .dashboard-widget__head{
+    align-items:flex-start;
+  }
+
+  .dashboard-calendar__controls{
+    align-items:flex-end;
+    flex-direction:column-reverse;
+  }
+
+  .dashboard-calendar[data-view="week"] .dashboard-calendar__grid{
+    gap:3px;
+  }
+
+  .dashboard-calendar[data-view="week"] .dashboard-calendar__day{
+    height:68px;
+    padding:6px 4px;
+  }
+
+  .dashboard-calendar[data-view="week"] .dashboard-calendar__day small{
+    font-size:8px;
+  }
+}
+
 .dashboard-agenda{
   display:flex;
   flex-direction:column;

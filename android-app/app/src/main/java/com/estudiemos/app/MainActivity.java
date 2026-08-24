@@ -100,6 +100,7 @@ public class MainActivity extends Activity {
                 notifyWebAppReady();
                 sendNotificationStatusToWeb();
                 notifyPendingAgendaCompletions();
+                notifyPomodoroStateToWeb();
                 openAgendaIfRequested();
                 openPomodoroIfRequested();
             }
@@ -163,6 +164,8 @@ public class MainActivity extends Activity {
                 AgendaWidgetProvider.storeAgendaAndUpdate(this, message.getData());
             } else if ("pomodoro-streak-sync".equals(type)) {
                 StreakWidgetProvider.storeStreakAndUpdate(this, message.getData());
+            } else if ("pomodoro-sync".equals(type)) {
+                PomodoroWidgetProvider.storeStateAndUpdate(this, message.getData());
             } else if ("pomodoro-reminder-enable".equals(type)) {
                 enableStreakReminder();
             } else if ("pomodoro-notification-status".equals(type)) {
@@ -214,6 +217,15 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void notifyPomodoroStateToWeb() {
+        if (!webReady || webView == null) return;
+        String detail = PomodoroWidgetProvider.getStateForWeb(this);
+        webView.evaluateJavascript(
+                "window.dispatchEvent(new CustomEvent('estudiemos-android-pomodoro-state',{detail:" + detail + "}));",
+                null
+        );
+    }
+
     private void openAgendaIfRequested() {
         if (!openAgendaRequested) return;
         openAgendaRequested = false;
@@ -263,6 +275,7 @@ public class MainActivity extends Activity {
         if ("agenda".equals(widget)) providerClass = AgendaWidgetProvider.class;
         else if ("calendar".equals(widget)) providerClass = CalendarWidgetProvider.class;
         else if ("streak".equals(widget)) providerClass = StreakWidgetProvider.class;
+        else if ("pomodoro".equals(widget)) providerClass = PomodoroWidgetProvider.class;
         else return;
 
         AppWidgetManager manager = AppWidgetManager.getInstance(this);
@@ -291,6 +304,7 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         notifyPendingAgendaCompletions();
+        notifyPomodoroStateToWeb();
     }
 
     @Override

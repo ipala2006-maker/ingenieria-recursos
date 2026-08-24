@@ -28,6 +28,7 @@ public class CalendarWidgetService extends RemoteViewsService {
     private static final class CalendarFactory implements RemoteViewsFactory {
         private final Context context;
         private final List<CalendarDay> days = new ArrayList<>();
+        private boolean weekView = true;
 
         CalendarFactory(Context context) {
             this.context = context;
@@ -39,18 +40,19 @@ public class CalendarWidgetService extends RemoteViewsService {
         public void onDataSetChanged() {
             days.clear();
             LocalDate today = LocalDate.now();
-            LocalDate first = today.withDayOfMonth(1);
-            int offset = first.getDayOfWeek().getValue() - 1;
-            LocalDate gridStart = first.minusDays(offset);
-            Map<LocalDate, List<ClassEntry>> classes = readClasses(context);
+            weekView = CalendarWidgetProvider.VIEW_WEEK.equals(CalendarWidgetProvider.getView(context));
+            LocalDate first = weekView ? today : today.withDayOfMonth(1);
+            LocalDate gridStart = first.minusDays(first.getDayOfWeek().getValue() - 1L);
+            Map<LocalDate, List<ClassEntry>> classes = readEntries(context);
+            int cellCount = weekView ? 7 : 42;
 
-            for (int index = 0; index < 42; index += 1) {
+            for (int index = 0; index < cellCount; index += 1) {
                 LocalDate date = gridStart.plusDays(index);
                 List<ClassEntry> entries = classes.getOrDefault(date, new ArrayList<>());
                 entries.sort(Comparator
                         .comparing((ClassEntry entry) -> entry.start.isEmpty() ? "99:99" : entry.start)
                         .thenComparing(entry -> entry.title));
-                days.add(new CalendarDay(date, date.getMonthValue() == today.getMonthValue(), date.equals(today), entries));
+                days.add(new CalendarDay(date, weekView || date.getMonthValue() == today.getMonthValue(), date.equals(today), entries));
             }
         }
 
@@ -61,9 +63,9 @@ public class CalendarWidgetService extends RemoteViewsService {
         public RemoteViews getViewAt(int position) {
             if (position < 0 || position >= days.size()) return null;
             CalendarDay day = days.get(position);
-            RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.calendar_widget_day);
+            RemoteViews views = new RemoteViews(context.getPackageName(), weekView ? R.layout.calendar_widget_day_week : R.layout.calendar_widget_day);
             views.setTextViewText(R.id.calendar_day_number, String.valueOf(day.date.getDayOfMonth()));
-            views.setTextViewText(R.id.calendar_day_events, summarize(day.entries));
+            views.setTextViewText(R.id.calendar_day_events, summarize(day.entries, weekView ? 3 : 2));
             views.setViewVisibility(R.id.calendar_day_events, day.entries.isEmpty() ? View.INVISIBLE : View.VISIBLE);
 
             int background = day.today
@@ -80,14 +82,14 @@ public class CalendarWidgetService extends RemoteViewsService {
         }
 
         @Override public RemoteViews getLoadingView() { return null; }
-        @Override public int getViewTypeCount() { return 1; }
+        @Override public int getViewTypeCount() { return 2; }
         @Override public long getItemId(int position) { return position < days.size() ? days.get(position).date.toEpochDay() : position; }
         @Override public boolean hasStableIds() { return true; }
 
-        private static String summarize(List<ClassEntry> entries) {
+        private static String summarize(List<ClassEntry> entries, int maximum) {
             if (entries.isEmpty()) return "";
             List<String> lines = new ArrayList<>();
-            int visible = Math.min(2, entries.size());
+            int visible = Math.min(maximum, entries.size());
             for (int index = 0; index < visible; index += 1) {
                 ClassEntry entry = entries.get(index);
                 String time = entry.start.isEmpty()
@@ -99,7 +101,7 @@ public class CalendarWidgetService extends RemoteViewsService {
             return String.join("\n", lines);
         }
 
-        private static Map<LocalDate, List<ClassEntry>> readClasses(Context context) {
+        private static Map<LocalDate, List<ClassEntry>> readEntries(Context context) {
             SharedPreferences prefs = context.getSharedPreferences(AgendaWidgetProvider.PREFS, Context.MODE_PRIVATE);
             String raw = prefs.getString(AgendaWidgetProvider.KEY_AGENDA, "[]");
             Map<LocalDate, List<ClassEntry>> result = new HashMap<>();
@@ -108,7 +110,6 @@ public class CalendarWidgetService extends RemoteViewsService {
                 for (int index = 0; index < array.length(); index += 1) {
                     JSONObject item = array.optJSONObject(index);
                     if (item == null || item.optBoolean("done", false)) continue;
-                    if (!"clase".equals(item.optString("type").trim().toLowerCase(new Locale("es", "AR")))) continue;
                     String start = item.optString("horaInicio").trim();
                     String end = item.optString("horaFin").trim();
 
@@ -119,7 +120,7 @@ public class CalendarWidgetService extends RemoteViewsService {
                         continue;
                     }
                     String subject = item.optString("subject").trim();
-                    String title = subject.isEmpty() ? item.optString("title", "Clase").trim() : subject;
+                    String title = subject.isEmpty() ? item.optString("title", "Anotación").trim() : subject;
                     result.computeIfAbsent(date, ignored -> new ArrayList<>()).add(new ClassEntry(title, start, end));
                 }
             } catch (Exception ignored) {

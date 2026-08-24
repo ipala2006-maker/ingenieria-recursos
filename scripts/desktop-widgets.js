@@ -3,11 +3,15 @@
 
   const AGENDA_KEY = "bandeja_agenda";
   const STREAK_KEY = "estudiemos_pomodoro_streak";
+  const POMODORO_KEY = "estudiemos_pomodoro";
+  const CALENDAR_VIEW_KEY = "estudiemos_calendar_view";
   const standaloneHost = document.querySelector("[data-desktop-widget-host]");
   const state = {
     view: getInitialView(),
     month: new Date().getMonth(),
     year: new Date().getFullYear(),
+    date: dateValue(new Date()),
+    calendarView: localStorage.getItem(CALENDAR_VIEW_KEY) === "month" ? "month" : "week",
     widgetWindow: null,
     refreshTimer: null
   };
@@ -29,7 +33,7 @@
 
   async function open(view = "inbox") {
     if (!isDesktopDevice()) return false;
-    state.view = ["inbox", "calendar", "streak"].includes(view) ? view : "inbox";
+    state.view = ["inbox", "calendar", "streak", "pomodoro"].includes(view) ? view : "inbox";
 
     if (state.widgetWindow && !state.widgetWindow.closed) {
       state.widgetWindow.focus();
@@ -71,6 +75,7 @@
             <nav aria-label="Elegir widget">
               ${tabButton("inbox", inboxIcon(), "Inbox")}
               ${tabButton("calendar", calendarIcon(), "Calendario")}
+              ${tabButton("pomodoro", timerIcon(), "Pomodoro")}
               ${tabButton("streak", flameIcon(), "Racha")}
             </nav>
           </header>
@@ -84,7 +89,7 @@
     doc.addEventListener("change", handleWidgetChange);
     popup.addEventListener("pagehide", cleanup, { once: true });
     popup.addEventListener("beforeunload", cleanup, { once: true });
-    state.refreshTimer = window.setInterval(refresh, 5000);
+    state.refreshTimer = window.setInterval(refresh, 500);
     render();
   }
 
@@ -95,7 +100,7 @@
     document.head.appendChild(style);
     document.addEventListener("click", handleWidgetClick);
     document.addEventListener("change", handleWidgetChange);
-    state.refreshTimer = window.setInterval(render, 5000);
+    state.refreshTimer = window.setInterval(render, 500);
     window.EstudiemosAccount?.whenReady?.().then(render).catch(() => {});
     render();
   }
@@ -113,6 +118,7 @@
     const content = doc.getElementById("widgetContent");
     if (!content) return;
     if (state.view === "calendar") content.innerHTML = calendarMarkup();
+    else if (state.view === "pomodoro") content.innerHTML = pomodoroMarkup();
     else if (state.view === "streak") content.innerHTML = streakMarkup();
     else content.innerHTML = inboxMarkup();
     if (standaloneHost && !window.EstudiemosAccount?.getUser?.()) {
@@ -146,7 +152,8 @@
         type: "ESTUDIEMOS_WIDGET_DATA",
         state: {
           agenda: readAgenda(),
-          streak: readStreak()
+          streak: readStreak(),
+          pomodoro: readPomodoro()
         }
       });
     } catch (_) {}
@@ -168,10 +175,30 @@
 
     const month = event.target.closest("[data-widget-month]");
     if (month) {
-      const next = new Date(state.year, state.month + Number(month.dataset.widgetMonth), 1);
+      const current = parseDateValue(state.date) || new Date(state.year, state.month, 1);
+      const direction = Number(month.dataset.widgetMonth);
+      const next = state.calendarView === "week"
+        ? new Date(current.getFullYear(), current.getMonth(), current.getDate() + direction * 7)
+        : new Date(state.year, state.month + direction, 1);
       state.year = next.getFullYear();
       state.month = next.getMonth();
+      state.date = dateValue(next);
       render();
+      return;
+    }
+
+    const calendarView = event.target.closest("[data-widget-calendar-view]");
+    if (calendarView) {
+      state.calendarView = calendarView.dataset.widgetCalendarView === "month" ? "month" : "week";
+      localStorage.setItem(CALENDAR_VIEW_KEY, state.calendarView);
+      window.dispatchEvent(new CustomEvent("estudiemos:calendar-view-change", { detail: { view: state.calendarView } }));
+      render();
+      return;
+    }
+
+    const pomodoroAction = event.target.closest("[data-widget-pomodoro]");
+    if (pomodoroAction) {
+      updatePomodoro(pomodoroAction.dataset.widgetPomodoro);
       return;
     }
 
@@ -237,26 +264,57 @@
 
   function calendarMarkup() {
     const items = readAgenda().filter((item) => item.date);
-    const counts = items.reduce((result, item) => {
-      result[item.date] = (result[item.date] || 0) + 1;
+    const byDate = items.reduce((result, item) => {
+      if (!result[item.date]) result[item.date] = [];
+      result[item.date].push(item);
       return result;
     }, {});
     const first = new Date(state.year, state.month, 1);
-    const start = new Date(state.year, state.month, 1 - ((first.getDay() + 6) % 7));
+    const focus = parseDateValue(state.date) || new Date();
+    const start = state.calendarView === "week"
+      ? startOfWeek(focus)
+      : new Date(state.year, state.month, 1 - ((first.getDay() + 6) % 7));
     const today = dateValue(new Date());
     const days = [];
-    for (let index = 0; index < 42; index += 1) {
+    const cellCount = state.calendarView === "week" ? 7 : 42;
+    for (let index = 0; index < cellCount; index += 1) {
       const date = new Date(start.getFullYear(), start.getMonth(), start.getDate() + index);
       const value = dateValue(date);
-      const count = counts[value] || 0;
-      days.push(`<button class="calendar-day ${date.getMonth() !== state.month ? "is-outside" : ""} ${value === today ? "is-today" : ""}" data-widget-date="${value}" aria-label="${formatLongDate(value)}${count ? `, ${count} anotaciones` : ""}"><span>${date.getDate()}</span>${count ? `<small>${count}</small>` : ""}</button>`);
+      const dayItems = byDate[value] || [];
+      const entries = state.calendarView === "week"
+        ? dayItems.slice(0, 3).map((item) => `<em>${escapeHtml(widgetCalendarSummary(item))}</em>`).join("")
+        : "";
+      days.push(`<button class="calendar-day ${state.calendarView === "month" && date.getMonth() !== state.month ? "is-outside" : ""} ${value === today ? "is-today" : ""}" data-widget-date="${value}" aria-label="${formatLongDate(value)}${dayItems.length ? `, ${dayItems.length} anotaciones` : ""}"><span>${date.getDate()}</span>${entries}${dayItems.length > (state.calendarView === "week" ? 3 : 0) ? `<small>${state.calendarView === "week" ? `+${dayItems.length - 3}` : dayItems.length}</small>` : ""}</button>`);
     }
-    const monthLabel = new Intl.DateTimeFormat("es-AR", { month: "long", year: "numeric" }).format(first);
+    const periodLabel = state.calendarView === "week"
+      ? formatWeekRange(focus)
+      : capitalize(new Intl.DateTimeFormat("es-AR", { month: "long", year: "numeric" }).format(first));
     return `
-      <section class="widget-section widget-calendar">
-        <div class="section-head calendar-title"><div><span>CALENDARIO</span><h1>${capitalize(monthLabel)}</h1></div><div><button data-widget-month="-1" aria-label="Mes anterior">‹</button><button data-widget-month="1" aria-label="Mes siguiente">›</button></div></div>
+      <section class="widget-section widget-calendar" data-view="${state.calendarView}">
+        <div class="section-head calendar-title"><div><span>CALENDARIO</span><h1>${periodLabel}</h1></div><div><button data-widget-month="-1" aria-label="Período anterior">‹</button><button data-widget-month="1" aria-label="Período siguiente">›</button></div></div>
+        <div class="calendar-view-switch" aria-label="Vista del calendario"><button class="${state.calendarView === "week" ? "is-active" : ""}" data-widget-calendar-view="week">Semana</button><button class="${state.calendarView === "month" ? "is-active" : ""}" data-widget-calendar-view="month">Mes</button></div>
         <div class="weekdays"><span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span></div>
         <div class="calendar-grid">${days.join("")}</div>
+      </section>`;
+  }
+
+  function pomodoroMarkup() {
+    const pomodoro = readPomodoro();
+    const total = Math.max(1, Number(pomodoro.config[pomodoro.phase]) * 60 || 1);
+    const progress = Math.min(1, Math.max(0, 1 - pomodoro.remaining / total));
+    const phase = pomodoro.phase === "break" ? "DESCANSO" : "ESTUDIO";
+    const label = pomodoro.phase === "break" ? "Descanso" : `Bloque ${pomodoro.currentBlock} de ${pomodoro.config.blocks}`;
+    return `
+      <section class="widget-section widget-pomodoro">
+        <header class="pomodoro-widget-head"><div><span>TEMPORIZADOR POMODORO</span><h1>${label}</h1></div><b>${phase}</b></header>
+        <div class="pomodoro-widget-ring" style="--timer-progress:${(progress * 360).toFixed(1)}deg">
+          <div><strong>${formatTimer(pomodoro.remaining)}</strong><small>${pomodoro.running ? "En curso" : "Pausado"}</small></div>
+        </div>
+        <div class="pomodoro-widget-actions">
+          <button type="button" data-widget-pomodoro="reset" aria-label="Reiniciar temporizador" title="Reiniciar">${resetIcon()}</button>
+          <button class="is-primary" type="button" data-widget-pomodoro="toggle">${pomodoro.running ? pauseIcon() : playIcon()}<span>${pomodoro.running ? "Pausar" : "Empezar"}</span></button>
+          <button type="button" data-widget-open-pomodoro aria-label="Abrir temporizador completo" title="Abrir configuración">${openIcon()}</button>
+        </div>
       </section>`;
   }
 
@@ -329,6 +387,58 @@
     }
   }
 
+  function readPomodoro() {
+    let value = {};
+    try {
+      value = JSON.parse(localStorage.getItem(POMODORO_KEY) || "{}");
+    } catch (_) {}
+    const config = {
+      blocks: Math.max(1, Number(value.config?.blocks) || 1),
+      study: Math.max(0, Number(value.config?.study) || 25),
+      break: Math.max(0, Number(value.config?.break) || 5)
+    };
+    const phase = value.phase === "break" ? "break" : "study";
+    const running = Boolean(value.running && Number(value.endAt) > Date.now());
+    const fallback = config[phase] * 60;
+    const remaining = running
+      ? Math.max(0, Math.ceil((Number(value.endAt) - Date.now()) / 1000))
+      : Math.max(0, Math.ceil(Number(value.remaining ?? fallback)));
+    return {
+      ...value,
+      config,
+      phase,
+      currentBlock: Math.min(config.blocks, Math.max(1, Number(value.currentBlock) || 1)),
+      remaining,
+      running,
+      endAt: running ? Number(value.endAt) : 0,
+      updatedAt: Number(value.updatedAt) || 0
+    };
+  }
+
+  function updatePomodoro(action) {
+    const pomodoro = readPomodoro();
+    if (action === "reset") {
+      pomodoro.running = false;
+      pomodoro.endAt = 0;
+      pomodoro.remaining = pomodoro.config[pomodoro.phase] * 60;
+    } else if (pomodoro.running) {
+      pomodoro.running = false;
+      pomodoro.endAt = 0;
+    } else {
+      if (pomodoro.remaining <= 0) pomodoro.remaining = pomodoro.config[pomodoro.phase] * 60;
+      pomodoro.running = true;
+      pomodoro.endAt = Date.now() + pomodoro.remaining * 1000;
+    }
+    pomodoro.updatedAt = Date.now();
+    localStorage.setItem(POMODORO_KEY, JSON.stringify(pomodoro));
+    try {
+      window.EstudiemosAndroid?.postMessage?.(JSON.stringify({ type: "pomodoro-sync", state: pomodoro }));
+    } catch (_) {}
+    window.dispatchEvent(new CustomEvent("estudiemos:pomodoro-widget-action", { detail: pomodoro }));
+    window.dispatchEvent(new CustomEvent("estudiemos:data-change", { detail: { key: POMODORO_KEY } }));
+    render();
+  }
+
   function calculateCurrentStreak(days) {
     const today = new Date();
     const todayActive = (Number(days[dateValue(today)]) || 0) >= 25;
@@ -375,7 +485,7 @@
 
   function getInitialView() {
     const value = new URL(window.location.href).searchParams.get("view");
-    return ["inbox", "calendar", "streak"].includes(value) ? value : "inbox";
+    return ["inbox", "calendar", "streak", "pomodoro"].includes(value) ? value : "inbox";
   }
 
   function openMainApp(search) {
@@ -384,6 +494,37 @@
 
   function dateValue(date) {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  }
+
+  function parseDateValue(value) {
+    const [year, month, day] = String(value || "").split("-").map(Number);
+    if (!year || !month || !day) return null;
+    const date = new Date(year, month - 1, day);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  function startOfWeek(date) {
+    const start = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+    return start;
+  }
+
+  function formatWeekRange(date) {
+    const start = startOfWeek(date);
+    const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6);
+    const first = new Intl.DateTimeFormat("es-AR", { day: "numeric", month: start.getMonth() === end.getMonth() ? undefined : "short" }).format(start);
+    const last = new Intl.DateTimeFormat("es-AR", { day: "numeric", month: "long" }).format(end);
+    return capitalize(`${first} - ${last}`);
+  }
+
+  function widgetCalendarSummary(item) {
+    const time = item.horaInicio ? `${item.horaInicio} ` : "";
+    return `${time}${item.subject || item.title}`.trim();
+  }
+
+  function formatTimer(seconds) {
+    const value = Math.max(0, Math.ceil(Number(seconds) || 0));
+    return `${String(Math.floor(value / 60)).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`;
   }
 
   function formatShortDate(value) {
@@ -415,6 +556,26 @@
     return '<svg viewBox="0 0 24 24"><path d="M5 6h14v14H5zM8 3v5M16 3v5M5 10h14"/></svg>';
   }
 
+  function timerIcon() {
+    return '<svg viewBox="0 0 24 24"><path d="M9 3h6M12 7a7 7 0 1 0 7 7 7 7 0 0 0-7-7Zm0 3v4l2.8 1.7"/></svg>';
+  }
+
+  function playIcon() {
+    return '<svg viewBox="0 0 24 24"><path d="m9 6 9 6-9 6V6Z"/></svg>';
+  }
+
+  function pauseIcon() {
+    return '<svg viewBox="0 0 24 24"><path d="M9 6v12M15 6v12"/></svg>';
+  }
+
+  function resetIcon() {
+    return '<svg viewBox="0 0 24 24"><path d="M5 8V4m0 0h4M5 4l3 3a7 7 0 1 1-2 7"/></svg>';
+  }
+
+  function openIcon() {
+    return '<svg viewBox="0 0 24 24"><path d="M9 5H5v14h14v-4M13 5h6v6M19 5l-9 9"/></svg>';
+  }
+
   function flameIcon() {
     return '<svg viewBox="0 0 24 24"><path d="M13.2 2.2c.4 3-1 4.7-2.4 6.3-1.2-2.2-2.9-3.8-5-5.4.3 3.8-2.4 5.7-2.4 10.3A8.6 8.6 0 0 0 12 22a8.6 8.6 0 0 0 8.6-8.6c0-4.1-2.3-7.8-7.4-11.2ZM12 19.7a4.2 4.2 0 0 1-4.2-4.2c0-1.8.9-3.1 2.1-4.4.2 1.5.9 2.4 1.7 3.2 1.1-1.4 1.8-2.8 1.8-4.7 1.8 1.5 2.8 3.4 2.8 5.9a4.2 4.2 0 0 1-4.2 4.2Z"/></svg>';
   }
@@ -430,6 +591,8 @@
       main{min-height:0;overflow:hidden}.widget-section{height:100%;min-height:0;padding:15px 14px}.section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.section-head span,.widget-streak>span{color:var(--muted);font-size:9px;font-weight:800;letter-spacing:.08em}.section-head h1,.widget-streak h1{margin:3px 0 0;font-size:18px;line-height:1.15}.section-head>button{width:auto;padding:0 9px;color:var(--accent);font-size:11px;font-weight:700}
       .task-list{height:calc(100% - 51px);display:grid;align-content:start;gap:6px;overflow:auto;padding-right:3px;scrollbar-width:thin;scrollbar-color:var(--line) transparent}.task-row{min-width:0;display:grid;grid-template-columns:22px minmax(0,1fr);align-items:center;gap:8px;padding:9px 10px;border:1px solid color-mix(in srgb,var(--line) 70%,transparent);border-radius:9px;background:var(--panel);cursor:pointer}.task-row:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}.task-row input{width:15px;height:15px;margin:0;accent-color:var(--accent)}.task-row>span{min-width:0;display:grid;gap:2px}.task-row strong,.task-row small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.task-row strong{font-size:12px}.task-row small{color:var(--muted);font-size:10px}.empty{margin:28px 0;color:var(--muted);font-size:12px;text-align:center}
       .calendar-title>div:last-child{display:flex;gap:3px}.weekdays,.calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}.weekdays span{padding-bottom:6px;color:var(--muted);font-size:9px;font-weight:800;text-align:center}.calendar-grid{height:calc(100% - 75px);grid-template-rows:repeat(6,minmax(0,1fr));gap:3px}.calendar-day{position:relative;min-width:0;min-height:0;display:grid;place-items:center;padding:0;border:0;border-radius:7px;background:transparent;color:var(--text);cursor:pointer}.calendar-day:hover{background:var(--soft)}.calendar-day.is-outside{opacity:.32}.calendar-day.is-today{background:var(--accent);color:#07111f;font-weight:800}.calendar-day span{font-size:10px}.calendar-day small{position:absolute;right:3px;bottom:2px;min-width:13px;height:13px;display:grid;place-items:center;border-radius:99px;background:var(--soft);color:var(--accent);font-size:7px}.calendar-day.is-today small{background:#07111f;color:#fff}
+      .calendar-view-switch{display:flex;justify-content:flex-end;gap:2px;margin:-7px 0 7px}.calendar-view-switch button{min-height:25px;padding:3px 8px;border:0;border-radius:7px;background:transparent;color:var(--muted);font-size:9px;font-weight:800;cursor:pointer}.calendar-view-switch button.is-active{background:var(--soft);color:var(--text)}.widget-calendar[data-view="week"] .calendar-grid{height:calc(100% - 99px);grid-template-rows:minmax(0,1fr);gap:5px}.widget-calendar[data-view="week"] .calendar-day{align-content:start;justify-items:start;gap:5px;padding:8px 5px;border:1px solid color-mix(in srgb,var(--line) 65%,transparent);background:color-mix(in srgb,var(--panel) 72%,transparent);text-align:left}.widget-calendar[data-view="week"] .calendar-day.is-today{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,var(--panel));color:var(--text)}.widget-calendar[data-view="week"] .calendar-day em{width:100%;overflow:hidden;color:var(--muted);font-size:8px;font-style:normal;font-weight:650;line-height:1.2;text-overflow:ellipsis;white-space:nowrap}.widget-calendar[data-view="week"] .calendar-day small{position:static;margin-top:auto;background:transparent;color:var(--accent);font-size:8px}.widget-calendar[data-view="week"] .calendar-day.is-today small{background:transparent;color:var(--accent)}
+      .widget-pomodoro{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}.pomodoro-widget-head{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px}.pomodoro-widget-head span{color:var(--muted);font-size:8px;font-weight:800;letter-spacing:.08em}.pomodoro-widget-head h1{margin:2px 0 0;font-size:17px}.pomodoro-widget-head>b{padding:5px 8px;border-radius:7px;background:var(--soft);color:var(--accent);font-size:9px}.pomodoro-widget-ring{--timer-progress:0deg;width:min(54vw,188px);aspect-ratio:1;display:grid;place-items:center;border-radius:50%;background:conic-gradient(var(--accent) var(--timer-progress),var(--line) 0);padding:7px}.pomodoro-widget-ring::before{content:"";grid-area:1/1;width:100%;height:100%;border-radius:50%;background:var(--bg)}.pomodoro-widget-ring>div{z-index:1;grid-area:1/1;display:grid;gap:4px;text-align:center}.pomodoro-widget-ring strong{font-size:clamp(32px,11vw,48px);line-height:1;font-variant-numeric:tabular-nums}.pomodoro-widget-ring small{color:var(--muted);font-size:10px;font-weight:700}.pomodoro-widget-actions{width:100%;display:grid;grid-template-columns:42px minmax(0,1fr) 42px;gap:8px}.pomodoro-widget-actions button{min-height:40px;display:flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--text);cursor:pointer}.pomodoro-widget-actions button.is-primary{border-color:transparent;background:var(--accent);color:#07111f;font-size:12px;font-weight:800}.pomodoro-widget-actions svg{width:16px;height:16px}.pomodoro-widget-actions button.is-primary svg{stroke-width:2.2}
       .widget-streak{display:flex;flex-direction:column;justify-content:center}.streak-widget-head{display:grid;grid-template-columns:38px minmax(0,1fr) auto;align-items:center;gap:9px;text-align:left}.streak-mark{width:38px;height:38px;display:grid;place-items:center;border-radius:11px;background:color-mix(in srgb,#f59e0b 14%,var(--panel));color:#f59e0b}.streak-mark svg{width:22px;height:22px}.streak-widget-head>div:nth-child(2){min-width:0;display:grid;gap:1px}.streak-widget-head span{color:var(--muted);font-size:8px;font-weight:800;letter-spacing:.07em}.widget-streak h1{margin:0;font-size:18px}.streak-widget-head>strong{color:#f6b94e;font-size:13px}.widget-streak>p{margin:7px 0 5px;color:var(--muted);font-size:10px;text-align:left}.streak-widget-chart{min-height:0;margin-top:2px}.streak-widget-chart svg{width:100%;height:70px;display:block;overflow:visible}.streak-widget-chart line{stroke:color-mix(in srgb,var(--line) 55%,transparent);stroke-width:1}.streak-widget-chart path{fill:color-mix(in srgb,var(--accent) 9%,transparent);stroke:none}.streak-widget-chart polyline{fill:none;stroke:var(--accent);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.streak-widget-chart circle{fill:var(--accent);stroke:var(--panel);stroke-width:1.5}.streak-widget-chart>div{display:grid;grid-template-columns:repeat(7,1fr);margin-top:-1px;color:var(--muted);font-size:8px;text-align:center}.streak-action{min-height:32px;margin-top:8px;padding:0 16px;border:0;border-radius:9px;background:var(--accent);color:#07111f;font-size:11px;font-weight:800;cursor:pointer}
       footer{padding:7px 12px;border-top:1px solid var(--line);color:var(--muted);font-size:9px;text-align:center}
       @media(max-width:320px){.widget-brand strong{display:none}.widget-section{padding:12px 10px}.task-row{padding:8px}.section-head h1{font-size:16px}}

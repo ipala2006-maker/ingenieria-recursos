@@ -5,11 +5,14 @@
   const AGENDA_KEY = "bandeja_agenda";
   const SUBJECTS_KEY = "bandeja_materias";
   const STREAK_KEY = "estudiemos_pomodoro_streak";
+  const CALENDAR_VIEW_KEY = "estudiemos_calendar_view";
   const workspaceHome = document.body.classList.contains("workspace-home");
   const MAX_AGENDA_ITEMS = 500;
   const state = {
     month: new Date().getMonth(),
-    year: new Date().getFullYear()
+    year: new Date().getFullYear(),
+    date: toDateValue(new Date()),
+    calendarView: localStorage.getItem(CALENDAR_VIEW_KEY) === "month" ? "month" : "week"
   };
 
   addTopbarActions();
@@ -114,6 +117,14 @@
         moveMonth(Number(monthChange.dataset.dashboardMonthChange) || 0);
         return;
       }
+      const calendarView = event.target.closest("[data-dashboard-calendar-view]");
+      if (calendarView) {
+        state.calendarView = calendarView.dataset.dashboardCalendarView === "month" ? "month" : "week";
+        localStorage.setItem(CALENDAR_VIEW_KEY, state.calendarView);
+        window.dispatchEvent(new CustomEvent("estudiemos:calendar-view-change", { detail: { view: state.calendarView } }));
+        renderCalendar();
+        return;
+      }
       const day = event.target.closest("[data-dashboard-date]");
       if (day) {
         openAgenda({ date: day.dataset.dashboardDate });
@@ -150,6 +161,10 @@
     });
     window.addEventListener("estudiemos:workspace-update", updateSpaceSummary);
     window.addEventListener("estudiemos:open-general-ai", () => openPanel("assistant"));
+    window.addEventListener("estudiemos:calendar-view-change", (event) => {
+      state.calendarView = event.detail?.view === "month" ? "month" : "week";
+      renderCalendar();
+    });
   }
 
   function openPanel(name) {
@@ -321,20 +336,41 @@
     const label = document.querySelector("[data-dashboard-month]");
     const grid = document.querySelector("[data-dashboard-calendar]");
     if (!label || !grid) return;
-    label.textContent = new Intl.DateTimeFormat("es-AR", { month: "long", year: "numeric" }).format(new Date(state.year, state.month, 1));
+    const focus = parseDateValue(state.date) || new Date();
+    label.textContent = state.calendarView === "week"
+      ? formatWeekRange(focus)
+      : new Intl.DateTimeFormat("es-AR", { month: "long", year: "numeric" }).format(new Date(state.year, state.month, 1));
     label.textContent = label.textContent.charAt(0).toUpperCase() + label.textContent.slice(1);
-    const dated = new Set(readAgenda().filter((item) => item.date).map((item) => item.date));
+    const agenda = readAgenda();
+    const dated = agenda.reduce((map, item) => {
+      if (!item.date) return map;
+      if (!map.has(item.date)) map.set(item.date, []);
+      map.get(item.date).push(item);
+      return map;
+    }, new Map());
     const streakDays = readStreakDays();
     const first = new Date(state.year, state.month, 1);
     const offset = (first.getDay() + 6) % 7;
-    const start = new Date(state.year, state.month, 1 - offset);
+    const start = state.calendarView === "week"
+      ? startOfWeek(focus)
+      : new Date(state.year, state.month, 1 - offset);
+    const cellCount = state.calendarView === "week" ? 7 : 42;
     const today = toDateValue(new Date());
     const cells = [];
-    for (let index = 0; index < 42; index += 1) {
+    document.querySelector("[data-dashboard-calendar-widget]")?.setAttribute("data-view", state.calendarView);
+    grid.dataset.view = state.calendarView;
+    document.querySelectorAll("[data-dashboard-calendar-view]").forEach((button) => {
+      const active = button.dataset.dashboardCalendarView === state.calendarView;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-pressed", String(active));
+    });
+    for (let index = 0; index < cellCount; index += 1) {
       const date = new Date(start.getFullYear(), start.getMonth(), start.getDate() + index);
       const value = toDateValue(date);
       const hasStreak = (streakDays[value] || 0) >= 25;
-      cells.push(`<button class="dashboard-calendar__day ${date.getMonth() !== state.month ? "is-outside" : ""} ${value === today ? "is-today" : ""} ${dated.has(value) ? "has-items" : ""} ${hasStreak ? "has-study-streak" : ""}" type="button" data-dashboard-date="${value}" aria-label="${formatFullDate(value)}${hasStreak ? ", presencia de estudio registrada" : ""}"><span>${date.getDate()}</span>${hasStreak ? flameIcon() : ""}</button>`);
+      const dayItems = dated.get(value) || [];
+      const summary = dayItems[0] ? formatCalendarSummary(dayItems[0]) : "";
+      cells.push(`<button class="dashboard-calendar__day ${state.calendarView === "month" && date.getMonth() !== state.month ? "is-outside" : ""} ${value === today ? "is-today" : ""} ${dayItems.length ? "has-items" : ""} ${hasStreak ? "has-study-streak" : ""}" type="button" data-dashboard-date="${value}" aria-label="${formatFullDate(value)}${dayItems.length ? `, ${dayItems.length} anotaciones` : ""}${hasStreak ? ", presencia de estudio registrada" : ""}"><span class="dashboard-calendar__number">${date.getDate()}</span>${hasStreak ? flameIcon() : ""}${summary ? `<small>${escapeHtml(summary)}</small>` : ""}${dayItems.length > 1 ? `<b>+${dayItems.length - 1}</b>` : ""}</button>`);
     }
     grid.innerHTML = cells.join("");
   }
@@ -356,10 +392,33 @@
   }
 
   function moveMonth(direction) {
-    const next = new Date(state.year, state.month + direction, 1);
+    const current = parseDateValue(state.date) || new Date(state.year, state.month, 1);
+    const next = state.calendarView === "week"
+      ? new Date(current.getFullYear(), current.getMonth(), current.getDate() + direction * 7)
+      : new Date(state.year, state.month + direction, 1);
     state.year = next.getFullYear();
     state.month = next.getMonth();
+    state.date = toDateValue(next);
     renderCalendar();
+  }
+
+  function startOfWeek(date) {
+    const start = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+    return start;
+  }
+
+  function formatWeekRange(date) {
+    const start = startOfWeek(date);
+    const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6);
+    const first = new Intl.DateTimeFormat("es-AR", { day: "numeric", month: start.getMonth() === end.getMonth() ? undefined : "short" }).format(start);
+    const last = new Intl.DateTimeFormat("es-AR", { day: "numeric", month: "long" }).format(end);
+    return `${first} - ${last}`;
+  }
+
+  function formatCalendarSummary(item) {
+    const time = item.horaInicio ? `${item.horaInicio} ` : "";
+    return `${time}${item.subject || item.title}`.trim();
   }
 
   function toggleDone(id) {
@@ -438,6 +497,13 @@
     const month = String(date.getMonth() + 1).padStart(2, "0");
     const day = String(date.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
+  }
+
+  function parseDateValue(value) {
+    const [year, month, day] = String(value || "").split("-").map(Number);
+    if (!year || !month || !day) return null;
+    const date = new Date(year, month - 1, day);
+    return Number.isNaN(date.getTime()) ? null : date;
   }
 
   function shortDate(value) {

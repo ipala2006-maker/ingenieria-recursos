@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="15dp">
+
+    <LinearLayout
+        android:id="@+id/pomodoro_widget_header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="TEMPORIZADOR POMODORO"
+            android:textColor="#94A3B8"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/pomodoro_widget_phase"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/widget_chip_background"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="4dp"
+            android:text="ESTUDIO"
+            android:textColor="#8BB5FF"
+            android:textSize="9sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <Chronometer
+        android:id="@+id/pomodoro_widget_time"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="8dp"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:text="25:00"
+        android:textColor="#F8FAFC"
+        android:textSize="45sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/pomodoro_widget_block"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:text="Bloque 1 de 1"
+        android:textColor="#94A3B8"
+        android:textSize="11sp"
+        android:textStyle="bold" />
+
+    <ProgressBar
+        android:id="@+id/pomodoro_widget_progress"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="4dp"
+        android:layout_marginTop="10dp"
+        android:progressBackgroundTint="#27364F"
+        android:progressTint="#8BB5FF" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:layout_marginTop="10dp"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <ImageButton
+            android:id="@+id/pomodoro_widget_reset"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:background="@drawable/widget_item_background"
+            android:contentDescription="Reiniciar temporizador"
+            android:padding="11dp"
+            android:src="@drawable/ic_widget_reset"
+            android:tint="#CBD5E1" />
+
+        <LinearLayout
+            android:id="@+id/pomodoro_widget_toggle"
+            android:layout_width="0dp"
+            android:layout_height="42dp"
+            android:layout_marginStart="9dp"
+            android:layout_weight="1"
+            android:background="@drawable/widget_primary_button"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:id="@+id/pomodoro_widget_toggle_icon"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:contentDescription="Iniciar o pausar"
+                android:src="@drawable/ic_widget_play"
+                android:tint="#07111F" />
+
+            <TextView
+                android:id="@+id/pomodoro_widget_toggle_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="7dp"
+                android:text="Empezar"
+                android:textColor="#07111F"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/pomodoro_widget_description"
+    android:initialLayout="@layout/pomodoro_widget"
+    android:minWidth="220dp"
+    android:minHeight="190dp"
+    android:minResizeWidth="180dp"
+    android:minResizeHeight="165dp"
+    android:previewLayout="@layout/pomodoro_widget"
+    android:resizeMode="horizontal|vertical"
+    android:targetCellWidth="4"
+    android:targetCellHeight="4"
+    android:updatePeriodMillis="1800000"
+    android:widgetCategory="home_screen" />

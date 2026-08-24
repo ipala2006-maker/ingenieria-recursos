@@ -85,6 +85,18 @@
         </receiver>
 
         <receiver
+            android:name=".PomodoroWidgetProvider"
+            android:label="@string/pomodoro_widget_name"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/pomodoro_widget_info" />
+        </receiver>
+
+        <receiver
             android:name=".StreakReminderReceiver"
             android:exported="false">
             <intent-filter>

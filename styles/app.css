@@ -4930,3 +4930,115 @@ html.theme-light .agenda-manual{
     display:block;
   }
 }
+
+/* Calendario semanal como vista principal, con el mes disponible sin cambiar de pantalla. */
+.agenda-view-switch{
+  display:flex;
+  align-items:center;
+  gap:2px;
+  padding:2px;
+  border:1px solid rgba(255,255,255,.11);
+  border-radius:10px;
+  background:rgba(255,255,255,.045);
+}
+
+.agenda-view-switch button{
+  min-height:30px;
+  padding:5px 9px;
+  border:0;
+  border-radius:8px;
+  background:transparent;
+  color:var(--muted);
+  font:inherit;
+  font-size:11px;
+  font-weight:800;
+  cursor:pointer;
+}
+
+.agenda-view-switch button.is-active{
+  background:rgba(110,231,255,.13);
+  color:var(--text);
+}
+
+.agenda-calendar[data-view="week"] .agenda-calendar__grid{
+  grid-template-rows:minmax(210px,1fr);
+  grid-auto-rows:minmax(210px,1fr);
+}
+
+.agenda-calendar[data-view="week"] .agenda-day{
+  min-height:210px;
+}
+
+html.theme-light .agenda-view-switch{
+  border-color:rgba(15,23,42,.12);
+  background:rgba(15,23,42,.035);
+}
+
+html.theme-light .agenda-view-switch button.is-active{
+  background:rgba(37,99,235,.10);
+}
+
+@media (max-width:980px), (pointer:coarse){
+  .agenda-calendar[data-view="week"] .agenda-calendar__grid{
+    grid-template-rows:112px;
+    grid-auto-rows:112px;
+  }
+
+  .agenda-calendar[data-view="week"] .agenda-day{
+    min-height:112px;
+    padding:6px 4px;
+  }
+
+  .agenda-calendar[data-view="week"] .agenda-day__items{
+    display:grid;
+    gap:3px;
+  }
+
+  .agenda-calendar[data-view="week"] .agenda-event-pill{
+    width:auto;
+    height:auto;
+    display:flex !important;
+    align-items:center;
+    gap:3px;
+    padding:3px 4px !important;
+    border-radius:6px !important;
+    background:color-mix(in srgb,var(--agenda-type-color) 16%,transparent) !important;
+  }
+
+  .agenda-calendar[data-view="week"] .agenda-event-pill i,
+  .agenda-calendar[data-view="week"] .agenda-event-pill span{
+    display:block;
+  }
+
+  .agenda-calendar[data-view="week"] .agenda-event-pill span{
+    overflow:hidden;
+    font-size:8px;
+    line-height:1.2;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+}
+
+@media (max-width:560px){
+  .agenda-view-switch{
+    order:2;
+  }
+
+  .agenda-calendar[data-view="week"] .agenda-calendar__grid{
+    grid-template-rows:90px;
+    grid-auto-rows:90px;
+  }
+
+  .agenda-calendar[data-view="week"] .agenda-day{
+    min-height:90px;
+    padding:4px 2px;
+  }
+
+  .agenda-calendar[data-view="week"] .agenda-event-pill{
+    padding:2px 3px !important;
+  }
+
+  .agenda-calendar[data-view="week"] .agenda-event-pill i{
+    display:none;
+  }
+}

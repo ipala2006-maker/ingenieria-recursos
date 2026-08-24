@@ -14,6 +14,7 @@
   };
 
   const GOOGLE_FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSc8KLH9N0kcYRryZa0tNtLSRIMe0ol_wKWVUwBt9T-3m9WD1A/viewform?usp=header";
+  const CALENDAR_VIEW_KEY = "estudiemos_calendar_view";
   const AGENDA_TYPES = ["Tarea", "Parcial", "Clase", "Entrega", "Estudio", "Recordatorio"];
   const MAX_AGENDA_ITEMS = 500;
   const MAX_ASSISTANT_RANGE_DAYS = 370;
@@ -21,6 +22,7 @@
   const workspaceHome = document.body.classList.contains("workspace-home") || document.body.classList.contains("productivity-page");
   let refreshQueued = false;
   let agendaFilter = "day";
+  let agendaView = localStorage.getItem(CALENDAR_VIEW_KEY) === "month" ? "month" : "week";
   let agendaMonth = new Date().getMonth();
   let agendaYear = new Date().getFullYear();
   let selectedAgendaDate = toDateValue(new Date());
@@ -41,6 +43,10 @@
   window.dispatchEvent(new CustomEvent("estudiemos:bandeja-ready"));
   window.addEventListener("estudiemos-android-ready", () => {
     syncAgendaWithAndroid(readList(STORAGE_KEYS.agenda));
+  });
+  window.addEventListener("estudiemos:calendar-view-change", (event) => {
+    agendaView = event.detail?.view === "month" ? "month" : "week";
+    if (document.querySelector(".agenda-board")?.classList.contains("is-open")) renderAgenda();
   });
   window.addEventListener("estudiemos-android-agenda-complete", (event) => {
     completeAgendaItemFromAndroid(event.detail?.id);
@@ -128,6 +134,10 @@
             </div>
           </div>
           <div class="agenda-toolbar__actions">
+            <div class="agenda-view-switch" aria-label="Vista del calendario">
+              <button type="button" data-agenda-view="week">Semana</button>
+              <button type="button" data-agenda-view="month">Mes</button>
+            </div>
             <button class="agenda-general-ai-btn" type="button" data-general-ai-open aria-label="Abrir asistente de Estudiemos" title="Asistente">${icon("sparkles")}</button>
             <button class="agenda-widget-sync-btn" type="button" data-agenda-widget-sync hidden>${icon("calendar")}<span>Widgets</span></button>
             <button class="agenda-create-btn" type="button" data-agenda-create>${icon("plus")}<span>Anotar</span></button>
@@ -350,6 +360,7 @@
       const agendaClose = event.target.closest("[data-agenda-close]");
       const agendaFilterButton = event.target.closest("[data-agenda-filter]");
       const agendaMonthButton = event.target.closest("[data-agenda-month]");
+      const agendaViewButton = event.target.closest("[data-agenda-view]");
       const agendaDay = event.target.closest("[data-agenda-date]");
       const agendaToday = event.target.closest("[data-agenda-today]");
       const agendaCreate = event.target.closest("[data-agenda-create]");
@@ -402,6 +413,14 @@
 
       if (agendaMonthButton) {
         moveAgendaMonth(agendaMonthButton.dataset.agendaMonth === "next" ? 1 : -1);
+        return;
+      }
+
+      if (agendaViewButton) {
+        agendaView = agendaViewButton.dataset.agendaView === "month" ? "month" : "week";
+        localStorage.setItem(CALENDAR_VIEW_KEY, agendaView);
+        window.dispatchEvent(new CustomEvent("estudiemos:calendar-view-change", { detail: { view: agendaView } }));
+        renderAgenda();
         return;
       }
 
@@ -1267,7 +1286,10 @@
     const dateInput = document.getElementById("agendaDate");
     if (!grid || !monthLabel || !selectedLabel) return;
 
-    monthLabel.textContent = formatAgendaMonth(agendaYear, agendaMonth);
+    const selectedDate = parseDateValue(selectedAgendaDate) || new Date();
+    monthLabel.textContent = agendaView === "week"
+      ? formatAgendaWeek(selectedDate)
+      : formatAgendaMonth(agendaYear, agendaMonth);
     selectedLabel.textContent = formatFullDate(selectedAgendaDate);
     if (dateInput && !dateInput.value) dateInput.value = selectedAgendaDate;
 
@@ -1275,17 +1297,28 @@
     const streakDays = readStreakDays();
     const firstDay = new Date(agendaYear, agendaMonth, 1);
     const startOffset = (firstDay.getDay() + 6) % 7;
-    const startDate = new Date(agendaYear, agendaMonth, 1 - startOffset);
+    const startDate = agendaView === "week"
+      ? startOfAgendaWeek(selectedDate)
+      : new Date(agendaYear, agendaMonth, 1 - startOffset);
+    const cellCount = agendaView === "week" ? 7 : 42;
     const cells = [];
 
-    for (let index = 0; index < 42; index += 1) {
+    grid.dataset.view = agendaView;
+    document.querySelector(".agenda-calendar")?.setAttribute("data-view", agendaView);
+    document.querySelectorAll("[data-agenda-view]").forEach((button) => {
+      const active = button.dataset.agendaView === agendaView;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-pressed", String(active));
+    });
+
+    for (let index = 0; index < cellCount; index += 1) {
       const currentDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + index);
       const day = currentDate.getDate();
       const date = toDateValue(currentDate);
       const dayItems = byDate.get(date) || [];
       const isSelected = date === selectedAgendaDate;
       const isToday = date === toDateValue(new Date());
-      const isOutside = currentDate.getMonth() !== agendaMonth;
+      const isOutside = agendaView === "month" && currentDate.getMonth() !== agendaMonth;
       const hasStreak = (streakDays[date] || 0) >= 25;
 
       cells.push(`
@@ -1319,7 +1352,10 @@
   }
 
   function moveAgendaMonth(direction) {
-    const next = new Date(agendaYear, agendaMonth + direction, 1);
+    const selected = parseDateValue(selectedAgendaDate) || new Date(agendaYear, agendaMonth, 1);
+    const next = agendaView === "week"
+      ? new Date(selected.getFullYear(), selected.getMonth(), selected.getDate() + direction * 7)
+      : new Date(agendaYear, agendaMonth + direction, 1);
     agendaYear = next.getFullYear();
     agendaMonth = next.getMonth();
     selectedAgendaDate = toDateValue(next);
@@ -1429,6 +1465,23 @@
     }
     writeList(STORAGE_KEYS.agenda, items);
     renderAgenda();
+  }
+
+  function startOfAgendaWeek(date) {
+    const start = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+    return start;
+  }
+
+  function formatAgendaWeek(date) {
+    const start = startOfAgendaWeek(date);
+    const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6);
+    const startLabel = new Intl.DateTimeFormat("es-AR", {
+      day: "numeric",
+      month: start.getMonth() === end.getMonth() ? undefined : "short"
+    }).format(start);
+    const endLabel = new Intl.DateTimeFormat("es-AR", { day: "numeric", month: "long", year: "numeric" }).format(end);
+    return `${startLabel} - ${endLabel}`;
   }
 
   function isCompletableAgendaItem(item) {

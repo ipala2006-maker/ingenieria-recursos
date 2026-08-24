@@ -59,6 +59,7 @@
   startTickerIfNeeded();
   restoreMobileFloating();
   syncStreakWithAndroid();
+  syncPomodoroWithAndroid();
   startStreakReminderChecks();
   openPomodoroFromUrl();
   if (state.running) requestWakeLock();
@@ -371,8 +372,28 @@
     });
     window.addEventListener("estudiemos-android-ready", () => {
       syncStreakWithAndroid();
+      syncPomodoroWithAndroid();
       requestAndroidNotificationStatus();
       renderDeviceAlerts();
+    });
+    window.addEventListener("estudiemos:pomodoro-widget-action", () => {
+      state = loadState();
+      reconcileTimer(false);
+      render();
+      startTickerIfNeeded();
+      syncWakeLock();
+    });
+    window.addEventListener("estudiemos-android-pomodoro-state", (event) => {
+      const incoming = event.detail;
+      if (!incoming || Number(incoming.updatedAt) <= Number(state.updatedAt || 0)) return;
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(incoming));
+      } catch (_) {}
+      state = loadState();
+      reconcileTimer(false);
+      render();
+      startTickerIfNeeded();
+      syncWakeLock();
     });
     window.addEventListener("estudiemos-android-notification-status", (event) => {
       androidNotificationPermission = event.detail?.permission || "unknown";
@@ -2004,6 +2025,19 @@
     } catch (error) {}
   }
 
+  function syncPomodoroWithAndroid() {
+    try {
+      if (!window.EstudiemosAndroid || typeof window.EstudiemosAndroid.postMessage !== "function") return;
+      window.EstudiemosAndroid.postMessage(JSON.stringify({
+        type: "pomodoro-sync",
+        state: {
+          ...state,
+          remaining: remainingSeconds()
+        }
+      }));
+    } catch (error) {}
+  }
+
   function startStreakReminderChecks() {
     window.clearInterval(streakReminderTimer);
     maybeShowStreakReminder();
@@ -2456,14 +2490,17 @@
       ambientVolume: volumeNumber(saved.ambientVolume, 0.28, 2),
       alarmVolume: Math.max(0.15, volumeNumber(saved.alarmVolume, 0.65, 2)),
       completedDate: saved.completedDate || todayKey(),
-      completedToday: nonNegativeInteger(saved.completedToday, 0)
+      completedToday: nonNegativeInteger(saved.completedToday, 0),
+      updatedAt: Number(saved.updatedAt) || Date.now()
     };
   }
 
   function saveState() {
+    state.updatedAt = Date.now();
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch (error) {}
+    syncPomodoroWithAndroid();
   }
 
   function normalizeDailyCount() {

@@ -15,6 +15,7 @@
         android:paddingBottom="8dp">
 
         <LinearLayout
+            android:id="@+id/calendar_widget_title"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -36,13 +37,33 @@
                 android:textSize="10sp" />
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/calendar_widget_month"
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="#8BB5FF"
-            android:textSize="12sp"
-            android:textStyle="bold" />
+            android:gravity="end"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/calendar_widget_month"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#8BB5FF"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/calendar_widget_view_toggle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:background="@drawable/widget_chip_background"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp"
+                android:text="Semana"
+                android:textColor="#F1F5F9"
+                android:textSize="9sp"
+                android:textStyle="bold" />
+        </LinearLayout>
     </LinearLayout>
 
     <LinearLayout

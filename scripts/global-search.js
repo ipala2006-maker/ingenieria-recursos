@@ -180,7 +180,7 @@
     if (document.querySelector('link[href*="styles/dashboard.css"]')) return;
     const link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = `${rootPath}styles/dashboard.css?v=20260822-streak-toolbar`;
+    link.href = `${rootPath}styles/dashboard.css?v=20260824-week-pomodoro`;
     document.head.appendChild(link);
   }
 
@@ -234,7 +234,7 @@
     if (document.querySelector('script[src*="scripts/bandeja.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/bandeja.js?v=20260824-installed-context`;
+    script.src = `${rootPath}scripts/bandeja.js?v=20260824-week-pomodoro`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -243,7 +243,7 @@
     if (document.querySelector('script[src*="scripts/pomodoro.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/pomodoro.js?v=20260824-study-metrics`;
+    script.src = `${rootPath}scripts/pomodoro.js?v=20260824-week-pomodoro`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -251,7 +251,7 @@
   function loadDashboardScript() {
     if (document.querySelector('script[src*="scripts/dashboard.js"]')) return;
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/dashboard.js?v=20260822-inbox`;
+    script.src = `${rootPath}scripts/dashboard.js?v=20260824-week-pomodoro`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -289,7 +289,7 @@
     if (document.querySelector('script[src*="scripts/account.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/account.js?v=20260823-desktop-widgets`;
+    script.src = `${rootPath}scripts/account.js?v=20260824-week-pomodoro`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -298,7 +298,7 @@
     if (document.querySelector('script[src*="scripts/desktop-widgets.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/desktop-widgets.js?v=20260824-study-metrics`;
+    script.src = `${rootPath}scripts/desktop-widgets.js?v=20260824-week-pomodoro`;
     script.async = false;
     document.head.appendChild(script);
   }
