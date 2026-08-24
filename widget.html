@@ -7,9 +7,15 @@
     <meta name="robots" content="noindex" />
     <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
     <link rel="manifest" href="./site.webmanifest" />
+    <link rel="stylesheet" href="./styles/app.css?v=20260824-rainmeter-widgets" />
     <title>Widgets de Estudiemos</title>
+    <script>
+      if (new URLSearchParams(location.search).get("embed") === "rainmeter") {
+        document.documentElement.classList.add("rainmeter-widget");
+      }
+    </script>
     <script src="./scripts/theme-init.js?v=20260823-windows-widgets"></script>
-    <style>html,body{margin:0;height:100%;background:#0c1423}</style>
+    <style>html,body{margin:0;height:100%;background:#0c1423}html.rainmeter-widget,html.rainmeter-widget body{background:transparent}</style>
   </head>
   <body data-desktop-widget-host>
     <header class="widget-head">
@@ -24,6 +30,6 @@
     <footer>Sincronizado con tu cuenta</footer>
 
     <script src="./scripts/account.js?v=20260823-desktop-widgets"></script>
-    <script src="./scripts/desktop-widgets.js?v=20260824-desktop-page"></script>
+    <script src="./scripts/desktop-widgets.js?v=20260824-rainmeter-widgets"></script>
   </body>
 </html>

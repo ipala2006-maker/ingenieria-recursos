@@ -21,6 +21,7 @@
   window.addEventListener("storage", refresh);
   window.addEventListener("estudiemos:data-change", refreshAndSyncNative);
   window.addEventListener("estudiemos:cloud-restored", refreshAndSyncNative);
+  window.addEventListener("estudiemos:account-change", refresh);
   window.addEventListener("estudiemos:theme-change", refresh);
   window.addEventListener("load", scheduleNativeWindowsSync, { once: true });
   scheduleNativeWindowsSync();
@@ -95,6 +96,7 @@
     document.addEventListener("click", handleWidgetClick);
     document.addEventListener("change", handleWidgetChange);
     state.refreshTimer = window.setInterval(render, 5000);
+    window.EstudiemosAccount?.whenReady?.().then(render).catch(() => {});
     render();
   }
 
@@ -113,9 +115,13 @@
     if (state.view === "calendar") content.innerHTML = calendarMarkup();
     else if (state.view === "streak") content.innerHTML = streakMarkup();
     else content.innerHTML = inboxMarkup();
+    if (standaloneHost && !window.EstudiemosAccount?.getUser?.()) {
+      content.insertAdjacentHTML("beforeend", '<button class="widget-connect" type="button" data-widget-account>Conectar cuenta</button>');
+    }
   }
 
   function refresh() {
+    if (standaloneHost) return render();
     if (!state.widgetWindow || state.widgetWindow.closed) return;
     render();
   }
@@ -188,6 +194,11 @@
       if (standaloneHost) return openMainApp("?pomodoro=1");
       window.focus();
       document.querySelector("[data-pomodoro-open]")?.click();
+      return;
+    }
+
+    if (event.target.closest("[data-widget-account]")) {
+      window.EstudiemosAccount?.open?.();
     }
   }
 
@@ -366,6 +377,14 @@
       footer{padding:7px 12px;border-top:1px solid var(--line);color:var(--muted);font-size:9px;text-align:center}
       @media(max-width:320px){.widget-brand strong{display:none}.widget-section{padding:12px 10px}.task-row{padding:8px}.section-head h1{font-size:16px}}
       @media(max-height:350px){footer{display:none}.widget-section{padding-block:9px}.streak-mark{width:46px;height:46px;margin-bottom:7px}.streak-mark svg{width:26px;height:26px}.widget-streak p{margin:5px 0 10px}.streak-action{margin-top:10px}}
+      .widget-connect{position:absolute;right:15px;bottom:13px;min-height:30px;padding:0 11px;border:1px solid var(--line);border-radius:8px;background:var(--soft);color:var(--text);font-size:10px;font-weight:700;cursor:pointer}
+      .rainmeter-widget body{display:block;padding:5px;background:transparent;app-region:drag;-webkit-app-region:drag}
+      .rainmeter-widget .widget-head,.rainmeter-widget body>footer{display:none}
+      .rainmeter-widget main{position:relative;height:100%;overflow:hidden;border:1px solid color-mix(in srgb,var(--line) 78%,transparent);border-radius:16px;background:color-mix(in srgb,var(--bg) 97%,transparent);box-shadow:0 14px 36px rgba(2,8,20,.24)}
+      .rainmeter-widget button,.rainmeter-widget input,.rainmeter-widget label,.rainmeter-widget .account-panel{app-region:no-drag;-webkit-app-region:no-drag}
+      .rainmeter-widget .account-shell{position:fixed;inset:5px;z-index:50;padding:0;border-radius:16px;overflow:auto;app-region:no-drag;-webkit-app-region:no-drag}
+      .rainmeter-widget .account-panel{width:100%;max-width:none;min-height:100%;border-radius:16px;padding:16px}
+      .rainmeter-widget .account-app-actions,.rainmeter-widget .account-android-widgets,.rainmeter-widget .account-desktop-widgets,.rainmeter-widget .account-privacy{display:none!important}
     `;
   }
 })();
