@@ -385,6 +385,13 @@
       .rainmeter-widget .account-shell{position:fixed;inset:5px;z-index:50;padding:0;border-radius:16px;overflow:auto;app-region:no-drag;-webkit-app-region:no-drag}
       .rainmeter-widget .account-panel{width:100%;max-width:none;min-height:100%;border-radius:16px;padding:16px}
       .rainmeter-widget .account-app-actions,.rainmeter-widget .account-android-widgets,.rainmeter-widget .account-desktop-widgets,.rainmeter-widget .account-privacy{display:none!important}
+      .rainmeter-widget .account-intro{display:none}
+      .rainmeter-widget .account-head{margin-bottom:9px}
+      .rainmeter-widget .account-head h2{font-size:20px}
+      .rainmeter-widget .account-form{gap:7px}
+      .rainmeter-widget .account-form label{gap:3px;font-size:10px}
+      .rainmeter-widget .account-form input{min-height:38px;padding:8px 10px}
+      .rainmeter-widget .account-primary,.rainmeter-widget .account-secondary,.rainmeter-widget .account-link{min-height:34px;padding:7px 10px}
     `;
   }
 })();
