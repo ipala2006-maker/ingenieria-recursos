@@ -234,7 +234,7 @@
     if (document.querySelector('script[src*="scripts/bandeja.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/bandeja.js?v=20260822-inbox`;
+    script.src = `${rootPath}scripts/bandeja.js?v=20260824-installed-context`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -298,7 +298,7 @@
     if (document.querySelector('script[src*="scripts/desktop-widgets.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/desktop-widgets.js?v=20260823-windows-native`;
+    script.src = `${rootPath}scripts/desktop-widgets.js?v=20260824-study-metrics`;
     script.async = false;
     document.head.appendChild(script);
   }
