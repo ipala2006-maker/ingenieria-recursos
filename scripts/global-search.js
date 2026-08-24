@@ -160,7 +160,7 @@
 
     const link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = `${rootPath}styles/professional.css?v=20260824-windows-titlebar`;
+    link.href = `${rootPath}styles/professional.css?v=20260824-windows-titlebar-2`;
     document.head.appendChild(link);
   }
 
