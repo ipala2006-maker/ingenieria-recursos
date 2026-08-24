@@ -13,6 +13,7 @@
     date: dateValue(new Date()),
     calendarView: localStorage.getItem(CALENDAR_VIEW_KEY) === "month" ? "month" : "week",
     widgetWindow: null,
+    hostedWidget: false,
     refreshTimer: null
   };
   let nativeSyncTimer = null;
@@ -34,63 +35,65 @@
   async function open(view = "inbox") {
     if (!isDesktopDevice()) return false;
     state.view = ["inbox", "calendar", "streak", "pomodoro"].includes(view) ? view : "inbox";
+    let pictureInPicture = false;
 
     if (state.widgetWindow && !state.widgetWindow.closed) {
       state.widgetWindow.focus();
-      render();
+      showHostedWidget(state.view);
       return true;
     }
 
     try {
       if ("documentPictureInPicture" in window) {
+        pictureInPicture = true;
         state.widgetWindow = await window.documentPictureInPicture.requestWindow({ width: 390, height: 520 });
+        mountHostedWidget();
       } else {
-        state.widgetWindow = window.open("", "estudiemos-desktop-widget", "popup=yes,width=390,height=520,resizable=yes");
+        state.widgetWindow = window.open(widgetUrl(state.view), "estudiemos-desktop-widget", "popup=yes,width=390,height=520,resizable=yes");
+        state.hostedWidget = true;
       }
     } catch (_) {
       state.widgetWindow = null;
+      state.hostedWidget = false;
       return false;
     }
 
     if (!state.widgetWindow) return false;
-    mount();
+    if (pictureInPicture) {
+      state.widgetWindow.addEventListener("pagehide", cleanup, { once: true });
+      state.widgetWindow.addEventListener("beforeunload", cleanup, { once: true });
+    }
     return true;
   }
 
-  function mount() {
+  function widgetUrl(view) {
+    const root = new URL(window.EstudiemosRoot || "./", location.origin).href;
+    const url = new URL("widget.html", root);
+    url.searchParams.set("view", view);
+    url.searchParams.set("source", "desktop-app");
+    return url.href;
+  }
+
+  function mountHostedWidget() {
     const popup = state.widgetWindow;
     const doc = popup.document;
-    doc.open();
-    doc.write(`<!doctype html>
-      <html lang="es">
-        <head>
-          <meta charset="UTF-8" />
-          <meta name="viewport" content="width=device-width, initial-scale=1" />
-          <title>Widgets · Estudiemos</title>
-          <style>${widgetStyles()}</style>
-        </head>
-        <body>
-          <header class="widget-head">
-            <div class="widget-brand"><span>∑</span><strong>Estudiemos</strong></div>
-            <nav aria-label="Elegir widget">
-              ${tabButton("inbox", inboxIcon(), "Inbox")}
-              ${tabButton("calendar", calendarIcon(), "Calendario")}
-              ${tabButton("pomodoro", timerIcon(), "Pomodoro")}
-              ${tabButton("streak", flameIcon(), "Racha")}
-            </nav>
-          </header>
-          <main id="widgetContent"></main>
-          <footer>Sincronizado con tu cuenta</footer>
-        </body>
-      </html>`);
-    doc.close();
+    doc.documentElement.innerHTML = `
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Widget de Estudiemos</title>
+        <style>html,body,iframe{width:100%;height:100%;margin:0;border:0;overflow:hidden;background:#0c1423}iframe{display:block}</style>
+      </head>
+      <body><iframe title="Widget de Estudiemos" src="${escapeHtml(widgetUrl(state.view))}"></iframe></body>`;
+    state.hostedWidget = true;
+  }
 
-    doc.addEventListener("click", handleWidgetClick);
-    doc.addEventListener("change", handleWidgetChange);
-    popup.addEventListener("pagehide", cleanup, { once: true });
-    popup.addEventListener("beforeunload", cleanup, { once: true });
-    state.refreshTimer = window.setInterval(refresh, 500);
-    render();
+  function showHostedWidget(view) {
+    if (!state.hostedWidget || !state.widgetWindow || state.widgetWindow.closed) return;
+    const frame = state.widgetWindow.document.querySelector("iframe");
+    const nextUrl = widgetUrl(view);
+    if (frame) frame.src = nextUrl;
+    else if (state.widgetWindow.location.href !== nextUrl) state.widgetWindow.location.replace(nextUrl);
   }
 
   function mountStandalone() {
@@ -106,6 +109,7 @@
   }
 
   function render() {
+    if (state.hostedWidget && !standaloneHost) return;
     const popup = standaloneHost ? window : state.widgetWindow;
     if (!popup || (!standaloneHost && popup.closed)) return cleanup();
     const doc = popup.document;
@@ -163,6 +167,7 @@
     if (state.refreshTimer) window.clearInterval(state.refreshTimer);
     state.refreshTimer = null;
     state.widgetWindow = null;
+    state.hostedWidget = false;
   }
 
   function handleWidgetClick(event) {
@@ -475,10 +480,6 @@
     return b.createdAt - a.createdAt;
   }
 
-  function tabButton(view, icon, label) {
-    return `<button data-widget-view="${view}" aria-label="${label}" title="${label}">${icon}</button>`;
-  }
-
   function isDesktopDevice() {
     return !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && !window.EstudiemosAndroid;
   }
@@ -546,18 +547,6 @@
     return String(value || "").replace(/[&<>"']/g, (character) => ({
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
     })[character]);
-  }
-
-  function inboxIcon() {
-    return '<svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></svg>';
-  }
-
-  function calendarIcon() {
-    return '<svg viewBox="0 0 24 24"><path d="M5 6h14v14H5zM8 3v5M16 3v5M5 10h14"/></svg>';
-  }
-
-  function timerIcon() {
-    return '<svg viewBox="0 0 24 24"><path d="M9 3h6M12 7a7 7 0 1 0 7 7 7 7 0 0 0-7-7Zm0 3v4l2.8 1.7"/></svg>';
   }
 
   function playIcon() {

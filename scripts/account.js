@@ -163,13 +163,17 @@
 
         <div class="account-android-widgets account-desktop-widgets" data-account-desktop-widgets hidden>
           <strong>Widgets de escritorio</strong>
-          <small>Abrilos en una ventana compacta que se mantiene visible mientras estudiás.</small>
+          <small>Abrilos en una ventana compacta o instalalos fijos en el escritorio de Windows.</small>
           <div>
             <button class="account-secondary" type="button" data-account-desktop-widget="inbox">Inbox</button>
             <button class="account-secondary" type="button" data-account-desktop-widget="calendar">Calendario</button>
             <button class="account-secondary" type="button" data-account-desktop-widget="pomodoro">Pomodoro</button>
             <button class="account-secondary" type="button" data-account-desktop-widget="streak">Racha</button>
           </div>
+          <button class="account-widget-installer" type="button" data-account-install-widgets>
+            ${desktopIcon()}
+            <span><strong>Agregar al escritorio</strong><small>Instala los cuatro widgets fijos</small></span>
+          </button>
         </div>
 
         <p class="account-status" data-account-status role="status" aria-live="polite"></p>
@@ -195,6 +199,7 @@
       if (widgetButton) requestAndroidWidget(widgetButton.dataset.accountWidget);
       const desktopWidgetButton = event.target.closest("[data-account-desktop-widget]");
       if (desktopWidgetButton) openDesktopWidget(desktopWidgetButton.dataset.accountDesktopWidget);
+      if (event.target.closest("[data-account-install-widgets]")) installDesktopWidgets();
     });
 
     document.querySelector("[data-account-form]")?.addEventListener("submit", (event) => {
@@ -647,6 +652,16 @@
     );
   }
 
+  function installDesktopWidgets() {
+    const link = document.createElement("a");
+    link.href = new URL(`${getRootPath()}downloads/Estudiemos-Widgets.rmskin`, location.href).href;
+    link.download = "Estudiemos-Widgets.rmskin";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setStatus("Abrí el archivo descargado y elegí Instalar. Windows agregará Calendario, Inbox, Pomodoro y Racha.", "success");
+  }
+
   async function updateApplication() {
     const button = document.querySelector("[data-account-update]");
     const label = document.querySelector("[data-account-update-label]");
@@ -727,5 +742,9 @@
 
   function updateIcon() {
     return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 8V4l-1.6 1.6A8 8 0 1 0 20 12h-2a6 6 0 1 1-2-4.5L13.5 10H19V8Z"/></svg>';
+  }
+
+  function desktopIcon() {
+    return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H4V4Zm2 2v8h12V6H6Zm4 11h4v2h3v2H7v-2h3v-2Z"/></svg>';
   }
 })();

@@ -122,6 +122,8 @@ El widget **Inbox** usa una lista desplazable: muestra todas las tareas pendient
 
 En Chrome y Edge para computadora, el perfil incluye **Widgets de escritorio**. Inbox, calendario, Pomodoro y racha se abren en una ventana compacta ajustable que permanece encima de las demás ventanas mientras el navegador está abierto. Comparten los datos de la cuenta y se puede cambiar de vista desde la misma ventana.
 
+En Windows también aparece **Agregar al escritorio**. Ese botón descarga `Estudiemos-Widgets.rmskin`, un único instalador para los cuatro widgets fijos de Rainmeter. Rainmeter y el complemento WebView2 deben estar instalados en el equipo; Windows siempre solicita la confirmación final por seguridad.
+
 Windows 11 también está preparado con tres widgets nativos para su panel de Widgets:
 
 - **Inbox:** cantidad y próximas tareas pendientes.
