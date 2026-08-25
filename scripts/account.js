@@ -659,7 +659,7 @@
     document.body.appendChild(link);
     link.click();
     link.remove();
-    setStatus("Abrí el archivo descargado y elegí Instalar. Windows agregará Calendario, Inbox, Pomodoro y Racha.", "success");
+    setStatus("Descarga lista. Si todavía no tenés Rainmeter, instalalo desde la página de instalación. Después abrí el archivo y elegí Install.", "success");
   }
 
   async function updateApplication() {

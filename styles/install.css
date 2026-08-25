@@ -87,6 +87,22 @@
   background:color-mix(in srgb,var(--accent) 21%,var(--panel));
 }
 
+.install-option__steps{
+  display:grid;
+  gap:8px;
+  margin-top:auto;
+}
+
+.install-option__steps .install-option__button{
+  margin-top:0;
+}
+
+.install-option__button--secondary{
+  border-color:var(--border);
+  background:transparent;
+  color:var(--muted);
+}
+
 .install-option small{
   margin-top:12px;
   line-height:1.4;
