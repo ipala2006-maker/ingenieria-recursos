@@ -6,9 +6,9 @@
   const VIEW_KEY = "estudiemos_workspace_view";
   const PLAN_PREVIEW_KEY = "estudiemos_workspace_plan_preview";
   const PLANS = {
-    initial: { name: "Pase de bienvenida", limit: 5 * 1024 * 1024 * 1024, price: 10, billing: "pago único" },
-    plus: { name: "Estudiemos Plus", limit: 5 * 1024 * 1024 * 1024, price: 7500, billing: "por mes" },
-    pro: { name: "Estudiemos Pro", limit: 20 * 1024 * 1024 * 1024, price: 12500, billing: "por mes" }
+    initial: { name: "Plan inicial", limit: 250 * 1024 * 1024, price: 0, billing: "sin costo" },
+    plus: { name: "Estudiemos Plus", limit: 5 * 1024 * 1024 * 1024, price: 8900, billing: "por mes" },
+    pro: { name: "Estudiemos Pro", limit: 20 * 1024 * 1024 * 1024, price: 16900, billing: "por mes" }
   };
   const state = {
     client: null,
@@ -318,7 +318,7 @@
           <strong>$${new Intl.NumberFormat("es-AR").format(PLANS[id].price)} ARS <span>${PLANS[id].billing}</span></strong>
         </header>
         <ul class="workspace-plan-features">${features.map((feature) => `<li>${icon("check")}<span>${feature}</span></li>`).join("")}</ul>
-        <button class="workspace-btn ${featured && selected !== id ? "workspace-btn--primary" : ""}" type="button" data-workspace-plan-select="${id}" ${selected === id ? "disabled" : ""}>${selected === id ? "Vista previa activa" : id === "initial" ? "Probar 7 días" : `Probar ${name}`}</button>
+        <button class="workspace-btn ${featured && selected !== id ? "workspace-btn--primary" : ""}" type="button" data-workspace-plan-select="${id}" ${selected === id ? "disabled" : ""}>${selected === id ? "Vista previa activa" : `Ver ${name}`}</button>
       </article>`;
     openModal({
       eyebrow: "Vista previa",
@@ -327,11 +327,12 @@
       body: `<div class="workspace-modal__body workspace-plans-preview">
         <p class="workspace-plans-preview__notice"><strong>Demostración sin cobros.</strong> Podés probar cómo se vería cada plan. No pide tarjeta ni modifica tu cuenta real.</p>
         <div class="workspace-plan-grid">
-          ${planCard("initial", "Pase de bienvenida", ["Acceso completo durante 7 días", "Organizador con IA sin restricciones", "Después, tus datos quedan en modo lectura"], false, "7 días")}
-          ${planCard("plus", "Plus", ["5 GB de almacenamiento", "Organizador con IA bajo uso justo", "Sincronización en todos tus dispositivos"], true, "Más popular")}
-          ${planCard("pro", "Pro", ["20 GB de almacenamiento", "Procesamiento de IA preferencial", "Soporte prioritario"], false)}
+          ${planCard("initial", "Inicial", ["250 MB de almacenamiento", "40 acciones de IA por mes", "5 órdenes por WhatsApp por mes", "Agenda, Pomodoro y sincronización"], false, "Gratis")}
+          ${planCard("plus", "Plus", ["5 GB de almacenamiento", "500 acciones de IA por mes", "60 órdenes por WhatsApp por mes", "Sin límites diarios"], true, "Más popular")}
+          ${planCard("pro", "Pro", ["20 GB de almacenamiento", "1.500 acciones de IA por mes", "250 órdenes por WhatsApp por mes", "Procesamiento y soporte prioritarios"], false)}
         </div>
-        <p class="workspace-plans-preview__foot">Precios finales de referencia en pesos argentinos. Los pagos, vencimientos y bloqueos todavía no están activos.</p>
+        <p class="workspace-plans-preview__foot"><strong>Al lanzamiento:</strong> 7 días de Plus sin costo. Plus anual $89.000 y Pro anual $169.000, equivalentes a dos meses bonificados. Espacio adicional: 10 GB por $2.900 al mes.</p>
+        <p class="workspace-plans-preview__foot">Precios finales de referencia en pesos argentinos. WhatsApp se habilitará cuando esté conectado el número oficial. Los pagos, límites y renovaciones todavía no están activos.</p>
       </div>`,
       actions: '<button class="workspace-btn" type="button" data-workspace-modal-close>Cerrar</button>'
     });

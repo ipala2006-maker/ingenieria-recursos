@@ -82,6 +82,10 @@ Preparación técnica:
 
 El archivo `.env.example` muestra los nombres esperados sin contener secretos reales.
 
+## Planes en vista previa
+
+La pantalla de planes es una demostración sin cobros. Muestra Plan Inicial gratuito (250 MB), Plus a $8.900 ARS por mes (5 GB) y Pro a $16.900 ARS por mes (20 GB), junto con límites mensuales de IA y WhatsApp. La selección solamente cambia la vista previa local: no asigna permisos, no aplica límites y no crea una suscripción hasta que se integre el sistema de pagos.
+
 ## Cuentas y sincronización
 
 Las cuentas usan Supabase Auth y tablas privadas protegidas con Row Level Security. Se sincronizan Inbox, el calendario, las preferencias y el tema visual. Los archivos se guardan aparte en almacenamiento privado para que sigan disponibles en todos los dispositivos.
