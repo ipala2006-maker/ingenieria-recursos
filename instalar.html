@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0f172a" />
     <meta name="description" content="Instalá Estudiemos en Android, iPhone o computadora." />
+    <script>
+      if (/^(localhost|127\.0\.0\.1)$/i.test(location.hostname) && !new URLSearchParams(location.search).has("local")) {
+        location.replace("https://estudiemos-app.vercel.app/instalar.html" + location.hash);
+      }
+    </script>
     <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
     <link rel="manifest" href="./site.webmanifest" />
     <link rel="apple-touch-icon" href="./assets/icon-180.png" />
@@ -25,12 +30,12 @@
       <header class="install-intro">
         <p>INSTALACIÓN</p>
         <h1>Estudiemos en tus dispositivos</h1>
-        <span>Usá la misma cuenta para mantener sincronizada tu información.</span>
+        <span>Usá la misma cuenta para mantener sincronizada tu información. Acá siempre encontrás la versión más reciente.</span>
       </header>
 
       <section class="install-options" aria-label="Opciones de instalación">
         <article class="install-option">
-          <span class="install-option__platform">Android</span>
+          <div class="install-option__meta"><span class="install-option__platform">Android</span><span class="install-option__current">Versión actual</span></div>
           <h2>Aplicación y widgets</h2>
           <p>Incluye Inbox, calendario semanal, Pomodoro y racha para la pantalla de inicio.</p>
           <a class="install-option__button" href="intent://open#Intent;scheme=estudiemos;package=com.estudiemos.app;S.browser_fallback_url=https%3A%2F%2Fgithub.com%2Fipala2006-maker%2Fingenieria-recursos%2Freleases%2Fdownload%2Fandroid-latest%2FEstudiemos-Android.apk;end">Abrir o descargar</a>
@@ -38,7 +43,7 @@
         </article>
 
         <article class="install-option">
-          <span class="install-option__platform">iPhone y iPad</span>
+          <div class="install-option__meta"><span class="install-option__platform">iPhone y iPad</span><span class="install-option__current">Siempre actualizada</span></div>
           <h2>Aplicación web</h2>
           <p>Abrí Estudiemos en Safari, tocá Compartir y elegí Agregar a pantalla de inicio.</p>
           <a class="install-option__button" href="./">Abrir Estudiemos</a>
@@ -46,7 +51,7 @@
         </article>
 
         <article class="install-option" id="pc">
-          <span class="install-option__platform">PC</span>
+          <div class="install-option__meta"><span class="install-option__platform">PC</span><span class="install-option__current">Versión actual</span></div>
           <h2>Aplicación y widgets</h2>
           <p>Un solo instalador prepara Calendario, Inbox, Pomodoro y Racha, y los mantiene disponibles al encender Windows.</p>
           <a class="install-option__button" href="./downloads/Estudiemos-Para-Windows.exe" download="Estudiemos-Para-Windows.exe">Instalar en Windows</a>

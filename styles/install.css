@@ -30,6 +30,28 @@
   font-weight:800;
 }
 
+.install-option__meta{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:8px;
+}
+
+.install-option__meta .install-option__platform{
+  margin:0;
+}
+
+.install-option__current{
+  padding:4px 7px;
+  border-radius:99px;
+  background:color-mix(in srgb,var(--accent) 10%,transparent);
+  color:color-mix(in srgb,var(--accent) 82%,var(--text));
+  font-size:10px;
+  font-weight:750;
+  white-space:nowrap;
+}
+
 .install-intro h1{
   margin:0 0 10px;
   font-size:clamp(30px,5vw,48px);
@@ -56,6 +78,13 @@
   border:1px solid var(--border);
   border-radius:12px;
   background:var(--panel);
+  transition:border-color .18s ease,background-color .18s ease,transform .18s ease;
+}
+
+.install-option:hover{
+  border-color:color-mix(in srgb,var(--accent) 34%,var(--border));
+  background:color-mix(in srgb,var(--panel) 96%,var(--accent));
+  transform:translateY(-2px);
 }
 
 .install-option h2{
@@ -137,4 +166,5 @@
   .install-main{padding-top:28px}
   .install-options{grid-template-columns:1fr}
   .install-option{min-height:220px}
+  .install-option:hover{transform:none}
 }

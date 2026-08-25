@@ -172,7 +172,7 @@
           </div>
           <button class="account-widget-installer" type="button" data-account-install-widgets>
             ${desktopIcon()}
-            <span><strong>Agregar al escritorio</strong><small>Instalación automática para Windows</small></span>
+            <span><strong>Instalar en Windows</strong><small>Abrir la página oficial de descargas</small></span>
           </button>
         </div>
 
@@ -659,14 +659,10 @@
   }
 
   function installDesktopWidgets() {
-    const installerUrl = new URL(`${getRootPath()}downloads/Estudiemos-Para-Windows.exe`, location.href).href;
-    const download = document.createElement("a");
-    download.href = installerUrl;
-    download.download = "Estudiemos-Para-Windows.exe";
-    document.body.appendChild(download);
-    download.click();
-    download.remove();
-    setStatus("Descarga iniciada. Abrí el instalador y aceptá el permiso de Windows.", "success");
+    const installUrl = "https://estudiemos-app.vercel.app/instalar.html#pc";
+    const page = window.open(installUrl, "_blank", "noopener");
+    if (!page) location.href = installUrl;
+    setStatus("Abrimos la página oficial con la versión más reciente.", "success");
   }
 
   async function updateApplication() {
