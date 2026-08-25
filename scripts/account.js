@@ -647,7 +647,7 @@
     }
     const opened = await manager.open(widget);
     setStatus(
-      opened ? "Widget abierto. Podés cambiar entre Inbox, calendario, Pomodoro y racha desde esa ventana." : "El navegador bloqueó la ventana. Permití ventanas emergentes e intentá nuevamente.",
+      opened ? "Widget abierto en una ventana independiente." : "El navegador bloqueó la ventana. Permití ventanas emergentes e intentá nuevamente.",
       opened ? "success" : "error"
     );
   }

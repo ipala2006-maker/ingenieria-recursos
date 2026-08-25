@@ -10,8 +10,12 @@
     <link rel="stylesheet" href="./styles/app.css?v=20260824-week-pomodoro" />
     <title>Widgets de Estudiemos</title>
     <script>
-      if (new URLSearchParams(location.search).get("embed") === "rainmeter") {
+      const widgetParams = new URLSearchParams(location.search);
+      if (widgetParams.get("embed") === "rainmeter") {
         document.documentElement.classList.add("rainmeter-widget");
+      }
+      if (widgetParams.get("source") === "desktop-app") {
+        document.documentElement.classList.add("desktop-widget-locked");
       }
     </script>
     <script src="./scripts/theme-init.js?v=20260824-study-metrics"></script>
@@ -29,12 +33,9 @@
     </header>
     <main id="widgetContent"></main>
     <footer>Sincronizado con tu cuenta</footer>
-    <div class="widget-size-controls" aria-label="Tamaño del widget">
-      <button type="button" data-widget-scale="-0.1" aria-label="Achicar widget" title="Achicar">−</button>
-      <button type="button" data-widget-scale="0.1" aria-label="Agrandar widget" title="Agrandar">+</button>
-    </div>
+    <div class="widget-resize-handle" data-widget-resize aria-label="Ajustar tamaño del widget" title="Arrastrá para ajustar el tamaño"></div>
 
     <script src="./scripts/account.js?v=20260824-week-pomodoro"></script>
-    <script src="./scripts/desktop-widgets.js?v=20260824-week-pomodoro"></script>
+    <script src="./scripts/desktop-widgets.js?v=20260824-widgets-v3"></script>
   </body>
 </html>

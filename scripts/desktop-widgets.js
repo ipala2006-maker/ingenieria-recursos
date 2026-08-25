@@ -77,19 +77,30 @@
   function mountHostedWidget() {
     const popup = state.widgetWindow;
     const doc = popup.document;
-    doc.documentElement.innerHTML = `
-      <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>Widget de Estudiemos</title>
-        <style>html,body,iframe{width:100%;height:100%;margin:0;border:0;overflow:hidden;background:#0c1423}iframe{display:block}</style>
-      </head>
-      <body><iframe title="Widget de Estudiemos" src="${escapeHtml(widgetUrl(state.view))}"></iframe></body>`;
-    state.hostedWidget = true;
+    const head = doc.createElement("head");
+    const body = doc.createElement("body");
+    const charset = doc.createElement("meta");
+    const viewport = doc.createElement("meta");
+    const title = doc.createElement("title");
+    const style = doc.createElement("style");
+    charset.charset = "UTF-8";
+    viewport.name = "viewport";
+    viewport.content = "width=device-width, initial-scale=1";
+    title.textContent = "Widget de Estudiemos";
+    style.textContent = `${widgetStyles()} html body{grid-template-rows:minmax(0,1fr)} body>main{height:100%}`;
+    head.append(charset, viewport, title, style);
+    body.innerHTML = '<main id="widgetContent"></main>';
+    doc.documentElement.replaceChildren(head, body);
+    doc.addEventListener("click", handleWidgetClick);
+    doc.addEventListener("change", handleWidgetChange);
+    state.hostedWidget = false;
+    state.refreshTimer = window.setInterval(refresh, 500);
+    render();
   }
 
   function showHostedWidget(view) {
-    if (!state.hostedWidget || !state.widgetWindow || state.widgetWindow.closed) return;
+    if (!state.widgetWindow || state.widgetWindow.closed) return;
+    if (!state.hostedWidget) return render();
     const frame = state.widgetWindow.document.querySelector("iframe");
     const nextUrl = widgetUrl(view);
     if (frame) frame.src = nextUrl;
@@ -103,6 +114,7 @@
     document.head.appendChild(style);
     document.addEventListener("click", handleWidgetClick);
     document.addEventListener("change", handleWidgetChange);
+    document.addEventListener("pointerdown", beginRainmeterResize);
     state.refreshTimer = window.setInterval(render, 500);
     window.EstudiemosAccount?.whenReady?.().then(render).catch(() => {});
     render();
@@ -234,10 +246,6 @@
       return;
     }
 
-    const scale = event.target.closest("[data-widget-scale]");
-    if (scale) {
-      resizeRainmeterWidget(Number(scale.dataset.widgetScale) || 0);
-    }
   }
 
   function handleWidgetChange(event) {
@@ -287,9 +295,12 @@
       const value = dateValue(date);
       const dayItems = byDate[value] || [];
       const entries = state.calendarView === "week"
-        ? dayItems.slice(0, 3).map((item) => `<em>${escapeHtml(widgetCalendarSummary(item))}</em>`).join("")
+        ? `<div class="calendar-day-events">${dayItems.slice(0, 3).map(widgetCalendarEntry).join("")}</div>`
         : "";
-      days.push(`<button class="calendar-day ${state.calendarView === "month" && date.getMonth() !== state.month ? "is-outside" : ""} ${value === today ? "is-today" : ""}" data-widget-date="${value}" aria-label="${formatLongDate(value)}${dayItems.length ? `, ${dayItems.length} anotaciones` : ""}"><span>${date.getDate()}</span>${entries}${dayItems.length > (state.calendarView === "week" ? 3 : 0) ? `<small>${state.calendarView === "week" ? `+${dayItems.length - 3}` : dayItems.length}</small>` : ""}</button>`);
+      const dayLabel = state.calendarView === "week"
+        ? `<span><b>${capitalize(new Intl.DateTimeFormat("es-AR", { weekday: "short" }).format(date).replace(".", ""))}</b>${date.getDate()}</span>`
+        : `<span>${date.getDate()}</span>`;
+      days.push(`<button class="calendar-day ${state.calendarView === "month" && date.getMonth() !== state.month ? "is-outside" : ""} ${value === today ? "is-today" : ""}" data-widget-date="${value}" aria-label="${formatLongDate(value)}${dayItems.length ? `, ${dayItems.length} anotaciones` : ""}">${dayLabel}${entries}${dayItems.length > (state.calendarView === "week" ? 3 : 0) ? `<small>${state.calendarView === "week" ? `+${dayItems.length - 3}` : dayItems.length}</small>` : ""}</button>`);
     }
     const periodLabel = state.calendarView === "week"
       ? formatWeekRange(focus)
@@ -464,12 +475,39 @@
     return `${Number.isInteger(hours) ? hours.toFixed(0) : hours.toFixed(1).replace(".", ",")} h`;
   }
 
-  function resizeRainmeterWidget(delta) {
-    if (!document.documentElement.classList.contains("rainmeter-widget") || !window.RainmeterAPI || !delta) return;
+  function beginRainmeterResize(event) {
+    const handle = event.target.closest("[data-widget-resize]");
+    if (!handle || !document.documentElement.classList.contains("rainmeter-widget") || !window.RainmeterAPI) return;
     try {
-      const current = Number(window.RainmeterAPI.GetVariable("Scale")) || 1;
-      const next = Math.min(1.6, Math.max(0.75, Math.round((current + delta) * 10) / 10));
-      window.RainmeterAPI.Bang(`[!SetVariable Scale "${next}"][!WriteKeyValue Variables Scale "${next}"][!UpdateMeasure WebView][!UpdateMeter WidgetBounds][!Redraw]`);
+      event.preventDefault();
+      event.stopPropagation();
+      const scale = Number(window.RainmeterAPI.GetVariable("Scale")) || 1;
+      const baseWidth = Number(window.RainmeterAPI.GetVariable("BaseWidth")) || 340;
+      const baseHeight = Number(window.RainmeterAPI.GetVariable("BaseHeight")) || 330;
+      const startWidth = Number(window.RainmeterAPI.GetVariable("WidgetWidth")) || baseWidth * scale;
+      const startHeight = Number(window.RainmeterAPI.GetVariable("WidgetHeight")) || baseHeight * scale;
+      const startX = event.clientX;
+      const startY = event.clientY;
+      let lastWidth = startWidth;
+      let lastHeight = startHeight;
+      handle.setPointerCapture?.(event.pointerId);
+
+      const move = (pointerEvent) => {
+        const width = Math.round(Math.min(720, Math.max(280, startWidth + pointerEvent.clientX - startX)));
+        const height = Math.round(Math.min(680, Math.max(230, startHeight + pointerEvent.clientY - startY)));
+        if (width === lastWidth && height === lastHeight) return;
+        lastWidth = width;
+        lastHeight = height;
+        window.RainmeterAPI.Bang(`[!SetVariable WidgetWidth "${width}"][!SetVariable WidgetHeight "${height}"][!WriteKeyValue Variables WidgetWidth "${width}"][!WriteKeyValue Variables WidgetHeight "${height}"][!UpdateMeasure WebView][!UpdateMeter WidgetBounds][!Redraw]`);
+      };
+      const stop = () => {
+        handle.removeEventListener("pointermove", move);
+        handle.removeEventListener("pointerup", stop);
+        handle.removeEventListener("pointercancel", stop);
+      };
+      handle.addEventListener("pointermove", move);
+      handle.addEventListener("pointerup", stop);
+      handle.addEventListener("pointercancel", stop);
     } catch (_) {}
   }
 
@@ -490,7 +528,14 @@
   }
 
   function openMainApp(search) {
-    window.open(new URL(search, window.location.origin).href, "estudiemos-main");
+    const destination = new URL(search, window.location.origin).href;
+    if (document.documentElement.classList.contains("rainmeter-widget")) {
+      try {
+        window.RainmeterAPI?.Bang?.(`["${destination}"]`);
+      } catch (_) {}
+      return;
+    }
+    window.open(destination, "estudiemos-main", "noopener");
   }
 
   function dateValue(date) {
@@ -518,9 +563,12 @@
     return capitalize(`${first} - ${last}`);
   }
 
-  function widgetCalendarSummary(item) {
-    const time = item.horaInicio ? `${item.horaInicio} ` : "";
-    return `${time}${item.subject || item.title}`.trim();
+  function widgetCalendarEntry(item) {
+    const start = item.horaInicio || item.startTime || "";
+    const end = item.horaFin || item.endTime || "";
+    const time = start ? (end ? `${start}-${end}` : start) : "Todo el día";
+    const title = item.subject ? `${item.subject}: ${item.title}` : item.title;
+    return `<em><b>${escapeHtml(time)}</b><i>${escapeHtml(title)}</i></em>`;
   }
 
   function formatTimer(seconds) {
@@ -580,11 +628,11 @@
       main{min-height:0;overflow:hidden}.widget-section{height:100%;min-height:0;padding:15px 14px}.section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.section-head span,.widget-streak>span{color:var(--muted);font-size:9px;font-weight:800;letter-spacing:.08em}.section-head h1,.widget-streak h1{margin:3px 0 0;font-size:18px;line-height:1.15}.section-head>button{width:auto;padding:0 9px;color:var(--accent);font-size:11px;font-weight:700}
       .task-list{height:calc(100% - 51px);display:grid;align-content:start;gap:6px;overflow:auto;padding-right:3px;scrollbar-width:thin;scrollbar-color:var(--line) transparent}.task-row{min-width:0;display:grid;grid-template-columns:22px minmax(0,1fr);align-items:center;gap:8px;padding:9px 10px;border:1px solid color-mix(in srgb,var(--line) 70%,transparent);border-radius:9px;background:var(--panel);cursor:pointer}.task-row:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}.task-row input{width:15px;height:15px;margin:0;accent-color:var(--accent)}.task-row>span{min-width:0;display:grid;gap:2px}.task-row strong,.task-row small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.task-row strong{font-size:12px}.task-row small{color:var(--muted);font-size:10px}.empty{margin:28px 0;color:var(--muted);font-size:12px;text-align:center}
       .calendar-title>div:last-child{display:flex;gap:3px}.weekdays,.calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}.weekdays span{padding-bottom:6px;color:var(--muted);font-size:9px;font-weight:800;text-align:center}.calendar-grid{height:calc(100% - 75px);grid-template-rows:repeat(6,minmax(0,1fr));gap:3px}.calendar-day{position:relative;min-width:0;min-height:0;display:grid;place-items:center;padding:0;border:0;border-radius:7px;background:transparent;color:var(--text);cursor:pointer}.calendar-day:hover{background:var(--soft)}.calendar-day.is-outside{opacity:.32}.calendar-day.is-today{background:var(--accent);color:#07111f;font-weight:800}.calendar-day span{font-size:10px}.calendar-day small{position:absolute;right:3px;bottom:2px;min-width:13px;height:13px;display:grid;place-items:center;border-radius:99px;background:var(--soft);color:var(--accent);font-size:7px}.calendar-day.is-today small{background:#07111f;color:#fff}
-      .calendar-view-switch{display:flex;justify-content:flex-end;gap:2px;margin:-7px 0 7px}.calendar-view-switch button{min-height:25px;padding:3px 8px;border:0;border-radius:7px;background:transparent;color:var(--muted);font-size:9px;font-weight:800;cursor:pointer}.calendar-view-switch button.is-active{background:var(--soft);color:var(--text)}.widget-calendar[data-view="week"] .calendar-grid{height:calc(100% - 99px);grid-template-rows:minmax(0,1fr);gap:5px}.widget-calendar[data-view="week"] .calendar-day{align-content:start;justify-items:start;gap:5px;padding:8px 5px;border:1px solid color-mix(in srgb,var(--line) 65%,transparent);background:color-mix(in srgb,var(--panel) 72%,transparent);text-align:left}.widget-calendar[data-view="week"] .calendar-day.is-today{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,var(--panel));color:var(--text)}.widget-calendar[data-view="week"] .calendar-day em{width:100%;overflow:hidden;color:var(--muted);font-size:8px;font-style:normal;font-weight:650;line-height:1.2;text-overflow:ellipsis;white-space:nowrap}.widget-calendar[data-view="week"] .calendar-day small{position:static;margin-top:auto;background:transparent;color:var(--accent);font-size:8px}.widget-calendar[data-view="week"] .calendar-day.is-today small{background:transparent;color:var(--accent)}
+      .calendar-view-switch{display:flex;justify-content:flex-end;gap:2px;margin:-7px 0 7px}.calendar-view-switch button{min-height:25px;padding:3px 8px;border:0;border-radius:7px;background:transparent;color:var(--muted);font-size:9px;font-weight:800;cursor:pointer}.calendar-view-switch button.is-active{background:var(--soft);color:var(--text)}.widget-calendar[data-view="week"] .weekdays{display:none}.widget-calendar[data-view="week"] .calendar-grid{height:calc(100% - 78px);display:flex;flex-direction:column;gap:4px;overflow:auto;padding-right:3px;scrollbar-width:thin;scrollbar-color:var(--line) transparent}.widget-calendar[data-view="week"] .calendar-day{width:100%;min-height:36px;display:grid;grid-template-columns:40px minmax(0,1fr) auto;align-items:center;gap:7px;padding:5px 7px;border:1px solid color-mix(in srgb,var(--line) 65%,transparent);background:color-mix(in srgb,var(--panel) 72%,transparent);text-align:left}.widget-calendar[data-view="week"] .calendar-day>span{display:flex;align-items:baseline;gap:4px;font-size:10px}.widget-calendar[data-view="week"] .calendar-day>span b{color:var(--muted);font-size:8px;text-transform:uppercase}.widget-calendar[data-view="week"] .calendar-day.is-today{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 13%,var(--panel));color:var(--text)}.calendar-day-events{min-width:0;display:grid;gap:3px}.widget-calendar[data-view="week"] .calendar-day em{min-width:0;display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:6px;color:var(--muted);font-size:9px;font-style:normal;line-height:1.25}.widget-calendar[data-view="week"] .calendar-day em b{color:var(--accent);font-size:8px;font-weight:800;white-space:nowrap}.widget-calendar[data-view="week"] .calendar-day em i{overflow:hidden;color:var(--text);font-style:normal;font-weight:650;text-overflow:ellipsis;white-space:nowrap}.widget-calendar[data-view="week"] .calendar-day small{position:static;min-width:auto;height:auto;background:transparent;color:var(--accent);font-size:8px}.widget-calendar[data-view="week"] .calendar-day.is-today small{background:transparent;color:var(--accent)}
       .widget-pomodoro{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}.pomodoro-widget-head{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px}.pomodoro-widget-head span{color:var(--muted);font-size:8px;font-weight:800;letter-spacing:.08em}.pomodoro-widget-head h1{margin:2px 0 0;font-size:17px}.pomodoro-widget-head>b{padding:5px 8px;border-radius:7px;background:var(--soft);color:var(--accent);font-size:9px}.pomodoro-widget-ring{--timer-progress:0deg;width:min(54vw,188px);aspect-ratio:1;display:grid;place-items:center;border-radius:50%;background:conic-gradient(var(--accent) var(--timer-progress),var(--line) 0);padding:7px}.pomodoro-widget-ring::before{content:"";grid-area:1/1;width:100%;height:100%;border-radius:50%;background:var(--bg)}.pomodoro-widget-ring>div{z-index:1;grid-area:1/1;display:grid;gap:4px;text-align:center}.pomodoro-widget-ring strong{font-size:clamp(32px,11vw,48px);line-height:1;font-variant-numeric:tabular-nums}.pomodoro-widget-ring small{color:var(--muted);font-size:10px;font-weight:700}.pomodoro-widget-actions{width:100%;display:grid;grid-template-columns:42px minmax(0,1fr) 42px;gap:8px}.pomodoro-widget-actions button{min-height:40px;display:flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--text);cursor:pointer}.pomodoro-widget-actions button.is-primary{border-color:transparent;background:var(--accent);color:#07111f;font-size:12px;font-weight:800}.pomodoro-widget-actions svg{width:16px;height:16px}.pomodoro-widget-actions button.is-primary svg{stroke-width:2.2}
       .widget-streak{display:flex;flex-direction:column;justify-content:center}.streak-widget-head{display:grid;grid-template-columns:38px minmax(0,1fr) auto;align-items:center;gap:9px;text-align:left}.streak-mark{width:38px;height:38px;display:grid;place-items:center;border-radius:11px;background:color-mix(in srgb,#f59e0b 14%,var(--panel));color:#f59e0b}.streak-mark svg{width:22px;height:22px}.streak-widget-head>div:nth-child(2){min-width:0;display:grid;gap:1px}.streak-widget-head span{color:var(--muted);font-size:8px;font-weight:800;letter-spacing:.07em}.widget-streak h1{margin:0;font-size:18px}.streak-widget-head>strong{color:#f6b94e;font-size:13px}.widget-streak>p{margin:7px 0 5px;color:var(--muted);font-size:10px;text-align:left}.streak-widget-chart{min-height:0;margin-top:2px}.streak-widget-chart svg{width:100%;height:70px;display:block;overflow:visible}.streak-widget-chart line{stroke:color-mix(in srgb,var(--line) 55%,transparent);stroke-width:1}.streak-widget-chart path{fill:color-mix(in srgb,var(--accent) 9%,transparent);stroke:none}.streak-widget-chart polyline{fill:none;stroke:var(--accent);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.streak-widget-chart circle{fill:var(--accent);stroke:var(--panel);stroke-width:1.5}.streak-widget-chart>div{display:grid;grid-template-columns:repeat(7,1fr);margin-top:-1px;color:var(--muted);font-size:8px;text-align:center}.streak-action{min-height:32px;margin-top:8px;padding:0 16px;border:0;border-radius:9px;background:var(--accent);color:#07111f;font-size:11px;font-weight:800;cursor:pointer}
       footer{padding:7px 12px;border-top:1px solid var(--line);color:var(--muted);font-size:9px;text-align:center}
-      @media(max-width:320px){.widget-brand strong{display:none}.widget-section{padding:12px 10px}.task-row{padding:8px}.section-head h1{font-size:16px}}
+      @media(max-width:320px){.widget-brand strong{display:none}.widget-section{padding:12px 10px}.task-row{padding:8px}.section-head h1{font-size:16px}.widget-calendar[data-view="week"] .calendar-day{grid-template-columns:34px minmax(0,1fr) auto;padding-inline:5px}.widget-calendar[data-view="week"] .calendar-day em{gap:4px}}
       @media(max-height:350px){footer{display:none}.widget-section{padding-block:9px}.streak-widget-chart svg{height:62px}.streak-action{margin-top:6px}}
       .widget-connect{position:absolute;right:15px;bottom:13px;min-height:30px;padding:0 11px;border:1px solid var(--line);border-radius:8px;background:var(--soft);color:var(--text);font-size:10px;font-weight:700;cursor:pointer}
       .rainmeter-widget body{display:block;padding:5px;background:transparent;app-region:drag;-webkit-app-region:drag}
@@ -601,11 +649,11 @@
       .rainmeter-widget .account-form label{gap:3px;font-size:10px}
       .rainmeter-widget .account-form input{min-height:38px;padding:8px 10px}
       .rainmeter-widget .account-primary,.rainmeter-widget .account-secondary,.rainmeter-widget .account-link{min-height:34px;padding:7px 10px}
-      .widget-size-controls{display:none}
-      .rainmeter-widget .widget-size-controls{position:fixed;right:10px;bottom:10px;z-index:45;display:flex;gap:3px;opacity:0;transform:translateY(3px);transition:opacity .15s ease,transform .15s ease;app-region:no-drag;-webkit-app-region:no-drag}
-      .rainmeter-widget body:hover .widget-size-controls,.rainmeter-widget .widget-size-controls:focus-within{opacity:1;transform:none}
-      .rainmeter-widget .widget-size-controls button{width:25px;height:25px;display:grid;place-items:center;padding:0;border:1px solid var(--line);border-radius:8px;background:color-mix(in srgb,var(--panel) 94%,transparent);color:var(--muted);font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.18);app-region:no-drag;-webkit-app-region:no-drag}
-      .rainmeter-widget .widget-size-controls button:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--line));color:var(--text)}
+      .desktop-widget-locked .widget-head,.desktop-widget-locked body>footer{display:none}.desktop-widget-locked body{grid-template-rows:minmax(0,1fr)}
+      .widget-resize-handle{display:none}
+      .rainmeter-widget .widget-resize-handle{position:fixed;right:5px;bottom:5px;z-index:45;width:18px;height:18px;display:block;cursor:nwse-resize;opacity:0;touch-action:none;app-region:no-drag;-webkit-app-region:no-drag;transition:opacity .15s ease}
+      .rainmeter-widget body:hover .widget-resize-handle{opacity:.7}
+      .rainmeter-widget .widget-resize-handle::before,.rainmeter-widget .widget-resize-handle::after{content:"";position:absolute;right:2px;bottom:2px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);border-radius:1px}.rainmeter-widget .widget-resize-handle::before{width:11px;height:11px}.rainmeter-widget .widget-resize-handle::after{width:5px;height:5px}
     `;
   }
 })();

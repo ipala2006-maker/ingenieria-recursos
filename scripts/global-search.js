@@ -298,7 +298,7 @@
     if (document.querySelector('script[src*="scripts/desktop-widgets.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/desktop-widgets.js?v=20260824-week-pomodoro`;
+    script.src = `${rootPath}scripts/desktop-widgets.js?v=20260824-widgets-v3`;
     script.async = false;
     document.head.appendChild(script);
   }
