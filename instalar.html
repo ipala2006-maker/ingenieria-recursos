@@ -6,21 +6,22 @@
     <meta name="theme-color" content="#0f172a" />
     <meta name="description" content="Instalá Estudiemos en Android, iPhone o computadora." />
     <script>
-      if (/^(localhost|127\.0\.0\.1)$/i.test(location.hostname) && !new URLSearchParams(location.search).has("local")) {
+      if ((location.protocol === "file:" || /^(localhost|127\.0\.0\.1)$/i.test(location.hostname)) && !new URLSearchParams(location.search).has("local")) {
         location.replace("https://estudiemos-app.vercel.app/instalar.html" + location.hash);
       }
     </script>
-    <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
-    <link rel="manifest" href="./site.webmanifest" />
-    <link rel="apple-touch-icon" href="./assets/icon-180.png" />
+    <link rel="canonical" href="https://estudiemos-app.vercel.app/instalar.html" />
+    <link rel="icon" href="https://estudiemos-app.vercel.app/assets/favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="https://estudiemos-app.vercel.app/site.webmanifest" />
+    <link rel="apple-touch-icon" href="https://estudiemos-app.vercel.app/assets/icon-180.png" />
     <title>Instalar Estudiemos</title>
-    <script src="./scripts/theme-init.js?v=20260824-study-metrics"></script>
-    <link rel="stylesheet" href="./styles/app.css?v=20260824-week-pomodoro" />
-    <link rel="stylesheet" href="./styles/install.css?v=20260825-windows-one-step" />
+    <script src="https://estudiemos-app.vercel.app/scripts/theme-init.js?v=20260824-study-metrics"></script>
+    <link rel="stylesheet" href="https://estudiemos-app.vercel.app/styles/app.css?v=20260824-week-pomodoro" />
+    <link rel="stylesheet" href="https://estudiemos-app.vercel.app/styles/install.css?v=20260825-local-fallback" />
   </head>
   <body class="install-page">
     <header class="install-header">
-      <a class="brand" href="./" aria-label="Volver a Estudiemos">
+      <a class="brand" href="https://estudiemos-app.vercel.app/" aria-label="Volver a Estudiemos">
         <span class="brand__mark" aria-hidden="true">&sum;</span>
         <span class="brand__text">Estudiemos</span>
       </a>
@@ -46,7 +47,7 @@
           <div class="install-option__meta"><span class="install-option__platform">iPhone y iPad</span><span class="install-option__current">Siempre actualizada</span></div>
           <h2>Aplicación web</h2>
           <p>Abrí Estudiemos en Safari, tocá Compartir y elegí Agregar a pantalla de inicio.</p>
-          <a class="install-option__button" href="./">Abrir Estudiemos</a>
+          <a class="install-option__button" href="https://estudiemos-app.vercel.app/">Abrir Estudiemos</a>
           <small>La versión de iOS se actualiza automáticamente.</small>
         </article>
 
@@ -54,13 +55,13 @@
           <div class="install-option__meta"><span class="install-option__platform">PC</span><span class="install-option__current">Versión actual</span></div>
           <h2>Aplicación y widgets</h2>
           <p>Un solo instalador prepara Calendario, Inbox, Pomodoro y Racha, y los mantiene disponibles al encender Windows.</p>
-          <a class="install-option__button" href="./downloads/Estudiemos-Para-Windows.exe" download="Estudiemos-Para-Windows.exe">Instalar en Windows</a>
+          <a class="install-option__button" href="https://estudiemos-app.vercel.app/downloads/Estudiemos-Para-Windows.exe" download="Estudiemos-Para-Windows.exe">Instalar en Windows</a>
           <small>Abrí el archivo descargado y aceptá el permiso de Windows. El resto se configura automáticamente.</small>
           <details class="install-option__manual">
             <summary>Instalación manual</summary>
             <div class="install-option__steps">
               <a href="https://www.rainmeter.net/" target="_blank" rel="noopener noreferrer">Instalar Rainmeter</a>
-              <a href="./downloads/Estudiemos-Widgets.rmskin" download="Estudiemos-Widgets.rmskin">Descargar solo los widgets</a>
+              <a href="https://estudiemos-app.vercel.app/downloads/Estudiemos-Widgets.rmskin" download="Estudiemos-Widgets.rmskin">Descargar solo los widgets</a>
             </div>
           </details>
         </article>

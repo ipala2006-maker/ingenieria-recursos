@@ -660,9 +660,8 @@
 
   function installDesktopWidgets() {
     const installUrl = "https://estudiemos-app.vercel.app/instalar.html#pc";
-    const page = window.open(installUrl, "_blank", "noopener");
-    if (!page) location.href = installUrl;
-    setStatus("Abrimos la página oficial con la versión más reciente.", "success");
+    setStatus("Abriendo la página oficial con la versión más reciente.", "success");
+    window.setTimeout(() => location.assign(installUrl), 120);
   }
 
   async function updateApplication() {
