@@ -112,6 +112,27 @@
   color:var(--text);
 }
 
+.install-option__manual{
+  margin-top:12px;
+  color:var(--muted);
+  font-size:12px;
+}
+
+.install-option__manual summary{
+  width:max-content;
+  cursor:pointer;
+}
+
+.install-option__manual .install-option__steps{
+  margin-top:8px;
+}
+
+.install-option__manual a{
+  color:var(--muted);
+  text-decoration:underline;
+  text-underline-offset:3px;
+}
+
 @media(max-width:760px){
   .install-main{padding-top:28px}
   .install-options{grid-template-columns:1fr}

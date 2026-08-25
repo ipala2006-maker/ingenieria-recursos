@@ -289,7 +289,7 @@
     if (document.querySelector('script[src*="scripts/account.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/account.js?v=20260824-week-pomodoro`;
+    script.src = `${rootPath}scripts/account.js?v=20260825-windows-installer`;
     script.defer = true;
     document.head.appendChild(script);
   }

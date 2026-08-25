@@ -172,7 +172,7 @@
           </div>
           <button class="account-widget-installer" type="button" data-account-install-widgets>
             ${desktopIcon()}
-            <span><strong>Agregar al escritorio</strong><small>Ver preparación e instalación</small></span>
+            <span><strong>Agregar al escritorio</strong><small>Instalación automática para Windows</small></span>
           </button>
         </div>
 
@@ -184,6 +184,8 @@
     if (widgetActions) widgetActions.hidden = !hasAndroidBridge();
     const desktopWidgetActions = shell.querySelector("[data-account-desktop-widgets]");
     if (desktopWidgetActions) desktopWidgetActions.hidden = !supportsDesktopWidgets();
+    const desktopInstaller = shell.querySelector("[data-account-install-widgets]");
+    if (desktopInstaller) desktopInstaller.hidden = !isWindowsDevice();
   }
 
   function bindAccountEvents() {
@@ -639,6 +641,10 @@
     return true;
   }
 
+  function isWindowsDevice() {
+    return /Windows/i.test(navigator.userAgent || navigator.platform || "");
+  }
+
   async function openDesktopWidget(widget) {
     const manager = window.EstudiemosDesktopWidgets;
     if (!manager?.available) {
@@ -653,10 +659,14 @@
   }
 
   function installDesktopWidgets() {
-    const guideUrl = new URL(`${getRootPath()}instalar.html#pc`, location.href).href;
-    const guide = window.open(guideUrl, "_blank", "noopener");
-    if (!guide) location.href = guideUrl;
-    setStatus("Abrimos la guía para preparar Windows e instalar los widgets.", "success");
+    const installerUrl = new URL(`${getRootPath()}downloads/Estudiemos-Para-Windows.exe`, location.href).href;
+    const download = document.createElement("a");
+    download.href = installerUrl;
+    download.download = "Estudiemos-Para-Windows.exe";
+    document.body.appendChild(download);
+    download.click();
+    download.remove();
+    setStatus("Descarga iniciada. Abrí el instalador y aceptá el permiso de Windows.", "success");
   }
 
   async function updateApplication() {
