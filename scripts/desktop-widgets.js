@@ -529,13 +529,29 @@
 
   function openMainApp(search) {
     const destination = new URL(search, window.location.origin).href;
+    const appLink = createAppLink(destination);
     if (document.documentElement.classList.contains("rainmeter-widget")) {
       try {
-        window.RainmeterAPI?.Bang?.(`["${destination}"]`);
+        window.RainmeterAPI?.Bang?.(`["${appLink}"]`);
       } catch (_) {}
       return;
     }
-    window.open(destination, "estudiemos-main", "noopener");
+    window.open(appLink, "estudiemos-main", "noopener");
+  }
+
+  function createAppLink(destination) {
+    const url = new URL(destination);
+    const params = new URLSearchParams();
+    if (url.searchParams.get("agenda") === "1") {
+      params.set("target", "agenda");
+      const date = url.searchParams.get("date") || "";
+      if (/^\d{4}-\d{2}-\d{2}$/.test(date)) params.set("date", date);
+    } else if (url.searchParams.get("pomodoro") === "1") {
+      params.set("target", "pomodoro");
+    } else {
+      params.set("target", "home");
+    }
+    return `web+estudiemos://open?${params.toString()}`;
   }
 
   function dateValue(date) {

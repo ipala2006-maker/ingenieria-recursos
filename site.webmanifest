@@ -8,6 +8,15 @@
   "scope": "/",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone"],
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
+  "protocol_handlers": [
+    {
+      "protocol": "web+estudiemos",
+      "url": "/?app_launch=%s"
+    }
+  ],
   "background_color": "#0f172a",
   "theme_color": "#0f172a",
   "icons": [

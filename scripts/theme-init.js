@@ -3,6 +3,32 @@
   var DEFAULT_THEME = "dark";
   var root = document.documentElement;
 
+  function normalizeAppLaunch() {
+    try {
+      var page = new URL(window.location.href);
+      var rawLaunch = page.searchParams.get("app_launch");
+      if (!rawLaunch) return;
+
+      page.searchParams.delete("app_launch");
+      var launch = new URL(rawLaunch);
+      if (launch.protocol !== "web+estudiemos:" || launch.hostname !== "open") {
+        history.replaceState(history.state, "", page.pathname + page.search + page.hash);
+        return;
+      }
+
+      var target = launch.searchParams.get("target");
+      if (target === "agenda") {
+        page.searchParams.set("agenda", "1");
+        var date = launch.searchParams.get("date") || "";
+        if (/^\d{4}-\d{2}-\d{2}$/.test(date)) page.searchParams.set("date", date);
+      } else if (target === "pomodoro") {
+        page.searchParams.set("pomodoro", "1");
+      }
+
+      history.replaceState(history.state, "", page.pathname + page.search + page.hash);
+    } catch (error) {}
+  }
+
   function getRootPath() {
     var currentScript = document.currentScript;
     var src = currentScript ? currentScript.getAttribute("src") || "" : "";
@@ -142,6 +168,7 @@
     });
   }
 
+  normalizeAppLaunch();
   installEarlyThemeStyles();
   applyTheme(readTheme(), false);
   loadProfessionalStyleEarly();
