@@ -123,24 +123,18 @@ module.exports = async function agendaAi(request, response) {
   if (!input.ok) return response.status(400).json({ error: input.error });
 
   try {
-    const { modelResponse, payload } = await requestModel(buildModelRequest(input.value));
-    if (!modelResponse.ok) {
-      const unavailable = modelResponse.status === 429 || modelResponse.status >= 500;
-      const providerMessage = cleanText(payload?.error?.message, 300);
-      return response.status(unavailable ? 503 : 502).json({
-        code: unavailable ? "AI_BUSY" : "AI_REQUEST_FAILED",
-        error: unavailable
-          ? "La IA esta ocupada en este momento. Proba nuevamente en unos segundos."
-          : "No se pudo interpretar la instruccion.",
-        details: providerMessage
-      });
-    }
-
-    const text = payload?.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("") || "";
-    const parsed = JSON.parse(text);
-    const plan = sanitizePlan(parsed, input.value);
+    const plan = await createAgendaPlan(input.value);
     return response.status(200).json(plan);
   } catch (error) {
+    if (error?.code === "AI_BUSY" || error?.code === "AI_REQUEST_FAILED") {
+      return response.status(error.code === "AI_BUSY" ? 503 : 502).json({
+        code: error.code,
+        error: error.code === "AI_BUSY"
+          ? "La IA esta ocupada en este momento. Proba nuevamente en unos segundos."
+          : "No se pudo interpretar la instruccion.",
+        details: error.details || ""
+      });
+    }
     const timedOut = error?.name === "AbortError";
     return response.status(503).json({
       code: timedOut ? "AI_TIMEOUT" : "AI_CONNECTION_FAILED",
@@ -150,6 +144,18 @@ module.exports = async function agendaAi(request, response) {
     });
   }
 };
+
+async function createAgendaPlan(input) {
+  const { modelResponse, payload } = await requestModel(buildModelRequest(input));
+  if (!modelResponse.ok) {
+    const error = new Error("Agenda AI request failed");
+    error.code = modelResponse.status === 429 || modelResponse.status >= 500 ? "AI_BUSY" : "AI_REQUEST_FAILED";
+    error.details = cleanText(payload?.error?.message, 300);
+    throw error;
+  }
+  const text = payload?.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("") || "";
+  return sanitizePlan(JSON.parse(text), input);
+}
 
 async function requestModel(body) {
   const controller = new AbortController();
@@ -595,6 +601,9 @@ function sanitizeUpdate(item, validIds) {
 function cleanText(value, maxLength) {
   return String(value || "").replace(/[\u0000-\u001F\u007F]/g, " ").replace(/\s+/g, " ").trim().slice(0, maxLength);
 }
+
+module.exports.createAgendaPlan = createAgendaPlan;
+module.exports.validateAgendaInput = validateInput;
 
 function normalizeText(value) {
   return String(value || "")

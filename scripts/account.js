@@ -26,6 +26,8 @@
   let applyingCloud = false;
   let lastPullAt = 0;
   let recoveryMode = false;
+  let whatsappStatusLoaded = false;
+  let whatsappBusy = false;
   let readySettled = false;
   let resolveReady;
   const readyPromise = new Promise((resolve) => { resolveReady = resolve; });
@@ -125,6 +127,15 @@
             <p>${checkIcon()} Archivos y carpetas personales</p>
             <p>${checkIcon()} Tema y preferencias</p>
           </div>
+          <section class="account-whatsapp" data-account-whatsapp hidden>
+            <span class="account-whatsapp__icon" aria-hidden="true">${messageIcon()}</span>
+            <div class="account-whatsapp__copy">
+              <strong>Organizar desde WhatsApp</strong>
+              <small data-account-whatsapp-label>Comprobando vinculación...</small>
+            </div>
+            <button class="account-secondary" type="button" data-account-whatsapp-connect>Vincular</button>
+            <button class="account-link" type="button" data-account-whatsapp-unlink hidden>Desvincular</button>
+          </section>
           <form class="account-password-form" data-account-password-form hidden>
             <label>
               <span>Nueva contraseña</span>
@@ -197,6 +208,8 @@
       if (event.target.closest("[data-account-signout]")) signOut();
       if (event.target.closest("[data-account-sync]")) synchronize("manual");
       if (event.target.closest("[data-account-update]")) updateApplication();
+      if (event.target.closest("[data-account-whatsapp-connect]")) connectWhatsApp();
+      if (event.target.closest("[data-account-whatsapp-unlink]")) unlinkWhatsApp();
       const widgetButton = event.target.closest("[data-account-widget]");
       if (widgetButton) requestAndroidWidget(widgetButton.dataset.accountWidget);
       const desktopWidgetButton = event.target.closest("[data-account-desktop-widget]");
@@ -597,6 +610,11 @@
     if (passwordForm) passwordForm.hidden = !recoveryMode || !session;
     const email = document.querySelector("[data-account-email]");
     if (email) email.textContent = session?.user?.email || "";
+    if (session && !whatsappStatusLoaded) refreshWhatsAppStatus();
+    if (!session) {
+      whatsappStatusLoaded = false;
+      renderWhatsAppStatus({ linked: false, configured: true });
+    }
     updateAccountIndicator(Boolean(session));
     window.dispatchEvent(new CustomEvent("estudiemos:account-change", {
       detail: { available: configAvailable, user: session?.user || null }
@@ -624,6 +642,98 @@
     if (!status) return;
     status.textContent = message || "";
     status.dataset.type = type || "info";
+  }
+
+  async function refreshWhatsAppStatus(force = false) {
+    if (!session?.access_token || (whatsappStatusLoaded && !force) || whatsappBusy) return;
+    whatsappBusy = true;
+    setWhatsAppButtonsBusy(true);
+    try {
+      const response = await fetch(`${getRootPath()}api/whatsapp-link`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        cache: "no-store"
+      });
+      const result = await response.json().catch(() => ({}));
+      whatsappStatusLoaded = true;
+      renderWhatsAppStatus({ ...result, configured: response.ok ? true : result.configured !== false });
+    } catch (_) {
+      renderWhatsAppStatus({ configured: false, linked: false });
+    } finally {
+      whatsappBusy = false;
+      setWhatsAppButtonsBusy(false);
+    }
+  }
+
+  async function connectWhatsApp() {
+    if (!session?.access_token || whatsappBusy) return;
+    whatsappBusy = true;
+    setWhatsAppButtonsBusy(true);
+    setStatus("Preparando la vinculación segura...", "info");
+    try {
+      const response = await fetch(`${getRootPath()}api/whatsapp-link`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+        body: "{}"
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.url) throw new Error(result.message || "link-failed");
+      setStatus("Abrí WhatsApp y enviá el mensaje preparado. El código vence en 15 minutos.", "success");
+      window.location.assign(result.url);
+    } catch (error) {
+      setStatus(error?.message === "WhatsApp todavía no está configurado."
+        ? "WhatsApp todavía necesita conectar el número oficial de Estudiemos."
+        : "No pudimos iniciar la vinculación. Probá nuevamente.", "error");
+    } finally {
+      whatsappBusy = false;
+      setWhatsAppButtonsBusy(false);
+    }
+  }
+
+  async function unlinkWhatsApp() {
+    if (!session?.access_token || whatsappBusy) return;
+    if (!window.confirm("¿Querés desvincular este WhatsApp de Estudiemos?")) return;
+    whatsappBusy = true;
+    setWhatsAppButtonsBusy(true);
+    try {
+      const response = await fetch(`${getRootPath()}api/whatsapp-link`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${session.access_token}` }
+      });
+      if (!response.ok) throw new Error("unlink-failed");
+      whatsappStatusLoaded = true;
+      renderWhatsAppStatus({ configured: true, linked: false });
+      setStatus("WhatsApp quedó desvinculado de tu cuenta.", "success");
+    } catch (_) {
+      setStatus("No pudimos desvincularlo ahora. Probá nuevamente.", "error");
+    } finally {
+      whatsappBusy = false;
+      setWhatsAppButtonsBusy(false);
+    }
+  }
+
+  function renderWhatsAppStatus(state) {
+    const section = document.querySelector("[data-account-whatsapp]");
+    const label = document.querySelector("[data-account-whatsapp-label]");
+    const connect = document.querySelector("[data-account-whatsapp-connect]");
+    const unlink = document.querySelector("[data-account-whatsapp-unlink]");
+    if (section) section.hidden = state.configured === false || !session;
+    if (label) {
+      label.textContent = state.configured === false
+        ? "Falta conectar el número oficial"
+        : state.linked
+          ? `Vinculado ${state.phone || "correctamente"}`
+          : "Enviá tareas por texto o audio";
+    }
+    if (connect) {
+      connect.hidden = Boolean(state.linked);
+      connect.disabled = state.configured === false || whatsappBusy;
+    }
+    if (unlink) unlink.hidden = !state.linked;
+  }
+
+  function setWhatsAppButtonsBusy(busy) {
+    document.querySelectorAll("[data-account-whatsapp] button").forEach((button) => { button.disabled = busy; });
   }
 
   function hasAndroidBridge() {
@@ -748,5 +858,9 @@
 
   function desktopIcon() {
     return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H4V4Zm2 2v8h12V6H6Zm4 11h4v2h3v2H7v-2h3v-2Z"/></svg>';
+  }
+
+  function messageIcon() {
+    return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a8.5 8.5 0 0 0-7.4 12.7L3.5 20.5l4.9-1.1A8.5 8.5 0 1 0 12 3Zm0 2a6.5 6.5 0 1 1-3.2 12.1l-.3-.2-2.2.5.5-2.1-.2-.3A6.5 6.5 0 0 1 12 5Zm-3 4h6v2H9V9Zm0 4h4v2H9v-2Z"/></svg>';
   }
 })();

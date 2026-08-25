@@ -1,5 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "api/whatsapp-webhook.js": {
+      "maxDuration": 60
+    }
+  },
   "headers": [
     {
       "source": "/downloads/Estudiemos-Widgets.rmskin",

@@ -66,6 +66,20 @@ Variables de Vercel:
 
 Para configurarla: Vercel → proyecto Estudiemos → Settings → Environment Variables. Agregar `GEMINI_API_KEY` para Production y volver a desplegar el último commit.
 
+## Organización desde WhatsApp
+
+La integración usa la API oficial de WhatsApp Business como entrada acotada para Inbox y calendario. Acepta texto y notas de voz, muestra un resumen y solamente aplica cambios cuando el estudiante responde `CONFIRMAR`. No funciona como chatbot general y no conserva los audios.
+
+Preparación técnica:
+
+1. Ejecutar una vez `supabase/whatsapp.sql` desde SQL Editor.
+2. En Meta for Developers crear o elegir una aplicación Business, agregar WhatsApp y obtener el número de prueba o definitivo.
+3. En Vercel agregar las variables `SUPABASE_SECRET_KEY`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID` y `WHATSAPP_PUBLIC_NUMBER`.
+4. Configurar en Meta el webhook `https://estudiemos-app.vercel.app/api/whatsapp-webhook`, usar el mismo valor de `WHATSAPP_VERIFY_TOKEN` y suscribirse al campo `messages`.
+5. Volver a desplegar. Desde Perfil, cada estudiante puede generar un código de 15 minutos y enviar el mensaje preparado al WhatsApp oficial.
+
+`WHATSAPP_GRAPH_VERSION` y `WHATSAPP_DAILY_COMMAND_LIMIT` son opcionales. El límite diario predeterminado es 30 órdenes por cuenta. Las claves privadas pertenecen únicamente a Vercel y nunca deben pegarse en HTML, JavaScript del navegador ni GitHub.
+
 El archivo `.env.example` muestra los nombres esperados sin contener secretos reales.
 
 ## Cuentas y sincronización
