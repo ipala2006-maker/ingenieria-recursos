@@ -172,7 +172,7 @@
           </div>
           <button class="account-widget-installer" type="button" data-account-install-widgets>
             ${desktopIcon()}
-            <span><strong>Agregar al escritorio</strong><small>Instala los cuatro widgets fijos</small></span>
+            <span><strong>Agregar al escritorio</strong><small>Ver preparación e instalación</small></span>
           </button>
         </div>
 
@@ -653,13 +653,10 @@
   }
 
   function installDesktopWidgets() {
-    const link = document.createElement("a");
-    link.href = new URL(`${getRootPath()}downloads/Estudiemos-Widgets.rmskin`, location.href).href;
-    link.download = "Estudiemos-Widgets.rmskin";
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    setStatus("Descarga lista. Si todavía no tenés Rainmeter, instalalo desde la página de instalación. Después abrí el archivo y elegí Install.", "success");
+    const guideUrl = new URL(`${getRootPath()}instalar.html#pc`, location.href).href;
+    const guide = window.open(guideUrl, "_blank", "noopener");
+    if (!guide) location.href = guideUrl;
+    setStatus("Abrimos la guía para preparar Windows e instalar los widgets.", "success");
   }
 
   async function updateApplication() {
