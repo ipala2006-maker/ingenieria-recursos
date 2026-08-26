@@ -217,6 +217,7 @@ public class MainActivity extends Activity {
             } else if ("account-native-sync".equals(type)) {
                 WidgetSyncManager.handleAccountMessage(this, payload);
             } else if ("app-update".equals(type)) {
+                notifyWebUpdateStarted();
                 startAppUpdate();
             }
         } catch (Exception ignored) {
@@ -227,6 +228,14 @@ public class MainActivity extends Activity {
     private void notifyWebAppReady() {
         webView.evaluateJavascript(
                 "window.dispatchEvent(new CustomEvent('estudiemos-android-ready'));",
+                null
+        );
+    }
+
+    private void notifyWebUpdateStarted() {
+        if (!webReady || webView == null) return;
+        webView.evaluateJavascript(
+                "window.dispatchEvent(new CustomEvent('estudiemos-android-update-started'));",
                 null
         );
     }

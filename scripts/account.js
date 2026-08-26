@@ -985,8 +985,16 @@
 
     if (window.EstudiemosAndroid) {
       setStatus("Preparando la actualización dentro de Estudiemos...", "success");
+      let nativeUpdateStarted = false;
+      window.addEventListener("estudiemos-android-update-started", () => {
+        nativeUpdateStarted = true;
+      }, { once: true });
       try {
         window.EstudiemosAndroid.postMessage(JSON.stringify({ type: "app-update" }));
+        window.setTimeout(() => {
+          if (nativeUpdateStarted) return;
+          location.assign("https://github.com/ipala2006-maker/ingenieria-recursos/releases/download/android-latest/Estudiemos-Android.apk");
+        }, 900);
       } catch (_) {
         setStatus("No pudimos iniciar la actualización. Cerrá y volvé a abrir Estudiemos.", "error");
       }
