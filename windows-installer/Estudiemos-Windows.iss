@@ -1,4 +1,4 @@
-#define AppVersion "1.1.1"
+#define AppVersion "1.2.0"
 #define RainmeterInstaller "Rainmeter-4.5.26.exe"
 
 [Setup]
@@ -9,7 +9,7 @@ AppPublisher=Estudiemos
 AppPublisherURL=https://estudiemos-app.vercel.app/
 AppSupportURL=https://estudiemos-app.vercel.app/
 DefaultDirName={localappdata}\Estudiemos\Windows
-CreateAppDir=no
+CreateAppDir=yes
 Uninstallable=no
 PrivilegesRequired=admin
 ArchitecturesAllowed=x64compatible
@@ -38,11 +38,19 @@ Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
 
 [Files]
 Source: "vendor\{#RainmeterInstaller}"; Flags: dontcopy
+Source: "WidgetLauncher.vbs"; DestDir: "{app}"; Flags: ignoreversion
+Source: "StreakReminder.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\windows-rainmeter\Skins\Estudiemos\*"; DestDir: "{code:GetSkinDirectory}\Estudiemos"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\windows-rainmeter\Plugins\64bit\WebView2.dll"; DestDir: "{code:GetRainmeterDirectory}\Plugins"; Flags: ignoreversion restartreplace
 
 [Icons]
 Name: "{userstartup}\Rainmeter"; Filename: "{code:GetRainmeterExecutable}"; WorkingDir: "{code:GetRainmeterDirectory}"; Comment: "Iniciar los widgets de Estudiemos con Windows"
+
+[Registry]
+Root: HKCU; Subkey: "Software\Classes\estudiemos-widgets"; ValueType: string; ValueData: "URL:Estudiemos Widgets"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\estudiemos-widgets"; ValueName: "URL Protocol"; ValueType: string; ValueData: ""
+Root: HKCU; Subkey: "Software\Classes\estudiemos-widgets\DefaultIcon"; ValueType: string; ValueData: "{app}\WidgetLauncher.vbs"
+Root: HKCU; Subkey: "Software\Classes\estudiemos-widgets\shell\open\command"; ValueType: string; ValueData: "{sys}\wscript.exe ""{app}\WidgetLauncher.vbs"" ""%1"""
 
 [Code]
 const
@@ -109,6 +117,8 @@ procedure CurStepChanged(CurStep: TSetupStep);
 var
   ResultCode: Integer;
   RainmeterExe: String;
+  ReminderScript: String;
+  TaskCommand: String;
 begin
   if CurStep = ssPostInstall then
   begin
@@ -124,5 +134,17 @@ begin
       ewWaitUntilTerminated, ResultCode);
     Exec(RainmeterExe, '!ActivateConfig "Estudiemos\Setup" "Setup.ini"',
       GetRainmeterDirectory(''), SW_HIDE, ewNoWait, ResultCode);
+
+    ReminderScript := ExpandConstant('{app}\StreakReminder.ps1');
+    TaskCommand := '/Create /F /SC DAILY /TN "Estudiemos\Racha 12-00" /ST 12:00 /TR "powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File ""' + ReminderScript + '"""';
+    Exec(ExpandConstant('{sys}\schtasks.exe'), TaskCommand, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    TaskCommand := '/Create /F /SC DAILY /TN "Estudiemos\Racha 14-30" /ST 14:30 /TR "powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File ""' + ReminderScript + '"""';
+    Exec(ExpandConstant('{sys}\schtasks.exe'), TaskCommand, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    TaskCommand := '/Create /F /SC DAILY /TN "Estudiemos\Racha 17-00" /ST 17:00 /TR "powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File ""' + ReminderScript + '"""';
+    Exec(ExpandConstant('{sys}\schtasks.exe'), TaskCommand, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    TaskCommand := '/Create /F /SC DAILY /TN "Estudiemos\Racha 19-30" /ST 19:30 /TR "powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File ""' + ReminderScript + '"""';
+    Exec(ExpandConstant('{sys}\schtasks.exe'), TaskCommand, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    TaskCommand := '/Create /F /SC DAILY /TN "Estudiemos\Racha 22-00" /ST 22:00 /TR "powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File ""' + ReminderScript + '"""';
+    Exec(ExpandConstant('{sys}\schtasks.exe'), TaskCommand, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   end;
 end;

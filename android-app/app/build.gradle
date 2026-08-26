@@ -10,14 +10,27 @@ android {
         applicationId "com.estudiemos.app"
         minSdk 26
         targetSdk 35
-        versionCode 17
-        versionName "1.4.1"
+        versionCode 18
+        versionName "1.5.0"
+    }
+
+    signingConfigs {
+        release {
+            def signingFile = System.getenv("ANDROID_KEYSTORE_PATH")
+            if (signingFile) {
+                storeFile file(signingFile)
+                storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("ANDROID_KEY_ALIAS")
+                keyPassword System.getenv("ANDROID_KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+            if (System.getenv("ANDROID_KEYSTORE_PATH")) signingConfig signingConfigs.release
         }
     }
 

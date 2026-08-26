@@ -186,17 +186,17 @@
 
         <div class="account-android-widgets account-desktop-widgets" data-account-desktop-widgets hidden>
           <strong>Widgets de escritorio</strong>
-          <small>Abrilos en una ventana compacta o instalalos fijos en el escritorio de Windows.</small>
+          <small>Agregá cada widget fijo al escritorio directamente desde Estudiemos.</small>
           <div>
-            <button class="account-secondary" type="button" data-account-desktop-widget="workspace">Mi espacio</button>
-            <button class="account-secondary" type="button" data-account-desktop-widget="inbox">Inbox</button>
-            <button class="account-secondary" type="button" data-account-desktop-widget="calendar">Calendario</button>
-            <button class="account-secondary" type="button" data-account-desktop-widget="pomodoro">Pomodoro</button>
-            <button class="account-secondary" type="button" data-account-desktop-widget="streak">Racha</button>
+            <button class="account-secondary" type="button" data-account-desktop-widget="workspace">+ Mi espacio</button>
+            <button class="account-secondary" type="button" data-account-desktop-widget="inbox">+ Inbox</button>
+            <button class="account-secondary" type="button" data-account-desktop-widget="calendar">+ Calendario</button>
+            <button class="account-secondary" type="button" data-account-desktop-widget="pomodoro">+ Pomodoro</button>
+            <button class="account-secondary" type="button" data-account-desktop-widget="streak">+ Racha</button>
           </div>
           <button class="account-widget-installer" type="button" data-account-install-widgets>
             ${desktopIcon()}
-            <span><strong>Instalar en Windows</strong><small>Abrir la página oficial de descargas</small></span>
+            <span><strong>Preparar widgets en Windows</strong><small>Solo es necesario la primera vez</small></span>
           </button>
         </div>
 
@@ -950,6 +950,16 @@
   }
 
   async function openDesktopWidget(widget) {
+    if (isWindowsDevice() && ["workspace", "inbox", "calendar", "pomodoro", "streak"].includes(widget)) {
+      const launcher = document.createElement("iframe");
+      launcher.hidden = true;
+      launcher.setAttribute("aria-hidden", "true");
+      launcher.src = `estudiemos-widgets://add?widget=${encodeURIComponent(widget)}`;
+      document.body.appendChild(launcher);
+      window.setTimeout(() => launcher.remove(), 1800);
+      setStatus("Windows abrirá el widget. Si pide permiso, elegí Abrir Estudiemos Widgets.", "success");
+      return;
+    }
     const manager = window.EstudiemosDesktopWidgets;
     if (!manager?.available) {
       setStatus("Los widgets de escritorio necesitan Chrome o Edge en una computadora.", "error");
@@ -974,9 +984,12 @@
     if (!button || button.disabled) return;
 
     if (window.EstudiemosAndroid) {
-      const apkUrl = "https://github.com/ipala2006-maker/ingenieria-recursos/releases/download/android-latest/Estudiemos-Android.apk";
-      setStatus("Abriendo la última versión para Android...", "success");
-      window.setTimeout(() => location.assign(apkUrl), 120);
+      setStatus("Preparando la actualización dentro de Estudiemos...", "success");
+      try {
+        window.EstudiemosAndroid.postMessage(JSON.stringify({ type: "app-update" }));
+      } catch (_) {
+        setStatus("No pudimos iniciar la actualización. Cerrá y volvé a abrir Estudiemos.", "error");
+      }
       return;
     }
 

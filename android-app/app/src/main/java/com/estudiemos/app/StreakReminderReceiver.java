@@ -19,7 +19,7 @@ public class StreakReminderReceiver extends BroadcastReceiver {
     private static final String ACTION_REMIND = "com.estudiemos.app.STREAK_REMINDER";
     private static final String KEY_ENABLED = "pomodoro_streak_reminder_enabled";
     private static final String KEY_LAST_NOTICE = "pomodoro_streak_last_notice";
-    private static final String CHANNEL_ID = "study_streak";
+    private static final String CHANNEL_ID = "study_streak_v2";
     private static final int NOTIFICATION_ID = 4201;
     private static final String EXTRA_SLOT = "reminder_slot";
     private static final int[] SLOT_MINUTES = { 12 * 60, 14 * 60 + 30, 17 * 60, 19 * 60 + 30, 22 * 60 };
@@ -80,7 +80,12 @@ public class StreakReminderReceiver extends BroadcastReceiver {
             nextSlot = SLOT_MINUTES[0];
         }
         String slotId = String.format(java.util.Locale.ROOT, "%02d:%02d", nextSlot / 60, nextSlot % 60);
-        manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next.getTimeInMillis(), reminderIntent(context, slotId));
+        PendingIntent reminder = reminderIntent(context, slotId);
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || manager.canScheduleExactAlarms()) {
+            manager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next.getTimeInMillis(), reminder);
+        } else {
+            manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next.getTimeInMillis(), reminder);
+        }
     }
 
     private static void cancel(Context context) {
@@ -119,9 +124,11 @@ public class StreakReminderReceiver extends BroadcastReceiver {
             NotificationChannel channel = new NotificationChannel(
                     CHANNEL_ID,
                     "Racha de estudio",
-                    NotificationManager.IMPORTANCE_DEFAULT
+                    NotificationManager.IMPORTANCE_HIGH
             );
-            channel.setDescription("Recordatorios suaves para completar 25 minutos de estudio al día.");
+            channel.setDescription("Recordatorios para completar 25 minutos de estudio al día.");
+            channel.enableVibration(true);
+            channel.setVibrationPattern(new long[] { 0, 280, 140, 280 });
             manager.createNotificationChannel(channel);
         }
 
@@ -141,6 +148,10 @@ public class StreakReminderReceiver extends BroadcastReceiver {
                 .setContentText(body)
                 .setStyle(new android.app.Notification.BigTextStyle().bigText(body))
                 .setContentIntent(contentIntent)
+                .setCategory(android.app.Notification.CATEGORY_REMINDER)
+                .setPriority(android.app.Notification.PRIORITY_HIGH)
+                .setDefaults(android.app.Notification.DEFAULT_SOUND | android.app.Notification.DEFAULT_VIBRATE)
+                .setVibrate(new long[] { 0, 280, 140, 280 })
                 .setAutoCancel(true)
                 .build();
         manager.notify(NOTIFICATION_ID, notification);

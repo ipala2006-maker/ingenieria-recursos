@@ -3,15 +3,22 @@ package com.estudiemos.app;
 import android.annotation.SuppressLint;
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlarmManager;
+import android.app.DownloadManager;
 import android.app.NotificationManager;
 import android.appwidget.AppWidgetManager;
 import android.content.ComponentName;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.Settings;
 import android.view.WindowInsets;
 import android.view.ViewGroup;
 import android.webkit.WebResourceRequest;
@@ -35,12 +42,14 @@ import org.json.JSONObject;
 public class MainActivity extends Activity {
     private static final String APP_URL = "https://estudiemos-app.vercel.app/";
     private static final String APP_ORIGIN = "https://estudiemos-app.vercel.app";
+    private static final String UPDATE_APK_URL = "https://github.com/ipala2006-maker/ingenieria-recursos/releases/download/android-latest/Estudiemos-Android.apk";
     public static final String EXTRA_OPEN_AGENDA = "open_agenda";
     public static final String EXTRA_AGENDA_DATE = "agenda_date";
     public static final String EXTRA_OPEN_POMODORO = "open_pomodoro";
     public static final String EXTRA_WORKSPACE_ITEM_ID = "workspace_item_id";
     public static final String EXTRA_WORKSPACE_ITEM_KIND = "workspace_item_kind";
     private static final int FILE_CHOOSER_REQUEST = 4202;
+    private static final int INSTALL_PERMISSION_REQUEST = 4203;
 
     private WebView webView;
     private boolean openAgendaRequested;
@@ -48,6 +57,9 @@ public class MainActivity extends Activity {
     private boolean openPomodoroRequested;
     private boolean webReady;
     private ValueCallback<Uri[]> fileChooserCallback;
+    private long updateDownloadId = -1L;
+    private boolean updateAfterPermission;
+    private BroadcastReceiver updateDownloadReceiver;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -69,6 +81,7 @@ public class MainActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
         ));
+        registerUpdateDownloadReceiver();
         applySystemBarInsets(rootView);
         if (StreakReminderReceiver.isEnabled(this)) StreakReminderReceiver.scheduleNext(this);
 
@@ -203,6 +216,8 @@ public class MainActivity extends Activity {
                 WorkspaceWidgetProvider.storeWorkspaceAndUpdate(this, message.getData());
             } else if ("account-native-sync".equals(type)) {
                 WidgetSyncManager.handleAccountMessage(this, payload);
+            } else if ("app-update".equals(type)) {
+                startAppUpdate();
             }
         } catch (Exception ignored) {
             // Invalid web messages cannot modify native data.
@@ -291,14 +306,32 @@ public class MainActivity extends Activity {
         ) {
             requestPermissions(new String[] { Manifest.permission.POST_NOTIFICATIONS }, 4101);
         } else {
+            requestExactReminderPermissionIfNeeded();
             sendNotificationStatusToWeb();
         }
+    }
+
+    private void requestExactReminderPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return;
+        AlarmManager manager = (AlarmManager) getSystemService(ALARM_SERVICE);
+        if (manager == null || manager.canScheduleExactAlarms()) return;
+        try {
+            startActivity(new Intent(
+                    Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
+                    Uri.parse("package:" + getPackageName())
+            ));
+        } catch (Exception ignored) {}
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == 4101) sendNotificationStatusToWeb();
+        if (requestCode == 4101) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                requestExactReminderPermissionIfNeeded();
+            }
+            sendNotificationStatusToWeb();
+        }
     }
 
     private void requestWidgetPin(String widget) {
@@ -338,6 +371,11 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        if (updateAfterPermission && canInstallUpdates()) {
+            updateAfterPermission = false;
+            startAppUpdate();
+        }
+        if (StreakReminderReceiver.isEnabled(this)) StreakReminderReceiver.scheduleNext(this);
         WidgetSyncManager.syncNow(this);
         notifyPendingAgendaCompletions();
         notifyPomodoroStateToWeb();
@@ -356,6 +394,80 @@ public class MainActivity extends Activity {
         Uri[] result = resultCode == RESULT_OK ? WebChromeClient.FileChooserParams.parseResult(resultCode, data) : null;
         fileChooserCallback.onReceiveValue(result);
         fileChooserCallback = null;
+    }
+
+    private void registerUpdateDownloadReceiver() {
+        updateDownloadReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (!DownloadManager.ACTION_DOWNLOAD_COMPLETE.equals(intent.getAction())) return;
+                long completedId = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L);
+                if (completedId != updateDownloadId) return;
+                openDownloadedUpdate(completedId);
+            }
+        };
+        IntentFilter filter = new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(updateDownloadReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(updateDownloadReceiver, filter);
+        }
+    }
+
+    private boolean canInstallUpdates() {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.O || getPackageManager().canRequestPackageInstalls();
+    }
+
+    private void startAppUpdate() {
+        if (!canInstallUpdates()) {
+            updateAfterPermission = true;
+            Toast.makeText(this, "Permití que Estudiemos instale su actualización. Solo se solicita una vez.", Toast.LENGTH_LONG).show();
+            Intent settingsIntent = new Intent(
+                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse("package:" + getPackageName())
+            );
+            startActivityForResult(settingsIntent, INSTALL_PERMISSION_REQUEST);
+            return;
+        }
+
+        DownloadManager manager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+        if (manager == null) {
+            Toast.makeText(this, "No pudimos iniciar la actualización.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        DownloadManager.Request request = new DownloadManager.Request(Uri.parse(UPDATE_APK_URL))
+                .setTitle("Actualizando Estudiemos")
+                .setDescription("Descargando la versión más reciente")
+                .setMimeType("application/vnd.android.package-archive")
+                .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                .setAllowedOverMetered(true)
+                .setAllowedOverRoaming(false)
+                .setDestinationInExternalFilesDir(this, Environment.DIRECTORY_DOWNLOADS, "Estudiemos-actualizacion.apk");
+        try {
+            java.io.File previous = new java.io.File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "Estudiemos-actualizacion.apk");
+            if (previous.exists()) previous.delete();
+            updateDownloadId = manager.enqueue(request);
+            Toast.makeText(this, "Descargando la actualización dentro de Estudiemos...", Toast.LENGTH_LONG).show();
+        } catch (Exception error) {
+            Toast.makeText(this, "No pudimos descargar la actualización. Revisá tu conexión.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void openDownloadedUpdate(long downloadId) {
+        DownloadManager manager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+        Uri apkUri = manager == null ? null : manager.getUriForDownloadedFile(downloadId);
+        if (apkUri == null) {
+            Toast.makeText(this, "La descarga no pudo completarse.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        Intent installIntent = new Intent(Intent.ACTION_VIEW)
+                .setDataAndType(apkUri, "application/vnd.android.package-archive")
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+        try {
+            startActivity(installIntent);
+        } catch (Exception error) {
+            Toast.makeText(this, "Android no pudo abrir el instalador de la actualización.", Toast.LENGTH_LONG).show();
+        }
     }
 
     private static String initialUrl(Intent intent) {
@@ -389,6 +501,11 @@ public class MainActivity extends Activity {
         if (webView != null) {
             webView.stopLoading();
             webView.destroy();
+        }
+        if (updateDownloadReceiver != null) {
+            try { unregisterReceiver(updateDownloadReceiver); }
+            catch (Exception ignored) {}
+            updateDownloadReceiver = null;
         }
         super.onDestroy();
     }

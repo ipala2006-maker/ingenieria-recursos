@@ -169,6 +169,20 @@
     if (standaloneHost && !window.EstudiemosAccount?.getUser?.()) {
       content.insertAdjacentHTML("beforeend", '<button class="widget-connect" type="button" data-widget-account>Conectar cuenta</button>');
     }
+    syncRainmeterReminderState();
+  }
+
+  function syncRainmeterReminderState() {
+    if (!document.documentElement.classList.contains("rainmeter-widget") || !window.RainmeterAPI?.Bang) return;
+    const today = dateValue(new Date());
+    const streak = readStreak();
+    const minutes = Math.max(0, Math.floor(Number(streak?.days?.[today]) || 0));
+    try {
+      window.RainmeterAPI.Bang(
+        `[!WriteKeyValue Reminder TodayDate "${today}" "#@#ReminderState.inc"]` +
+        `[!WriteKeyValue Reminder TodayMinutes "${minutes}" "#@#ReminderState.inc"]`
+      );
+    } catch (_) {}
   }
 
   function refresh() {
