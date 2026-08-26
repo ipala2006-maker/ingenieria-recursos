@@ -289,7 +289,7 @@
     if (document.querySelector('script[src*="scripts/account.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/account.js?v=20260826-in-app-updates-2`;
+    script.src = `${rootPath}scripts/account.js?v=20260826-android-push-sync`;
     script.defer = true;
     document.head.appendChild(script);
   }

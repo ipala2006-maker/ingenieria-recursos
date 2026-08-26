@@ -27,7 +27,9 @@ final class WidgetSyncManager {
     private static final String KEY_PUBLIC_KEY = "supabase_public_key";
     private static final String KEY_USER_ID = "user_id";
     private static final String KEY_ACCESS_TOKEN = "access_token";
+    private static final String KEY_REFRESH_TOKEN = "refresh_token";
     private static final String KEY_EXPIRES_AT = "expires_at";
+    private static final String KEY_PUSH_TOKEN = "push_token";
     private static final int JOB_ID = 0x455357;
     private static final long PERIOD_MS = 15 * 60 * 1000L;
     private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor();
@@ -50,6 +52,7 @@ final class WidgetSyncManager {
         String publicKey = config.optString("publishableKey", "").trim();
         String userId = session.optString("userId", "").trim();
         String accessToken = session.optString("accessToken", "").trim();
+        String refreshToken = session.optString("refreshToken", "").trim();
         long expiresAt = Math.max(0, session.optLong("expiresAt", 0));
         if (url.isEmpty() || publicKey.isEmpty() || userId.isEmpty() || accessToken.isEmpty()) return;
 
@@ -61,6 +64,7 @@ final class WidgetSyncManager {
                 .putString(KEY_PUBLIC_KEY, publicKey)
                 .putString(KEY_USER_ID, userId)
                 .putString(KEY_ACCESS_TOKEN, accessToken)
+                .putString(KEY_REFRESH_TOKEN, refreshToken)
                 .putLong(KEY_EXPIRES_AT, expiresAt)
                 .apply();
         schedule(appContext);
@@ -107,9 +111,8 @@ final class WidgetSyncManager {
     }
 
     private static void synchronize(Context context) {
-        Session session = readSession(context);
+        Session session = ensureFreshSession(context);
         if (session == null) return;
-        if (session.expiresAt <= (System.currentTimeMillis() / 1000L) + 30L) return;
 
         Response stateResponse = get(session, "/rest/v1/user_states?select=state,updated_at&limit=1");
         if (stateResponse.code < 200 || stateResponse.code >= 300) return;
@@ -231,7 +234,87 @@ final class WidgetSyncManager {
         String userId = prefs.getString(KEY_USER_ID, "");
         String accessToken = prefs.getString(KEY_ACCESS_TOKEN, "");
         if (url.isEmpty() || publicKey.isEmpty() || userId.isEmpty() || accessToken.isEmpty()) return null;
-        return new Session(url, publicKey, userId, accessToken, prefs.getLong(KEY_EXPIRES_AT, 0));
+        return new Session(
+                url,
+                publicKey,
+                userId,
+                accessToken,
+                prefs.getString(KEY_REFRESH_TOKEN, ""),
+                prefs.getLong(KEY_EXPIRES_AT, 0)
+        );
+    }
+
+    private static Session ensureFreshSession(Context context) {
+        Session session = readSession(context);
+        if (session == null) return null;
+        long now = System.currentTimeMillis() / 1000L;
+        if (session.expiresAt > now + 90L) return session;
+        if (session.refreshToken.isEmpty()) return null;
+
+        JSONObject body = new JSONObject();
+        try {
+            body.put("refresh_token", session.refreshToken);
+        } catch (Exception ignored) {
+            return null;
+        }
+        Response response = request(
+                "POST",
+                session.url + "/auth/v1/token?grant_type=refresh_token",
+                session.publicKey,
+                "",
+                body.toString()
+        );
+        if (response.code < 200 || response.code >= 300) return null;
+        try {
+            JSONObject refreshed = new JSONObject(response.body);
+            String accessToken = refreshed.optString("access_token", "").trim();
+            String refreshToken = refreshed.optString("refresh_token", session.refreshToken).trim();
+            long expiresIn = Math.max(60L, refreshed.optLong("expires_in", 3600L));
+            if (accessToken.isEmpty() || refreshToken.isEmpty()) return null;
+            long expiresAt = now + expiresIn;
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                    .putString(KEY_ACCESS_TOKEN, accessToken)
+                    .putString(KEY_REFRESH_TOKEN, refreshToken)
+                    .putLong(KEY_EXPIRES_AT, expiresAt)
+                    .apply();
+            return new Session(
+                    session.url,
+                    session.publicKey,
+                    session.userId,
+                    accessToken,
+                    refreshToken,
+                    expiresAt
+            );
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    static void storePushToken(Context context, String token) {
+        String clean = token == null ? "" : token.trim();
+        if (clean.isEmpty()) return;
+        context.getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit()
+                .putString(KEY_PUSH_TOKEN, clean)
+                .apply();
+    }
+
+    static String getPushToken(Context context) {
+        return context.getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getString(KEY_PUSH_TOKEN, "");
+    }
+
+    static JSONObject getSessionForWeb(Context context) {
+        Session session = readSession(context.getApplicationContext());
+        if (session == null || session.refreshToken.isEmpty()) return null;
+        try {
+            return new JSONObject()
+                    .put("accessToken", session.accessToken)
+                    .put("refreshToken", session.refreshToken)
+                    .put("expiresAt", session.expiresAt);
+        } catch (Exception ignored) {
+            return null;
+        }
     }
 
     private static boolean hasSession(Context context) {
@@ -268,13 +351,22 @@ final class WidgetSyncManager {
         final String publicKey;
         final String userId;
         final String accessToken;
+        final String refreshToken;
         final long expiresAt;
 
-        Session(String url, String publicKey, String userId, String accessToken, long expiresAt) {
+        Session(
+                String url,
+                String publicKey,
+                String userId,
+                String accessToken,
+                String refreshToken,
+                long expiresAt
+        ) {
             this.url = url;
             this.publicKey = publicKey;
             this.userId = userId;
             this.accessToken = accessToken;
+            this.refreshToken = refreshToken;
             this.expiresAt = expiresAt;
         }
     }

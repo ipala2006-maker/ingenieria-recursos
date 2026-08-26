@@ -10,6 +10,7 @@
     "bandeja_agenda",
     "estudiemos_pomodoro_streak",
     "estudiemos_workspace_changed",
+    "estudiemos_android_devices",
     "estudiemos_theme"
   ];
   const LIST_KEYS = new Set(SYNC_KEYS.filter((key) => !["estudiemos_theme", "estudiemos_pomodoro_streak", "estudiemos_workspace_changed"].includes(key)));
@@ -26,6 +27,8 @@
   let configAvailable = false;
   let accountConfig = null;
   let accountInitializationComplete = false;
+  let pendingNativeSession = null;
+  let applyingNativeSession = false;
   let syncTimer = 0;
   let syncing = false;
   let syncRequested = false;
@@ -262,6 +265,8 @@
       if (document.visibilityState === "visible") scheduleRemoteRefresh();
     });
     window.addEventListener("estudiemos-android-ready", syncAccountWithAndroid);
+    window.addEventListener("estudiemos-android-native-session", applyNativeSession);
+    window.addEventListener("estudiemos-android-push-token", registerAndroidPushToken);
     window.addEventListener("pagehide", disconnectRealtime);
   }
 
@@ -271,7 +276,11 @@
       const response = await fetch(`${getRootPath()}api/account-config`, { cache: "no-store" });
       const config = await response.json().catch(() => ({}));
       if (!response.ok || !config.enabled || !config.url || !config.publishableKey) throw new Error("not-configured");
-      accountConfig = { url: config.url, publishableKey: config.publishableKey };
+      accountConfig = {
+        url: config.url,
+        publishableKey: config.publishableKey,
+        firebase: config.firebase || null
+      };
       stage = "library";
       await loadSupabaseLibrary();
       client = window.supabase.createClient(config.url, config.publishableKey, {
@@ -280,6 +289,14 @@
       configAvailable = true;
 
       stage = "session";
+      if (pendingNativeSession?.accessToken && pendingNativeSession?.refreshToken) {
+        applyingNativeSession = true;
+        await client.auth.setSession({
+          access_token: pendingNativeSession.accessToken,
+          refresh_token: pendingNativeSession.refreshToken
+        });
+        applyingNativeSession = false;
+      }
       const result = await client.auth.getSession();
       if (result.error) throw result.error;
       session = result.data.session;
@@ -516,6 +533,7 @@
     localStorage.setItem(LOCAL_CHANGED_KEY, String(Date.parse(updatedAt)));
     localStorage.setItem(DIRTY_KEY, "false");
     broadcastStateUpdate(userId, updatedAt);
+    notifyAndroidWidgets();
   }
 
   function captureLocalState() {
@@ -623,6 +641,23 @@
       reminderSlots[date] = Array.from(new Set([...left, ...right]));
     });
     merged.values[key] = JSON.stringify({ version: 2, days, carrySeconds, reminderSlots });
+
+    const devicesKey = "estudiemos_android_devices";
+    const devices = new Map();
+    [...(cloud.values[devicesKey] || []), ...(local.values[devicesKey] || [])].forEach((device) => {
+      const token = typeof device === "string" ? device : device?.token;
+      if (!token || typeof token !== "string") return;
+      const current = devices.get(token);
+      const candidate = typeof device === "string"
+        ? { token, platform: "android", updatedAt: 0 }
+        : { token, platform: "android", updatedAt: Math.max(0, Number(device.updatedAt) || 0) };
+      if (!current || candidate.updatedAt >= current.updatedAt) devices.set(token, candidate);
+    });
+    merged.values[devicesKey] = Array.from(devices.values()).slice(-8);
+    merged.changedAt[devicesKey] = Math.max(
+      Number(local.changedAt[devicesKey]) || 0,
+      Number(cloud.changedAt[devicesKey]) || 0
+    );
     return merged;
   }
 
@@ -912,6 +947,57 @@
     return Boolean(window.EstudiemosAndroid && typeof window.EstudiemosAndroid.postMessage === "function");
   }
 
+  async function applyNativeSession(event) {
+    const detail = event?.detail || {};
+    if (!detail.accessToken || !detail.refreshToken) return;
+    pendingNativeSession = detail;
+    if (!client || applyingNativeSession) return;
+    const current = (await client.auth.getSession()).data.session;
+    if (current?.access_token === detail.accessToken) return;
+    applyingNativeSession = true;
+    try {
+      await client.auth.setSession({
+        access_token: detail.accessToken,
+        refresh_token: detail.refreshToken
+      });
+    } catch (_) {
+      // The web session keeps working if Android sends an obsolete session once.
+    } finally {
+      applyingNativeSession = false;
+    }
+  }
+
+  function registerAndroidPushToken(event) {
+    const token = String(event?.detail?.token || "").trim();
+    if (!token) return;
+    const key = "estudiemos_android_devices";
+    let devices = [];
+    try {
+      const parsed = JSON.parse(localStorage.getItem(key) || "[]");
+      devices = Array.isArray(parsed) ? parsed : [];
+    } catch (_) {}
+    const now = Date.now();
+    const next = devices
+      .filter((device) => (typeof device === "string" ? device : device?.token) !== token)
+      .slice(-7);
+    next.push({ token, platform: "android", updatedAt: now });
+    localStorage.setItem(key, JSON.stringify(next));
+    window.dispatchEvent(new CustomEvent("estudiemos:data-change", { detail: { key } }));
+  }
+
+  async function notifyAndroidWidgets() {
+    if (!session?.access_token) return;
+    try {
+      await fetch(`${getRootPath()}api/widget-push`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        keepalive: true
+      });
+    } catch (_) {
+      // Realtime and periodic synchronization remain available as fallbacks.
+    }
+  }
+
   function syncAccountWithAndroid() {
     if (!accountInitializationComplete || !accountConfig || !hasAndroidBridge()) return;
     try {
@@ -928,6 +1014,7 @@
         session: {
           userId: session.user?.id || "",
           accessToken: session.access_token || "",
+          refreshToken: session.refresh_token || "",
           expiresAt: Math.max(0, Number(session.expires_at) || 0)
         }
       }));
@@ -951,13 +1038,8 @@
 
   async function openDesktopWidget(widget) {
     if (isWindowsDevice() && ["workspace", "inbox", "calendar", "pomodoro", "streak"].includes(widget)) {
-      const launcher = document.createElement("iframe");
-      launcher.hidden = true;
-      launcher.setAttribute("aria-hidden", "true");
-      launcher.src = `estudiemos-widgets://add?widget=${encodeURIComponent(widget)}`;
-      document.body.appendChild(launcher);
-      window.setTimeout(() => launcher.remove(), 1800);
-      setStatus("Windows abrirá el widget. Si pide permiso, elegí Abrir Estudiemos Widgets.", "success");
+      setStatus("Agregando el widget al escritorio...", "success");
+      window.location.assign(`estudiemos-widgets://add?widget=${encodeURIComponent(widget)}`);
       return;
     }
     const manager = window.EstudiemosDesktopWidgets;

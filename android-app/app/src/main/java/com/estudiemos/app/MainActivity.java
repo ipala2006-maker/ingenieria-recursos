@@ -35,6 +35,10 @@ import androidx.webkit.JavaScriptReplyProxy;
 import androidx.webkit.WebMessageCompat;
 import androidx.webkit.WebViewCompat;
 
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.FirebaseOptions;
+import com.google.firebase.messaging.FirebaseMessaging;
+
 import java.util.Collections;
 
 import org.json.JSONObject;
@@ -138,6 +142,7 @@ public class MainActivity extends Activity {
                 super.onPageFinished(view, url);
                 webReady = true;
                 notifyWebAppReady();
+                notifyNativeSessionToWeb();
                 sendNotificationStatusToWeb();
                 notifyPendingAgendaCompletions();
                 notifyPomodoroStateToWeb();
@@ -216,6 +221,7 @@ public class MainActivity extends Activity {
                 WorkspaceWidgetProvider.storeWorkspaceAndUpdate(this, message.getData());
             } else if ("account-native-sync".equals(type)) {
                 WidgetSyncManager.handleAccountMessage(this, payload);
+                configureFirebase(payload.optJSONObject("config"));
             } else if ("app-update".equals(type)) {
                 notifyWebUpdateStarted();
                 startAppUpdate();
@@ -230,6 +236,53 @@ public class MainActivity extends Activity {
                 "window.dispatchEvent(new CustomEvent('estudiemos-android-ready'));",
                 null
         );
+    }
+
+    private void notifyNativeSessionToWeb() {
+        if (!webReady || webView == null) return;
+        JSONObject nativeSession = WidgetSyncManager.getSessionForWeb(this);
+        if (nativeSession == null) return;
+        webView.evaluateJavascript(
+                "window.dispatchEvent(new CustomEvent('estudiemos-android-native-session',{detail:" +
+                        nativeSession.toString() + "}));",
+                null
+        );
+    }
+
+    private void configureFirebase(JSONObject config) {
+        JSONObject firebase = config == null ? null : config.optJSONObject("firebase");
+        if (firebase == null) return;
+        String apiKey = firebase.optString("apiKey", "").trim();
+        String applicationId = firebase.optString("applicationId", "").trim();
+        String projectId = firebase.optString("projectId", "").trim();
+        String senderId = firebase.optString("senderId", "").trim();
+        if (apiKey.isEmpty() || applicationId.isEmpty() || projectId.isEmpty() || senderId.isEmpty()) return;
+
+        try {
+            if (FirebaseApp.getApps(this).isEmpty()) {
+                FirebaseOptions options = new FirebaseOptions.Builder()
+                        .setApiKey(apiKey)
+                        .setApplicationId(applicationId)
+                        .setProjectId(projectId)
+                        .setGcmSenderId(senderId)
+                        .build();
+                FirebaseApp.initializeApp(this, options);
+            }
+            FirebaseMessaging.getInstance().getToken().addOnCompleteListener(task -> {
+                if (!task.isSuccessful() || task.getResult() == null) return;
+                String token = task.getResult().trim();
+                if (token.isEmpty()) return;
+                WidgetSyncManager.storePushToken(this, token);
+                if (!webReady || webView == null) return;
+                String detail = "{token:" + JSONObject.quote(token) + "}";
+                webView.evaluateJavascript(
+                        "window.dispatchEvent(new CustomEvent('estudiemos-android-push-token',{detail:" + detail + "}));",
+                        null
+                );
+            });
+        } catch (Exception ignored) {
+            // Periodic widget synchronization remains available if push cannot initialize.
+        }
     }
 
     private void notifyWebUpdateStarted() {
@@ -386,6 +439,7 @@ public class MainActivity extends Activity {
         }
         if (StreakReminderReceiver.isEnabled(this)) StreakReminderReceiver.scheduleNext(this);
         WidgetSyncManager.syncNow(this);
+        notifyNativeSessionToWeb();
         notifyPendingAgendaCompletions();
         notifyPomodoroStateToWeb();
     }

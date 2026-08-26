@@ -10,8 +10,8 @@ android {
         applicationId "com.estudiemos.app"
         minSdk 26
         targetSdk 35
-        versionCode 18
-        versionName "1.5.0"
+        versionCode 19
+        versionName "1.5.1"
     }
 
     signingConfigs {
@@ -42,4 +42,5 @@ android {
 
 dependencies {
     implementation "androidx.webkit:webkit:1.12.1"
+    implementation "com.google.firebase:firebase-messaging:25.1.2"
 }
