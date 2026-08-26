@@ -15,6 +15,8 @@ import android.os.Bundle;
 import android.view.WindowInsets;
 import android.view.ViewGroup;
 import android.webkit.WebResourceRequest;
+import android.webkit.ValueCallback;
+import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -36,12 +38,16 @@ public class MainActivity extends Activity {
     public static final String EXTRA_OPEN_AGENDA = "open_agenda";
     public static final String EXTRA_AGENDA_DATE = "agenda_date";
     public static final String EXTRA_OPEN_POMODORO = "open_pomodoro";
+    public static final String EXTRA_WORKSPACE_ITEM_ID = "workspace_item_id";
+    public static final String EXTRA_WORKSPACE_ITEM_KIND = "workspace_item_kind";
+    private static final int FILE_CHOOSER_REQUEST = 4202;
 
     private WebView webView;
     private boolean openAgendaRequested;
     private String agendaDateRequested;
     private boolean openPomodoroRequested;
     private boolean webReady;
+    private ValueCallback<Uri[]> fileChooserCallback;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -70,7 +76,7 @@ public class MainActivity extends Activity {
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setAllowFileAccess(false);
-        settings.setAllowContentAccess(false);
+        settings.setAllowContentAccess(true);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setMediaPlaybackRequiresUserGesture(true);
 
@@ -81,6 +87,27 @@ public class MainActivity extends Activity {
                 Collections.singleton(APP_ORIGIN),
                 this::handleWebMessage
         );
+
+        webView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onShowFileChooser(
+                    WebView webView,
+                    ValueCallback<Uri[]> callback,
+                    WebChromeClient.FileChooserParams fileChooserParams
+            ) {
+                if (fileChooserCallback != null) fileChooserCallback.onReceiveValue(null);
+                fileChooserCallback = callback;
+                try {
+                    Intent chooser = fileChooserParams.createIntent();
+                    startActivityForResult(chooser, FILE_CHOOSER_REQUEST);
+                    return true;
+                } catch (Exception error) {
+                    fileChooserCallback = null;
+                    Toast.makeText(MainActivity.this, "No pudimos abrir los archivos del dispositivo.", Toast.LENGTH_LONG).show();
+                    return false;
+                }
+            }
+        });
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
@@ -106,7 +133,7 @@ public class MainActivity extends Activity {
             }
         });
 
-        if (savedInstanceState == null) webView.loadUrl(APP_URL);
+        if (savedInstanceState == null) webView.loadUrl(initialUrl(getIntent()));
         else webView.restoreState(savedInstanceState);
     }
 
@@ -172,6 +199,8 @@ public class MainActivity extends Activity {
                 sendNotificationStatusToWeb();
             } else if ("widget-pin".equals(type)) {
                 requestWidgetPin(payload.optString("widget"));
+            } else if ("workspace-sync".equals(type)) {
+                WorkspaceWidgetProvider.storeWorkspaceAndUpdate(this, message.getData());
             }
         } catch (Exception ignored) {
             // Invalid web messages cannot modify native data.
@@ -276,6 +305,7 @@ public class MainActivity extends Activity {
         else if ("calendar".equals(widget)) providerClass = CalendarWidgetProvider.class;
         else if ("streak".equals(widget)) providerClass = StreakWidgetProvider.class;
         else if ("pomodoro".equals(widget)) providerClass = PomodoroWidgetProvider.class;
+        else if ("workspace".equals(widget)) providerClass = WorkspaceWidgetProvider.class;
         else return;
 
         AppWidgetManager manager = AppWidgetManager.getInstance(this);
@@ -293,8 +323,11 @@ public class MainActivity extends Activity {
         openAgendaRequested = intent.getBooleanExtra(EXTRA_OPEN_AGENDA, false);
         agendaDateRequested = intent.getStringExtra(EXTRA_AGENDA_DATE);
         openPomodoroRequested = intent.getBooleanExtra(EXTRA_OPEN_POMODORO, false);
+        String workspaceItemId = intent.getStringExtra(EXTRA_WORKSPACE_ITEM_ID);
         if (intent.getData() != null && "estudiemos".equals(intent.getData().getScheme())) {
             webView.loadUrl(APP_URL);
+        } else if (workspaceItemId != null && !workspaceItemId.trim().isEmpty()) {
+            webView.loadUrl(workspaceUrl(workspaceItemId, intent.getStringExtra(EXTRA_WORKSPACE_ITEM_KIND)));
         }
         openAgendaIfRequested();
         openPomodoroIfRequested();
@@ -313,6 +346,30 @@ public class MainActivity extends Activity {
         super.onSaveInstanceState(outState);
     }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != FILE_CHOOSER_REQUEST || fileChooserCallback == null) return;
+        Uri[] result = resultCode == RESULT_OK ? WebChromeClient.FileChooserParams.parseResult(resultCode, data) : null;
+        fileChooserCallback.onReceiveValue(result);
+        fileChooserCallback = null;
+    }
+
+    private static String initialUrl(Intent intent) {
+        if (intent == null) return APP_URL;
+        String itemId = intent.getStringExtra(EXTRA_WORKSPACE_ITEM_ID);
+        if (itemId == null || itemId.trim().isEmpty()) return APP_URL;
+        return workspaceUrl(itemId, intent.getStringExtra(EXTRA_WORKSPACE_ITEM_KIND));
+    }
+
+    private static String workspaceUrl(String itemId, String kind) {
+        return Uri.parse(APP_URL).buildUpon()
+                .appendQueryParameter("workspaceItem", itemId == null ? "" : itemId)
+                .appendQueryParameter("workspaceKind", "file".equals(kind) ? "file" : "folder")
+                .build()
+                .toString();
+    }
+
     @SuppressWarnings("deprecation")
     @Override
     public void onBackPressed() {
@@ -322,6 +379,10 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (fileChooserCallback != null) {
+            fileChooserCallback.onReceiveValue(null);
+            fileChooserCallback = null;
+        }
         if (webView != null) {
             webView.stopLoading();
             webView.destroy();

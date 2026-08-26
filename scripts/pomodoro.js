@@ -378,7 +378,9 @@
     });
     window.addEventListener("estudiemos:pomodoro-widget-action", () => {
       state = loadState();
+      flushStudyCredit();
       reconcileTimer(false);
+      saveState();
       render();
       startTickerIfNeeded();
       syncWakeLock();
@@ -390,7 +392,9 @@
         localStorage.setItem(STORAGE_KEY, JSON.stringify(incoming));
       } catch (_) {}
       state = loadState();
+      flushStudyCredit();
       reconcileTimer(false);
+      saveState();
       render();
       startTickerIfNeeded();
       syncWakeLock();
@@ -413,6 +417,11 @@
       syncWakeLock();
       renderNotificationAlert();
       maybeShowStreakReminder();
+    });
+    window.addEventListener("pagehide", () => {
+      captureStudyProgress();
+      flushStudyCredit();
+      saveState();
     });
     window.addEventListener("focus", () => {
       renderNotificationAlert();
@@ -1097,9 +1106,12 @@
     prepareAudio();
     reconcileTimer(true);
     if (state.running) {
+      captureStudyProgress();
+      flushStudyCredit();
       state.remaining = remainingSeconds();
       state.running = false;
       state.endAt = 0;
+      state.studyCreditAt = 0;
       stopTicker();
     } else {
       if (state.remaining <= 0) state.remaining = durationSeconds(state.phase);
@@ -1110,6 +1122,7 @@
       closeConfigPanel();
       state.running = true;
       state.endAt = safeEndTime(state.remaining);
+      state.studyCreditAt = state.phase === "study" ? Date.now() : 0;
       startTickerIfNeeded();
     }
     saveState();
@@ -1118,10 +1131,13 @@
   }
 
   function resetTimer() {
+    captureStudyProgress();
+    flushStudyCredit();
     stopAlarm();
     stopTicker();
     state.running = false;
     state.endAt = 0;
+    state.studyCreditAt = 0;
     state.remaining = durationSeconds(state.phase);
     saveState();
     syncWakeLock();
@@ -1129,6 +1145,8 @@
   }
 
   function advancePhase(completed, shouldNotify = true) {
+    captureStudyProgress();
+    flushStudyCredit();
     if (!completed) stopAlarm();
     const previousPhase = state.phase;
     stopTicker();
@@ -1136,7 +1154,6 @@
     if (completed && previousPhase === "study") {
       normalizeDailyCount();
       state.completedToday += 1;
-      recordStudyPresence(durationSeconds("study") / 60);
     }
 
     if (previousPhase === "study") {
@@ -1148,12 +1165,14 @@
 
     state.running = false;
     state.endAt = 0;
+    state.studyCreditAt = 0;
     state.remaining = durationSeconds(state.phase);
 
     if (completed && shouldNotify) notifyCompletion(previousPhase);
     if (completed && state.autoStart && state.remaining > 0) {
       state.running = true;
       state.endAt = safeEndTime(state.remaining);
+      state.studyCreditAt = state.phase === "study" ? Date.now() : 0;
       startTickerIfNeeded();
     }
 
@@ -1174,6 +1193,11 @@
   function startTickerIfNeeded() {
     if (!state.running || timerId) return;
     timerId = window.setInterval(() => {
+      captureStudyProgress();
+      if (state.pendingStudySeconds >= 60) {
+        flushStudyCredit();
+        saveState();
+      }
       const remaining = remainingSeconds();
       if (remaining <= 0) {
         state.remaining = 0;
@@ -1804,9 +1828,17 @@
         if (/^\d{4}-\d{2}-\d{2}$/.test(key) && minutes > 0) days[key] = minutes;
       });
     }
+    const carrySeconds = {};
+    if (saved.carrySeconds && typeof saved.carrySeconds === "object") {
+      Object.entries(saved.carrySeconds).forEach(([key, value]) => {
+        const seconds = Math.min(59, Math.max(0, Math.floor(Number(value) || 0)));
+        if (/^\d{4}-\d{2}-\d{2}$/.test(key) && seconds > 0) carrySeconds[key] = seconds;
+      });
+    }
     return {
       version: 2,
       days,
+      carrySeconds,
       reminderSlots: saved.reminderSlots && typeof saved.reminderSlots === "object" ? saved.reminderSlots : {}
     };
   }
@@ -1828,6 +1860,37 @@
     const today = dateKey(0);
     streakState.days[today] = (streakState.days[today] || 0) + amount;
     saveStreakState();
+  }
+
+  function recordStudyPresenceSeconds(seconds) {
+    const amount = Math.max(0, Math.floor(Number(seconds) || 0));
+    if (!amount) return;
+    const today = dateKey(0);
+    const previousCarry = Math.max(0, Math.floor(Number(streakState.carrySeconds?.[today]) || 0));
+    const totalSeconds = previousCarry + amount;
+    const minutes = Math.floor(totalSeconds / 60);
+    streakState.carrySeconds ||= {};
+    streakState.carrySeconds[today] = totalSeconds % 60;
+    if (minutes) streakState.days[today] = (streakState.days[today] || 0) + minutes;
+    saveStreakState();
+  }
+
+  function captureStudyProgress(now = Date.now()) {
+    if (!state.running || state.phase !== "study") return 0;
+    const startedAt = Number(state.studyCreditAt) || now;
+    const cappedNow = state.endAt ? Math.min(now, Number(state.endAt)) : now;
+    const elapsed = Math.max(0, Math.floor((cappedNow - startedAt) / 1000));
+    if (!elapsed) return 0;
+    state.pendingStudySeconds = Math.max(0, Math.floor(Number(state.pendingStudySeconds) || 0)) + elapsed;
+    state.studyCreditAt = startedAt + elapsed * 1000;
+    return elapsed;
+  }
+
+  function flushStudyCredit() {
+    const seconds = Math.max(0, Math.floor(Number(state.pendingStudySeconds) || 0));
+    if (!seconds) return;
+    state.pendingStudySeconds = 0;
+    recordStudyPresenceSeconds(seconds);
   }
 
   function streakSummary() {
@@ -2082,6 +2145,9 @@
     const oldest = dateKey(-730);
     Object.keys(streakState.days).forEach((key) => {
       if (key < oldest) delete streakState.days[key];
+    });
+    Object.keys(streakState.carrySeconds || {}).forEach((key) => {
+      if (key < oldest) delete streakState.carrySeconds[key];
     });
   }
 
@@ -2491,6 +2557,8 @@
       alarmVolume: Math.max(0.15, volumeNumber(saved.alarmVolume, 0.65, 2)),
       completedDate: saved.completedDate || todayKey(),
       completedToday: nonNegativeInteger(saved.completedToday, 0),
+      studyCreditAt: Number(saved.studyCreditAt) || (saved.running && phase === "study" ? Number(saved.updatedAt) || Date.now() : 0),
+      pendingStudySeconds: nonNegativeInteger(saved.pendingStudySeconds, 0),
       updatedAt: Number(saved.updatedAt) || Date.now()
     };
   }

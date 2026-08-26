@@ -12,7 +12,7 @@ Sitio público: [https://estudiemos-app.vercel.app](https://estudiemos-app.verce
 - `scripts/`: espacio personal, Inbox, calendario, cuenta, temporizador y navegación.
 - `styles/`: estilos visuales.
 - `pdfs/`: material descargable.
-- `android-app/`: soporte Android para los widgets nativos de Inbox y calendario.
+- `android-app/`: aplicación Android con carga de archivos y widgets nativos.
 
 El proyecto usa HTML, CSS y JavaScript sin framework ni dependencias. Vercel publica los archivos estáticos y ejecuta funciones pequeñas para los asistentes inteligentes.
 
@@ -114,12 +114,13 @@ El archivo privado de Google Sheets puede mostrar un registro de cuentas en una 
 
 ## Widgets de Android
 
-La PWA instalada desde Chrome sigue siendo la aplicación principal. Como Android no permite que una PWA cree widgets del sistema por sí sola, la carpeta `android-app/` contiene un complemento nativo liviano que habilita cuatro widgets:
+La PWA instalada desde Chrome sigue siendo la aplicación principal. Como Android no permite que una PWA cree widgets del sistema por sí sola, la carpeta `android-app/` contiene un complemento nativo liviano que habilita cinco widgets:
 
 - **Inbox:** muestra únicamente tareas, parciales, exámenes, entregas y trabajos pendientes, incluso cuando no tienen fecha.
 - **Calendario académico:** abre en la semana actual, muestra las anotaciones de cada día y permite alternar a vista mensual.
 - **Temporizador Pomodoro:** muestra el bloque y el tiempo actual, y permite empezar, pausar o reiniciar sin abrir la aplicación.
-- **Racha de estudio:** registra presencia al completar 25 minutos de Pomodoro, muestra la actividad de los últimos siete días y abre el temporizador al tocarlo.
+- **Racha de estudio:** acumula los minutos reales del Pomodoro, registra presencia al llegar a 25 minutos y conserva la actividad de días anteriores.
+- **Mi espacio:** muestra las carpetas y archivos principales en una lista y abre directamente el elemento elegido.
 
 Cada cambio relacionado con Android genera un APK de prueba en GitHub:
 
@@ -127,10 +128,9 @@ Cada cambio relacionado con Android genera un APK de prueba en GitHub:
 2. Entrar en la ejecución **Build Android app** más reciente.
 3. Descargar el archivo **Estudiemos-Android** en la sección de artefactos.
 4. Descomprimirlo e instalar `app-debug.apk` en Android.
-5. Abrir el perfil dentro de la aplicación y, en **Widgets de Android**, elegir **Inbox**, **Calendario**, **Pomodoro** o **Racha**. Android mostrará la confirmación para colocarlo en la pantalla de inicio.
+5. Abrir el perfil dentro de la aplicación y, en **Widgets de Android**, elegir **Mi espacio**, **Inbox**, **Calendario**, **Pomodoro** o **Racha**. Android mostrará la confirmación para colocarlo en la pantalla de inicio.
    Si el teléfono no admite esa confirmación directa, mantener presionada la pantalla de inicio, elegir **Widgets** y buscar **Estudiemos**.
-6. Abrir Estudiemos desde Chrome o desde la PWA instalada.
-7. Entrar en Inbox y tocar **Widgets** cada vez que se quieran enviar Inbox, el calendario y la racha desde la PWA a los widgets del teléfono.
+6. Abrir Estudiemos e iniciar sesión una vez. Los widgets se actualizan automáticamente con la misma cuenta.
 
 Los datos se copian localmente entre la PWA y los widgets. La racha también se sincroniza entre dispositivos cuando el usuario inició sesión. Desde la configuración del Pomodoro se puede activar un único recordatorio diario a las 20:00; nunca se envía si la presencia del día ya está completa. Los cambios visuales de la web llegan sin reinstalar; los cambios del código Android requieren instalar un APK nuevo.
 
@@ -138,9 +138,9 @@ El widget **Inbox** usa una lista desplazable: muestra todas las tareas pendient
 
 ## Widgets de escritorio
 
-En Chrome y Edge para computadora, el perfil incluye **Widgets de escritorio**. Inbox, calendario, Pomodoro y racha se abren en una ventana compacta ajustable que permanece encima de las demás ventanas mientras el navegador está abierto. Comparten los datos de la cuenta y se puede cambiar de vista desde la misma ventana.
+En Chrome y Edge para computadora, el perfil incluye **Widgets de escritorio**. Mi espacio, Inbox, calendario, Pomodoro y racha se abren en una ventana compacta ajustable que permanece encima de las demás ventanas mientras el navegador está abierto. Comparten los datos de la cuenta y se puede cambiar de vista desde la misma ventana.
 
-En Windows también aparece **Agregar al escritorio**. Ese botón descarga `Estudiemos-Para-Windows.exe`, que solicita una sola confirmación de Windows, instala Rainmeter oficial si hace falta, agrega los cuatro widgets y deja su inicio automático configurado. Cada widget queda aislado de la app y se puede redimensionar arrastrando su esquina inferior derecha. El paquete `.rmskin` se conserva como alternativa manual.
+En Windows también aparece **Agregar al escritorio**. Ese botón descarga `Estudiemos-Para-Windows.exe`, que solicita una sola confirmación de Windows, instala Rainmeter oficial si hace falta, agrega los cinco widgets (Mi espacio, Inbox, Calendario, Pomodoro y Racha) y deja su inicio automático configurado. Cada widget queda aislado de la app y se puede redimensionar arrastrando su esquina inferior derecha. El paquete `.rmskin` se conserva como alternativa manual.
 
 Windows 11 también está preparado con tres widgets nativos para su panel de Widgets:
 

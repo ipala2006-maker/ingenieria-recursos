@@ -8,6 +8,8 @@ on:
       - "android-app/**"
       - "scripts/bandeja.js"
       - "scripts/pomodoro.js"
+      - "scripts/workspace.js"
+      - "scripts/account.js"
       - ".github/workflows/android-app.yml"
 
 permissions:

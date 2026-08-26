@@ -23,6 +23,12 @@
         if (/^\d{4}-\d{2}-\d{2}$/.test(date)) page.searchParams.set("date", date);
       } else if (target === "pomodoro") {
         page.searchParams.set("pomodoro", "1");
+      } else if (target === "workspace") {
+        var item = launch.searchParams.get("item") || "";
+        if (/^[0-9a-f-]{20,}$/i.test(item)) {
+          page.searchParams.set("workspaceItem", item);
+          page.searchParams.set("workspaceKind", launch.searchParams.get("kind") === "file" ? "file" : "folder");
+        }
       }
 
       history.replaceState(history.state, "", page.pathname + page.search + page.hash);

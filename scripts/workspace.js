@@ -136,6 +136,13 @@
       }
       if (nextUser.id !== previousId) await loadItems();
     });
+    window.addEventListener("estudiemos-android-ready", syncWorkspaceWithAndroid);
+    window.addEventListener("estudiemos:open-workspace-item", (event) => {
+      const item = getItem(event.detail?.id);
+      if (!item) return;
+      if (item.kind === "folder") openFolder(item.id);
+      else openItem(item.id);
+    });
 
     window.addEventListener("popstate", (event) => {
       const folderId = typeof event.state?.workspaceFolderId === "string"
@@ -190,6 +197,7 @@
     if (state.currentFolderId && !getItem(state.currentFolderId)) state.currentFolderId = null;
     render();
     notifyWorkspaceUpdate();
+    openRequestedWorkspaceItem();
   }
 
   function render() {
@@ -405,6 +413,38 @@
     window.dispatchEvent(new CustomEvent("estudiemos:workspace-update", {
       detail: { user: Boolean(state.user), folders, files }
     }));
+    syncWorkspaceWithAndroid();
+  }
+
+  function syncWorkspaceWithAndroid() {
+    try {
+      if (!window.EstudiemosAndroid || typeof window.EstudiemosAndroid.postMessage !== "function") return;
+      window.EstudiemosAndroid.postMessage(JSON.stringify({
+        type: "workspace-sync",
+        items: state.items.map((item) => ({
+          id: item.id,
+          parentId: item.parent_id || null,
+          kind: item.kind,
+          name: item.name,
+          mimeType: item.mime_type || "",
+          sizeBytes: Math.max(0, Number(item.size_bytes) || 0),
+          updatedAt: item.updated_at || ""
+        }))
+      }));
+    } catch (_) {}
+  }
+
+  function openRequestedWorkspaceItem() {
+    const url = new URL(location.href);
+    const itemId = url.searchParams.get("workspaceItem") || "";
+    if (!itemId) return;
+    const item = getItem(itemId);
+    url.searchParams.delete("workspaceItem");
+    url.searchParams.delete("workspaceKind");
+    history.replaceState(history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    if (!item) return setStatus("Ese elemento ya no está disponible.", "error");
+    if (item.kind === "folder") openFolder(item.id, { history: false });
+    else openItem(item.id);
   }
 
   async function openItem(id) {
@@ -414,7 +454,8 @@
     setStatus("Abriendo archivo...");
     const result = await state.client.storage.from(BUCKET).createSignedUrl(item.storage_path, 120);
     if (result.error || !result.data?.signedUrl) return setStatus("No pudimos abrir este archivo.", "error");
-    window.open(result.data.signedUrl, "_blank", "noopener,noreferrer");
+    if (window.EstudiemosAndroid) location.href = result.data.signedUrl;
+    else window.open(result.data.signedUrl, "_blank", "noopener,noreferrer");
     setStatus("");
   }
 

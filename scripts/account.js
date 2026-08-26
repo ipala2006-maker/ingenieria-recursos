@@ -165,6 +165,7 @@
           <strong>Widgets de Android</strong>
           <small>Elegí cuál querés agregar a la pantalla de inicio.</small>
           <div>
+            <button class="account-secondary" type="button" data-account-widget="workspace">Mi espacio</button>
             <button class="account-secondary" type="button" data-account-widget="agenda">Inbox</button>
             <button class="account-secondary" type="button" data-account-widget="calendar">Calendario</button>
             <button class="account-secondary" type="button" data-account-widget="pomodoro">Pomodoro</button>
@@ -176,6 +177,7 @@
           <strong>Widgets de escritorio</strong>
           <small>Abrilos en una ventana compacta o instalalos fijos en el escritorio de Windows.</small>
           <div>
+            <button class="account-secondary" type="button" data-account-desktop-widget="workspace">Mi espacio</button>
             <button class="account-secondary" type="button" data-account-desktop-widget="inbox">Inbox</button>
             <button class="account-secondary" type="button" data-account-desktop-widget="calendar">Calendario</button>
             <button class="account-secondary" type="button" data-account-desktop-widget="pomodoro">Pomodoro</button>
@@ -426,21 +428,27 @@
       const localChangedAt = Number(localStorage.getItem(LOCAL_CHANGED_KEY) || 0);
       const cloudChangedAt = result.data?.updated_at ? Date.parse(result.data.updated_at) : 0;
       const localDirty = localStorage.getItem(DIRTY_KEY) === "true";
+      const cloudState = result.data ? normalizeAccountState(result.data.state) : null;
 
       if (linkedUser !== userId) {
-        const accountState = result.data
-          ? normalizeAccountState(result.data.state)
-          : createEmptyAccountState();
+        const accountState = cloudState || createEmptyAccountState();
         applyCloudState(accountState);
         if (!result.data) await uploadState(userId, accountState);
       } else if (!result.data) {
         await uploadState(userId, localState);
       } else if (localDirty && localChangedAt > cloudChangedAt) {
-        await uploadState(userId, localState);
+        const mergedState = mergeStreakHistory(localState, cloudState);
+        applyCloudState(mergedState);
+        await uploadState(userId, mergedState);
       } else {
-        applyCloudState(result.data.state || {});
-        localStorage.setItem(LOCAL_CHANGED_KEY, String(cloudChangedAt || Date.now()));
-        localStorage.setItem(DIRTY_KEY, "false");
+        const mergedState = mergeStreakHistory(cloudState, localState);
+        applyCloudState(mergedState);
+        if (JSON.stringify(mergedState) !== JSON.stringify(cloudState)) {
+          await uploadState(userId, mergedState);
+        } else {
+          localStorage.setItem(LOCAL_CHANGED_KEY, String(cloudChangedAt || Date.now()));
+          localStorage.setItem(DIRTY_KEY, "false");
+        }
       }
 
       localStorage.setItem(LINKED_USER_KEY, userId);
@@ -530,6 +538,47 @@
       }
     });
     return empty;
+  }
+
+  function mergeStreakHistory(preferredState, secondaryState) {
+    const preferred = normalizeAccountState(preferredState);
+    const secondary = normalizeAccountState(secondaryState);
+    const key = "estudiemos_pomodoro_streak";
+    const primaryStreak = parseObject(preferred.values[key]);
+    const secondaryStreak = parseObject(secondary.values[key]);
+    const days = mergeNumericMap(primaryStreak.days, secondaryStreak.days);
+    const carrySeconds = mergeNumericMap(primaryStreak.carrySeconds, secondaryStreak.carrySeconds, 59);
+    const reminderSlots = { ...(secondaryStreak.reminderSlots || {}), ...(primaryStreak.reminderSlots || {}) };
+    Object.keys(reminderSlots).forEach((date) => {
+      const left = Array.isArray(primaryStreak.reminderSlots?.[date]) ? primaryStreak.reminderSlots[date] : [];
+      const right = Array.isArray(secondaryStreak.reminderSlots?.[date]) ? secondaryStreak.reminderSlots[date] : [];
+      reminderSlots[date] = Array.from(new Set([...left, ...right]));
+    });
+    preferred.values[key] = JSON.stringify({ version: 2, days, carrySeconds, reminderSlots });
+    return preferred;
+  }
+
+  function mergeNumericMap(primary, secondary, maximum = Number.MAX_SAFE_INTEGER) {
+    const result = {};
+    const keys = new Set([
+      ...Object.keys(primary && typeof primary === "object" ? primary : {}),
+      ...Object.keys(secondary && typeof secondary === "object" ? secondary : {})
+    ]);
+    keys.forEach((key) => {
+      const value = Math.min(maximum, Math.max(0, Number(primary?.[key]) || 0, Number(secondary?.[key]) || 0));
+      if (value > 0) result[key] = Math.floor(value);
+    });
+    return result;
+  }
+
+  function parseObject(value) {
+    if (value && typeof value === "object") return value;
+    try {
+      const parsed = JSON.parse(String(value || "{}"));
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch (_) {
+      return {};
+    }
   }
 
   function clearLocalAccountData() {
@@ -778,6 +827,13 @@
     const button = document.querySelector("[data-account-update]");
     const label = document.querySelector("[data-account-update-label]");
     if (!button || button.disabled) return;
+
+    if (window.EstudiemosAndroid) {
+      const apkUrl = "https://github.com/ipala2006-maker/ingenieria-recursos/releases/download/android-latest/Estudiemos-Android.apk";
+      setStatus("Abriendo la última versión para Android...", "success");
+      window.setTimeout(() => location.assign(apkUrl), 120);
+      return;
+    }
 
     button.disabled = true;
     if (label) label.textContent = "Buscando actualización...";

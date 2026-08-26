@@ -9,4 +9,6 @@
     <string name="streak_widget_description">Tu racha de Pomodoro y la actividad de los últimos siete días.</string>
     <string name="pomodoro_widget_name">Temporizador Pomodoro</string>
     <string name="pomodoro_widget_description">Iniciá, pausá y reiniciá tu sesión desde la pantalla de inicio.</string>
+    <string name="workspace_widget_name">Mi espacio</string>
+    <string name="workspace_widget_description">Tus carpetas y archivos personales en una lista rápida.</string>
 </resources>

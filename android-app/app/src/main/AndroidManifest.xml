@@ -97,6 +97,18 @@
         </receiver>
 
         <receiver
+            android:name=".WorkspaceWidgetProvider"
+            android:label="@string/workspace_widget_name"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/workspace_widget_info" />
+        </receiver>
+
+        <receiver
             android:name=".StreakReminderReceiver"
             android:exported="false">
             <intent-filter>
@@ -112,6 +124,11 @@
 
         <service
             android:name=".CalendarWidgetService"
+            android:exported="false"
+            android:permission="android.permission.BIND_REMOTEVIEWS" />
+
+        <service
+            android:name=".WorkspaceWidgetService"
             android:exported="false"
             android:permission="android.permission.BIND_REMOTEVIEWS" />
     </application>

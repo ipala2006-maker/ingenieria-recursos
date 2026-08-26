@@ -243,7 +243,7 @@
     if (document.querySelector('script[src*="scripts/pomodoro.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/pomodoro.js?v=20260824-week-pomodoro`;
+    script.src = `${rootPath}scripts/pomodoro.js?v=20260826-streak-sync`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -289,7 +289,7 @@
     if (document.querySelector('script[src*="scripts/account.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/account.js?v=20260825-whatsapp-link`;
+    script.src = `${rootPath}scripts/account.js?v=20260826-streak-sync`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -298,7 +298,7 @@
     if (document.querySelector('script[src*="scripts/desktop-widgets.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/desktop-widgets.js?v=20260825-app-links`;
+    script.src = `${rootPath}scripts/desktop-widgets.js?v=20260826-workspace-widget`;
     script.async = false;
     document.head.appendChild(script);
   }

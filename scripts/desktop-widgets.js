@@ -14,7 +14,9 @@
     calendarView: localStorage.getItem(CALENDAR_VIEW_KEY) === "month" ? "month" : "week",
     widgetWindow: null,
     hostedWidget: false,
-    refreshTimer: null
+    refreshTimer: null,
+    workspaceItems: [],
+    workspaceLoading: false
   };
   let nativeSyncTimer = null;
 
@@ -26,15 +28,16 @@
   window.addEventListener("storage", refresh);
   window.addEventListener("estudiemos:data-change", refreshAndSyncNative);
   window.addEventListener("estudiemos:cloud-restored", refreshAndSyncNative);
-  window.addEventListener("estudiemos:account-change", refresh);
+  window.addEventListener("estudiemos:account-change", loadWorkspaceItems);
   window.addEventListener("estudiemos:theme-change", refresh);
   window.addEventListener("load", scheduleNativeWindowsSync, { once: true });
   scheduleNativeWindowsSync();
   if (standaloneHost) mountStandalone();
+  window.EstudiemosAccount?.whenReady?.().then(loadWorkspaceItems).catch(() => {});
 
   async function open(view = "inbox") {
     if (!isDesktopDevice()) return false;
-    state.view = ["inbox", "calendar", "streak", "pomodoro"].includes(view) ? view : "inbox";
+    state.view = ["workspace", "inbox", "calendar", "streak", "pomodoro"].includes(view) ? view : "inbox";
     let pictureInPicture = false;
 
     if (state.widgetWindow && !state.widgetWindow.closed) {
@@ -133,7 +136,8 @@
     });
     const content = doc.getElementById("widgetContent");
     if (!content) return;
-    if (state.view === "calendar") content.innerHTML = calendarMarkup();
+    if (state.view === "workspace") content.innerHTML = workspaceMarkup();
+    else if (state.view === "calendar") content.innerHTML = calendarMarkup();
     else if (state.view === "pomodoro") content.innerHTML = pomodoroMarkup();
     else if (state.view === "streak") content.innerHTML = streakMarkup();
     else content.innerHTML = inboxMarkup();
@@ -219,6 +223,23 @@
       return;
     }
 
+    const workspaceItem = event.target.closest("[data-widget-workspace-item]");
+    if (workspaceItem) {
+      const id = workspaceItem.dataset.widgetWorkspaceItem;
+      const item = state.workspaceItems.find((entry) => entry.id === id);
+      if (!item) return;
+      if (standaloneHost) return openMainApp(`?workspaceItem=${encodeURIComponent(item.id)}&workspaceKind=${encodeURIComponent(item.kind)}`);
+      window.focus();
+      window.dispatchEvent(new CustomEvent("estudiemos:open-workspace-item", { detail: { id: item.id } }));
+      return;
+    }
+
+    if (event.target.closest("[data-widget-open-workspace]")) {
+      if (standaloneHost) return openMainApp("");
+      window.focus();
+      return;
+    }
+
     const day = event.target.closest("[data-widget-date]");
     if (day) {
       if (standaloneHost) return openMainApp(`?agenda=1&date=${encodeURIComponent(day.dataset.widgetDate)}`);
@@ -273,6 +294,51 @@
             </label>`).join("") : '<p class="empty">No tenés tareas pendientes.</p>'}
         </div>
       </section>`;
+  }
+
+  function workspaceMarkup() {
+    const items = state.workspaceItems.filter((item) => !item.parent_id).sort((a, b) => {
+      if (a.kind !== b.kind) return a.kind === "folder" ? -1 : 1;
+      return String(a.name).localeCompare(String(b.name), "es", { sensitivity: "base" });
+    });
+    return `
+      <section class="widget-section widget-workspace">
+        <div class="section-head"><div><span>ARCHIVOS PERSONALES</span><h1>Mi espacio</h1></div><button data-widget-open-workspace>Abrir</button></div>
+        <div class="workspace-widget-list">
+          ${state.workspaceLoading ? '<p class="empty">Actualizando tu espacio...</p>' : items.length ? items.map((item) => `
+            <button class="workspace-widget-row" type="button" data-widget-workspace-item="${escapeHtml(item.id)}">
+              <span class="workspace-widget-icon">${item.kind === "folder" ? folderIcon() : fileIcon()}</span>
+              <span><strong>${escapeHtml(item.name)}</strong><small>${item.kind === "folder" ? "Carpeta" : formatFileSize(item.size_bytes)}</small></span>
+              <b aria-hidden="true">›</b>
+            </button>`).join("") : '<p class="empty">Todavía no hay carpetas ni archivos.</p>'}
+        </div>
+      </section>`;
+  }
+
+  async function loadWorkspaceItems() {
+    const account = window.EstudiemosAccount;
+    const client = account?.getClient?.();
+    const user = account?.getUser?.();
+    if (!client || !user) {
+      state.workspaceItems = [];
+      state.workspaceLoading = false;
+      refresh();
+      return;
+    }
+    state.workspaceLoading = true;
+    refresh();
+    try {
+      const result = await client.from("workspace_items")
+        .select("id,parent_id,kind,name,mime_type,size_bytes,updated_at")
+        .eq("user_id", user.id)
+        .order("updated_at", { ascending: false });
+      if (!result.error) state.workspaceItems = result.data || [];
+    } catch (_) {
+      state.workspaceItems = [];
+    } finally {
+      state.workspaceLoading = false;
+      refresh();
+    }
   }
 
   function calendarMarkup() {
@@ -408,6 +474,7 @@
     try {
       value = JSON.parse(localStorage.getItem(POMODORO_KEY) || "{}");
     } catch (_) {}
+    reconcileDesktopPomodoro(value);
     const config = {
       blocks: Math.max(1, Number(value.config?.blocks) || 1),
       study: Math.max(0, Number(value.config?.study) || 25),
@@ -433,17 +500,22 @@
 
   function updatePomodoro(action) {
     const pomodoro = readPomodoro();
+    capturePomodoroStudyProgress(pomodoro);
+    flushPomodoroStudyProgress(pomodoro);
     if (action === "reset") {
       pomodoro.running = false;
       pomodoro.endAt = 0;
+      pomodoro.studyCreditAt = 0;
       pomodoro.remaining = pomodoro.config[pomodoro.phase] * 60;
     } else if (pomodoro.running) {
       pomodoro.running = false;
       pomodoro.endAt = 0;
+      pomodoro.studyCreditAt = 0;
     } else {
       if (pomodoro.remaining <= 0) pomodoro.remaining = pomodoro.config[pomodoro.phase] * 60;
       pomodoro.running = true;
       pomodoro.endAt = Date.now() + pomodoro.remaining * 1000;
+      pomodoro.studyCreditAt = pomodoro.phase === "study" ? Date.now() : 0;
     }
     pomodoro.updatedAt = Date.now();
     localStorage.setItem(POMODORO_KEY, JSON.stringify(pomodoro));
@@ -453,6 +525,69 @@
     window.dispatchEvent(new CustomEvent("estudiemos:pomodoro-widget-action", { detail: pomodoro }));
     window.dispatchEvent(new CustomEvent("estudiemos:data-change", { detail: { key: POMODORO_KEY } }));
     render();
+  }
+
+  function capturePomodoroStudyProgress(pomodoro) {
+    if (!pomodoro.running || pomodoro.phase !== "study") return;
+    const now = Date.now();
+    const startedAt = Number(pomodoro.studyCreditAt) || Number(pomodoro.updatedAt) || now;
+    const cappedNow = pomodoro.endAt ? Math.min(now, Number(pomodoro.endAt)) : now;
+    const elapsed = Math.max(0, Math.floor((cappedNow - startedAt) / 1000));
+    if (!elapsed) return;
+    pomodoro.pendingStudySeconds = Math.max(0, Math.floor(Number(pomodoro.pendingStudySeconds) || 0)) + elapsed;
+    pomodoro.studyCreditAt = startedAt + elapsed * 1000;
+  }
+
+  function flushPomodoroStudyProgress(pomodoro) {
+    const seconds = Math.max(0, Math.floor(Number(pomodoro.pendingStudySeconds) || 0));
+    if (!seconds) return;
+    pomodoro.pendingStudySeconds = 0;
+    let streak = {};
+    try { streak = JSON.parse(localStorage.getItem(STREAK_KEY) || "{}"); } catch (_) {}
+    streak.days = streak.days && typeof streak.days === "object" ? streak.days : {};
+    streak.carrySeconds = streak.carrySeconds && typeof streak.carrySeconds === "object" ? streak.carrySeconds : {};
+    const today = dateValue(new Date());
+    const totalSeconds = Math.max(0, Number(streak.carrySeconds[today]) || 0) + seconds;
+    const minutes = Math.floor(totalSeconds / 60);
+    streak.carrySeconds[today] = totalSeconds % 60;
+    if (minutes) streak.days[today] = Math.max(0, Number(streak.days[today]) || 0) + minutes;
+    streak.version = 2;
+    localStorage.setItem(STREAK_KEY, JSON.stringify(streak));
+    window.dispatchEvent(new CustomEvent("estudiemos:data-change", { detail: { key: STREAK_KEY } }));
+  }
+
+  function reconcileDesktopPomodoro(value) {
+    if (!value?.running || !Number(value.endAt) || Number(value.endAt) > Date.now()) return;
+    const phase = value.phase === "break" ? "break" : "study";
+    const config = {
+      blocks: Math.max(1, Number(value.config?.blocks) || 1),
+      study: Math.max(0, Number(value.config?.study) || 25),
+      break: Math.max(0, Number(value.config?.break) || 5)
+    };
+    capturePomodoroStudyProgress(value);
+    flushPomodoroStudyProgress(value);
+    if (phase === "study") {
+      const today = dateValue(new Date());
+      if (value.completedDate !== today) {
+        value.completedDate = today;
+        value.completedToday = 0;
+      }
+      value.completedToday = Math.max(0, Number(value.completedToday) || 0) + 1;
+      value.phase = "break";
+    } else {
+      value.phase = "study";
+      value.currentBlock = Math.max(1, Number(value.currentBlock) || 1) >= config.blocks
+        ? 1
+        : Math.max(1, Number(value.currentBlock) || 1) + 1;
+    }
+    value.config = config;
+    value.remaining = config[value.phase] * 60;
+    value.running = false;
+    value.endAt = 0;
+    value.studyCreditAt = 0;
+    value.updatedAt = Date.now();
+    localStorage.setItem(POMODORO_KEY, JSON.stringify(value));
+    window.dispatchEvent(new CustomEvent("estudiemos:pomodoro-widget-action", { detail: value }));
   }
 
   function calculateCurrentStreak(days) {
@@ -473,6 +608,14 @@
     if (value < 60) return `${Math.round(value)} min`;
     const hours = value / 60;
     return `${Number.isInteger(hours) ? hours.toFixed(0) : hours.toFixed(1).replace(".", ",")} h`;
+  }
+
+  function formatFileSize(bytes) {
+    const value = Math.max(0, Number(bytes) || 0);
+    if (value < 1024) return `${value} B`;
+    if (value < 1024 * 1024) return `${Math.round(value / 1024)} KB`;
+    const megabytes = value / (1024 * 1024);
+    return `${megabytes >= 10 ? Math.round(megabytes) : megabytes.toFixed(1).replace(".", ",")} MB`;
   }
 
   function beginRainmeterResize(event) {
@@ -524,7 +667,7 @@
 
   function getInitialView() {
     const value = new URL(window.location.href).searchParams.get("view");
-    return ["inbox", "calendar", "streak", "pomodoro"].includes(value) ? value : "inbox";
+    return ["workspace", "inbox", "calendar", "streak", "pomodoro"].includes(value) ? value : "inbox";
   }
 
   function openMainApp(search) {
@@ -548,6 +691,10 @@
       if (/^\d{4}-\d{2}-\d{2}$/.test(date)) params.set("date", date);
     } else if (url.searchParams.get("pomodoro") === "1") {
       params.set("target", "pomodoro");
+    } else if (url.searchParams.get("workspaceItem")) {
+      params.set("target", "workspace");
+      params.set("item", url.searchParams.get("workspaceItem"));
+      params.set("kind", url.searchParams.get("workspaceKind") === "file" ? "file" : "folder");
     } else {
       params.set("target", "home");
     }
@@ -633,6 +780,14 @@
     return '<svg viewBox="0 0 24 24"><path d="M13.2 2.2c.4 3-1 4.7-2.4 6.3-1.2-2.2-2.9-3.8-5-5.4.3 3.8-2.4 5.7-2.4 10.3A8.6 8.6 0 0 0 12 22a8.6 8.6 0 0 0 8.6-8.6c0-4.1-2.3-7.8-7.4-11.2ZM12 19.7a4.2 4.2 0 0 1-4.2-4.2c0-1.8.9-3.1 2.1-4.4.2 1.5.9 2.4 1.7 3.2 1.1-1.4 1.8-2.8 1.8-4.7 1.8 1.5 2.8 3.4 2.8 5.9a4.2 4.2 0 0 1-4.2 4.2Z"/></svg>';
   }
 
+  function folderIcon() {
+    return '<svg viewBox="0 0 24 24"><path d="M3 7h7l2 2h9v10H3V7Zm0 0V5h7l2 2"/></svg>';
+  }
+
+  function fileIcon() {
+    return '<svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6V3Zm8 0v5h5M9 12h6M9 16h6"/></svg>';
+  }
+
   function widgetStyles() {
     return `
       :root{color-scheme:dark;--bg:#0c1423;--panel:#111c2e;--line:#263650;--text:#f1f5f9;--muted:#91a0b7;--accent:#8bb5ff;--soft:#192840}
@@ -643,6 +798,7 @@
       nav{display:flex;gap:4px}nav button,.section-head button{width:32px;height:32px;display:grid;place-items:center;padding:0;border:0;border-radius:8px;background:transparent;color:var(--muted);cursor:pointer}nav button:hover,nav button.is-active,.section-head button:hover{background:var(--soft);color:var(--text)}svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}nav button[data-widget-view="streak"] svg,.streak-mark svg,.streak-week svg{fill:currentColor;stroke:none}
       main{min-height:0;overflow:hidden}.widget-section{height:100%;min-height:0;padding:15px 14px}.section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.section-head span,.widget-streak>span{color:var(--muted);font-size:9px;font-weight:800;letter-spacing:.08em}.section-head h1,.widget-streak h1{margin:3px 0 0;font-size:18px;line-height:1.15}.section-head>button{width:auto;padding:0 9px;color:var(--accent);font-size:11px;font-weight:700}
       .task-list{height:calc(100% - 51px);display:grid;align-content:start;gap:6px;overflow:auto;padding-right:3px;scrollbar-width:thin;scrollbar-color:var(--line) transparent}.task-row{min-width:0;display:grid;grid-template-columns:22px minmax(0,1fr);align-items:center;gap:8px;padding:9px 10px;border:1px solid color-mix(in srgb,var(--line) 70%,transparent);border-radius:9px;background:var(--panel);cursor:pointer}.task-row:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}.task-row input{width:15px;height:15px;margin:0;accent-color:var(--accent)}.task-row>span{min-width:0;display:grid;gap:2px}.task-row strong,.task-row small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.task-row strong{font-size:12px}.task-row small{color:var(--muted);font-size:10px}.empty{margin:28px 0;color:var(--muted);font-size:12px;text-align:center}
+      .workspace-widget-list{height:calc(100% - 51px);display:grid;align-content:start;gap:6px;overflow:auto;padding-right:3px;scrollbar-width:thin;scrollbar-color:var(--line) transparent}.workspace-widget-row{min-width:0;width:100%;display:grid;grid-template-columns:34px minmax(0,1fr) auto;align-items:center;gap:9px;padding:8px 9px;border:1px solid color-mix(in srgb,var(--line) 68%,transparent);border-radius:10px;background:var(--panel);color:var(--text);text-align:left;cursor:pointer}.workspace-widget-row:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--line));background:color-mix(in srgb,var(--soft) 65%,var(--panel))}.workspace-widget-icon{width:34px;height:34px;display:grid;place-items:center;border-radius:9px;background:var(--soft);color:var(--accent)}.workspace-widget-icon svg{width:18px;height:18px}.workspace-widget-row>span:nth-child(2){min-width:0;display:grid;gap:2px}.workspace-widget-row strong,.workspace-widget-row small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.workspace-widget-row strong{font-size:12px}.workspace-widget-row small{color:var(--muted);font-size:10px}.workspace-widget-row>b{color:var(--muted);font-size:20px;font-weight:400}
       .calendar-title>div:last-child{display:flex;gap:3px}.weekdays,.calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}.weekdays span{padding-bottom:6px;color:var(--muted);font-size:9px;font-weight:800;text-align:center}.calendar-grid{height:calc(100% - 75px);grid-template-rows:repeat(6,minmax(0,1fr));gap:3px}.calendar-day{position:relative;min-width:0;min-height:0;display:grid;place-items:center;padding:0;border:0;border-radius:7px;background:transparent;color:var(--text);cursor:pointer}.calendar-day:hover{background:var(--soft)}.calendar-day.is-outside{opacity:.32}.calendar-day.is-today{background:var(--accent);color:#07111f;font-weight:800}.calendar-day span{font-size:10px}.calendar-day small{position:absolute;right:3px;bottom:2px;min-width:13px;height:13px;display:grid;place-items:center;border-radius:99px;background:var(--soft);color:var(--accent);font-size:7px}.calendar-day.is-today small{background:#07111f;color:#fff}
       .calendar-view-switch{display:flex;justify-content:flex-end;gap:2px;margin:-7px 0 7px}.calendar-view-switch button{min-height:25px;padding:3px 8px;border:0;border-radius:7px;background:transparent;color:var(--muted);font-size:9px;font-weight:800;cursor:pointer}.calendar-view-switch button.is-active{background:var(--soft);color:var(--text)}.widget-calendar[data-view="week"] .weekdays{display:none}.widget-calendar[data-view="week"] .calendar-grid{height:calc(100% - 78px);display:flex;flex-direction:column;gap:4px;overflow:auto;padding-right:3px;scrollbar-width:thin;scrollbar-color:var(--line) transparent}.widget-calendar[data-view="week"] .calendar-day{width:100%;min-height:36px;display:grid;grid-template-columns:40px minmax(0,1fr) auto;align-items:center;gap:7px;padding:5px 7px;border:1px solid color-mix(in srgb,var(--line) 65%,transparent);background:color-mix(in srgb,var(--panel) 72%,transparent);text-align:left}.widget-calendar[data-view="week"] .calendar-day>span{display:flex;align-items:baseline;gap:4px;font-size:10px}.widget-calendar[data-view="week"] .calendar-day>span b{color:var(--muted);font-size:8px;text-transform:uppercase}.widget-calendar[data-view="week"] .calendar-day.is-today{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 13%,var(--panel));color:var(--text)}.calendar-day-events{min-width:0;display:grid;gap:3px}.widget-calendar[data-view="week"] .calendar-day em{min-width:0;display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:6px;color:var(--muted);font-size:9px;font-style:normal;line-height:1.25}.widget-calendar[data-view="week"] .calendar-day em b{color:var(--accent);font-size:8px;font-weight:800;white-space:nowrap}.widget-calendar[data-view="week"] .calendar-day em i{overflow:hidden;color:var(--text);font-style:normal;font-weight:650;text-overflow:ellipsis;white-space:nowrap}.widget-calendar[data-view="week"] .calendar-day small{position:static;min-width:auto;height:auto;background:transparent;color:var(--accent);font-size:8px}.widget-calendar[data-view="week"] .calendar-day.is-today small{background:transparent;color:var(--accent)}
       .widget-pomodoro{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}.pomodoro-widget-head{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px}.pomodoro-widget-head span{color:var(--muted);font-size:8px;font-weight:800;letter-spacing:.08em}.pomodoro-widget-head h1{margin:2px 0 0;font-size:17px}.pomodoro-widget-head>b{padding:5px 8px;border-radius:7px;background:var(--soft);color:var(--accent);font-size:9px}.pomodoro-widget-ring{--timer-progress:0deg;width:min(54vw,188px);aspect-ratio:1;display:grid;place-items:center;border-radius:50%;background:conic-gradient(var(--accent) var(--timer-progress),var(--line) 0);padding:7px}.pomodoro-widget-ring::before{content:"";grid-area:1/1;width:100%;height:100%;border-radius:50%;background:var(--bg)}.pomodoro-widget-ring>div{z-index:1;grid-area:1/1;display:grid;gap:4px;text-align:center}.pomodoro-widget-ring strong{font-size:clamp(32px,11vw,48px);line-height:1;font-variant-numeric:tabular-nums}.pomodoro-widget-ring small{color:var(--muted);font-size:10px;font-weight:700}.pomodoro-widget-actions{width:100%;display:grid;grid-template-columns:42px minmax(0,1fr) 42px;gap:8px}.pomodoro-widget-actions button{min-height:40px;display:flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--text);cursor:pointer}.pomodoro-widget-actions button.is-primary{border-color:transparent;background:var(--accent);color:#07111f;font-size:12px;font-weight:800}.pomodoro-widget-actions svg{width:16px;height:16px}.pomodoro-widget-actions button.is-primary svg{stroke-width:2.2}
