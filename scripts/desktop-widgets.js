@@ -6,6 +6,8 @@
   const POMODORO_KEY = "estudiemos_pomodoro";
   const CALENDAR_VIEW_KEY = "estudiemos_calendar_view";
   const WORKSPACE_CHANGE_KEY = "estudiemos_workspace_changed";
+  const CLOUD_REFRESH_KEY = "estudiemos_desktop_widget_cloud_refresh";
+  const CLOUD_REFRESH_INTERVAL = 10000;
   const standaloneHost = document.querySelector("[data-desktop-widget-host]");
   const state = {
     view: getInitialView(),
@@ -16,6 +18,7 @@
     widgetWindow: null,
     hostedWidget: false,
     refreshTimer: null,
+    cloudRefreshTimer: null,
     workspaceItems: [],
     workspaceLoading: false
   };
@@ -25,7 +28,8 @@
 
   window.EstudiemosDesktopWidgets = {
     available: isDesktopDevice(),
-    open
+    open,
+    refreshFromCloud
   };
 
   window.addEventListener("storage", handleSynchronizedChange);
@@ -122,8 +126,26 @@
     document.addEventListener("change", handleWidgetChange);
     document.addEventListener("pointerdown", beginRainmeterResize);
     state.refreshTimer = window.setInterval(render, 500);
-    window.EstudiemosAccount?.whenReady?.().then(render).catch(() => {});
+    state.cloudRefreshTimer = window.setInterval(refreshFromCloud, 5000);
+    window.EstudiemosAccount?.whenReady?.().then(refreshFromCloud).catch(() => {});
     render();
+  }
+
+  async function refreshFromCloud() {
+    refresh();
+    const account = window.EstudiemosAccount;
+    if (!account?.whenReady || (!account?.refresh && !account?.sync)) return;
+    try {
+      await account.whenReady();
+      if (!account.getUser?.()) return;
+      const now = Date.now();
+      const lastRefresh = Number(localStorage.getItem(CLOUD_REFRESH_KEY) || 0);
+      if (now - lastRefresh < CLOUD_REFRESH_INTERVAL) return;
+      localStorage.setItem(CLOUD_REFRESH_KEY, String(now));
+      await (account.refresh?.() || account.sync());
+      if (state.view === "workspace") await loadWorkspaceItems();
+      refreshAndSyncNative();
+    } catch (_) {}
   }
 
   function render() {
@@ -194,7 +216,9 @@
 
   function cleanup() {
     if (state.refreshTimer) window.clearInterval(state.refreshTimer);
+    if (state.cloudRefreshTimer) window.clearInterval(state.cloudRefreshTimer);
     state.refreshTimer = null;
+    state.cloudRefreshTimer = null;
     state.widgetWindow = null;
     state.hostedWidget = false;
   }

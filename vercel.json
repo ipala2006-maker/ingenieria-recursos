@@ -7,6 +7,15 @@
   },
   "headers": [
     {
+      "source": "/widget.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    },
+    {
       "source": "/downloads/Estudiemos-Widgets.rmskin",
       "headers": [
         {

@@ -48,6 +48,7 @@
 
   window.EstudiemosAccount = {
     sync: () => synchronize("manual"),
+    refresh: () => synchronize("widget"),
     getUser: () => session?.user || null,
     getSession: () => session,
     getClient: () => client,
