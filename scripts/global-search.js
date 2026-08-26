@@ -180,7 +180,7 @@
     if (document.querySelector('link[href*="styles/dashboard.css"]')) return;
     const link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = `${rootPath}styles/dashboard.css?v=20260824-week-pomodoro`;
+    link.href = `${rootPath}styles/dashboard.css?v=20260826-calendar-sync-2`;
     document.head.appendChild(link);
   }
 
@@ -251,7 +251,7 @@
   function loadDashboardScript() {
     if (document.querySelector('script[src*="scripts/dashboard.js"]')) return;
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/dashboard.js?v=20260824-week-pomodoro`;
+    script.src = `${rootPath}scripts/dashboard.js?v=20260826-calendar-sync-2`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -289,7 +289,7 @@
     if (document.querySelector('script[src*="scripts/account.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/account.js?v=20260826-streak-sync`;
+    script.src = `${rootPath}scripts/account.js?v=20260826-realtime-sync`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -298,7 +298,7 @@
     if (document.querySelector('script[src*="scripts/desktop-widgets.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/desktop-widgets.js?v=20260826-workspace-widget`;
+    script.src = `${rootPath}scripts/desktop-widgets.js?v=20260826-realtime-sync`;
     script.async = false;
     document.head.appendChild(script);
   }

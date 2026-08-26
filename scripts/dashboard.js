@@ -368,9 +368,9 @@
       const date = new Date(start.getFullYear(), start.getMonth(), start.getDate() + index);
       const value = toDateValue(date);
       const hasStreak = (streakDays[value] || 0) >= 25;
-      const dayItems = dated.get(value) || [];
-      const summary = dayItems[0] ? formatCalendarSummary(dayItems[0]) : "";
-      cells.push(`<button class="dashboard-calendar__day ${state.calendarView === "month" && date.getMonth() !== state.month ? "is-outside" : ""} ${value === today ? "is-today" : ""} ${dayItems.length ? "has-items" : ""} ${hasStreak ? "has-study-streak" : ""}" type="button" data-dashboard-date="${value}" aria-label="${formatFullDate(value)}${dayItems.length ? `, ${dayItems.length} anotaciones` : ""}${hasStreak ? ", presencia de estudio registrada" : ""}"><span class="dashboard-calendar__number">${date.getDate()}</span>${hasStreak ? flameIcon() : ""}${summary ? `<small>${escapeHtml(summary)}</small>` : ""}${dayItems.length > 1 ? `<b>+${dayItems.length - 1}</b>` : ""}</button>`);
+      const dayItems = (dated.get(value) || []).slice().sort(compareCalendarItems);
+      const weekContent = state.calendarView === "week" ? renderWeekDay(date, dayItems) : "";
+      cells.push(`<button class="dashboard-calendar__day ${state.calendarView === "month" && date.getMonth() !== state.month ? "is-outside" : ""} ${value === today ? "is-today" : ""} ${dayItems.length ? "has-items" : ""} ${hasStreak ? "has-study-streak" : ""}" type="button" data-dashboard-date="${value}" aria-label="${formatFullDate(value)}${dayItems.length ? `, ${dayItems.length} anotaciones` : ""}${hasStreak ? ", presencia de estudio registrada" : ""}"><span class="dashboard-calendar__number">${date.getDate()}</span>${hasStreak ? flameIcon() : ""}${weekContent}</button>`);
     }
     grid.innerHTML = cells.join("");
   }
@@ -416,9 +416,24 @@
     return `${first} - ${last}`;
   }
 
-  function formatCalendarSummary(item) {
-    const time = item.horaInicio ? `${item.horaInicio} ` : "";
-    return `${time}${item.subject || item.title}`.trim();
+  function renderWeekDay(date, items) {
+    const first = items[0];
+    const weekday = new Intl.DateTimeFormat("es-AR", { weekday: "short" }).format(date).replace(".", "");
+    const event = first
+      ? `<span class="dashboard-calendar__event"><time>${escapeHtml(formatCalendarTime(first))}</time><span>${escapeHtml(first.subject || first.title)}</span></span>`
+      : '<span class="dashboard-calendar__empty">Sin anotaciones</span>';
+    return `<span class="dashboard-calendar__date"><small>${escapeHtml(weekday)}</small><strong>${date.getDate()}</strong></span><span class="dashboard-calendar__events">${event}</span>${items.length > 1 ? `<b class="dashboard-calendar__more">+${items.length - 1}</b>` : ""}`;
+  }
+
+  function formatCalendarTime(item) {
+    if (!item.horaInicio) return "Todo el día";
+    return item.horaFin ? `${item.horaInicio}-${item.horaFin}` : item.horaInicio;
+  }
+
+  function compareCalendarItems(a, b) {
+    if (a.horaInicio && !b.horaInicio) return -1;
+    if (!a.horaInicio && b.horaInicio) return 1;
+    return String(a.horaInicio || "").localeCompare(String(b.horaInicio || ""));
   }
 
   function toggleDone(id) {

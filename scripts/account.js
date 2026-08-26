@@ -9,22 +9,30 @@
     "bandeja_recientes",
     "bandeja_agenda",
     "estudiemos_pomodoro_streak",
+    "estudiemos_workspace_changed",
     "estudiemos_theme"
   ];
-  const LIST_KEYS = new Set(SYNC_KEYS.filter((key) => !["estudiemos_theme", "estudiemos_pomodoro_streak"].includes(key)));
+  const LIST_KEYS = new Set(SYNC_KEYS.filter((key) => !["estudiemos_theme", "estudiemos_pomodoro_streak", "estudiemos_workspace_changed"].includes(key)));
   const PRIVATE_SYNC_KEYS = SYNC_KEYS.filter((key) => key !== "estudiemos_theme");
   const LINKED_USER_KEY = "estudiemos_cloud_user";
   const LOCAL_CHANGED_KEY = "estudiemos_cloud_local_changed";
+  const KEY_CHANGED_KEY = "estudiemos_cloud_key_changed";
   const DIRTY_KEY = "estudiemos_cloud_dirty";
   const MIN_PASSWORD_LENGTH = 8;
+  const INSTANCE_ID = window.crypto?.randomUUID?.() || Math.random().toString(36).slice(2);
 
   let client = null;
   let session = null;
   let configAvailable = false;
   let syncTimer = 0;
   let syncing = false;
+  let syncRequested = false;
   let applyingCloud = false;
   let lastPullAt = 0;
+  let realtimeChannel = null;
+  let realtimeUserId = "";
+  let cloudPollTimer = 0;
+  let remoteRefreshTimer = 0;
   let recoveryMode = false;
   let whatsappStatusLoaded = false;
   let whatsappBusy = false;
@@ -235,14 +243,22 @@
     window.addEventListener("estudiemos:data-change", (event) => {
       const key = event.detail?.key;
       if (applyingCloud || !SYNC_KEYS.includes(key)) return;
-      markLocalChange();
+      markLocalChange(key);
       scheduleSync();
     });
 
-    window.addEventListener("focus", refreshFromCloud);
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") refreshFromCloud();
+    window.addEventListener("focus", scheduleRemoteRefresh);
+    window.addEventListener("pageshow", () => {
+      if (session) {
+        connectRealtime(session.user.id);
+        startCloudPolling();
+      }
+      scheduleRemoteRefresh();
     });
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") scheduleRemoteRefresh();
+    });
+    window.addEventListener("pagehide", disconnectRealtime);
   }
 
   async function initialize() {
@@ -266,7 +282,11 @@
       else if (localStorage.getItem(LINKED_USER_KEY)) clearLocalAccountData();
       renderAccountState();
       finishReady(true);
-      if (session) await synchronize("startup");
+      if (session) {
+        connectRealtime(session.user.id);
+        startCloudPolling();
+        await synchronize("startup");
+      }
 
       client.auth.onAuthStateChange((event, nextSession) => {
         window.setTimeout(async () => {
@@ -278,6 +298,12 @@
             setStatus("Escribí una contraseña nueva para recuperar tu cuenta.", "info");
           }
           if (session) prepareLocalAccountSwitch(session.user.id);
+          if (session) {
+            connectRealtime(session.user.id);
+            startCloudPolling();
+          } else {
+            disconnectRealtime();
+          }
           renderAccountState();
           if (session && session.user.id !== previousUser) {
             await synchronize("signin");
@@ -341,6 +367,8 @@
     if (result.error) return setStatus(authErrorMessage(result.error), "error");
     session = result.data.session;
     prepareLocalAccountSwitch(session.user.id);
+    connectRealtime(session.user.id);
+    startCloudPolling();
     renderAccountState();
     await synchronize("signin");
     setStatus("Cuenta conectada y datos sincronizados.", "success");
@@ -360,6 +388,8 @@
     if (result.data.session) {
       session = result.data.session;
       prepareLocalAccountSwitch(session.user.id);
+      connectRealtime(session.user.id);
+      startCloudPolling();
       renderAccountState();
       await synchronize("signin");
       setStatus("Cuenta creada y datos sincronizados.", "success");
@@ -406,13 +436,18 @@
     setBusy(false);
     if (result.error) return setStatus("No se pudo cerrar la sesión. Probá nuevamente.", "error");
     session = null;
+    disconnectRealtime();
     clearLocalAccountData();
     renderAccountState();
     setStatus("Sesión cerrada. Los datos de la cuenta se retiraron de este dispositivo.", "info");
   }
 
   async function synchronize(reason) {
-    if (!client || !session || syncing) return;
+    if (!client || !session) return;
+    if (syncing) {
+      syncRequested = true;
+      return;
+    }
     syncing = true;
     updateSyncLabel("Sincronizando...");
     try {
@@ -425,10 +460,9 @@
 
       const localState = captureLocalState();
       const linkedUser = localStorage.getItem(LINKED_USER_KEY) || "";
-      const localChangedAt = Number(localStorage.getItem(LOCAL_CHANGED_KEY) || 0);
       const cloudChangedAt = result.data?.updated_at ? Date.parse(result.data.updated_at) : 0;
       const localDirty = localStorage.getItem(DIRTY_KEY) === "true";
-      const cloudState = result.data ? normalizeAccountState(result.data.state) : null;
+      const cloudState = result.data ? normalizeAccountState(result.data.state, cloudChangedAt) : null;
 
       if (linkedUser !== userId) {
         const accountState = cloudState || createEmptyAccountState();
@@ -436,14 +470,10 @@
         if (!result.data) await uploadState(userId, accountState);
       } else if (!result.data) {
         await uploadState(userId, localState);
-      } else if (localDirty && localChangedAt > cloudChangedAt) {
-        const mergedState = mergeStreakHistory(localState, cloudState);
-        applyCloudState(mergedState);
-        await uploadState(userId, mergedState);
       } else {
-        const mergedState = mergeStreakHistory(cloudState, localState);
+        const mergedState = mergeAccountStates(localState, cloudState);
         applyCloudState(mergedState);
-        if (JSON.stringify(mergedState) !== JSON.stringify(cloudState)) {
+        if (localDirty || JSON.stringify(mergedState) !== JSON.stringify(cloudState)) {
           await uploadState(userId, mergedState);
         } else {
           localStorage.setItem(LOCAL_CHANGED_KEY, String(cloudChangedAt || Date.now()));
@@ -462,6 +492,10 @@
       if (reason === "manual") setStatus("No pudimos sincronizar ahora. Tus datos siguen guardados en este dispositivo.", "error");
     } finally {
       syncing = false;
+      if (syncRequested) {
+        syncRequested = false;
+        window.setTimeout(() => synchronize("queued"), 80);
+      }
     }
   }
 
@@ -475,35 +509,47 @@
     if (result.error) throw result.error;
     localStorage.setItem(LOCAL_CHANGED_KEY, String(Date.parse(updatedAt)));
     localStorage.setItem(DIRTY_KEY, "false");
+    broadcastStateUpdate(userId, updatedAt);
   }
 
   function captureLocalState() {
     const values = {};
+    const changedAt = readKeyChangedAt();
+    const fallbackAt = Number(localStorage.getItem(LOCAL_CHANGED_KEY) || 0);
     SYNC_KEYS.forEach((key) => {
       const raw = localStorage.getItem(key);
       if (LIST_KEYS.has(key)) {
         try { values[key] = Array.isArray(JSON.parse(raw || "[]")) ? JSON.parse(raw || "[]") : []; }
         catch (_) { values[key] = []; }
       } else {
-        values[key] = raw || (key === "estudiemos_theme" ? "dark" : "{}");
+        values[key] = raw || (key === "estudiemos_theme" ? "dark" : key === "estudiemos_workspace_changed" ? "0" : "{}");
       }
+      if (!changedAt[key] && fallbackAt) changedAt[key] = fallbackAt;
     });
-    return { version: 1, values };
+    return { version: 2, values, changedAt };
   }
 
   function applyCloudState(state) {
-    const values = normalizeAccountState(state).values;
+    const normalized = normalizeAccountState(state);
+    const values = normalized.values;
+    let changed = false;
     applyingCloud = true;
     try {
       SYNC_KEYS.forEach((key) => {
         const value = LIST_KEYS.has(key) ? JSON.stringify(Array.isArray(values[key]) ? values[key] : []) : String(values[key]);
-        localStorage.setItem(key, value);
+        if (localStorage.getItem(key) !== value) {
+          localStorage.setItem(key, value);
+          changed = true;
+        }
       });
+      localStorage.setItem(KEY_CHANGED_KEY, JSON.stringify(normalized.changedAt));
     } finally {
       applyingCloud = false;
     }
-    window.EstudiemosTheme?.sync?.();
-    window.dispatchEvent(new CustomEvent("estudiemos:cloud-restored"));
+    if (changed) {
+      window.EstudiemosTheme?.sync?.();
+      window.dispatchEvent(new CustomEvent("estudiemos:cloud-restored"));
+    }
   }
 
   function createEmptyAccountState() {
@@ -514,48 +560,64 @@
     } catch (_) {}
 
     const values = {};
+    const changedAt = {};
     SYNC_KEYS.forEach((key) => {
       if (LIST_KEYS.has(key)) values[key] = [];
       else if (key === "estudiemos_theme") values[key] = theme;
+      else if (key === "estudiemos_workspace_changed") values[key] = "0";
       else values[key] = "{}";
+      changedAt[key] = 0;
     });
-    return { version: 1, values };
+    return { version: 2, values, changedAt };
   }
 
-  function normalizeAccountState(state) {
+  function normalizeAccountState(state, fallbackAt = 0) {
     const empty = createEmptyAccountState();
     const source = state?.values && typeof state.values === "object" ? state.values : {};
+    const sourceChangedAt = state?.changedAt && typeof state.changedAt === "object" ? state.changedAt : {};
     SYNC_KEYS.forEach((key) => {
       if (!(key in source)) return;
       if (LIST_KEYS.has(key)) {
         empty.values[key] = Array.isArray(source[key]) ? source[key] : [];
       } else if (key === "estudiemos_theme") {
         empty.values[key] = source[key] === "light" ? "light" : "dark";
+      } else if (key === "estudiemos_workspace_changed") {
+        empty.values[key] = String(Math.max(0, Number(source[key]) || 0));
       } else {
         empty.values[key] = typeof source[key] === "string"
           ? source[key]
           : JSON.stringify(source[key] || {});
       }
+      empty.changedAt[key] = Math.max(0, Number(sourceChangedAt[key]) || Number(fallbackAt) || 0);
     });
     return empty;
   }
 
-  function mergeStreakHistory(preferredState, secondaryState) {
-    const preferred = normalizeAccountState(preferredState);
-    const secondary = normalizeAccountState(secondaryState);
+  function mergeAccountStates(localState, cloudState) {
+    const local = normalizeAccountState(localState);
+    const cloud = normalizeAccountState(cloudState);
+    const merged = createEmptyAccountState();
+    SYNC_KEYS.forEach((key) => {
+      const localAt = Number(local.changedAt[key]) || 0;
+      const cloudAt = Number(cloud.changedAt[key]) || 0;
+      const source = localAt > cloudAt ? local : cloud;
+      merged.values[key] = source.values[key];
+      merged.changedAt[key] = Math.max(localAt, cloudAt);
+    });
+
     const key = "estudiemos_pomodoro_streak";
-    const primaryStreak = parseObject(preferred.values[key]);
-    const secondaryStreak = parseObject(secondary.values[key]);
-    const days = mergeNumericMap(primaryStreak.days, secondaryStreak.days);
-    const carrySeconds = mergeNumericMap(primaryStreak.carrySeconds, secondaryStreak.carrySeconds, 59);
-    const reminderSlots = { ...(secondaryStreak.reminderSlots || {}), ...(primaryStreak.reminderSlots || {}) };
+    const localStreak = parseObject(local.values[key]);
+    const cloudStreak = parseObject(cloud.values[key]);
+    const days = mergeNumericMap(localStreak.days, cloudStreak.days);
+    const carrySeconds = mergeNumericMap(localStreak.carrySeconds, cloudStreak.carrySeconds, 59);
+    const reminderSlots = { ...(cloudStreak.reminderSlots || {}), ...(localStreak.reminderSlots || {}) };
     Object.keys(reminderSlots).forEach((date) => {
-      const left = Array.isArray(primaryStreak.reminderSlots?.[date]) ? primaryStreak.reminderSlots[date] : [];
-      const right = Array.isArray(secondaryStreak.reminderSlots?.[date]) ? secondaryStreak.reminderSlots[date] : [];
+      const left = Array.isArray(localStreak.reminderSlots?.[date]) ? localStreak.reminderSlots[date] : [];
+      const right = Array.isArray(cloudStreak.reminderSlots?.[date]) ? cloudStreak.reminderSlots[date] : [];
       reminderSlots[date] = Array.from(new Set([...left, ...right]));
     });
-    preferred.values[key] = JSON.stringify({ version: 2, days, carrySeconds, reminderSlots });
-    return preferred;
+    merged.values[key] = JSON.stringify({ version: 2, days, carrySeconds, reminderSlots });
+    return merged;
   }
 
   function mergeNumericMap(primary, secondary, maximum = Number.MAX_SAFE_INTEGER) {
@@ -581,14 +643,24 @@
     }
   }
 
+  function readKeyChangedAt() {
+    try {
+      const value = JSON.parse(localStorage.getItem(KEY_CHANGED_KEY) || "{}");
+      return value && typeof value === "object" ? value : {};
+    } catch (_) {
+      return {};
+    }
+  }
+
   function clearLocalAccountData() {
     applyingCloud = true;
     try {
       PRIVATE_SYNC_KEYS.forEach((key) => {
-        localStorage.setItem(key, LIST_KEYS.has(key) ? "[]" : "{}");
+        localStorage.setItem(key, LIST_KEYS.has(key) ? "[]" : key === "estudiemos_workspace_changed" ? "0" : "{}");
       });
       localStorage.removeItem(LINKED_USER_KEY);
       localStorage.removeItem(LOCAL_CHANGED_KEY);
+      localStorage.removeItem(KEY_CHANGED_KEY);
       localStorage.removeItem(DIRTY_KEY);
     } finally {
       applyingCloud = false;
@@ -601,8 +673,12 @@
     if (linkedUser !== userId) clearLocalAccountData();
   }
 
-  function markLocalChange() {
-    localStorage.setItem(LOCAL_CHANGED_KEY, String(Date.now()));
+  function markLocalChange(key) {
+    const changedAt = Date.now();
+    const keyChangedAt = readKeyChangedAt();
+    keyChangedAt[key] = changedAt;
+    localStorage.setItem(KEY_CHANGED_KEY, JSON.stringify(keyChangedAt));
+    localStorage.setItem(LOCAL_CHANGED_KEY, String(changedAt));
     localStorage.setItem(DIRTY_KEY, "true");
     updateSyncLabel(session ? "Guardando cambios..." : "Solo en este dispositivo");
   }
@@ -610,12 +686,52 @@
   function scheduleSync() {
     if (!session) return;
     window.clearTimeout(syncTimer);
-    syncTimer = window.setTimeout(() => synchronize("change"), 900);
+    syncTimer = window.setTimeout(() => synchronize("change"), 120);
   }
 
-  function refreshFromCloud() {
-    if (!session || syncing || Date.now() - lastPullAt < 15000) return;
-    synchronize("focus");
+  function connectRealtime(userId) {
+    if (!client || !userId || (realtimeChannel && realtimeUserId === userId)) return;
+    disconnectRealtime();
+    realtimeUserId = userId;
+    realtimeChannel = client
+      .channel(`estudiemos-state:${userId}`)
+      .on("broadcast", { event: "state-updated" }, ({ payload }) => {
+        if (payload?.sender === INSTANCE_ID) return;
+        scheduleRemoteRefresh();
+      })
+      .subscribe();
+  }
+
+  function disconnectRealtime() {
+    window.clearTimeout(remoteRefreshTimer);
+    window.clearInterval(cloudPollTimer);
+    remoteRefreshTimer = 0;
+    cloudPollTimer = 0;
+    if (client && realtimeChannel) client.removeChannel(realtimeChannel).catch?.(() => {});
+    realtimeChannel = null;
+    realtimeUserId = "";
+  }
+
+  function scheduleRemoteRefresh() {
+    window.clearTimeout(remoteRefreshTimer);
+    remoteRefreshTimer = window.setTimeout(() => synchronize("realtime"), 80);
+  }
+
+  function broadcastStateUpdate(userId, updatedAt) {
+    if (!realtimeChannel || realtimeUserId !== userId) return;
+    realtimeChannel.send({
+      type: "broadcast",
+      event: "state-updated",
+      payload: { sender: INSTANCE_ID, updatedAt }
+    }).catch?.(() => {});
+  }
+
+  function startCloudPolling() {
+    window.clearInterval(cloudPollTimer);
+    cloudPollTimer = window.setInterval(() => {
+      const minimumDelay = document.visibilityState === "visible" ? 10000 : 45000;
+      if (Date.now() - lastPullAt >= minimumDelay) synchronize("poll");
+    }, 5000);
   }
 
   function getCredentials() {

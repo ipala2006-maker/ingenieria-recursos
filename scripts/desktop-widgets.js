@@ -5,6 +5,7 @@
   const STREAK_KEY = "estudiemos_pomodoro_streak";
   const POMODORO_KEY = "estudiemos_pomodoro";
   const CALENDAR_VIEW_KEY = "estudiemos_calendar_view";
+  const WORKSPACE_CHANGE_KEY = "estudiemos_workspace_changed";
   const standaloneHost = document.querySelector("[data-desktop-widget-host]");
   const state = {
     view: getInitialView(),
@@ -19,15 +20,17 @@
     workspaceLoading: false
   };
   let nativeSyncTimer = null;
+  let workspaceReloadTimer = null;
+  let lastWorkspaceMarker = localStorage.getItem(WORKSPACE_CHANGE_KEY) || "0";
 
   window.EstudiemosDesktopWidgets = {
     available: isDesktopDevice(),
     open
   };
 
-  window.addEventListener("storage", refresh);
-  window.addEventListener("estudiemos:data-change", refreshAndSyncNative);
-  window.addEventListener("estudiemos:cloud-restored", refreshAndSyncNative);
+  window.addEventListener("storage", handleSynchronizedChange);
+  window.addEventListener("estudiemos:data-change", handleSynchronizedChange);
+  window.addEventListener("estudiemos:cloud-restored", handleSynchronizedChange);
   window.addEventListener("estudiemos:account-change", loadWorkspaceItems);
   window.addEventListener("estudiemos:theme-change", refresh);
   window.addEventListener("load", scheduleNativeWindowsSync, { once: true });
@@ -155,6 +158,16 @@
   function refreshAndSyncNative() {
     refresh();
     scheduleNativeWindowsSync();
+  }
+
+  function handleSynchronizedChange(event) {
+    refreshAndSyncNative();
+    const key = event?.detail?.key || event?.key || "";
+    const marker = localStorage.getItem(WORKSPACE_CHANGE_KEY) || "0";
+    if (marker === lastWorkspaceMarker && key !== WORKSPACE_CHANGE_KEY) return;
+    lastWorkspaceMarker = marker;
+    window.clearTimeout(workspaceReloadTimer);
+    workspaceReloadTimer = window.setTimeout(loadWorkspaceItems, 100);
   }
 
   function scheduleNativeWindowsSync() {
@@ -336,6 +349,7 @@
     } catch (_) {
       state.workspaceItems = [];
     } finally {
+      lastWorkspaceMarker = localStorage.getItem(WORKSPACE_CHANGE_KEY) || lastWorkspaceMarker;
       state.workspaceLoading = false;
       refresh();
     }

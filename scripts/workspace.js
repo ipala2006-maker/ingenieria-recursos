@@ -5,6 +5,7 @@
   const MAX_FILE_SIZE = 50 * 1024 * 1024;
   const VIEW_KEY = "estudiemos_workspace_view";
   const PLAN_PREVIEW_KEY = "estudiemos_workspace_plan_preview";
+  const WORKSPACE_CHANGE_KEY = "estudiemos_workspace_changed";
   const PLANS = {
     initial: { name: "Plan inicial", limit: 250 * 1024 * 1024, price: 0, billing: "sin costo" },
     plus: { name: "Estudiemos Plus", limit: 5 * 1024 * 1024 * 1024, price: 8900, billing: "por mes" },
@@ -22,6 +23,8 @@
     aiPlan: null,
     planPreview: readPlanPreview()
   };
+  let lastWorkspaceMarker = localStorage.getItem(WORKSPACE_CHANGE_KEY) || "0";
+  let workspaceRefreshTimer = 0;
 
   const elements = {
     items: document.querySelector("[data-workspace-items]"),
@@ -134,7 +137,17 @@
         showSignedOut();
         return;
       }
-      if (nextUser.id !== previousId) await loadItems();
+      if (nextUser.id !== previousId) {
+        lastWorkspaceMarker = localStorage.getItem(WORKSPACE_CHANGE_KEY) || "0";
+        await loadItems();
+      }
+    });
+    window.addEventListener("estudiemos:cloud-restored", () => {
+      const marker = localStorage.getItem(WORKSPACE_CHANGE_KEY) || "0";
+      if (!state.user || marker === lastWorkspaceMarker) return;
+      lastWorkspaceMarker = marker;
+      window.clearTimeout(workspaceRefreshTimer);
+      workspaceRefreshTimer = window.setTimeout(() => loadItems({ quiet: true }), 80);
     });
     window.addEventListener("estudiemos-android-ready", syncWorkspaceWithAndroid);
     window.addEventListener("estudiemos:open-workspace-item", (event) => {
@@ -169,8 +182,10 @@
     return window.EstudiemosAccount || null;
   }
 
-  async function loadItems() {
-    setBusy(true, "Cargando tu espacio...");
+  async function loadItems(options = {}) {
+    const quiet = Boolean(options.quiet);
+    if (!state.client || !state.user) return;
+    if (!quiet) setBusy(true, "Cargando tu espacio...");
     const result = await state.client
       .from("workspace_items")
       .select("id,parent_id,kind,name,storage_path,mime_type,size_bytes,created_at,updated_at")
@@ -180,6 +195,7 @@
 
     if (result.error) {
       console.error("Workspace load failed", result.error);
+      if (quiet) return;
       return showState(
         "Tu espacio todavía no está disponible",
         "No pudimos abrir el almacenamiento personal. Probá recargar la página en unos minutos.",
@@ -188,6 +204,7 @@
     }
 
     state.items = result.data || [];
+    lastWorkspaceMarker = localStorage.getItem(WORKSPACE_CHANGE_KEY) || lastWorkspaceMarker;
     const historyFolderId = typeof history.state?.workspaceFolderId === "string"
       ? history.state.workspaceFolderId
       : null;
@@ -502,7 +519,8 @@
       completed += 1;
     }
 
-    await loadItems();
+    if (completed) markWorkspaceChanged();
+    await loadItems({ quiet: true });
     if (failures.length) return setStatus(`Se subieron ${completed}. No se pudieron subir: ${failures.join(", ")}.`, "error");
     setStatus(`${completed === 1 ? "Archivo subido" : `${completed} archivos subidos`} correctamente.`, "success");
   }
@@ -547,7 +565,8 @@
     });
     if (result.error) return setModalError("No pudimos crear la carpeta.");
     closeModal();
-    await loadItems();
+    markWorkspaceChanged();
+    await loadItems({ quiet: true });
     setStatus("Carpeta creada.", "success");
   }
 
@@ -593,7 +612,8 @@
       const result = await updateItem(item.id, { name });
       if (result.error) return setModalError("No pudimos cambiar el nombre.");
       closeModal();
-      await loadItems();
+      markWorkspaceChanged();
+      await loadItems({ quiet: true });
     });
     form.elements.name.select();
   }
@@ -618,7 +638,8 @@
       const result = await updateItem(item.id, { parent_id: parentId });
       if (result.error) return setModalError("No pudimos mover este elemento.");
       closeModal();
-      await loadItems();
+      markWorkspaceChanged();
+      await loadItems({ quiet: true });
     });
   }
 
@@ -644,7 +665,8 @@
     const result = await state.client.from("workspace_items").delete().in("id", ids);
     if (result.error) return setModalError("No pudimos eliminar este elemento.");
     closeModal();
-    await loadItems();
+    markWorkspaceChanged();
+    await loadItems({ quiet: true });
     setStatus("Elemento eliminado.", "success");
   }
 
@@ -770,8 +792,18 @@
     }
 
     closeModal();
-    await loadItems();
+    markWorkspaceChanged();
+    await loadItems({ quiet: true });
     setStatus("Organización aplicada correctamente.", "success");
+  }
+
+  function markWorkspaceChanged() {
+    const marker = String(Date.now());
+    lastWorkspaceMarker = marker;
+    localStorage.setItem(WORKSPACE_CHANGE_KEY, marker);
+    window.dispatchEvent(new CustomEvent("estudiemos:data-change", {
+      detail: { key: WORKSPACE_CHANGE_KEY }
+    }));
   }
 
   async function updateItem(id, patch) {
