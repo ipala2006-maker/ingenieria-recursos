@@ -37,6 +37,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
     public void onUpdate(Context context, AppWidgetManager manager, int[] appWidgetIds) {
         for (int appWidgetId : appWidgetIds) updateWidget(context, manager, appWidgetId);
         manager.notifyAppWidgetViewDataChanged(appWidgetIds, R.id.calendar_widget_grid);
+        WidgetSyncManager.syncNow(context);
     }
 
     static void notifyDataChanged(Context context) {

@@ -24,6 +24,8 @@
   let client = null;
   let session = null;
   let configAvailable = false;
+  let accountConfig = null;
+  let accountInitializationComplete = false;
   let syncTimer = 0;
   let syncing = false;
   let syncRequested = false;
@@ -259,6 +261,7 @@
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") scheduleRemoteRefresh();
     });
+    window.addEventListener("estudiemos-android-ready", syncAccountWithAndroid);
     window.addEventListener("pagehide", disconnectRealtime);
   }
 
@@ -268,6 +271,7 @@
       const response = await fetch(`${getRootPath()}api/account-config`, { cache: "no-store" });
       const config = await response.json().catch(() => ({}));
       if (!response.ok || !config.enabled || !config.url || !config.publishableKey) throw new Error("not-configured");
+      accountConfig = { url: config.url, publishableKey: config.publishableKey };
       stage = "library";
       await loadSupabaseLibrary();
       client = window.supabase.createClient(config.url, config.publishableKey, {
@@ -281,6 +285,7 @@
       session = result.data.session;
       if (session) prepareLocalAccountSwitch(session.user.id);
       else if (localStorage.getItem(LINKED_USER_KEY)) clearLocalAccountData();
+      accountInitializationComplete = true;
       renderAccountState();
       finishReady(true);
       if (session) {
@@ -782,6 +787,7 @@
       renderWhatsAppStatus({ linked: false, configured: true });
     }
     updateAccountIndicator(Boolean(session));
+    syncAccountWithAndroid();
     window.dispatchEvent(new CustomEvent("estudiemos:account-change", {
       detail: { available: configAvailable, user: session?.user || null }
     }));
@@ -906,8 +912,30 @@
     return Boolean(window.EstudiemosAndroid && typeof window.EstudiemosAndroid.postMessage === "function");
   }
 
+  function syncAccountWithAndroid() {
+    if (!accountInitializationComplete || !accountConfig || !hasAndroidBridge()) return;
+    try {
+      if (!session) {
+        window.EstudiemosAndroid.postMessage(JSON.stringify({
+          type: "account-native-sync",
+          signedOut: true
+        }));
+        return;
+      }
+      window.EstudiemosAndroid.postMessage(JSON.stringify({
+        type: "account-native-sync",
+        config: accountConfig,
+        session: {
+          userId: session.user?.id || "",
+          accessToken: session.access_token || "",
+          expiresAt: Math.max(0, Number(session.expires_at) || 0)
+        }
+      }));
+    } catch (_) {}
+  }
+
   function requestAndroidWidget(widget) {
-    if (!hasAndroidBridge() || !["agenda", "calendar", "streak", "pomodoro"].includes(widget)) return;
+    if (!hasAndroidBridge() || !["agenda", "calendar", "streak", "pomodoro", "workspace"].includes(widget)) return;
     window.EstudiemosAndroid.postMessage(JSON.stringify({ type: "widget-pin", widget }));
     setStatus("Android abrirá la confirmación para agregar el widget.", "success");
   }

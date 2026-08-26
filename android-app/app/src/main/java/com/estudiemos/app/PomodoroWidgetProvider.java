@@ -52,6 +52,14 @@ public class PomodoroWidgetProvider extends AppWidgetProvider {
         return state.toString();
     }
 
+    static void clearForAccount(Context context) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit()
+                .remove(KEY_STATE)
+                .apply();
+        notifyWidgets(context);
+    }
+
     private static void changeTimer(Context context, boolean reset) {
         JSONObject state = readState(context);
         reconcile(state);

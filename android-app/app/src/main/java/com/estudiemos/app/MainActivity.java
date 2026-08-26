@@ -201,6 +201,8 @@ public class MainActivity extends Activity {
                 requestWidgetPin(payload.optString("widget"));
             } else if ("workspace-sync".equals(type)) {
                 WorkspaceWidgetProvider.storeWorkspaceAndUpdate(this, message.getData());
+            } else if ("account-native-sync".equals(type)) {
+                WidgetSyncManager.handleAccountMessage(this, payload);
             }
         } catch (Exception ignored) {
             // Invalid web messages cannot modify native data.
@@ -336,6 +338,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        WidgetSyncManager.syncNow(this);
         notifyPendingAgendaCompletions();
         notifyPomodoroStateToWeb();
     }

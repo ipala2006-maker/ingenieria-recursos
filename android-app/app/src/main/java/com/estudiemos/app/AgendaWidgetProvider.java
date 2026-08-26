@@ -35,6 +35,7 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
     public void onUpdate(Context context, AppWidgetManager manager, int[] appWidgetIds) {
         for (int appWidgetId : appWidgetIds) updateWidget(context, manager, appWidgetId);
         manager.notifyAppWidgetViewDataChanged(appWidgetIds, R.id.agenda_widget_list);
+        WidgetSyncManager.syncNow(context);
     }
 
     @Override
@@ -76,6 +77,16 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
     static Set<String> getPendingCompletions(Context context) {
         return new HashSet<>(context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .getStringSet(KEY_PENDING_COMPLETIONS, new HashSet<>()));
+    }
+
+    static void clearForAccount(Context context) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit()
+                .remove(KEY_AGENDA)
+                .remove(KEY_PENDING_COMPLETIONS)
+                .apply();
+        notifyDataChanged(context);
+        CalendarWidgetProvider.notifyDataChanged(context);
     }
 
     static List<AgendaEntry> readUpcomingEntries(Context context, LocalDate today) {

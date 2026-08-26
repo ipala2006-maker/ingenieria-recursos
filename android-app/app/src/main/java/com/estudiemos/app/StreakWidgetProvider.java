@@ -27,6 +27,7 @@ public class StreakWidgetProvider extends AppWidgetProvider {
     @Override
     public void onUpdate(Context context, AppWidgetManager manager, int[] appWidgetIds) {
         for (int appWidgetId : appWidgetIds) updateWidget(context, manager, appWidgetId);
+        WidgetSyncManager.syncNow(context);
     }
 
     static void storeStreakAndUpdate(Context context, String rawMessage) {
@@ -98,6 +99,15 @@ public class StreakWidgetProvider extends AppWidgetProvider {
         ComponentName component = new ComponentName(context, StreakWidgetProvider.class);
         int[] ids = manager.getAppWidgetIds(component);
         for (int id : ids) updateWidget(context, manager, id);
+    }
+
+    static void clearForAccount(Context context) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit()
+                .remove(KEY_DAYS)
+                .remove(KEY_THRESHOLD)
+                .apply();
+        updateAll(context);
     }
 
     private static void updateWidget(Context context, AppWidgetManager manager, int appWidgetId) {

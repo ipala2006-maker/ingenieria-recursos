@@ -24,6 +24,7 @@ public class WorkspaceWidgetProvider extends AppWidgetProvider {
     public void onUpdate(Context context, AppWidgetManager manager, int[] appWidgetIds) {
         for (int appWidgetId : appWidgetIds) updateWidget(context, manager, appWidgetId);
         manager.notifyAppWidgetViewDataChanged(appWidgetIds, R.id.workspace_widget_list);
+        WidgetSyncManager.syncNow(context);
     }
 
     static void storeWorkspaceAndUpdate(Context context, String rawMessage) {
@@ -40,6 +41,23 @@ public class WorkspaceWidgetProvider extends AppWidgetProvider {
         } catch (Exception ignored) {
             // Keep the last complete list if a web message is interrupted.
         }
+    }
+
+    static void storeWorkspaceItems(Context context, JSONArray items) {
+        if (items == null) return;
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit()
+                .putString(KEY_ITEMS, items.toString())
+                .apply();
+        notifyDataChanged(context);
+    }
+
+    static void clearForAccount(Context context) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit()
+                .remove(KEY_ITEMS)
+                .apply();
+        notifyDataChanged(context);
     }
 
     static List<WorkspaceEntry> readRootEntries(Context context) {
