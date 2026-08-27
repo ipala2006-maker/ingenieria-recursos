@@ -871,9 +871,14 @@
     setAgendaAssistantStatus("La IA está revisando tu Inbox y calendario...", "info");
 
     try {
+      const accessToken = window.EstudiemosAccount?.getSession()?.access_token || "";
+      if (!accessToken) {
+        window.EstudiemosAccount?.open();
+        throw new Error("Ingresá a tu cuenta para usar el asistente.");
+      }
       const response = await fetch(`${getRootPath()}api/agenda-ai`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${accessToken}` },
         body: JSON.stringify({
           instruction: prompt,
           dateFrom: fromValue,

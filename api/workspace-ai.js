@@ -1,4 +1,5 @@
 const MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
+const { consumePlanAction, planLimitMessage } = require("./_lib/plan-access");
 const REQUEST_TIMEOUT_MS = 45000;
 const MAX_ITEMS = 400;
 
@@ -48,11 +49,17 @@ module.exports = async function workspaceAi(request, response) {
   if (!isSameOriginRequest(request)) return response.status(403).json({ message: "Origen no permitido." });
   if (!process.env.GEMINI_API_KEY) return response.status(503).json({ message: "La IA todavía no está configurada." });
 
-  const authenticated = await authenticateRequest(request);
-  if (!authenticated) return response.status(401).json({ message: "Ingresá a tu cuenta para usar la organización con IA." });
-
   const input = validateInput(request.body);
   if (!input.ok) return response.status(400).json({ message: input.error });
+
+  let access;
+  try {
+    access = await consumePlanAction(request, "ai");
+  } catch (error) {
+    return response.status(503).json({ message: "No pudimos comprobar tu plan. Probá nuevamente." });
+  }
+  if (!access.authenticated) return response.status(401).json({ message: "Ingresá a tu cuenta para usar la organización con IA." });
+  if (!access.usage?.allowed) return response.status(429).json({ message: planLimitMessage("ai", access.usage), usage: access.usage });
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -89,21 +96,6 @@ module.exports = async function workspaceAi(request, response) {
     clearTimeout(timeout);
   }
 };
-
-async function authenticateRequest(request) {
-  const url = process.env.SUPABASE_URL || "";
-  const key = process.env.SUPABASE_PUBLISHABLE_KEY || "";
-  const authorization = String(request.headers.authorization || "");
-  if (!url || !key || !authorization.startsWith("Bearer ")) return false;
-  try {
-    const result = await fetch(`${url.replace(/\/$/, "")}/auth/v1/user`, {
-      headers: { apikey: key, Authorization: authorization }
-    });
-    return result.ok;
-  } catch (error) {
-    return false;
-  }
-}
 
 function validateInput(body) {
   if (!body || typeof body !== "object") return { ok: false, error: "Solicitud inválida." };

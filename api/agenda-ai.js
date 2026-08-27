@@ -1,4 +1,6 @@
 // This function keeps the model credential on Vercel and out of the browser.
+const { consumePlanAction, planLimitMessage } = require("./_lib/plan-access");
+
 const MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
 const MAX_AGENDA_ITEMS = 500;
 const MAX_INSTRUCTION_LENGTH = 1200;
@@ -121,6 +123,17 @@ module.exports = async function agendaAi(request, response) {
 
   const input = validateInput(request.body);
   if (!input.ok) return response.status(400).json({ error: input.error });
+
+  let access;
+  try {
+    access = await consumePlanAction(request, "ai");
+  } catch (error) {
+    return response.status(503).json({ code: "PLAN_UNAVAILABLE", error: "No pudimos comprobar tu plan. Probá nuevamente." });
+  }
+  if (!access.authenticated) return response.status(401).json({ code: "AUTH_REQUIRED", error: "Ingresá a tu cuenta para usar el asistente." });
+  if (!access.usage?.allowed) {
+    return response.status(429).json({ code: "PLAN_LIMIT_REACHED", error: planLimitMessage("ai", access.usage), usage: access.usage });
+  }
 
   try {
     const plan = await createAgendaPlan(input.value);

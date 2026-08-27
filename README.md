@@ -84,7 +84,9 @@ El archivo `.env.example` muestra los nombres esperados sin contener secretos re
 
 ## Planes en vista previa
 
-La pantalla de planes es una demostración sin cobros. Muestra Plan Inicial gratuito (250 MB), Plus a $8.900 ARS por mes (5 GB) y Pro a $16.900 ARS por mes (20 GB), junto con límites mensuales de IA y WhatsApp. La selección solamente cambia la vista previa local: no asigna permisos, no aplica límites y no crea una suscripción hasta que se integre el sistema de pagos.
+La pantalla de planes funciona en modo de prueba y todavía no realiza cobros. El plan elegido queda asociado a la cuenta y aplica límites reales: Inicial incluye 250 MB, 20 acciones de IA y 5 órdenes por WhatsApp al mes; Plus incluye 5 GB, 300 acciones de IA y 100 órdenes por WhatsApp; Pro incluye 20 GB, 1.000 acciones de IA y 500 órdenes por WhatsApp. Durante esta etapa se puede cambiar libremente de plan para probar la experiencia. Cuando se integre el sistema de pagos, el cambio manual se reemplazará por el estado de la suscripción.
+
+Para activar los planes en una instalación nueva, ejecutar una vez `supabase/plans.sql` en el editor SQL de Supabase. Esta migración crea el plan por usuario, el consumo mensual y la protección del límite de almacenamiento.
 
 ## Cuentas y sincronización
 

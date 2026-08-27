@@ -95,6 +95,13 @@ async function processMessage(message) {
     return;
   }
 
+  const planUsage = await consumeMonthlyPlanUsage(link.user_id);
+  if (!planUsage.allowed) {
+    await sendText(message.from, `Alcanzaste las ${planUsage.limit || 0} órdenes por WhatsApp incluidas este mes en tu plan. Podés seguir organizándote desde Estudiemos.`);
+    await markMessage(message.id, "plan_limited");
+    return;
+  }
+
   const instruction = message.type === "audio" ? await transcribeAudio(message.audioId) : text;
   if (instruction.length < 3) {
     await sendText(message.from, "No pude entender el mensaje. Probá con un audio más claro o escribilo en una frase.");
@@ -317,6 +324,19 @@ async function incrementUsage(userId) {
     body: JSON.stringify({ target_user_id: userId, target_date: dateInArgentina(new Date()) })
   });
   return Number(result) || 0;
+}
+
+async function consumeMonthlyPlanUsage(userId) {
+  const result = await adminRequest("/rest/v1/rpc/consume_plan_action_for_user", {
+    method: "POST",
+    body: JSON.stringify({ target_user_id: userId, target_feature: "whatsapp" })
+  });
+  return {
+    allowed: Boolean(result?.allowed),
+    planId: String(result?.planId || "initial"),
+    used: Math.max(0, Number(result?.used) || 0),
+    limit: Math.max(0, Number(result?.limit) || 0)
+  };
 }
 
 async function claimMessage(message) {

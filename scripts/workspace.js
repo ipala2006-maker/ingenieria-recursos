@@ -4,13 +4,8 @@
   const BUCKET = "workspace-files";
   const MAX_FILE_SIZE = 50 * 1024 * 1024;
   const VIEW_KEY = "estudiemos_workspace_view";
-  const PLAN_PREVIEW_KEY = "estudiemos_workspace_plan_preview";
   const WORKSPACE_CHANGE_KEY = "estudiemos_workspace_changed";
-  const PLANS = {
-    initial: { name: "Plan inicial", limit: 250 * 1024 * 1024, price: 0, billing: "sin costo" },
-    plus: { name: "Estudiemos Plus", limit: 5 * 1024 * 1024 * 1024, price: 8900, billing: "por mes" },
-    pro: { name: "Estudiemos Pro", limit: 20 * 1024 * 1024 * 1024, price: 16900, billing: "por mes" }
-  };
+  const PLANS = window.EstudiemosPlans;
   const state = {
     client: null,
     user: null,
@@ -21,7 +16,7 @@
     view: readView(),
     busy: false,
     aiPlan: null,
-    planPreview: readPlanPreview()
+    planStatus: initialPlanStatus()
   };
   let lastWorkspaceMarker = localStorage.getItem(WORKSPACE_CHANGE_KEY) || "0";
   let workspaceRefreshTimer = 0;
@@ -52,6 +47,7 @@
     state.user = account.getUser();
     if (!state.client) return showUnavailable();
     if (!state.user) return showSignedOut();
+    await loadPlanStatus();
     await loadItems();
   }
 
@@ -134,11 +130,13 @@
       if (!nextUser) {
         state.items = [];
         state.currentFolderId = null;
+        state.planStatus = initialPlanStatus();
         showSignedOut();
         return;
       }
       if (nextUser.id !== previousId) {
         lastWorkspaceMarker = localStorage.getItem(WORKSPACE_CHANGE_KEY) || "0";
+        await loadPlanStatus();
         await loadItems();
       }
     });
@@ -215,6 +213,24 @@
     render();
     notifyWorkspaceUpdate();
     openRequestedWorkspaceItem();
+  }
+
+  async function loadPlanStatus() {
+    state.planStatus = initialPlanStatus();
+    if (!state.user) return;
+    const accessToken = window.EstudiemosAccount?.getSession()?.access_token || "";
+    if (!accessToken) return;
+    try {
+      const response = await fetch("/api/plan-status", {
+        headers: { "Authorization": `Bearer ${accessToken}` },
+        cache: "no-store"
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.message || "Plan unavailable");
+      state.planStatus = normalizePlanStatus(result);
+    } catch (error) {
+      console.warn("Plan status unavailable", error);
+    }
   }
 
   function render() {
@@ -325,51 +341,81 @@
   }
 
   function renderPlanSummary() {
-    const plan = PLANS[state.planPreview] || PLANS.initial;
-    const used = state.items
-      .filter((item) => item.kind === "file")
-      .reduce((total, item) => total + Math.max(0, Number(item.size_bytes) || 0), 0);
+    const plan = PLANS.get(state.planStatus.planId);
+    const used = workspaceUsedBytes();
     if (elements.planName) elements.planName.textContent = plan.name;
-    if (elements.planUsage) elements.planUsage.textContent = `${formatSize(used)} de ${formatSize(plan.limit)}`;
+    if (elements.planUsage) elements.planUsage.textContent = `${formatSize(used)} de ${formatSize(plan.storageBytes)}`;
   }
 
-  function openPlansModal() {
-    const selected = state.planPreview;
-    const planCard = (id, name, features, featured = false, badge = "") => `
+  function renderCurrentUsage() {
+    const ai = state.planStatus.ai;
+    const whatsapp = state.planStatus.whatsapp;
+    return `<section class="workspace-plan-usage" aria-label="Uso del plan este mes">
+      <span><small>IA este mes</small><strong>${ai.used} de ${ai.limit}</strong></span>
+      <span><small>WhatsApp este mes</small><strong>${whatsapp.used} de ${whatsapp.limit}</strong></span>
+      <span><small>Almacenamiento</small><strong>${formatSize(workspaceUsedBytes())} de ${formatSize(state.planStatus.storageBytes)}</strong></span>
+    </section>`;
+  }
+
+  async function openPlansModal() {
+    if (state.user) await loadPlanStatus();
+    const selected = state.planStatus.planId;
+    const planCard = (id, featured = false, badge = "") => {
+      const plan = PLANS.get(id);
+      return `
       <article class="workspace-plan-card ${featured ? "workspace-plan-card--featured" : ""} ${selected === id ? "is-selected" : ""}">
         ${badge ? `<span class="workspace-plan-badge">${badge}</span>` : ""}
         <header>
-          <div><small>${selected === id ? "Vista previa activa" : id === "initial" ? "Probá Estudiemos" : id === "pro" ? "Máximo rendimiento" : "Para todos los días"}</small><h3>${name}</h3></div>
-          <strong>$${new Intl.NumberFormat("es-AR").format(PLANS[id].price)} ARS <span>${PLANS[id].billing}</span></strong>
+          <div><small>${selected === id ? "Plan de prueba activo" : id === "initial" ? "Organización manual" : id === "pro" ? "Uso intensivo" : "Organización activa"}</small><h3>${plan.shortName}</h3></div>
+          <strong>$${new Intl.NumberFormat("es-AR").format(plan.priceArs)} ARS <span>${plan.billing}</span></strong>
         </header>
-        <ul class="workspace-plan-features">${features.map((feature) => `<li>${icon("check")}<span>${feature}</span></li>`).join("")}</ul>
-        <button class="workspace-btn ${featured && selected !== id ? "workspace-btn--primary" : ""}" type="button" data-workspace-plan-select="${id}" ${selected === id ? "disabled" : ""}>${selected === id ? "Vista previa activa" : `Ver ${name}`}</button>
+        <p>${escapeHtml(plan.description)}</p>
+        <ul class="workspace-plan-features">${plan.features.map((feature) => `<li>${icon("check")}<span>${feature}</span></li>`).join("")}</ul>
+        <button class="workspace-btn ${featured && selected !== id ? "workspace-btn--primary" : ""}" type="button" data-workspace-plan-select="${id}" ${selected === id ? "disabled" : ""}>${selected === id ? "Plan de prueba activo" : `Probar ${plan.shortName}`}</button>
       </article>`;
+    };
     openModal({
-      eyebrow: "Vista previa",
+      eyebrow: "Modo de prueba",
       title: "Planes de Estudiemos",
       wide: true,
       body: `<div class="workspace-modal__body workspace-plans-preview">
-        <p class="workspace-plans-preview__notice"><strong>Demostración sin cobros.</strong> Podés probar cómo se vería cada plan. No pide tarjeta ni modifica tu cuenta real.</p>
+        <p class="workspace-plans-preview__notice"><strong>Sin cobros todavía.</strong> El plan que elijas sí aplicará sus límites para que podamos probar la experiencia completa antes del lanzamiento.</p>
+        ${renderCurrentUsage()}
         <div class="workspace-plan-grid">
-          ${planCard("initial", "Inicial", ["250 MB de almacenamiento", "40 acciones de IA por mes", "5 órdenes por WhatsApp por mes", "Agenda, Pomodoro y sincronización"], false, "Gratis")}
-          ${planCard("plus", "Plus", ["5 GB de almacenamiento", "500 acciones de IA por mes", "60 órdenes por WhatsApp por mes", "Sin límites diarios"], true, "Más popular")}
-          ${planCard("pro", "Pro", ["20 GB de almacenamiento", "1.500 acciones de IA por mes", "250 órdenes por WhatsApp por mes", "Procesamiento y soporte prioritarios"], false)}
+          ${planCard("initial", false, "Gratis")}
+          ${planCard("plus", true, "Recomendado")}
+          ${planCard("pro")}
         </div>
-        <p class="workspace-plans-preview__foot"><strong>Al lanzamiento:</strong> 7 días de Plus sin costo. Plus anual $89.000 y Pro anual $169.000, equivalentes a dos meses bonificados. Espacio adicional: 10 GB por $2.900 al mes.</p>
-        <p class="workspace-plans-preview__foot">Precios finales de referencia en pesos argentinos. WhatsApp se habilitará cuando esté conectado el número oficial. Los pagos, límites y renovaciones todavía no están activos.</p>
+        <p class="workspace-plans-preview__foot"><strong>Al lanzamiento:</strong> habrá prueba de Plus y opciones mensual y por cuatrimestre. Los precios son referencias y todavía no existe contratación ni renovación automática.</p>
+        <p class="workspace-plans-preview__foot">WhatsApp se habilitará cuando esté conectado el número oficial. El almacenamiento y la IA ya respetan el plan de prueba elegido.</p>
       </div>`,
       actions: '<button class="workspace-btn" type="button" data-workspace-modal-close>Cerrar</button>'
     });
   }
 
-  function selectPlanPreview(planId) {
-    if (!PLANS[planId]) return;
-    state.planPreview = planId;
-    try { localStorage.setItem(PLAN_PREVIEW_KEY, planId); } catch (error) {}
-    renderPlanSummary();
-    closeModal();
-    setStatus(`Vista previa cambiada a ${PLANS[planId].name}. No se realizó ningún cobro.`, "success");
+  async function selectPlanPreview(planId) {
+    if (!PLANS.ids().includes(planId)) return;
+    if (!state.user) return window.EstudiemosAccount?.open();
+    const accessToken = window.EstudiemosAccount?.getSession()?.access_token || "";
+    if (!accessToken) return window.EstudiemosAccount?.open();
+    const button = document.querySelector(`[data-workspace-plan-select="${planId}"]`);
+    if (button) button.disabled = true;
+    try {
+      const response = await fetch("/api/plan-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${accessToken}` },
+        body: JSON.stringify({ planId })
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.message || "No pudimos cambiar el plan de prueba.");
+      state.planStatus = normalizePlanStatus(result);
+      renderPlanSummary();
+      closeModal();
+      setStatus(`Ahora estás probando ${PLANS.get(planId).name}. No se realizó ningún cobro.`, "success");
+    } catch (error) {
+      if (button) button.disabled = false;
+      setModalError(error.message || "No pudimos cambiar el plan de prueba.");
+    }
   }
 
   function showState(title, message, type, action = "") {
@@ -485,6 +531,13 @@
     });
     if (!accepted.length) return;
 
+    const requiredBytes = accepted.reduce((total, file) => total + Math.max(0, Number(file.size) || 0), 0);
+    const availableBytes = Math.max(0, state.planStatus.storageBytes - workspaceUsedBytes());
+    if (requiredBytes > availableBytes) {
+      setStatus(`No hay espacio suficiente en ${PLANS.get(state.planStatus.planId).name}. Te quedan ${formatSize(availableBytes)} disponibles.`, "error");
+      return;
+    }
+
     setBusy(true, `Subiendo ${accepted.length === 1 ? accepted[0].name : `${accepted.length} archivos`}...`);
     let completed = 0;
     const failures = [];
@@ -513,7 +566,7 @@
       });
       if (insert.error) {
         await state.client.storage.from(BUCKET).remove([path]);
-        failures.push(file.name);
+        failures.push(insert.error.message?.includes("PLAN_STORAGE_LIMIT_REACHED") ? `${file.name} (sin espacio disponible)` : file.name);
         continue;
       }
       completed += 1;
@@ -868,13 +921,46 @@
     try { return localStorage.getItem(VIEW_KEY) === "list" ? "list" : "grid"; } catch (error) { return "grid"; }
   }
 
-  function readPlanPreview() {
-    try {
-      const saved = localStorage.getItem(PLAN_PREVIEW_KEY);
-      return PLANS[saved] ? saved : "initial";
-    } catch (error) {
-      return "initial";
-    }
+  function initialPlanStatus() {
+    const plan = PLANS?.get?.("initial") || {
+      id: "initial",
+      storageBytes: 250 * 1024 * 1024,
+      monthlyAiActions: 20,
+      monthlyWhatsappActions: 5
+    };
+    return {
+      planId: plan.id,
+      mode: "test",
+      billingEnabled: false,
+      storageBytes: plan.storageBytes,
+      ai: { used: 0, limit: plan.monthlyAiActions },
+      whatsapp: { used: 0, limit: plan.monthlyWhatsappActions }
+    };
+  }
+
+  function normalizePlanStatus(value) {
+    const plan = PLANS.get(value?.planId);
+    return {
+      planId: plan.id,
+      mode: value?.mode === "active" ? "active" : "test",
+      billingEnabled: Boolean(value?.billingEnabled),
+      storageBytes: plan.storageBytes,
+      ai: normalizeUsage(value?.ai, plan.monthlyAiActions),
+      whatsapp: normalizeUsage(value?.whatsapp, plan.monthlyWhatsappActions)
+    };
+  }
+
+  function normalizeUsage(value, limit) {
+    return {
+      used: Math.max(0, Math.min(limit, Number(value?.used) || 0)),
+      limit
+    };
+  }
+
+  function workspaceUsedBytes() {
+    return state.items
+      .filter((item) => item.kind === "file")
+      .reduce((total, item) => total + Math.max(0, Number(item.size_bytes) || 0), 0);
   }
 
   function getItem(id) {

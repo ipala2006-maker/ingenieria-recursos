@@ -801,6 +801,27 @@
 
 .workspace-plans-preview__notice strong{color:var(--text)}
 
+.workspace-plan-usage{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:1px;
+  overflow:hidden;
+  border:1px solid var(--workspace-edge-soft);
+  border-radius:7px;
+  background:var(--workspace-edge-soft);
+}
+
+.workspace-plan-usage > span{
+  min-width:0;
+  display:grid;
+  gap:2px;
+  padding:9px 11px;
+  background:var(--workspace-surface-soft);
+}
+
+.workspace-plan-usage small{color:var(--muted);font-size:10px;font-weight:700}
+.workspace-plan-usage strong{overflow:hidden;color:var(--text);font-size:12px;text-overflow:ellipsis;white-space:nowrap}
+
 .workspace-plan-grid{
   display:grid;
   grid-template-columns:repeat(3,minmax(0,1fr));
@@ -993,6 +1014,7 @@ html.theme-light .workspace-btn--ai{
   .workspace-item__meta{font-size:10.5px}
   .workspace-modal-shell{align-items:end;padding:0}
   .workspace-modal{width:100%;max-height:min(82dvh,720px);border-radius:8px 8px 0 0}
+  .workspace-plan-usage{grid-template-columns:1fr}
 }
 
 @media(max-width:700px){
