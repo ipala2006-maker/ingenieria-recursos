@@ -1,4 +1,4 @@
-#define AppVersion "1.2.2"
+#define AppVersion "1.2.4"
 #define RainmeterInstaller "Rainmeter-4.5.26.exe"
 
 [Setup]
@@ -41,7 +41,7 @@ Source: "vendor\{#RainmeterInstaller}"; Flags: dontcopy
 Source: "WidgetLauncher.vbs"; DestDir: "{app}"; Flags: ignoreversion
 Source: "StreakReminder.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\windows-rainmeter\Skins\Estudiemos\*"; DestDir: "{code:GetSkinDirectory}\Estudiemos"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "..\windows-rainmeter\Plugins\64bit\WebView2.dll"; DestDir: "{code:GetRainmeterDirectory}\Plugins"; Flags: ignoreversion restartreplace
+Source: "..\windows-rainmeter\Plugins\64bit\WebView2.dll"; DestDir: "{userappdata}\Rainmeter\Plugins"; Flags: ignoreversion restartreplace
 
 [Icons]
 Name: "{userstartup}\Rainmeter"; Filename: "{code:GetRainmeterExecutable}"; WorkingDir: "{code:GetRainmeterDirectory}"; Comment: "Iniciar los widgets de Estudiemos con Windows"

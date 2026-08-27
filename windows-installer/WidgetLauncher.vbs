@@ -1,6 +1,7 @@
 Option Explicit
 
 Dim shell, fileSystem, request, rainmeterPath, configName, iniName, command
+Dim screenWidth, screenHeight, positionX, positionY, markerPath, appPath
 Set shell = CreateObject("WScript.Shell")
 Set fileSystem = CreateObject("Scripting.FileSystemObject")
 
@@ -11,6 +12,8 @@ If Not fileSystem.FileExists(rainmeterPath) Then WScript.Quit 2
 
 configName = ""
 iniName = ""
+positionX = 20
+positionY = 20
 If InStr(request, "widget=workspace") > 0 Then
   configName = "MiEspacio"
   iniName = "MiEspacio.ini"
@@ -30,9 +33,58 @@ End If
 
 If configName = "" Then WScript.Quit 3
 
+screenWidth = 1366
+screenHeight = 768
+On Error Resume Next
+Dim videoControllers, videoController
+Set videoControllers = GetObject("winmgmts:\\.\root\cimv2").ExecQuery( _
+  "SELECT CurrentHorizontalResolution, CurrentVerticalResolution FROM Win32_VideoController")
+For Each videoController In videoControllers
+  If IsNumeric(videoController.CurrentHorizontalResolution) And _
+     IsNumeric(videoController.CurrentVerticalResolution) Then
+    screenWidth = CLng(videoController.CurrentHorizontalResolution)
+    screenHeight = CLng(videoController.CurrentVerticalResolution)
+    Exit For
+  End If
+Next
+On Error GoTo 0
+
+Select Case configName
+  Case "MiEspacio"
+    positionX = Int((screenWidth - 380) / 2)
+    positionY = 40
+  Case "Inbox"
+    positionX = screenWidth - 380
+    positionY = 20
+  Case "Calendario"
+    positionX = 20
+    positionY = 20
+  Case "Pomodoro"
+    positionX = 20
+    positionY = screenHeight - 420
+  Case "Racha"
+    positionX = screenWidth - 360
+    positionY = screenHeight - 340
+End Select
+If positionX < 0 Then positionX = 0
+If positionY < 0 Then positionY = 0
+
 shell.Run Chr(34) & rainmeterPath & Chr(34), 0, False
 WScript.Sleep 500
 command = Chr(34) & rainmeterPath & Chr(34) & " !ActivateConfig " & _
   Chr(34) & "Estudiemos\" & configName & Chr(34) & " " & Chr(34) & iniName & Chr(34)
 shell.Run command, 0, False
 
+appPath = fileSystem.GetParentFolderName(WScript.ScriptFullName)
+markerPath = fileSystem.BuildPath(appPath, "positioned-" & LCase(configName) & ".txt")
+If Not fileSystem.FileExists(markerPath) Then
+  WScript.Sleep 700
+  command = Chr(34) & rainmeterPath & Chr(34) & " !Move " & _
+    Chr(34) & CStr(positionX) & Chr(34) & " " & Chr(34) & CStr(positionY) & Chr(34) & " " & _
+    Chr(34) & "Estudiemos\" & configName & Chr(34)
+  shell.Run command, 0, False
+  Dim markerFile
+  Set markerFile = fileSystem.CreateTextFile(markerPath, True)
+  markerFile.WriteLine CStr(positionX) & "," & CStr(positionY)
+  markerFile.Close
+End If
