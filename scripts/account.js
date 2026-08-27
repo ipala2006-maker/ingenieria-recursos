@@ -1105,17 +1105,34 @@
     document.body.appendChild(link);
     link.click();
     link.remove();
-    setStatus("Descarga iniciada. Abrí Estudiemos-Para-Windows.exe y aceptá el permiso; el resto es automático.", "success");
+    setStatus("Descarga iniciada. Abrí Estudiemos-Para-Windows.exe y aceptá el permiso. Después elegís cada widget con su botón +.", "success");
   }
 
   function consumeWindowsWidgetsReadyMarker() {
     const url = new URL(location.href);
     if (url.searchParams.get("windows-widgets-ready") !== "1") return;
+    const pendingWidget = localStorage.getItem(WINDOWS_WIDGET_PENDING_KEY);
     localStorage.setItem(WINDOWS_WIDGETS_READY_KEY, "true");
     localStorage.removeItem(WINDOWS_WIDGET_PENDING_KEY);
     url.searchParams.delete("windows-widgets-ready");
     history.replaceState(history.state, "", `${url.pathname}${url.search}${url.hash}`);
-    window.setTimeout(() => setStatus("Widgets de Windows preparados correctamente.", "success"), 0);
+    window.setTimeout(() => {
+      openDialog();
+      const widgetLabel = {
+        workspace: "Mi espacio",
+        inbox: "Inbox",
+        calendar: "Calendario",
+        pomodoro: "Pomodoro",
+        streak: "Racha"
+      }[pendingWidget];
+      setStatus(
+        widgetLabel
+          ? `Windows está preparado. Tocá “+ ${widgetLabel}” para agregar solamente ese widget.`
+          : "Windows está preparado. Elegí con + únicamente los widgets que quieras.",
+        "success"
+      );
+      document.querySelector(`[data-account-desktop-widget="${pendingWidget || ""}"]`)?.focus({ preventScroll: false });
+    }, 0);
   }
 
   async function updateApplication() {

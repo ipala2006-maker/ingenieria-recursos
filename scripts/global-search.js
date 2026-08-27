@@ -289,7 +289,7 @@
     if (document.querySelector('script[src*="scripts/account.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/account.js?v=20260827-windows-widget-setup`;
+    script.src = `${rootPath}scripts/account.js?v=20260827-selective-windows-widgets`;
     script.defer = true;
     document.head.appendChild(script);
   }
