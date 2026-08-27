@@ -1,4 +1,4 @@
-#define AppVersion "1.2.0"
+#define AppVersion "1.2.1"
 #define RainmeterInstaller "Rainmeter-4.5.26.exe"
 
 [Setup]
@@ -51,6 +51,9 @@ Root: HKCU; Subkey: "Software\Classes\estudiemos-widgets"; ValueType: string; Va
 Root: HKCU; Subkey: "Software\Classes\estudiemos-widgets"; ValueName: "URL Protocol"; ValueType: string; ValueData: ""
 Root: HKCU; Subkey: "Software\Classes\estudiemos-widgets\DefaultIcon"; ValueType: string; ValueData: "{app}\WidgetLauncher.vbs"
 Root: HKCU; Subkey: "Software\Classes\estudiemos-widgets\shell\open\command"; ValueType: string; ValueData: "{sys}\wscript.exe ""{app}\WidgetLauncher.vbs"" ""%1"""
+
+[Run]
+Filename: "https://estudiemos-app.vercel.app/?windows-widgets-ready=1"; Flags: shellexec nowait
 
 [Code]
 const

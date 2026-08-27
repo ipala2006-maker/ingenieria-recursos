@@ -19,6 +19,9 @@
   const LOCAL_CHANGED_KEY = "estudiemos_cloud_local_changed";
   const KEY_CHANGED_KEY = "estudiemos_cloud_key_changed";
   const DIRTY_KEY = "estudiemos_cloud_dirty";
+  const WINDOWS_WIDGETS_READY_KEY = "estudiemos_windows_widgets_ready";
+  const WINDOWS_WIDGET_PENDING_KEY = "estudiemos_windows_widget_pending";
+  const WINDOWS_WIDGET_INSTALLER_URL = "https://estudiemos-app.vercel.app/downloads/Estudiemos-Para-Windows.exe";
   const MIN_PASSWORD_LENGTH = 8;
   const INSTANCE_ID = window.crypto?.randomUUID?.() || Math.random().toString(36).slice(2);
 
@@ -47,6 +50,7 @@
 
   addAccountButton();
   addAccountDialog();
+  consumeWindowsWidgetsReadyMarker();
   bindAccountEvents();
   cleanUpdateMarker();
   initialize();
@@ -199,7 +203,7 @@
           </div>
           <button class="account-widget-installer" type="button" data-account-install-widgets>
             ${desktopIcon()}
-            <span><strong>Preparar widgets en Windows</strong><small>Solo es necesario la primera vez</small></span>
+            <span><strong>Preparar widgets en Windows</strong><small>Descarga e instala el soporte una sola vez</small></span>
           </button>
         </div>
 
@@ -1037,9 +1041,13 @@
   }
 
   async function openDesktopWidget(widget) {
-    if (isWindowsDevice() && ["workspace", "inbox", "calendar", "pomodoro", "streak"].includes(widget)) {
-      setStatus("Agregando el widget al escritorio...", "success");
-      window.location.assign(`estudiemos-widgets://add?widget=${encodeURIComponent(widget)}`);
+    const validWidgets = ["workspace", "inbox", "calendar", "pomodoro", "streak"];
+    if (isWindowsDevice() && validWidgets.includes(widget)) {
+      if (localStorage.getItem(WINDOWS_WIDGETS_READY_KEY) !== "true") {
+        installDesktopWidgets(widget);
+        return;
+      }
+      launchWindowsWidget(widget);
       return;
     }
     const manager = window.EstudiemosDesktopWidgets;
@@ -1054,10 +1062,60 @@
     );
   }
 
-  function installDesktopWidgets() {
-    const installUrl = "https://estudiemos-app.vercel.app/instalar.html#pc";
-    setStatus("Abriendo la página oficial con la versión más reciente.", "success");
-    window.setTimeout(() => location.assign(installUrl), 120);
+  function launchWindowsWidget(widget) {
+    let handled = false;
+    let timer = 0;
+
+    const cleanup = () => {
+      window.removeEventListener("blur", markHandled);
+      document.removeEventListener("visibilitychange", handleVisibility);
+      if (timer) window.clearTimeout(timer);
+    };
+    const markHandled = () => {
+      if (handled) return;
+      handled = true;
+      cleanup();
+      localStorage.setItem(WINDOWS_WIDGETS_READY_KEY, "true");
+      localStorage.removeItem(WINDOWS_WIDGET_PENDING_KEY);
+      setStatus("Widget agregado al escritorio.", "success");
+    };
+    const handleVisibility = () => {
+      if (document.visibilityState === "hidden") markHandled();
+    };
+
+    localStorage.setItem(WINDOWS_WIDGET_PENDING_KEY, widget);
+    setStatus("Agregando el widget al escritorio...", "success");
+    window.addEventListener("blur", markHandled);
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.location.assign(`estudiemos-widgets://add?widget=${encodeURIComponent(widget)}`);
+
+    timer = window.setTimeout(() => {
+      if (handled) return;
+      cleanup();
+      setStatus("Orden enviada. Si el widget no apareció, tocá “Preparar widgets en Windows” para repararlo.", "success");
+    }, 3200);
+  }
+
+  function installDesktopWidgets(widget) {
+    if (widget) localStorage.setItem(WINDOWS_WIDGET_PENDING_KEY, widget);
+    const link = document.createElement("a");
+    link.href = WINDOWS_WIDGET_INSTALLER_URL;
+    link.download = "Estudiemos-Para-Windows.exe";
+    link.hidden = true;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setStatus("Descarga iniciada. Abrí Estudiemos-Para-Windows.exe y aceptá el permiso; el resto es automático.", "success");
+  }
+
+  function consumeWindowsWidgetsReadyMarker() {
+    const url = new URL(location.href);
+    if (url.searchParams.get("windows-widgets-ready") !== "1") return;
+    localStorage.setItem(WINDOWS_WIDGETS_READY_KEY, "true");
+    localStorage.removeItem(WINDOWS_WIDGET_PENDING_KEY);
+    url.searchParams.delete("windows-widgets-ready");
+    history.replaceState(history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    window.setTimeout(() => setStatus("Widgets de Windows preparados correctamente.", "success"), 0);
   }
 
   async function updateApplication() {
