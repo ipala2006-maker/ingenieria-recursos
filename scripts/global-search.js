@@ -234,7 +234,7 @@
     if (document.querySelector('script[src*="scripts/bandeja.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/bandeja.js?v=20260824-week-pomodoro`;
+    script.src = `${rootPath}scripts/bandeja.js?v=20260827-real-plans`;
     script.defer = true;
     document.head.appendChild(script);
   }
