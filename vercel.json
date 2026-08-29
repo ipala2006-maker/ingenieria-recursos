@@ -5,13 +5,6 @@
       "maxDuration": 60
     }
   },
-  "rewrites": [
-    { "source": "/downloads/Agregar-Mi-Espacio-Estudiemos.exe", "destination": "/downloads/Estudiemos-Widgets-para-Windows.exe" },
-    { "source": "/downloads/Agregar-Inbox-Estudiemos.exe", "destination": "/downloads/Estudiemos-Widgets-para-Windows.exe" },
-    { "source": "/downloads/Agregar-Calendario-Estudiemos.exe", "destination": "/downloads/Estudiemos-Widgets-para-Windows.exe" },
-    { "source": "/downloads/Agregar-Pomodoro-Estudiemos.exe", "destination": "/downloads/Estudiemos-Widgets-para-Windows.exe" },
-    { "source": "/downloads/Agregar-Racha-Estudiemos.exe", "destination": "/downloads/Estudiemos-Widgets-para-Windows.exe" }
-  ],
   "headers": [
     {
       "source": "/widget.html",

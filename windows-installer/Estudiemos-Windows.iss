@@ -1,5 +1,11 @@
-#define AppVersion "1.2.6"
+#define AppVersion "1.2.7"
 #define RainmeterInstaller "Rainmeter-4.5.26.exe"
+#ifndef OutputBaseName
+  #define OutputBaseName "Estudiemos-Widgets-para-Windows"
+#endif
+#ifndef RequestedWidget
+  #define RequestedWidget ""
+#endif
 
 [Setup]
 AppId={{A75D2076-BCB9-4C41-A079-FE92871549C4}
@@ -26,7 +32,7 @@ CloseApplications=force
 Compression=lzma2/ultra64
 SolidCompression=yes
 OutputDir=..\downloads
-OutputBaseFilename=Estudiemos-Widgets-para-Windows
+OutputBaseFilename={#OutputBaseName}
 SetupIconFile=..\assets\estudiemos.ico
 VersionInfoVersion={#AppVersion}
 VersionInfoCompany=Estudiemos
@@ -60,6 +66,10 @@ function DetectRequestedWidget: String;
 var
   SourceName: String;
 begin
+  Result := Lowercase('{#RequestedWidget}');
+  if Result <> '' then
+    Exit;
+
   SourceName := Lowercase(ExtractFileName(ExpandConstant('{srcexe}')));
   Result := '';
   if Pos('mi-espacio', SourceName) > 0 then Result := 'workspace'

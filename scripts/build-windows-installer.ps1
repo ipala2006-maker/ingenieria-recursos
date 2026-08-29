@@ -46,9 +46,23 @@ if ($signature.Status -ne "Valid" -or $signature.SignerCertificate.Subject -notm
   throw "La firma digital del instalador oficial de Rainmeter no es válida."
 }
 
-& $innoCompiler "/Qp" (Join-Path $installerRoot "Estudiemos-Windows.iss")
-if ($LASTEXITCODE -ne 0) {
-  throw "No se pudo crear el instalador de Windows."
+$installerScript = Join-Path $installerRoot "Estudiemos-Windows.iss"
+& $innoCompiler "/Qp" $installerScript
+if ($LASTEXITCODE -ne 0) { throw "No se pudo crear el instalador general de Windows." }
+
+$widgetInstallers = @(
+  @{ Widget = "workspace"; Output = "Agregar-Mi-Espacio-Estudiemos" },
+  @{ Widget = "inbox"; Output = "Agregar-Inbox-Estudiemos" },
+  @{ Widget = "calendar"; Output = "Agregar-Calendario-Estudiemos" },
+  @{ Widget = "pomodoro"; Output = "Agregar-Pomodoro-Estudiemos" },
+  @{ Widget = "streak"; Output = "Agregar-Racha-Estudiemos" }
+)
+
+foreach ($widgetInstaller in $widgetInstallers) {
+  & $innoCompiler "/Qp" "/DRequestedWidget=$($widgetInstaller.Widget)" "/DOutputBaseName=$($widgetInstaller.Output)" $installerScript
+  if ($LASTEXITCODE -ne 0) {
+    throw "No se pudo crear el instalador de $($widgetInstaller.Widget)."
+  }
 }
 
 if ([IO.Path]::GetFullPath($OutputPath) -ne [IO.Path]::GetFullPath($defaultOutput)) {

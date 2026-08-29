@@ -1071,26 +1071,29 @@
 
   function launchWindowsWidget(widget) {
     localStorage.setItem(WINDOWS_WIDGET_PENDING_KEY, widget);
+    localStorage.setItem(WINDOWS_WIDGETS_READY_KEY, "true");
     setDesktopWidgetBusy(widget, true);
     setStatus("Agregando el widget al escritorio...", "success");
 
-    const launcher = document.createElement("iframe");
+    const launcher = document.createElement("a");
     launcher.hidden = true;
     launcher.setAttribute("aria-hidden", "true");
-    launcher.src = `estudiemos-widgets://add?widget=${encodeURIComponent(widget)}&callback=1`;
+    launcher.href = `estudiemos-widgets://add?widget=${encodeURIComponent(widget)}&callback=1`;
     document.body.appendChild(launcher);
+    launcher.click();
 
     window.setTimeout(() => {
       launcher.remove();
       setDesktopWidgetBusy(widget, false);
       if (new URL(location.href).searchParams.has("windows-widget-added")) return;
-      localStorage.removeItem(WINDOWS_WIDGETS_READY_KEY);
-      setStatus("Windows no confirmó el widget. Tocá nuevamente + para preparar el soporte y agregarlo automáticamente.", "error");
-    }, 4500);
+      localStorage.removeItem(WINDOWS_WIDGET_PENDING_KEY);
+      setStatus("Solicitud enviada a Windows. Si el widget no apareció, usá Reparar soporte una sola vez.", "success");
+    }, 1800);
   }
 
   function installDesktopWidgets(widget) {
     if (widget) localStorage.setItem(WINDOWS_WIDGET_PENDING_KEY, widget);
+    localStorage.setItem(WINDOWS_WIDGETS_READY_KEY, "true");
     if (widget) setDesktopWidgetBusy(widget, true);
     const installerUrl = WINDOWS_WIDGET_INSTALLER_URLS[widget] || WINDOWS_WIDGET_INSTALLER_URL;
     const installerName = installerUrl.split("/").pop() || "Estudiemos-Widgets-para-Windows.exe";
