@@ -97,5 +97,12 @@ End If
 
 If InStr(request, "callback=1") > 0 Then
   WScript.Sleep 900
+  On Error Resume Next
+  Err.Clear
   shell.Run "web+estudiemos://open?target=widget-added&widget=" & widgetKey, 0, False
+  If Err.Number <> 0 Then
+    Err.Clear
+    shell.Run "https://estudiemos-app.vercel.app/?windows-widget-added=" & widgetKey, 0, False
+  End If
+  On Error GoTo 0
 End If

@@ -1,4 +1,4 @@
-#define AppVersion "1.2.5"
+#define AppVersion "1.2.6"
 #define RainmeterInstaller "Rainmeter-4.5.26.exe"
 
 [Setup]
