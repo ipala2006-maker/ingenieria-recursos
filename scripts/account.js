@@ -1117,7 +1117,14 @@
     const url = new URL(location.href);
     const ready = url.searchParams.get("windows-widgets-ready") === "1";
     const addedWidget = url.searchParams.get("windows-widget-added") || "";
-    if (!ready && !addedWidget) return;
+    if (!ready && !addedWidget) {
+      // Previous installers left this pending marker even when their browser callback failed.
+      // Treat it as an installed-support migration so existing users escape the download loop.
+      if (localStorage.getItem(WINDOWS_WIDGET_PENDING_KEY)) {
+        localStorage.setItem(WINDOWS_WIDGETS_READY_KEY, "true");
+      }
+      return;
+    }
     const pendingWidget = localStorage.getItem(WINDOWS_WIDGET_PENDING_KEY);
     localStorage.setItem(WINDOWS_WIDGETS_READY_KEY, "true");
     localStorage.removeItem(WINDOWS_WIDGET_PENDING_KEY);
