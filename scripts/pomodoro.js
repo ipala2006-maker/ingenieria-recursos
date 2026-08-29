@@ -148,6 +148,10 @@
           </span>
           <span class="streak-menu__progress" data-streak-progress>0/25 min hoy</span>
         </div>
+        <div class="streak-time-summary" aria-label="Tiempo de estudio acumulado">
+          <span><small>Hoy</small><strong data-streak-time-today>0 min</strong></span>
+          <span><small>Semana</small><strong data-streak-time-week>0 min</strong></span>
+        </div>
         <p class="streak-menu__message" data-streak-detail>Completá 25 min para iniciar tu racha.</p>
 
         <section class="streak-chart" aria-label="Tiempo de estudio">
@@ -1953,6 +1957,8 @@
     const progress = document.querySelector("[data-streak-progress]");
     const detail = document.querySelector("[data-streak-detail]");
     const week = document.querySelector("[data-streak-week]");
+    const todayTime = document.querySelector("[data-streak-time-today]");
+    const weekTime = document.querySelector("[data-streak-time-week]");
     const month = document.querySelector("[data-streak-month]");
     const grid = document.querySelector("[data-streak-calendar]");
     const dayLabel = summary.currentStreak === 1 ? "día" : "días";
@@ -1961,6 +1967,14 @@
       ? "Presencia registrada"
       : `${Math.min(PRESENCE_MINUTES, summary.todayMinutes)}/${PRESENCE_MINUTES} min hoy`;
     if (week) week.textContent = `${summary.activeLast7} activos`;
+    const weekMinutes = Array.from({ length: 7 }, (_, offset) => {
+      const date = new Date();
+      date.setHours(12, 0, 0, 0);
+      date.setDate(date.getDate() - offset);
+      return Math.max(0, Number(streakState.days[dateValue(date)]) || 0);
+    }).reduce((total, minutes) => total + minutes, 0);
+    if (todayTime) todayTime.textContent = formatStudyDuration(summary.todayMinutes);
+    if (weekTime) weekTime.textContent = formatStudyDuration(weekMinutes);
     if (detail) {
       detail.textContent = summary.todayActive
         ? "La presencia de hoy ya está completa."
@@ -2065,9 +2079,12 @@
 
   function formatStudyDuration(minutes) {
     const value = Math.max(0, Number(minutes) || 0);
-    if (value < 60) return `${Math.round(value)} min`;
-    const hours = value / 60;
-    return `${hours >= 10 || Number.isInteger(hours) ? hours.toFixed(0) : hours.toFixed(1).replace(".", ",")} h`;
+    const roundedMinutes = Math.round(value);
+    const hours = Math.floor(roundedMinutes / 60);
+    const remainingMinutes = roundedMinutes % 60;
+    if (!hours) return `${remainingMinutes} min`;
+    if (!remainingMinutes) return `${hours} h`;
+    return `${hours} h ${remainingMinutes} min`;
   }
 
   function formatAxisHours(hours) {

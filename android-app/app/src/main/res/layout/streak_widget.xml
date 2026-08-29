@@ -54,11 +54,21 @@
         android:textSize="13sp"
         android:textStyle="bold" />
 
+    <TextView
+        android:id="@+id/streak_widget_today"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="7dp"
+        android:text="Hoy: 0 min"
+        android:textColor="#F8FAFC"
+        android:textSize="11sp"
+        android:textStyle="bold" />
+
     <ImageView
         android:id="@+id/streak_widget_chart"
         android:layout_width="match_parent"
         android:layout_height="46dp"
-        android:layout_marginTop="7dp"
+        android:layout_marginTop="4dp"
         android:contentDescription="Actividad de estudio de los últimos siete días"
         android:scaleType="fitCenter" />
 
@@ -67,7 +77,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="3dp"
-        android:text="Últimos 7 días: 5 activos"
+        android:text="Semana: 0 min · 0 activos"
         android:textColor="#94A3B8"
         android:textSize="11sp" />
 </LinearLayout>

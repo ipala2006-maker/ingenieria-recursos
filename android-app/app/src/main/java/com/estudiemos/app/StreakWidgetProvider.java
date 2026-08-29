@@ -125,8 +125,12 @@ public class StreakWidgetProvider extends AppWidgetProvider {
                 summary.activeToday ? "Presencia de hoy registrada" : "Tocá para estudiar 25 min"
         );
         views.setTextViewText(
+                R.id.streak_widget_today,
+                "Hoy: " + formatStudyTime(summary.todayMinutes)
+        );
+        views.setTextViewText(
                 R.id.streak_widget_week,
-                formatStudyTime(summary.weekTotalMinutes()) + " esta semana · " + summary.activeLast7 + " activos"
+                "Semana: " + formatStudyTime(summary.weekTotalMinutes()) + " · " + summary.activeLast7 + " activos"
         );
         views.setImageViewBitmap(R.id.streak_widget_chart, buildWeekChart(summary.weekMinutes));
         views.setOnClickPendingIntent(R.id.streak_widget_root, openPomodoroIntent(context));
@@ -174,10 +178,12 @@ public class StreakWidgetProvider extends AppWidgetProvider {
     }
 
     private static String formatStudyTime(int minutes) {
-        if (minutes < 60) return minutes + " min";
-        float hours = minutes / 60f;
-        if (minutes % 60 == 0) return Math.round(hours) + " h";
-        return String.format(java.util.Locale.forLanguageTag("es-AR"), "%.1f h", hours);
+        int value = Math.max(0, minutes);
+        int hours = value / 60;
+        int remainingMinutes = value % 60;
+        if (hours == 0) return remainingMinutes + " min";
+        if (remainingMinutes == 0) return hours + " h";
+        return hours + " h " + remainingMinutes + " min";
     }
 
     private static int minutesFor(JSONObject days, LocalDate date) {
