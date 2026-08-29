@@ -1,4 +1,4 @@
-#define AppVersion "1.2.7"
+#define AppVersion "1.2.8"
 #define RainmeterInstaller "Rainmeter-4.5.26.exe"
 #ifndef OutputBaseName
   #define OutputBaseName "Estudiemos-Widgets-para-Windows"
@@ -144,7 +144,6 @@ var
   TaskCommand: String;
   LauncherScript: String;
   RequestedWidget: String;
-  ReadyUrl: String;
 begin
   if CurStep = ssPostInstall then
   begin
@@ -158,9 +157,6 @@ begin
     Sleep(1800);
     ExecAsOriginalUser(RainmeterExe, '!RefreshApp', GetRainmeterDirectory(''), SW_HIDE,
       ewWaitUntilTerminated, ResultCode);
-    ExecAsOriginalUser(RainmeterExe, '!ActivateConfig "Estudiemos\Setup" "Setup.ini"',
-      GetRainmeterDirectory(''), SW_HIDE, ewNoWait, ResultCode);
-
     ReminderScript := ExpandConstant('{app}\StreakReminder.ps1');
     TaskCommand := '/Create /F /SC DAILY /TN "Estudiemos\Racha 12-00" /ST 12:00 /TR "powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File ""' + ReminderScript + '"""';
     Exec(ExpandConstant('{sys}\schtasks.exe'), TaskCommand, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
@@ -183,9 +179,5 @@ begin
         '', SW_HIDE, ewNoWait, ResultCode);
     end;
 
-    ReadyUrl := 'https://estudiemos-app.vercel.app/?windows-widgets-ready=1';
-    if RequestedWidget <> '' then
-      ReadyUrl := ReadyUrl + '&windows-widget-added=' + RequestedWidget;
-    ShellExecAsOriginalUser('', ReadyUrl, '', '', SW_SHOWNORMAL, ewNoWait, ResultCode);
   end;
 end;

@@ -75,11 +75,19 @@ End Select
 If positionX < 0 Then positionX = 0
 If positionY < 0 Then positionY = 0
 
-shell.Run Chr(34) & rainmeterPath & Chr(34), 0, False
-WScript.Sleep 500
+If Not IsRainmeterRunning() Then
+  shell.Run Chr(34) & rainmeterPath & Chr(34), 0, False
+  WScript.Sleep 1800
+End If
+
 command = Chr(34) & rainmeterPath & Chr(34) & " !ActivateConfig " & _
   Chr(34) & "Estudiemos\" & configName & Chr(34) & " " & Chr(34) & iniName & Chr(34)
 shell.Run command, 0, False
+WScript.Sleep 900
+
+RunBang "!Refresh", configName, ""
+RunBang "!Show", configName, ""
+RunBang "!ZPos", configName, "-2"
 
 appPath = fileSystem.GetParentFolderName(WScript.ScriptFullName)
 markerPath = fileSystem.BuildPath(appPath, "positioned-" & LCase(configName) & ".txt")
@@ -95,6 +103,8 @@ If Not fileSystem.FileExists(markerPath) Then
   markerFile.Close
 End If
 
+RunBang "!Redraw", configName, ""
+
 If InStr(request, "callback=1") > 0 Then
   WScript.Sleep 900
   On Error Resume Next
@@ -106,3 +116,21 @@ If InStr(request, "callback=1") > 0 Then
   End If
   On Error GoTo 0
 End If
+
+Function IsRainmeterRunning()
+  Dim processes
+  IsRainmeterRunning = False
+  On Error Resume Next
+  Set processes = GetObject("winmgmts:\\.\root\cimv2").ExecQuery( _
+    "SELECT ProcessId FROM Win32_Process WHERE Name='Rainmeter.exe'")
+  If Err.Number = 0 Then IsRainmeterRunning = (processes.Count > 0)
+  On Error GoTo 0
+End Function
+
+Sub RunBang(bangName, targetConfig, firstArgument)
+  Dim bangCommand
+  bangCommand = Chr(34) & rainmeterPath & Chr(34) & " " & bangName
+  If firstArgument <> "" Then bangCommand = bangCommand & " " & firstArgument
+  bangCommand = bangCommand & " " & Chr(34) & "Estudiemos\" & targetConfig & Chr(34)
+  shell.Run bangCommand, 0, False
+End Sub

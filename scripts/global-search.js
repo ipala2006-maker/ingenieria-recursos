@@ -289,7 +289,7 @@
     if (document.querySelector('script[src*="scripts/account.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/account.js?v=20260829-widget-installer-127`;
+    script.src = `${rootPath}scripts/account.js?v=20260829-widget-launch-128`;
     script.defer = true;
     document.head.appendChild(script);
   }

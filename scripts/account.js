@@ -1078,7 +1078,7 @@
     const launcher = document.createElement("a");
     launcher.hidden = true;
     launcher.setAttribute("aria-hidden", "true");
-    launcher.href = `estudiemos-widgets://add?widget=${encodeURIComponent(widget)}&callback=1`;
+    launcher.href = `estudiemos-widgets://add?widget=${encodeURIComponent(widget)}&callback=0`;
     document.body.appendChild(launcher);
     launcher.click();
 
@@ -1087,7 +1087,7 @@
       setDesktopWidgetBusy(widget, false);
       if (new URL(location.href).searchParams.has("windows-widget-added")) return;
       localStorage.removeItem(WINDOWS_WIDGET_PENDING_KEY);
-      setStatus("Solicitud enviada a Windows. Si el widget no apareció, usá Reparar soporte una sola vez.", "success");
+      setStatus("Widget enviado al escritorio. Minimizá Estudiemos o presioná Win + D para verlo.", "success");
     }, 1800);
   }
 
