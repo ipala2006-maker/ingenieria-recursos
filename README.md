@@ -142,7 +142,7 @@ El widget **Inbox** usa una lista desplazable: muestra todas las tareas pendient
 
 En Chrome y Edge para computadora, el perfil incluye **Widgets de escritorio**. Mi espacio, Inbox, calendario, Pomodoro y racha se abren en una ventana compacta ajustable que permanece encima de las demás ventanas mientras el navegador está abierto. Comparten los datos de la cuenta y se puede cambiar de vista desde la misma ventana.
 
-En Windows también aparece **Agregar al escritorio**. Ese botón descarga `Estudiemos-Para-Windows.exe`, que solicita una sola confirmación de Windows, instala Rainmeter oficial si hace falta, agrega los cinco widgets (Mi espacio, Inbox, Calendario, Pomodoro y Racha) y deja su inicio automático configurado. Cada widget queda aislado de la app y se puede redimensionar arrastrando su esquina inferior derecha. El paquete `.rmskin` se conserva como alternativa manual.
+En Windows también aparece **Widgets de escritorio**. Cada botón `+` agrega únicamente el widget elegido. La primera vez descarga un instalador con un nombre claro, prepara Rainmeter oficial si hace falta y agrega automáticamente ese widget al terminar; las veces siguientes la acción es directa. Cada widget queda aislado de la app y se puede redimensionar arrastrando su esquina inferior derecha. El paquete `.rmskin` se conserva como alternativa manual.
 
 Windows 11 también está preparado con tres widgets nativos para su panel de Widgets:
 

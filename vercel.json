@@ -5,6 +5,13 @@
       "maxDuration": 60
     }
   },
+  "rewrites": [
+    { "source": "/downloads/Agregar-Mi-Espacio-Estudiemos.exe", "destination": "/downloads/Estudiemos-Widgets-para-Windows.exe" },
+    { "source": "/downloads/Agregar-Inbox-Estudiemos.exe", "destination": "/downloads/Estudiemos-Widgets-para-Windows.exe" },
+    { "source": "/downloads/Agregar-Calendario-Estudiemos.exe", "destination": "/downloads/Estudiemos-Widgets-para-Windows.exe" },
+    { "source": "/downloads/Agregar-Pomodoro-Estudiemos.exe", "destination": "/downloads/Estudiemos-Widgets-para-Windows.exe" },
+    { "source": "/downloads/Agregar-Racha-Estudiemos.exe", "destination": "/downloads/Estudiemos-Widgets-para-Windows.exe" }
+  ],
   "headers": [
     {
       "source": "/widget.html",
@@ -27,6 +34,33 @@
           "value": "attachment; filename=\"Estudiemos-Widgets.rmskin\""
         }
       ]
+    },
+    {
+      "source": "/downloads/Estudiemos-Widgets-para-Windows.exe",
+      "headers": [
+        { "key": "Content-Type", "value": "application/octet-stream" },
+        { "key": "Content-Disposition", "value": "attachment; filename=\"Estudiemos-Widgets-para-Windows.exe\"" }
+      ]
+    },
+    {
+      "source": "/downloads/Agregar-Mi-Espacio-Estudiemos.exe",
+      "headers": [{ "key": "Content-Disposition", "value": "attachment; filename=\"Agregar-Mi-Espacio-Estudiemos.exe\"" }]
+    },
+    {
+      "source": "/downloads/Agregar-Inbox-Estudiemos.exe",
+      "headers": [{ "key": "Content-Disposition", "value": "attachment; filename=\"Agregar-Inbox-Estudiemos.exe\"" }]
+    },
+    {
+      "source": "/downloads/Agregar-Calendario-Estudiemos.exe",
+      "headers": [{ "key": "Content-Disposition", "value": "attachment; filename=\"Agregar-Calendario-Estudiemos.exe\"" }]
+    },
+    {
+      "source": "/downloads/Agregar-Pomodoro-Estudiemos.exe",
+      "headers": [{ "key": "Content-Disposition", "value": "attachment; filename=\"Agregar-Pomodoro-Estudiemos.exe\"" }]
+    },
+    {
+      "source": "/downloads/Agregar-Racha-Estudiemos.exe",
+      "headers": [{ "key": "Content-Disposition", "value": "attachment; filename=\"Agregar-Racha-Estudiemos.exe\"" }]
     },
     {
       "source": "/downloads/Estudiemos-Para-Windows.exe",
@@ -62,7 +96,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://img.youtube.com https://i.ytimg.com; connect-src 'self' https://noembed.com https://*.supabase.co wss://*.supabase.co; frame-src https://www.youtube.com https://www.youtube-nocookie.com https://open.spotify.com; object-src 'none'; base-uri 'self'; form-action 'self' https://docs.google.com; frame-ancestors 'none'; upgrade-insecure-requests"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://img.youtube.com https://i.ytimg.com; connect-src 'self' https://noembed.com https://*.supabase.co wss://*.supabase.co; frame-src estudiemos-widgets: https://www.youtube.com https://www.youtube-nocookie.com https://open.spotify.com; object-src 'none'; base-uri 'self'; form-action 'self' https://docs.google.com; frame-ancestors 'none'; upgrade-insecure-requests"
         }
       ]
     }

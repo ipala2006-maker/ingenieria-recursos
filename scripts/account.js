@@ -21,7 +21,14 @@
   const DIRTY_KEY = "estudiemos_cloud_dirty";
   const WINDOWS_WIDGETS_READY_KEY = "estudiemos_windows_widgets_ready";
   const WINDOWS_WIDGET_PENDING_KEY = "estudiemos_windows_widget_pending";
-  const WINDOWS_WIDGET_INSTALLER_URL = "https://estudiemos-app.vercel.app/downloads/Estudiemos-Para-Windows.exe";
+  const WINDOWS_WIDGET_INSTALLER_URL = "https://estudiemos-app.vercel.app/downloads/Estudiemos-Widgets-para-Windows.exe";
+  const WINDOWS_WIDGET_INSTALLER_URLS = {
+    workspace: "https://estudiemos-app.vercel.app/downloads/Agregar-Mi-Espacio-Estudiemos.exe",
+    inbox: "https://estudiemos-app.vercel.app/downloads/Agregar-Inbox-Estudiemos.exe",
+    calendar: "https://estudiemos-app.vercel.app/downloads/Agregar-Calendario-Estudiemos.exe",
+    pomodoro: "https://estudiemos-app.vercel.app/downloads/Agregar-Pomodoro-Estudiemos.exe",
+    streak: "https://estudiemos-app.vercel.app/downloads/Agregar-Racha-Estudiemos.exe"
+  };
   const MIN_PASSWORD_LENGTH = 8;
   const INSTANCE_ID = window.crypto?.randomUUID?.() || Math.random().toString(36).slice(2);
 
@@ -193,7 +200,7 @@
 
         <div class="account-android-widgets account-desktop-widgets" data-account-desktop-widgets hidden>
           <strong>Widgets de escritorio</strong>
-          <small>Agregá cada widget fijo al escritorio directamente desde Estudiemos.</small>
+          <small>Elegí uno. La primera vez Windows prepara el soporte y agrega directamente ese widget.</small>
           <div>
             <button class="account-secondary" type="button" data-account-desktop-widget="workspace">+ Mi espacio</button>
             <button class="account-secondary" type="button" data-account-desktop-widget="inbox">+ Inbox</button>
@@ -203,7 +210,7 @@
           </div>
           <button class="account-widget-installer" type="button" data-account-install-widgets>
             ${desktopIcon()}
-            <span><strong>Preparar widgets en Windows</strong><small>Descarga e instala el soporte una sola vez</small></span>
+            <span><strong>Reparar soporte de widgets</strong><small>Usalo solamente si un botón + no responde</small></span>
           </button>
         </div>
 
@@ -1063,58 +1070,56 @@
   }
 
   function launchWindowsWidget(widget) {
-    let handled = false;
-    let timer = 0;
-
-    const cleanup = () => {
-      window.removeEventListener("blur", markHandled);
-      document.removeEventListener("visibilitychange", handleVisibility);
-      if (timer) window.clearTimeout(timer);
-    };
-    const markHandled = () => {
-      if (handled) return;
-      handled = true;
-      cleanup();
-      localStorage.setItem(WINDOWS_WIDGETS_READY_KEY, "true");
-      localStorage.removeItem(WINDOWS_WIDGET_PENDING_KEY);
-      setStatus("Widget agregado al escritorio.", "success");
-    };
-    const handleVisibility = () => {
-      if (document.visibilityState === "hidden") markHandled();
-    };
-
     localStorage.setItem(WINDOWS_WIDGET_PENDING_KEY, widget);
+    setDesktopWidgetBusy(widget, true);
     setStatus("Agregando el widget al escritorio...", "success");
-    window.addEventListener("blur", markHandled);
-    document.addEventListener("visibilitychange", handleVisibility);
-    window.location.assign(`estudiemos-widgets://add?widget=${encodeURIComponent(widget)}`);
 
-    timer = window.setTimeout(() => {
-      if (handled) return;
-      cleanup();
-      setStatus("Orden enviada. Si el widget no apareció, tocá “Preparar widgets en Windows” para repararlo.", "success");
-    }, 3200);
+    const launcher = document.createElement("iframe");
+    launcher.hidden = true;
+    launcher.setAttribute("aria-hidden", "true");
+    launcher.src = `estudiemos-widgets://add?widget=${encodeURIComponent(widget)}&callback=1`;
+    document.body.appendChild(launcher);
+
+    window.setTimeout(() => {
+      launcher.remove();
+      setDesktopWidgetBusy(widget, false);
+      if (new URL(location.href).searchParams.has("windows-widget-added")) return;
+      localStorage.removeItem(WINDOWS_WIDGETS_READY_KEY);
+      setStatus("Windows no confirmó el widget. Tocá nuevamente + para preparar el soporte y agregarlo automáticamente.", "error");
+    }, 4500);
   }
 
   function installDesktopWidgets(widget) {
     if (widget) localStorage.setItem(WINDOWS_WIDGET_PENDING_KEY, widget);
+    if (widget) setDesktopWidgetBusy(widget, true);
+    const installerUrl = WINDOWS_WIDGET_INSTALLER_URLS[widget] || WINDOWS_WIDGET_INSTALLER_URL;
+    const installerName = installerUrl.split("/").pop() || "Estudiemos-Widgets-para-Windows.exe";
     const link = document.createElement("a");
-    link.href = WINDOWS_WIDGET_INSTALLER_URL;
-    link.download = "Estudiemos-Para-Windows.exe";
+    link.href = installerUrl;
+    link.download = installerName;
     link.hidden = true;
     document.body.appendChild(link);
     link.click();
     link.remove();
-    setStatus("Descarga iniciada. Abrí Estudiemos-Para-Windows.exe y aceptá el permiso. Después elegís cada widget con su botón +.", "success");
+    setStatus(
+      widget
+        ? `Descarga lista. Abrí ${installerName} y aceptá el permiso: Windows agregará ese widget automáticamente.`
+        : `Descarga lista. Abrí ${installerName} y aceptá el permiso para reparar los widgets.`,
+      "success"
+    );
+    window.setTimeout(() => setDesktopWidgetBusy(widget, false), 1800);
   }
 
   function consumeWindowsWidgetsReadyMarker() {
     const url = new URL(location.href);
-    if (url.searchParams.get("windows-widgets-ready") !== "1") return;
+    const ready = url.searchParams.get("windows-widgets-ready") === "1";
+    const addedWidget = url.searchParams.get("windows-widget-added") || "";
+    if (!ready && !addedWidget) return;
     const pendingWidget = localStorage.getItem(WINDOWS_WIDGET_PENDING_KEY);
     localStorage.setItem(WINDOWS_WIDGETS_READY_KEY, "true");
     localStorage.removeItem(WINDOWS_WIDGET_PENDING_KEY);
     url.searchParams.delete("windows-widgets-ready");
+    url.searchParams.delete("windows-widget-added");
     history.replaceState(history.state, "", `${url.pathname}${url.search}${url.hash}`);
     window.setTimeout(() => {
       openDialog();
@@ -1124,15 +1129,25 @@
         calendar: "Calendario",
         pomodoro: "Pomodoro",
         streak: "Racha"
-      }[pendingWidget];
+      }[addedWidget || pendingWidget];
       setStatus(
         widgetLabel
-          ? `Windows está preparado. Tocá “+ ${widgetLabel}” para agregar solamente ese widget.`
-          : "Windows está preparado. Elegí con + únicamente los widgets que quieras.",
+          ? `${widgetLabel} se agregó al escritorio correctamente.`
+          : "Windows está preparado. Ahora cada botón + agrega únicamente el widget elegido.",
         "success"
       );
-      document.querySelector(`[data-account-desktop-widget="${pendingWidget || ""}"]`)?.focus({ preventScroll: false });
     }, 0);
+  }
+
+  function setDesktopWidgetBusy(widget, busy) {
+    if (!widget) return;
+    const button = document.querySelector(`[data-account-desktop-widget="${widget}"]`);
+    if (!button) return;
+    if (busy && !button.dataset.idleLabel) button.dataset.idleLabel = button.textContent;
+    button.textContent = busy ? "Agregando..." : (button.dataset.idleLabel || button.textContent);
+    button.disabled = Boolean(busy);
+    button.classList.toggle("is-busy", Boolean(busy));
+    button.setAttribute("aria-busy", String(Boolean(busy)));
   }
 
   async function updateApplication() {

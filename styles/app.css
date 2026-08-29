@@ -4665,6 +4665,10 @@ html.theme-light .app-install-sheet__close{
   margin-top:3px;
 }
 .account-android-widgets .account-secondary{min-height:36px;padding:7px 8px;font-size:12px}
+.account-desktop-widgets .account-secondary:disabled{
+  cursor:wait;
+  opacity:.6;
+}
 .account-widget-installer{
   width:100%;
   min-height:48px;

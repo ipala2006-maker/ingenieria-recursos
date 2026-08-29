@@ -1,6 +1,6 @@
 Option Explicit
 
-Dim shell, fileSystem, request, rainmeterPath, configName, iniName, command
+Dim shell, fileSystem, request, rainmeterPath, configName, iniName, command, widgetKey
 Dim screenWidth, screenHeight, positionX, positionY, markerPath, appPath
 Set shell = CreateObject("WScript.Shell")
 Set fileSystem = CreateObject("Scripting.FileSystemObject")
@@ -12,23 +12,29 @@ If Not fileSystem.FileExists(rainmeterPath) Then WScript.Quit 2
 
 configName = ""
 iniName = ""
+widgetKey = ""
 positionX = 20
 positionY = 20
 If InStr(request, "widget=workspace") > 0 Then
   configName = "MiEspacio"
   iniName = "MiEspacio.ini"
+  widgetKey = "workspace"
 ElseIf InStr(request, "widget=inbox") > 0 Then
   configName = "Inbox"
   iniName = "Inbox.ini"
+  widgetKey = "inbox"
 ElseIf InStr(request, "widget=calendar") > 0 Then
   configName = "Calendario"
   iniName = "Calendario.ini"
+  widgetKey = "calendar"
 ElseIf InStr(request, "widget=pomodoro") > 0 Then
   configName = "Pomodoro"
   iniName = "Pomodoro.ini"
+  widgetKey = "pomodoro"
 ElseIf InStr(request, "widget=streak") > 0 Then
   configName = "Racha"
   iniName = "Racha.ini"
+  widgetKey = "streak"
 End If
 
 If configName = "" Then WScript.Quit 3
@@ -87,4 +93,9 @@ If Not fileSystem.FileExists(markerPath) Then
   Set markerFile = fileSystem.CreateTextFile(markerPath, True)
   markerFile.WriteLine CStr(positionX) & "," & CStr(positionY)
   markerFile.Close
+End If
+
+If InStr(request, "callback=1") > 0 Then
+  WScript.Sleep 900
+  shell.Run "web+estudiemos://open?target=widget-added&widget=" & widgetKey, 0, False
 End If

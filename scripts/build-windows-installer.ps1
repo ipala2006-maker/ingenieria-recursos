@@ -14,7 +14,8 @@ $innoCandidates = @(
   "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe"
 )
 $innoCompiler = $innoCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
-$defaultOutput = Join-Path $repositoryRoot "downloads\Estudiemos-Para-Windows.exe"
+$defaultOutput = Join-Path $repositoryRoot "downloads\Estudiemos-Widgets-para-Windows.exe"
+$legacyOutput = Join-Path $repositoryRoot "downloads\Estudiemos-Para-Windows.exe"
 
 if (-not $OutputPath) {
   $OutputPath = $defaultOutput
@@ -53,5 +54,7 @@ if ($LASTEXITCODE -ne 0) {
 if ([IO.Path]::GetFullPath($OutputPath) -ne [IO.Path]::GetFullPath($defaultOutput)) {
   Copy-Item -LiteralPath $defaultOutput -Destination $OutputPath -Force
 }
+
+Copy-Item -LiteralPath $defaultOutput -Destination $legacyOutput -Force
 
 Get-Item -LiteralPath $OutputPath

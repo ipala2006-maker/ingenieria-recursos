@@ -29,6 +29,11 @@
           page.searchParams.set("workspaceItem", item);
           page.searchParams.set("workspaceKind", launch.searchParams.get("kind") === "file" ? "file" : "folder");
         }
+      } else if (target === "widget-added") {
+        var widget = launch.searchParams.get("widget") || "";
+        if (/^(workspace|inbox|calendar|pomodoro|streak)$/.test(widget)) {
+          page.searchParams.set("windows-widget-added", widget);
+        }
       }
 
       history.replaceState(history.state, "", page.pathname + page.search + page.hash);
