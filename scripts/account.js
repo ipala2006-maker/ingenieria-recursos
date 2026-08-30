@@ -21,7 +21,6 @@
   const DIRTY_KEY = "estudiemos_cloud_dirty";
   const WINDOWS_WIDGETS_READY_KEY = "estudiemos_windows_widgets_ready";
   const WINDOWS_WIDGET_PENDING_KEY = "estudiemos_windows_widget_pending";
-  const WINDOWS_WIDGET_ACK_KEY = "estudiemos_windows_widget_ack";
   const WINDOWS_WIDGET_SETUP_URL = "https://estudiemos-app.vercel.app/instalar.html#pc-widgets";
   const MIN_PASSWORD_LENGTH = 8;
   const INSTANCE_ID = window.crypto?.randomUUID?.() || Math.random().toString(36).slice(2);
@@ -1068,9 +1067,8 @@
     setDesktopWidgetBusy(widget, true);
     setStatus("Conectando y agregando el widget...", "success");
 
-    const previousAck = localStorage.getItem(WINDOWS_WIDGET_ACK_KEY) || "";
     const accountLink = await createWindowsWidgetLink(widget);
-    const query = new URLSearchParams({ widget, callback: "1" });
+    const query = new URLSearchParams({ widget, callback: "0" });
     if (accountLink) query.set("link", accountLink);
 
     const launcher = document.createElement("a");
@@ -1080,40 +1078,13 @@
     document.body.appendChild(launcher);
     launcher.click();
 
-    let finished = false;
-    const finish = (success) => {
-      if (finished) return;
-      finished = true;
+    window.setTimeout(() => {
       launcher.remove();
       setDesktopWidgetBusy(widget, false);
-      window.removeEventListener("storage", handleAck);
-      if (success) {
-        localStorage.setItem(WINDOWS_WIDGETS_READY_KEY, "true");
-        localStorage.removeItem(WINDOWS_WIDGET_PENDING_KEY);
-        setStatus("Widget agregado. Minimizá Estudiemos o presioná Win + D para verlo.", "success");
-        return;
-      }
-      localStorage.setItem(WINDOWS_WIDGETS_READY_KEY, "false");
-      setStatus("El soporte quedó incompleto. Lo vamos a reparar automáticamente.", "error");
-      window.setTimeout(() => installDesktopWidgets(widget), 700);
-    };
-    const handleAck = (event) => {
-      if (event.key !== WINDOWS_WIDGET_ACK_KEY || !event.newValue || event.newValue === previousAck) return;
-      try {
-        const ack = JSON.parse(event.newValue);
-        if (ack.widget === widget) finish(true);
-      } catch (_) {}
-    };
-    window.addEventListener("storage", handleAck);
-    window.setTimeout(() => {
-      const currentAck = localStorage.getItem(WINDOWS_WIDGET_ACK_KEY) || "";
-      if (currentAck !== previousAck) {
-        try {
-          if (JSON.parse(currentAck).widget === widget) return finish(true);
-        } catch (_) {}
-      }
-      finish(false);
-    }, 8000);
+      localStorage.setItem(WINDOWS_WIDGETS_READY_KEY, "true");
+      localStorage.removeItem(WINDOWS_WIDGET_PENDING_KEY);
+      setStatus("Widget agregado. Minimizá Estudiemos o presioná Win + D para verlo.", "success");
+    }, 2200);
   }
 
   async function createWindowsWidgetLink(widget) {
@@ -1151,7 +1122,6 @@
     const pendingWidget = localStorage.getItem(WINDOWS_WIDGET_PENDING_KEY);
     localStorage.setItem(WINDOWS_WIDGETS_READY_KEY, "true");
     if (addedWidget) {
-      localStorage.setItem(WINDOWS_WIDGET_ACK_KEY, JSON.stringify({ widget: addedWidget, at: Date.now() }));
       localStorage.removeItem(WINDOWS_WIDGET_PENDING_KEY);
     }
     url.searchParams.delete("windows-widgets-ready");
