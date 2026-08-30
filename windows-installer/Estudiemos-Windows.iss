@@ -1,4 +1,4 @@
-#define AppVersion "1.2.9"
+#define AppVersion "1.3.0"
 #define RainmeterInstaller "Rainmeter-4.5.26.exe"
 #ifndef OutputBaseName
   #define OutputBaseName "Estudiemos-Widgets-para-Windows"
@@ -9,7 +9,7 @@
 
 [Setup]
 AppId={{A75D2076-BCB9-4C41-A079-FE92871549C4}
-AppName=Estudiemos para Windows
+AppName=Widgets de Estudiemos
 AppVersion={#AppVersion}
 AppPublisher=Estudiemos
 AppPublisherURL=https://estudiemos-app.vercel.app/
@@ -17,7 +17,7 @@ AppSupportURL=https://estudiemos-app.vercel.app/
 DefaultDirName={localappdata}\Estudiemos\Windows
 CreateAppDir=yes
 Uninstallable=no
-PrivilegesRequired=admin
+PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 WizardStyle=modern
@@ -25,7 +25,7 @@ DisableWelcomePage=yes
 DisableProgramGroupPage=yes
 DisableDirPage=yes
 DisableReadyPage=yes
-DisableFinishedPage=no
+DisableFinishedPage=yes
 AllowCancelDuringInstall=no
 SetupLogging=yes
 CloseApplications=force
@@ -36,8 +36,8 @@ OutputBaseFilename={#OutputBaseName}
 SetupIconFile=..\assets\estudiemos.ico
 VersionInfoVersion={#AppVersion}
 VersionInfoCompany=Estudiemos
-VersionInfoDescription=Instalador de Estudiemos y sus widgets de escritorio
-VersionInfoProductName=Estudiemos para Windows
+VersionInfoDescription=Soporte de widgets de escritorio para Estudiemos
+VersionInfoProductName=Widgets de Estudiemos
 
 [Languages]
 Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
@@ -47,7 +47,7 @@ Source: "vendor\{#RainmeterInstaller}"; Flags: dontcopy
 Source: "WidgetLauncher.vbs"; DestDir: "{app}"; Flags: ignoreversion
 Source: "StreakReminder.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\windows-rainmeter\Skins\Estudiemos\*"; DestDir: "{code:GetSkinDirectory}\Estudiemos"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "..\windows-rainmeter\Plugins\64bit\WebView2.dll"; DestDir: "{userappdata}\Rainmeter\Plugins"; Flags: ignoreversion restartreplace
+Source: "..\windows-rainmeter\Plugins\64bit\WebView2.dll"; DestDir: "{code:GetRainmeterPluginDirectory}"; Flags: ignoreversion restartreplace
 
 [Icons]
 Name: "{userstartup}\Rainmeter"; Filename: "{code:GetRainmeterExecutable}"; WorkingDir: "{code:GetRainmeterDirectory}"; Comment: "Iniciar los widgets de Estudiemos con Windows"
@@ -81,7 +81,10 @@ end;
 
 function GetRainmeterDirectory(Param: String): String;
 begin
-  Result := ExpandConstant('{autopf}\Rainmeter');
+  if FileExists(ExpandConstant('{autopf}\Rainmeter\Rainmeter.exe')) then
+    Result := ExpandConstant('{autopf}\Rainmeter')
+  else
+    Result := ExpandConstant('{app}\Rainmeter');
 end;
 
 function GetRainmeterExecutable(Param: String): String;
@@ -93,11 +96,24 @@ function GetSkinDirectory(Param: String): String;
 var
   IniPath: String;
 begin
+  if not FileExists(ExpandConstant('{autopf}\Rainmeter\Rainmeter.exe')) then
+  begin
+    Result := ExpandConstant('{app}\Rainmeter\Skins');
+    Exit;
+  end;
   IniPath := ExpandConstant('{userappdata}\Rainmeter\Rainmeter.ini');
   Result := GetIniString('Rainmeter', 'SkinPath', '', IniPath);
   if Result = '' then
     Result := ExpandConstant('{userdocs}\Rainmeter\Skins');
   Result := RemoveBackslashUnlessRoot(Result);
+end;
+
+function GetRainmeterPluginDirectory(Param: String): String;
+begin
+  if FileExists(ExpandConstant('{autopf}\Rainmeter\Rainmeter.exe')) then
+    Result := ExpandConstant('{userappdata}\Rainmeter\Plugins')
+  else
+    Result := ExpandConstant('{app}\Rainmeter\Plugins');
 end;
 
 procedure StopRainmeter;
@@ -118,6 +134,7 @@ function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   ResultCode: Integer;
   InstallerPath: String;
+  PortableDirectory: String;
 begin
   Result := '';
 
@@ -125,10 +142,19 @@ begin
   begin
     ExtractTemporaryFile(RainmeterInstallerName);
     InstallerPath := ExpandConstant('{tmp}\') + RainmeterInstallerName;
-    if (not Exec(InstallerPath, '/S', '', SW_HIDE, ewWaitUntilTerminated, ResultCode)) or
+    PortableDirectory := ExpandConstant('{app}\Rainmeter');
+    ForceDirectories(PortableDirectory);
+    if (not Exec(InstallerPath,
+       '/S /RESTART=0 /PORTABLE=1 /VERSION=64 /D=' + PortableDirectory,
+       '', SW_HIDE, ewWaitUntilTerminated, ResultCode)) or
        (ResultCode <> 0) then
     begin
       Result := 'No pudimos instalar el soporte de widgets. Cerrá el instalador e intentá nuevamente.';
+      Exit;
+    end;
+    if not FileExists(AddBackslash(PortableDirectory) + 'Rainmeter.exe') then
+    begin
+      Result := 'El soporte de widgets no terminó de prepararse. Volvé a intentarlo.';
       Exit;
     end;
   end;

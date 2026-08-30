@@ -1,13 +1,18 @@
 Option Explicit
 
-Dim shell, fileSystem, request, rainmeterPath, configName, iniName, command, widgetKey
+Dim shell, fileSystem, rawRequest, request, rainmeterPath, configName, iniName, command, widgetKey, linkToken
 Dim screenWidth, screenHeight, positionX, positionY, markerPath, appPath
 Set shell = CreateObject("WScript.Shell")
 Set fileSystem = CreateObject("Scripting.FileSystemObject")
 
 If WScript.Arguments.Count = 0 Then WScript.Quit 1
-request = LCase(WScript.Arguments(0))
-rainmeterPath = shell.ExpandEnvironmentStrings("%ProgramFiles%") & "\Rainmeter\Rainmeter.exe"
+rawRequest = WScript.Arguments(0)
+request = LCase(rawRequest)
+linkToken = GetQueryValue(rawRequest, "link")
+rainmeterPath = fileSystem.BuildPath(fileSystem.GetParentFolderName(WScript.ScriptFullName), "Rainmeter\Rainmeter.exe")
+If Not fileSystem.FileExists(rainmeterPath) Then
+  rainmeterPath = shell.ExpandEnvironmentStrings("%ProgramFiles%") & "\Rainmeter\Rainmeter.exe"
+End If
 If Not fileSystem.FileExists(rainmeterPath) Then WScript.Quit 2
 
 configName = ""
@@ -105,6 +110,15 @@ End If
 
 RunBang "!Redraw", configName, ""
 
+If IsSafeLinkToken(linkToken) Then
+  WScript.Sleep 1200
+  command = Chr(34) & rainmeterPath & Chr(34) & " !CommandMeasure " & _
+    Chr(34) & "WebView" & Chr(34) & " " & _
+    Chr(34) & "Navigate https://estudiemos-app.vercel.app/api/widget-link?token=" & linkToken & Chr(34) & " " & _
+    Chr(34) & "Estudiemos\" & configName & Chr(34)
+  shell.Run command, 0, False
+End If
+
 If InStr(request, "callback=1") > 0 Then
   WScript.Sleep 900
   On Error Resume Next
@@ -116,6 +130,34 @@ If InStr(request, "callback=1") > 0 Then
   End If
   On Error GoTo 0
 End If
+
+Function GetQueryValue(value, key)
+  Dim queryStart, queryText, pairs, pair, parts
+  GetQueryValue = ""
+  queryStart = InStr(value, "?")
+  If queryStart = 0 Then Exit Function
+  queryText = Mid(value, queryStart + 1)
+  pairs = Split(queryText, "&")
+  For Each pair In pairs
+    parts = Split(pair, "=", 2)
+    If UBound(parts) = 1 Then
+      If LCase(parts(0)) = LCase(key) Then
+        GetQueryValue = parts(1)
+        Exit Function
+      End If
+    End If
+  Next
+End Function
+
+Function IsSafeLinkToken(value)
+  Dim expression
+  IsSafeLinkToken = False
+  If Len(value) < 20 Or Len(value) > 1400 Then Exit Function
+  Set expression = New RegExp
+  expression.Pattern = "^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$"
+  expression.Global = False
+  IsSafeLinkToken = expression.Test(value)
+End Function
 
 Function IsRainmeterRunning()
   Dim processes
