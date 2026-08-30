@@ -17,7 +17,7 @@
     <title>Estudiemos | Tu estudio, conectado</title>
     <script src="./scripts/theme-init.js?v=20260830-install-experience"></script>
     <link rel="stylesheet" href="./styles/app.css?v=20260830-install-experience" />
-    <link rel="stylesheet" href="./styles/install.css?v=20260830-install-experience" />
+    <link rel="stylesheet" href="./styles/install.css?v=20260830-install-immersive-v2" />
   </head>
   <body class="install-page">
     <header class="install-header" data-install-header>
@@ -33,11 +33,19 @@
     </header>
 
     <main>
-      <section class="install-hero" aria-labelledby="heroTitle">
-        <video class="install-hero__video" autoplay muted playsinline preload="metadata" poster="./assets/install/estudiemos-motion-poster.jpg" data-hero-video>
-          <source src="./assets/install/estudiemos-motion-mobile.webm" media="(max-width: 680px)" type="video/webm" />
-          <source src="./assets/install/estudiemos-motion.webm" type="video/webm" />
-        </video>
+      <section class="install-hero" aria-labelledby="heroTitle" data-hero-scene>
+        <div class="hero-interface" data-hero-interface aria-hidden="true">
+          <img src="./assets/install/pilot-home-wide.png" alt="" />
+          <span class="hero-interface__edge hero-interface__edge--top"></span>
+          <span class="hero-interface__edge hero-interface__edge--right"></span>
+          <span class="hero-interface__edge hero-interface__edge--bottom"></span>
+          <span class="hero-interface__edge hero-interface__edge--left"></span>
+          <div class="hero-interface__signal hero-interface__signal--sync"><i></i><span>Sincronización activa</span></div>
+          <div class="hero-interface__signal hero-interface__signal--tools"><span>05</span><small>herramientas conectadas</small></div>
+        </div>
+        <div class="hero-data-lines" aria-hidden="true">
+          <i></i><i></i><i></i><i></i><i></i>
+        </div>
         <div class="install-hero__scrim" aria-hidden="true"></div>
         <div class="install-hero__content">
           <p class="install-kicker">TU ESTUDIO, CONECTADO</p>
@@ -54,6 +62,14 @@
           <i aria-hidden="true"></i>
         </a>
       </section>
+
+      <div class="section-bridge section-bridge--organize" id="transicion-organizar" data-section-bridge aria-hidden="true">
+        <div class="section-bridge__sticky">
+          <span>01</span>
+          <div class="section-bridge__line"><i></i></div>
+          <strong>Todo entra en foco.</strong>
+        </div>
+      </div>
 
       <section class="install-manifest" id="descubrir" aria-labelledby="manifestTitle">
         <div class="install-section-heading" data-reveal>
@@ -92,20 +108,37 @@
         </div>
       </section>
 
+      <div class="section-bridge section-bridge--widgets" id="transicion-widgets" data-section-bridge aria-hidden="true">
+        <div class="section-bridge__sticky">
+          <span>02</span>
+          <div class="section-bridge__line"><i></i></div>
+          <strong>De la app a tu pantalla.</strong>
+        </div>
+      </div>
+
       <section class="install-widgets" aria-labelledby="widgetsTitle">
         <div class="install-widgets__copy" data-reveal>
           <p class="install-kicker">SIEMPRE A MANO</p>
           <h2 id="widgetsTitle">Tu día, sin abrir nada.</h2>
           <p>Inbox, calendario, Mi espacio, Pomodoro y racha viven también en tu pantalla de inicio o escritorio.</p>
         </div>
-        <div class="widget-orbit" data-reveal aria-label="Widgets de Estudiemos">
-          <figure class="widget-orbit__item widget-orbit__item--workspace"><img src="./assets/install/pilot-widget-workspace.png" alt="Widget Mi espacio" loading="lazy" /></figure>
-          <figure class="widget-orbit__item widget-orbit__item--calendar"><img src="./assets/install/pilot-widget-calendar.png" alt="Widget Calendario" loading="lazy" /></figure>
-          <figure class="widget-orbit__item widget-orbit__item--inbox"><img src="./assets/install/pilot-widget-inbox.png" alt="Widget Inbox" loading="lazy" /></figure>
-          <figure class="widget-orbit__item widget-orbit__item--pomodoro"><img src="./assets/install/pilot-widget-pomodoro.png" alt="Widget Pomodoro" loading="lazy" /></figure>
-          <figure class="widget-orbit__item widget-orbit__item--streak"><img src="./assets/install/pilot-widget-streak.png" alt="Widget Racha" loading="lazy" /></figure>
+        <div class="widget-orbit" id="widget-stage" data-reveal data-widget-stage aria-label="Widgets de Estudiemos">
+          <span class="widget-orbit__hint" aria-hidden="true">Mover <i>↔</i></span>
+          <figure class="widget-orbit__item widget-orbit__item--workspace" data-draggable-widget><img src="./assets/install/pilot-widget-workspace.png" alt="Widget Mi espacio" loading="lazy" /></figure>
+          <figure class="widget-orbit__item widget-orbit__item--calendar" data-draggable-widget><img src="./assets/install/pilot-widget-calendar.png" alt="Widget Calendario" loading="lazy" /></figure>
+          <figure class="widget-orbit__item widget-orbit__item--inbox" data-draggable-widget><img src="./assets/install/pilot-widget-inbox.png" alt="Widget Inbox" loading="lazy" /></figure>
+          <figure class="widget-orbit__item widget-orbit__item--pomodoro" data-draggable-widget><img src="./assets/install/pilot-widget-pomodoro.png" alt="Widget Pomodoro" loading="lazy" /></figure>
+          <figure class="widget-orbit__item widget-orbit__item--streak" data-draggable-widget><img src="./assets/install/pilot-widget-streak.png" alt="Widget Racha" loading="lazy" /></figure>
         </div>
       </section>
+
+      <div class="section-bridge section-bridge--install" id="transicion-instalar" data-section-bridge aria-hidden="true">
+        <div class="section-bridge__sticky">
+          <span>03</span>
+          <div class="section-bridge__line"><i></i></div>
+          <strong>Elegí dónde empezar.</strong>
+        </div>
+      </div>
 
       <section class="install-downloads" id="instalar" aria-labelledby="installTitle">
         <div class="install-section-heading install-section-heading--center" data-reveal>
@@ -192,6 +225,6 @@
       <p>Productividad académica, en todos tus dispositivos.</p>
     </footer>
 
-    <script src="./scripts/install-page.js?v=20260830-install-experience"></script>
+    <script src="./scripts/install-page.js?v=20260830-install-immersive-v2"></script>
   </body>
 </html>

@@ -5,9 +5,13 @@
   const manualGuide = document.querySelector("[data-install-pc-guide]");
   const widgetInstaller = document.querySelector("[data-install-windows-widgets]");
   const requestedWidgetMessage = document.querySelector("[data-requested-widget]");
-  const heroVideo = document.querySelector("[data-hero-video]");
+  const heroScene = document.querySelector("[data-hero-scene]");
+  const heroInterface = document.querySelector("[data-hero-interface]");
   const tourImage = document.querySelector("[data-tour-image]");
   const tourTabs = Array.from(document.querySelectorAll("[data-tour-target]"));
+  const sectionBridges = Array.from(document.querySelectorAll("[data-section-bridge]"));
+  const widgetStage = document.querySelector("[data-widget-stage]");
+  const draggableWidgets = Array.from(document.querySelectorAll("[data-draggable-widget]"));
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   let installPrompt = null;
@@ -29,7 +33,9 @@
 
   prepareMotion();
   prepareProductTour();
-  manageHeroVideo();
+  prepareImmersiveScene();
+  prepareSectionBridges();
+  prepareDraggableWidgets();
 
   if (installButton) {
     if (isInstalled()) showInstalledState();
@@ -126,35 +132,90 @@
     tourTimer = null;
   }
 
-  function manageHeroVideo() {
-    if (!heroVideo || reduceMotion) return;
+  function prepareImmersiveScene() {
+    if (!heroScene || !heroInterface || reduceMotion) return;
 
-    const cleanStart = 1.45;
-    const startFromCleanFrame = () => {
-      if (heroVideo.currentTime < cleanStart) heroVideo.currentTime = cleanStart;
-    };
-
-    if (heroVideo.readyState >= 1) {
-      startFromCleanFrame();
-    } else {
-      heroVideo.addEventListener("loadedmetadata", startFromCleanFrame, { once: true });
-    }
-
-    heroVideo.addEventListener("ended", () => {
-      heroVideo.currentTime = cleanStart;
-      heroVideo.play().catch(() => {});
+    heroScene.addEventListener("pointermove", (event) => {
+      const bounds = heroScene.getBoundingClientRect();
+      const x = ((event.clientX - bounds.left) / bounds.width - 0.5) * 2;
+      const y = ((event.clientY - bounds.top) / bounds.height - 0.5) * 2;
+      heroInterface.style.setProperty("--hero-x", x.toFixed(3));
+      heroInterface.style.setProperty("--hero-y", y.toFixed(3));
     });
 
-    if (!("IntersectionObserver" in window)) return;
+    heroScene.addEventListener("pointerleave", () => {
+      heroInterface.style.setProperty("--hero-x", "0");
+      heroInterface.style.setProperty("--hero-y", "0");
+    });
+  }
 
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) {
-        heroVideo.play().catch(() => {});
-      } else {
-        heroVideo.pause();
-      }
-    }, { threshold: 0.08 });
-    observer.observe(heroVideo);
+  function prepareSectionBridges() {
+    if (sectionBridges.length === 0) return;
+
+    let ticking = false;
+    const updateBridges = () => {
+      const viewportHeight = window.innerHeight || 1;
+      sectionBridges.forEach((bridge) => {
+        const bounds = bridge.getBoundingClientRect();
+        const progress = Math.min(1, Math.max(0, (viewportHeight - bounds.top) / (viewportHeight + bounds.height * 0.2)));
+        bridge.style.setProperty("--bridge-progress", progress.toFixed(3));
+      });
+      ticking = false;
+    };
+
+    const requestUpdate = () => {
+      if (ticking) return;
+      ticking = true;
+      window.requestAnimationFrame(updateBridges);
+    };
+
+    updateBridges();
+    window.addEventListener("scroll", requestUpdate, { passive: true });
+    window.addEventListener("resize", requestUpdate);
+  }
+
+  function prepareDraggableWidgets() {
+    if (!widgetStage || draggableWidgets.length === 0) return;
+
+    draggableWidgets.forEach((widget) => {
+      widget.addEventListener("pointerdown", (event) => {
+        if (event.pointerType === "touch" || window.innerWidth <= 680) return;
+
+        event.preventDefault();
+        const stageBounds = widgetStage.getBoundingClientRect();
+        const widgetBounds = widget.getBoundingClientRect();
+        const offsetX = event.clientX - widgetBounds.left;
+        const offsetY = event.clientY - widgetBounds.top;
+
+        widget.classList.add("is-dragged");
+        widget.style.left = `${widgetBounds.left - stageBounds.left}px`;
+        widget.style.top = `${widgetBounds.top - stageBounds.top}px`;
+        widget.style.right = "auto";
+        widget.style.bottom = "auto";
+        widget.setPointerCapture(event.pointerId);
+
+        const moveWidget = (moveEvent) => {
+          const currentStage = widgetStage.getBoundingClientRect();
+          const maxLeft = Math.max(8, currentStage.width - widget.offsetWidth - 8);
+          const maxTop = Math.max(8, currentStage.height - widget.offsetHeight - 8);
+          const left = Math.min(maxLeft, Math.max(8, moveEvent.clientX - currentStage.left - offsetX));
+          const top = Math.min(maxTop, Math.max(8, moveEvent.clientY - currentStage.top - offsetY));
+          widget.style.left = `${left}px`;
+          widget.style.top = `${top}px`;
+        };
+
+        const finishDrag = () => {
+          widget.releasePointerCapture?.(event.pointerId);
+          widget.removeEventListener("pointermove", moveWidget);
+          widget.removeEventListener("pointerup", finishDrag);
+          widget.removeEventListener("pointercancel", finishDrag);
+        };
+
+        widget.addEventListener("pointermove", moveWidget);
+        widget.addEventListener("pointerup", finishDrag);
+        widget.addEventListener("pointercancel", finishDrag);
+      });
+    });
   }
 
   async function installApplication() {
