@@ -17,7 +17,7 @@
     <title>Instalar Estudiemos</title>
     <script src="./scripts/theme-init.js?v=20260830-pc-install"></script>
     <link rel="stylesheet" href="./styles/app.css?v=20260830-pc-install" />
-    <link rel="stylesheet" href="./styles/install.css?v=20260830-pc-install" />
+    <link rel="stylesheet" href="./styles/install.css?v=20260830-new-user-flow" />
   </head>
   <body class="install-page">
     <header class="install-header">
@@ -69,7 +69,7 @@
             <p>Agregá Mi espacio, Calendario, Inbox, Pomodoro y Racha al escritorio. Después podés elegirlos de a uno desde tu perfil.</p>
             <p class="install-addon__request" data-requested-widget hidden></p>
             <a class="install-option__button install-option__button--secondary" data-install-windows-widgets href="https://estudiemos-app.vercel.app/downloads/Estudiemos-Widgets-para-Windows.exe" download="Estudiemos-Widgets-para-Windows.exe">Preparar widgets</a>
-            <small>Windows puede pedir una confirmación porque este complemento todavía no está firmado.</small>
+            <small>Windows puede pedir una confirmación porque este complemento todavía no está firmado. Si aparece una alerta amarilla, seguí la guía de abajo.</small>
             <details class="install-option__manual" data-windows-download-help>
               <summary>¿Edge bloqueó la descarga?</summary>
               <ol class="install-option__guide">
@@ -78,6 +78,7 @@
                 <li>Tocá <strong>Conservar de todas formas</strong>, abrilo y aceptá el permiso de Windows.</li>
               </ol>
               <p class="install-option__safety">No desactives la protección de Edge. Esta autorización se hace solo para el complemento de widgets.</p>
+              <a class="install-option__retry" href="https://estudiemos-app.vercel.app/downloads/Estudiemos-Widgets-para-Windows.exe" download="Estudiemos-Widgets-para-Windows.exe">Reintentar la descarga</a>
             </details>
           </section>
 
@@ -92,6 +93,6 @@
         </article>
       </section>
     </main>
-    <script src="./scripts/install-page.js?v=20260830-pc-install"></script>
+    <script src="./scripts/install-page.js?v=20260830-new-user-flow"></script>
   </body>
 </html>

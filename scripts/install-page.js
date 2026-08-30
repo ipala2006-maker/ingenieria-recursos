@@ -33,10 +33,19 @@
 
   window.addEventListener("appinstalled", showInstalledState);
   installButton.addEventListener("click", installApplication);
-  widgetInstaller?.addEventListener("click", () => {
+  widgetInstaller?.addEventListener("click", (event) => {
+    if (widgetInstaller.dataset.downloadStarted === "true") {
+      event.preventDefault();
+    } else {
+      widgetInstaller.dataset.downloadStarted = "true";
+      widgetInstaller.classList.add("is-started");
+      widgetInstaller.textContent = "Descarga iniciada";
+    }
     window.setTimeout(() => {
-      document.querySelector("[data-windows-download-help]")?.setAttribute("open", "");
-    }, 900);
+      const help = document.querySelector("[data-windows-download-help]");
+      help?.setAttribute("open", "");
+      help?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 600);
   });
 
   async function installApplication() {
