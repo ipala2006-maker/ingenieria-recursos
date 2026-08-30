@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#0f172a" />
-    <meta name="description" content="Instalá Estudiemos en Android, iPhone o computadora." />
+    <meta name="theme-color" content="#09101d" />
+    <meta name="description" content="Descubrí Estudiemos: organizá tus archivos, tu Inbox, tu calendario y tus sesiones de estudio. Instalá la última versión en Android, iPhone, iPad o PC." />
     <script>
       if ((location.protocol === "file:" || /^(localhost|127\.0\.0\.1)$/i.test(location.hostname)) && !new URLSearchParams(location.search).has("local")) {
         location.replace("https://estudiemos-app.vercel.app/instalar.html" + location.hash);
@@ -14,85 +14,184 @@
     <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
     <link rel="manifest" href="./site.webmanifest" />
     <link rel="apple-touch-icon" href="./assets/icon-180.png" />
-    <title>Instalar Estudiemos</title>
-    <script src="./scripts/theme-init.js?v=20260830-pc-install"></script>
-    <link rel="stylesheet" href="./styles/app.css?v=20260830-pc-install" />
-    <link rel="stylesheet" href="./styles/install.css?v=20260830-new-user-flow" />
+    <title>Estudiemos | Tu estudio, conectado</title>
+    <script src="./scripts/theme-init.js?v=20260830-install-experience"></script>
+    <link rel="stylesheet" href="./styles/app.css?v=20260830-install-experience" />
+    <link rel="stylesheet" href="./styles/install.css?v=20260830-install-experience" />
   </head>
   <body class="install-page">
-    <header class="install-header">
-      <a class="brand" href="https://estudiemos-app.vercel.app/" aria-label="Volver a Estudiemos">
+    <header class="install-header" data-install-header>
+      <a class="brand install-brand" href="https://estudiemos-app.vercel.app/" aria-label="Abrir Estudiemos">
         <span class="brand__mark" aria-hidden="true">&sum;</span>
         <span class="brand__text">Estudiemos</span>
       </a>
+      <nav class="install-nav" aria-label="Navegación principal">
+        <a href="#descubrir">Funciones</a>
+        <a href="#instalar">Dispositivos</a>
+        <a class="install-nav__primary" href="#instalar">Instalar</a>
+      </nav>
     </header>
 
-    <main class="install-main">
-      <header class="install-intro">
-        <p>INSTALACIÓN</p>
-        <h1>Estudiemos en tus dispositivos</h1>
-        <span>Usá la misma cuenta para mantener sincronizada tu información. Acá siempre encontrás la versión más reciente.</span>
-      </header>
-
-      <section class="install-options" aria-label="Opciones de instalación">
-        <article class="install-option">
-          <div class="install-option__meta"><span class="install-option__platform">Android</span><span class="install-option__current">Versión actual</span></div>
-          <h2>Aplicación y widgets</h2>
-          <p>Incluye Mi espacio, Inbox, calendario semanal, Pomodoro y racha para la pantalla de inicio.</p>
-          <a class="install-option__button" href="intent://open#Intent;scheme=estudiemos;package=com.estudiemos.app;S.browser_fallback_url=https%3A%2F%2Fgithub.com%2Fipala2006-maker%2Fingenieria-recursos%2Freleases%2Fdownload%2Fandroid-latest%2FEstudiemos-Android.apk;end">Abrir o descargar</a>
-          <small><strong>Siempre usa la última versión.</strong> Si ya la tenés, podés <a href="https://github.com/ipala2006-maker/ingenieria-recursos/releases/download/android-latest/Estudiemos-Android.apk">descargar la actualización</a> e instalarla encima sin desinstalar.</small>
-        </article>
-
-        <article class="install-option">
-          <div class="install-option__meta"><span class="install-option__platform">iPhone y iPad</span><span class="install-option__current">Siempre actualizada</span></div>
-          <h2>Aplicación web</h2>
-          <p>Abrí Estudiemos en Safari, tocá Compartir y elegí Agregar a pantalla de inicio.</p>
-          <a class="install-option__button" href="https://estudiemos-app.vercel.app/">Abrir Estudiemos</a>
-          <small>La versión de iOS se actualiza automáticamente.</small>
-        </article>
-
-        <article class="install-option install-option--pc" id="pc">
-          <div class="install-option__meta"><span class="install-option__platform">PC</span><span class="install-option__current">Versión actual</span></div>
-          <h2>Estudiemos para Windows</h2>
-          <p>Instalá la aplicación en tu PC y usala como cualquier otro programa, con acceso directo y actualizaciones automáticas.</p>
-          <button class="install-option__button" type="button" data-install-pc>Instalar Estudiemos para PC</button>
-          <small data-install-pc-status>No descarga instaladores externos ni modifica la seguridad del equipo.</small>
-
-          <section class="install-addon" id="pc-widgets" aria-labelledby="pcWidgetsTitle">
-            <div class="install-addon__head">
-              <div>
-                <span>OPCIONAL</span>
-                <h3 id="pcWidgetsTitle">Widgets de escritorio</h3>
-              </div>
-              <span class="install-addon__count">5 widgets</span>
-            </div>
-            <p>Agregá Mi espacio, Calendario, Inbox, Pomodoro y Racha al escritorio. Se preparan una sola vez y después los elegís de a uno desde tu perfil.</p>
-            <p class="install-addon__request" data-requested-widget hidden></p>
-            <a class="install-option__button install-option__button--secondary" data-install-windows-widgets href="https://estudiemos-app.vercel.app/downloads/Estudiemos-Widgets-para-Windows.exe" download="Estudiemos-Widgets-para-Windows.exe">Preparar widgets</a>
-            <small><strong>No pide permisos de administrador.</strong> Si Edge muestra una alerta por ser una descarga nueva, seguí la guía de abajo.</small>
-            <details class="install-option__manual" data-windows-download-help>
-              <summary>¿Edge bloqueó la descarga?</summary>
-              <ol class="install-option__guide">
-                <li>Abrí <strong>Descargas</strong> y tocá los tres puntos junto al archivo.</li>
-                <li>Elegí <strong>Conservar</strong> y luego <strong>Mostrar más</strong>.</li>
-                <li>Tocá <strong>Conservar de todas formas</strong>, abrilo y aceptá el permiso de Windows.</li>
-              </ol>
-              <p class="install-option__safety">No desactives la protección de Edge. Esta autorización se hace solo para el complemento de widgets.</p>
-              <a class="install-option__retry" href="https://estudiemos-app.vercel.app/downloads/Estudiemos-Widgets-para-Windows.exe" download="Estudiemos-Widgets-para-Windows.exe">Reintentar la descarga</a>
-            </details>
-          </section>
-
-          <div class="install-pc-guide" data-install-pc-guide hidden>
-            <strong>Instalación desde Edge o Chrome</strong>
-            <ol>
-              <li>Abrí el menú de los tres puntos.</li>
-              <li>Entrá en <strong>Aplicaciones</strong>.</li>
-              <li>Elegí <strong>Instalar Estudiemos</strong>.</li>
-            </ol>
+    <main>
+      <section class="install-hero" aria-labelledby="heroTitle">
+        <video class="install-hero__video" autoplay muted playsinline preload="metadata" poster="./assets/install/estudiemos-motion-poster.jpg" data-hero-video>
+          <source src="./assets/install/estudiemos-motion-mobile.webm" media="(max-width: 680px)" type="video/webm" />
+          <source src="./assets/install/estudiemos-motion.webm" type="video/webm" />
+        </video>
+        <div class="install-hero__scrim" aria-hidden="true"></div>
+        <div class="install-hero__content">
+          <p class="install-kicker">TU ESTUDIO, CONECTADO</p>
+          <h1 id="heroTitle">Estudiemos</h1>
+          <p class="install-hero__lead">Organizá tu día. Enfocate. Avanzá.</p>
+          <div class="install-hero__actions">
+            <a class="install-action install-action--primary" href="#instalar">Instalar ahora <span aria-hidden="true">↓</span></a>
+            <a class="install-action install-action--quiet" href="https://estudiemos-app.vercel.app/">Abrir la app <span aria-hidden="true">↗</span></a>
           </div>
-        </article>
+          <p class="install-hero__sync"><span aria-hidden="true"></span> Una cuenta. Todos tus dispositivos.</p>
+        </div>
+        <a class="install-hero__scroll" href="#descubrir" aria-label="Conocer las funciones de Estudiemos">
+          <span>Descubrir</span>
+          <i aria-hidden="true"></i>
+        </a>
+      </section>
+
+      <section class="install-manifest" id="descubrir" aria-labelledby="manifestTitle">
+        <div class="install-section-heading" data-reveal>
+          <p class="install-kicker">HECHO PARA ESTUDIAR</p>
+          <h2 id="manifestTitle">Menos vueltas.<br />Más claridad.</h2>
+          <p>Un solo lugar para ordenar lo que tenés que hacer y sostener el ritmo cada día.</p>
+        </div>
+
+        <div class="product-tour" data-reveal>
+          <div class="product-tour__visual">
+            <img src="./assets/install/pilot-home-wide.png" alt="Mi espacio e Inbox en Estudiemos" data-tour-image />
+            <span class="product-tour__glow" aria-hidden="true"></span>
+          </div>
+          <div class="product-tour__controls" role="tablist" aria-label="Herramientas de Estudiemos">
+            <button class="product-tour__tab is-active" type="button" role="tab" aria-selected="true" data-tour-target="space" data-image="./assets/install/pilot-home-wide.png" data-alt="Mi espacio e Inbox en Estudiemos">
+              <span>01</span>
+              <strong>Tu espacio</strong>
+              <small>Archivos, carpetas e Inbox en orden.</small>
+            </button>
+            <button class="product-tour__tab" type="button" role="tab" aria-selected="false" data-tour-target="ai" data-image="./assets/install/pilot-assistant-wide.png" data-alt="Organizador inteligente de Estudiemos">
+              <span>02</span>
+              <strong>IA que organiza</strong>
+              <small>Decilo como te salga. Estudiemos lo ordena.</small>
+            </button>
+            <button class="product-tour__tab" type="button" role="tab" aria-selected="false" data-tour-target="focus" data-image="./assets/install/pilot-pomodoro-wide.png" data-alt="Temporizador Pomodoro de Estudiemos">
+              <span>03</span>
+              <strong>Enfoque real</strong>
+              <small>Bloques simples para avanzar sin ruido.</small>
+            </button>
+            <button class="product-tour__tab" type="button" role="tab" aria-selected="false" data-tour-target="progress" data-image="./assets/install/pilot-streak-wide.png" data-alt="Racha y progreso de estudio en Estudiemos">
+              <span>04</span>
+              <strong>Progreso visible</strong>
+              <small>Racha, tiempo diario y evolución semanal.</small>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="install-widgets" aria-labelledby="widgetsTitle">
+        <div class="install-widgets__copy" data-reveal>
+          <p class="install-kicker">SIEMPRE A MANO</p>
+          <h2 id="widgetsTitle">Tu día, sin abrir nada.</h2>
+          <p>Inbox, calendario, Mi espacio, Pomodoro y racha viven también en tu pantalla de inicio o escritorio.</p>
+        </div>
+        <div class="widget-orbit" data-reveal aria-label="Widgets de Estudiemos">
+          <figure class="widget-orbit__item widget-orbit__item--workspace"><img src="./assets/install/pilot-widget-workspace.png" alt="Widget Mi espacio" loading="lazy" /></figure>
+          <figure class="widget-orbit__item widget-orbit__item--calendar"><img src="./assets/install/pilot-widget-calendar.png" alt="Widget Calendario" loading="lazy" /></figure>
+          <figure class="widget-orbit__item widget-orbit__item--inbox"><img src="./assets/install/pilot-widget-inbox.png" alt="Widget Inbox" loading="lazy" /></figure>
+          <figure class="widget-orbit__item widget-orbit__item--pomodoro"><img src="./assets/install/pilot-widget-pomodoro.png" alt="Widget Pomodoro" loading="lazy" /></figure>
+          <figure class="widget-orbit__item widget-orbit__item--streak"><img src="./assets/install/pilot-widget-streak.png" alt="Widget Racha" loading="lazy" /></figure>
+        </div>
+      </section>
+
+      <section class="install-downloads" id="instalar" aria-labelledby="installTitle">
+        <div class="install-section-heading install-section-heading--center" data-reveal>
+          <p class="install-kicker">EMPEZÁ AHORA</p>
+          <h2 id="installTitle">Elegí tu dispositivo.</h2>
+          <p>Tu cuenta mantiene todo sincronizado. Acá siempre encontrás la versión más reciente.</p>
+        </div>
+
+        <div class="install-options" aria-label="Opciones de instalación">
+          <article class="install-option" data-reveal>
+            <div class="install-option__meta"><span class="install-option__platform">Android</span><span class="install-option__current">Versión actual</span></div>
+            <div class="install-option__glyph" aria-hidden="true">A</div>
+            <h3>Aplicación y widgets</h3>
+            <p>Mi espacio, Inbox, calendario semanal, Pomodoro y racha en tu pantalla de inicio.</p>
+            <a class="install-option__button" href="intent://open#Intent;scheme=estudiemos;package=com.estudiemos.app;S.browser_fallback_url=https%3A%2F%2Fgithub.com%2Fipala2006-maker%2Fingenieria-recursos%2Freleases%2Fdownload%2Fandroid-latest%2FEstudiemos-Android.apk;end">Abrir o descargar <span aria-hidden="true">→</span></a>
+            <small><strong>Siempre usa la última versión.</strong> Si ya la tenés, podés <a href="https://github.com/ipala2006-maker/ingenieria-recursos/releases/download/android-latest/Estudiemos-Android.apk">actualizarla encima</a> sin desinstalar.</small>
+          </article>
+
+          <article class="install-option" data-reveal>
+            <div class="install-option__meta"><span class="install-option__platform">iPhone y iPad</span><span class="install-option__current">Siempre actualizada</span></div>
+            <div class="install-option__glyph" aria-hidden="true">i</div>
+            <h3>Aplicación web</h3>
+            <p>Abrí Estudiemos en Safari, tocá Compartir y elegí Agregar a pantalla de inicio.</p>
+            <a class="install-option__button" href="https://estudiemos-app.vercel.app/">Abrir Estudiemos <span aria-hidden="true">↗</span></a>
+            <small>La versión de iOS se actualiza automáticamente.</small>
+          </article>
+
+          <article class="install-option install-option--pc" id="pc" data-reveal>
+            <div class="install-option__meta"><span class="install-option__platform">Windows</span><span class="install-option__current">Versión actual</span></div>
+            <div class="install-option__glyph" aria-hidden="true">W</div>
+            <h3>Estudiemos para PC</h3>
+            <p>Usala como cualquier otro programa, con acceso directo y actualizaciones automáticas.</p>
+            <button class="install-option__button" type="button" data-install-pc>Instalar para PC <span aria-hidden="true">→</span></button>
+            <small data-install-pc-status>No descarga instaladores externos ni modifica la seguridad del equipo.</small>
+
+            <section class="install-addon" id="pc-widgets" aria-labelledby="pcWidgetsTitle">
+              <div class="install-addon__head">
+                <div>
+                  <span>OPCIONAL</span>
+                  <h4 id="pcWidgetsTitle">Widgets de escritorio</h4>
+                </div>
+                <span class="install-addon__count">5 widgets</span>
+              </div>
+              <p>Se preparan una vez y después los elegís de a uno desde tu perfil.</p>
+              <p class="install-addon__request" data-requested-widget hidden></p>
+              <a class="install-option__button install-option__button--secondary" data-install-windows-widgets href="https://estudiemos-app.vercel.app/downloads/Estudiemos-Widgets-para-Windows.exe" download="Estudiemos-Widgets-para-Windows.exe">Preparar widgets <span aria-hidden="true">↓</span></a>
+              <small><strong>No pide permisos de administrador.</strong> Si Edge avisa que es una descarga nueva, seguí la guía.</small>
+              <details class="install-option__manual" data-windows-download-help>
+                <summary>¿Edge bloqueó la descarga?</summary>
+                <ol class="install-option__guide">
+                  <li>Abrí <strong>Descargas</strong> y tocá los tres puntos junto al archivo.</li>
+                  <li>Elegí <strong>Conservar</strong> y luego <strong>Mostrar más</strong>.</li>
+                  <li>Tocá <strong>Conservar de todas formas</strong>, abrilo y aceptá el permiso de Windows.</li>
+                </ol>
+                <p class="install-option__safety">No desactives la protección de Edge. Esta autorización se hace solo para el complemento de widgets.</p>
+                <a class="install-option__retry" href="https://estudiemos-app.vercel.app/downloads/Estudiemos-Widgets-para-Windows.exe" download="Estudiemos-Widgets-para-Windows.exe">Reintentar la descarga</a>
+              </details>
+            </section>
+
+            <div class="install-pc-guide" data-install-pc-guide hidden>
+              <strong>Instalación desde Edge o Chrome</strong>
+              <ol>
+                <li>Abrí el menú de los tres puntos.</li>
+                <li>Entrá en <strong>Aplicaciones</strong>.</li>
+                <li>Elegí <strong>Instalar Estudiemos</strong>.</li>
+              </ol>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="install-closing" aria-label="Abrir Estudiemos" data-reveal>
+        <span class="install-closing__mark" aria-hidden="true">&sum;</span>
+        <h2>Todo listo para empezar.</h2>
+        <a class="install-action install-action--primary" href="https://estudiemos-app.vercel.app/">Abrir Estudiemos <span aria-hidden="true">↗</span></a>
       </section>
     </main>
-    <script src="./scripts/install-page.js?v=20260830-new-user-flow"></script>
+
+    <footer class="install-footer">
+      <a class="brand install-brand" href="https://estudiemos-app.vercel.app/" aria-label="Abrir Estudiemos">
+        <span class="brand__mark" aria-hidden="true">&sum;</span>
+        <span class="brand__text">Estudiemos</span>
+      </a>
+      <p>Productividad académica, en todos tus dispositivos.</p>
+    </footer>
+
+    <script src="./scripts/install-page.js?v=20260830-install-experience"></script>
   </body>
 </html>
