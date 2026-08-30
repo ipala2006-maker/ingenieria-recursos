@@ -1,7 +1,7 @@
 Option Explicit
 
 Dim shell, fileSystem, rawRequest, request, rainmeterPath, configName, iniName, command, widgetKey, linkToken
-Dim screenWidth, screenHeight, positionX, positionY, markerPath, appPath
+Dim screenWidth, screenHeight, positionX, positionY, markerPath, appPath, shouldPosition
 Set shell = CreateObject("WScript.Shell")
 Set fileSystem = CreateObject("Scripting.FileSystemObject")
 
@@ -96,7 +96,20 @@ RunBang "!ZPos", configName, "-2"
 
 appPath = fileSystem.GetParentFolderName(WScript.ScriptFullName)
 markerPath = fileSystem.BuildPath(appPath, "positioned-" & LCase(configName) & ".txt")
-If Not fileSystem.FileExists(markerPath) Then
+shouldPosition = True
+If fileSystem.FileExists(markerPath) Then
+  Dim markerReader, markerPosition, markerRuntime
+  markerRuntime = ""
+  On Error Resume Next
+  Set markerReader = fileSystem.OpenTextFile(markerPath, 1, False)
+  If Not markerReader.AtEndOfStream Then markerPosition = markerReader.ReadLine
+  If Not markerReader.AtEndOfStream Then markerRuntime = markerReader.ReadLine
+  markerReader.Close
+  On Error GoTo 0
+  shouldPosition = (LCase(markerRuntime) <> LCase(rainmeterPath))
+End If
+
+If shouldPosition Then
   WScript.Sleep 700
   command = Chr(34) & rainmeterPath & Chr(34) & " !Move " & _
     Chr(34) & CStr(positionX) & Chr(34) & " " & Chr(34) & CStr(positionY) & Chr(34) & " " & _
@@ -105,6 +118,7 @@ If Not fileSystem.FileExists(markerPath) Then
   Dim markerFile
   Set markerFile = fileSystem.CreateTextFile(markerPath, True)
   markerFile.WriteLine CStr(positionX) & "," & CStr(positionY)
+  markerFile.WriteLine rainmeterPath
   markerFile.Close
 End If
 
