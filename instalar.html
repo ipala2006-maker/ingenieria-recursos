@@ -11,13 +11,13 @@
       }
     </script>
     <link rel="canonical" href="https://estudiemos-app.vercel.app/instalar.html" />
-    <link rel="icon" href="https://estudiemos-app.vercel.app/assets/favicon.svg" type="image/svg+xml" />
-    <link rel="manifest" href="https://estudiemos-app.vercel.app/site.webmanifest" />
-    <link rel="apple-touch-icon" href="https://estudiemos-app.vercel.app/assets/icon-180.png" />
+    <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="./site.webmanifest" />
+    <link rel="apple-touch-icon" href="./assets/icon-180.png" />
     <title>Instalar Estudiemos</title>
-    <script src="https://estudiemos-app.vercel.app/scripts/theme-init.js?v=20260826-workspace-widget"></script>
-    <link rel="stylesheet" href="https://estudiemos-app.vercel.app/styles/app.css?v=20260825-whatsapp" />
-    <link rel="stylesheet" href="https://estudiemos-app.vercel.app/styles/install.css?v=20260825-local-fallback" />
+    <script src="./scripts/theme-init.js?v=20260830-pc-install"></script>
+    <link rel="stylesheet" href="./styles/app.css?v=20260830-pc-install" />
+    <link rel="stylesheet" href="./styles/install.css?v=20260830-pc-install" />
   </head>
   <body class="install-page">
     <header class="install-header">
@@ -51,21 +51,47 @@
           <small>La versión de iOS se actualiza automáticamente.</small>
         </article>
 
-        <article class="install-option" id="pc">
+        <article class="install-option install-option--pc" id="pc">
           <div class="install-option__meta"><span class="install-option__platform">PC</span><span class="install-option__current">Versión actual</span></div>
-          <h2>Aplicación y widgets</h2>
-          <p>Un solo instalador prepara Mi espacio, Calendario, Inbox, Pomodoro y Racha, y los mantiene disponibles al encender Windows.</p>
-          <a class="install-option__button" href="https://estudiemos-app.vercel.app/downloads/Estudiemos-Widgets-para-Windows.exe" download="Estudiemos-Widgets-para-Windows.exe">Preparar widgets en Windows</a>
-          <small>Abrí el archivo descargado y aceptá el permiso de Windows. El resto se configura automáticamente.</small>
-          <details class="install-option__manual">
-            <summary>Instalación manual</summary>
-            <div class="install-option__steps">
-              <a href="https://www.rainmeter.net/" target="_blank" rel="noopener noreferrer">Instalar Rainmeter</a>
-              <a href="https://estudiemos-app.vercel.app/downloads/Estudiemos-Widgets.rmskin" download="Estudiemos-Widgets.rmskin">Descargar solo los widgets</a>
+          <h2>Estudiemos para Windows</h2>
+          <p>Instalá la aplicación en tu PC y usala como cualquier otro programa, con acceso directo y actualizaciones automáticas.</p>
+          <button class="install-option__button" type="button" data-install-pc>Instalar Estudiemos para PC</button>
+          <small data-install-pc-status>No descarga instaladores externos ni modifica la seguridad del equipo.</small>
+
+          <section class="install-addon" id="pc-widgets" aria-labelledby="pcWidgetsTitle">
+            <div class="install-addon__head">
+              <div>
+                <span>OPCIONAL</span>
+                <h3 id="pcWidgetsTitle">Widgets de escritorio</h3>
+              </div>
+              <span class="install-addon__count">5 widgets</span>
             </div>
-          </details>
+            <p>Agregá Mi espacio, Calendario, Inbox, Pomodoro y Racha al escritorio. Después podés elegirlos de a uno desde tu perfil.</p>
+            <p class="install-addon__request" data-requested-widget hidden></p>
+            <a class="install-option__button install-option__button--secondary" data-install-windows-widgets href="https://estudiemos-app.vercel.app/downloads/Estudiemos-Widgets-para-Windows.exe" download="Estudiemos-Widgets-para-Windows.exe">Preparar widgets</a>
+            <small>Windows puede pedir una confirmación porque este complemento todavía no está firmado.</small>
+            <details class="install-option__manual" data-windows-download-help>
+              <summary>¿Edge bloqueó la descarga?</summary>
+              <ol class="install-option__guide">
+                <li>Abrí <strong>Descargas</strong> y tocá los tres puntos junto al archivo.</li>
+                <li>Elegí <strong>Conservar</strong> y luego <strong>Mostrar más</strong>.</li>
+                <li>Tocá <strong>Conservar de todas formas</strong>, abrilo y aceptá el permiso de Windows.</li>
+              </ol>
+              <p class="install-option__safety">No desactives la protección de Edge. Esta autorización se hace solo para el complemento de widgets.</p>
+            </details>
+          </section>
+
+          <div class="install-pc-guide" data-install-pc-guide hidden>
+            <strong>Instalación desde Edge o Chrome</strong>
+            <ol>
+              <li>Abrí el menú de los tres puntos.</li>
+              <li>Entrá en <strong>Aplicaciones</strong>.</li>
+              <li>Elegí <strong>Instalar Estudiemos</strong>.</li>
+            </ol>
+          </div>
         </article>
       </section>
     </main>
+    <script src="./scripts/install-page.js?v=20260830-pc-install"></script>
   </body>
 </html>

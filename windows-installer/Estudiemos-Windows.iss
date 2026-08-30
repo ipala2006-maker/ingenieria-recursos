@@ -1,4 +1,4 @@
-#define AppVersion "1.2.8"
+#define AppVersion "1.2.9"
 #define RainmeterInstaller "Rainmeter-4.5.26.exe"
 #ifndef OutputBaseName
   #define OutputBaseName "Estudiemos-Widgets-para-Windows"
@@ -178,6 +178,11 @@ begin
         '"' + LauncherScript + '" "estudiemos-widgets://add?widget=' + RequestedWidget + '&callback=0"',
         '', SW_HIDE, ewNoWait, ResultCode);
     end;
+
+    if RequestedWidget = '' then
+      ShellExecAsOriginalUser('',
+        'https://estudiemos-app.vercel.app/?windows-widgets-ready=1',
+        '', '', SW_SHOWNORMAL, ewNoWait, ResultCode);
 
   end;
 end;

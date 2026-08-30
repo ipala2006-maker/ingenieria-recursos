@@ -21,14 +21,7 @@
   const DIRTY_KEY = "estudiemos_cloud_dirty";
   const WINDOWS_WIDGETS_READY_KEY = "estudiemos_windows_widgets_ready";
   const WINDOWS_WIDGET_PENDING_KEY = "estudiemos_windows_widget_pending";
-  const WINDOWS_WIDGET_INSTALLER_URL = "https://estudiemos-app.vercel.app/downloads/Estudiemos-Widgets-para-Windows.exe";
-  const WINDOWS_WIDGET_INSTALLER_URLS = {
-    workspace: "https://estudiemos-app.vercel.app/downloads/Agregar-Mi-Espacio-Estudiemos.exe",
-    inbox: "https://estudiemos-app.vercel.app/downloads/Agregar-Inbox-Estudiemos.exe",
-    calendar: "https://estudiemos-app.vercel.app/downloads/Agregar-Calendario-Estudiemos.exe",
-    pomodoro: "https://estudiemos-app.vercel.app/downloads/Agregar-Pomodoro-Estudiemos.exe",
-    streak: "https://estudiemos-app.vercel.app/downloads/Agregar-Racha-Estudiemos.exe"
-  };
+  const WINDOWS_WIDGET_SETUP_URL = "https://estudiemos-app.vercel.app/instalar.html#pc-widgets";
   const MIN_PASSWORD_LENGTH = 8;
   const INSTANCE_ID = window.crypto?.randomUUID?.() || Math.random().toString(36).slice(2);
 
@@ -200,7 +193,7 @@
 
         <div class="account-android-widgets account-desktop-widgets" data-account-desktop-widgets hidden>
           <strong>Widgets de escritorio</strong>
-          <small>Elegí uno. La primera vez Windows prepara el soporte y agrega directamente ese widget.</small>
+          <small>Elegí uno. Si todavía falta el soporte, te llevamos a prepararlo una sola vez.</small>
           <div>
             <button class="account-secondary" type="button" data-account-desktop-widget="workspace">+ Mi espacio</button>
             <button class="account-secondary" type="button" data-account-desktop-widget="inbox">+ Inbox</button>
@@ -210,7 +203,7 @@
           </div>
           <button class="account-widget-installer" type="button" data-account-install-widgets>
             ${desktopIcon()}
-            <span><strong>Reparar soporte de widgets</strong><small>Usalo solamente si un botón + no responde</small></span>
+            <span><strong>Preparar o reparar widgets</strong><small>Abre la guía segura para Windows, sin iniciar descargas repetidas</small></span>
           </button>
         </div>
 
@@ -1093,24 +1086,10 @@
 
   function installDesktopWidgets(widget) {
     if (widget) localStorage.setItem(WINDOWS_WIDGET_PENDING_KEY, widget);
-    localStorage.setItem(WINDOWS_WIDGETS_READY_KEY, "true");
     if (widget) setDesktopWidgetBusy(widget, true);
-    const installerUrl = WINDOWS_WIDGET_INSTALLER_URLS[widget] || WINDOWS_WIDGET_INSTALLER_URL;
-    const installerName = installerUrl.split("/").pop() || "Estudiemos-Widgets-para-Windows.exe";
-    const link = document.createElement("a");
-    link.href = installerUrl;
-    link.download = installerName;
-    link.hidden = true;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    setStatus(
-      widget
-        ? `Descarga lista. Abrí ${installerName} y aceptá el permiso: Windows agregará ese widget automáticamente.`
-        : `Descarga lista. Abrí ${installerName} y aceptá el permiso para reparar los widgets.`,
-      "success"
-    );
-    window.setTimeout(() => setDesktopWidgetBusy(widget, false), 1800);
+    const setupUrl = new URL(WINDOWS_WIDGET_SETUP_URL);
+    if (widget) setupUrl.searchParams.set("widget", widget);
+    location.href = setupUrl.href;
   }
 
   function consumeWindowsWidgetsReadyMarker() {
@@ -1140,6 +1119,10 @@
         pomodoro: "Pomodoro",
         streak: "Racha"
       }[addedWidget || pendingWidget];
+      if (ready && pendingWidget && !addedWidget) {
+        launchWindowsWidget(pendingWidget);
+        return;
+      }
       setStatus(
         widgetLabel
           ? `${widgetLabel} se agregó al escritorio correctamente.`

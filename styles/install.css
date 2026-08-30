@@ -72,6 +72,7 @@
 
 .install-option{
   display:flex;
+  align-self:start;
   min-height:250px;
   flex-direction:column;
   padding:22px;
@@ -100,6 +101,7 @@
 
 .install-option__button{
   display:inline-flex;
+  width:100%;
   min-height:42px;
   margin-top:auto;
   align-items:center;
@@ -109,7 +111,10 @@
   border-radius:8px;
   background:color-mix(in srgb,var(--accent) 14%,var(--panel));
   color:var(--text);
+  font-family:inherit;
+  font-size:inherit;
   font-weight:750;
+  cursor:pointer;
 }
 
 .install-option__button:hover{
@@ -130,6 +135,105 @@
   border-color:var(--border);
   background:transparent;
   color:var(--muted);
+}
+
+.install-option--pc{
+  min-height:auto;
+}
+
+.install-addon{
+  margin-top:20px;
+  padding-top:18px;
+  border-top:1px solid var(--border);
+}
+
+.install-addon__head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:8px;
+}
+
+.install-addon__head > div > span{
+  display:block;
+  margin-bottom:3px;
+  color:var(--accent);
+  font-size:9px;
+  font-weight:800;
+}
+
+.install-addon__head h3{
+  margin:0;
+  font-size:16px;
+  letter-spacing:0;
+}
+
+.install-addon__count{
+  flex:none;
+  padding:4px 7px;
+  border-radius:99px;
+  background:color-mix(in srgb,var(--text) 6%,transparent);
+  color:var(--muted);
+  font-size:10px;
+  font-weight:700;
+}
+
+.install-addon p{
+  margin-bottom:14px;
+  font-size:13px;
+}
+
+.install-addon__request{
+  padding:9px 10px;
+  border-radius:7px;
+  background:color-mix(in srgb,var(--accent) 9%,transparent);
+  color:var(--text)!important;
+  font-size:11px!important;
+  font-weight:650;
+}
+
+.install-addon__request[hidden]{
+  display:none;
+}
+
+.install-addon .install-option__button{
+  margin-top:0;
+}
+
+.install-option__guide,
+.install-pc-guide ol{
+  display:grid;
+  gap:8px;
+  margin:12px 0 0;
+  padding-left:20px;
+  line-height:1.45;
+}
+
+.install-option__guide strong,
+.install-pc-guide strong{
+  color:var(--text);
+}
+
+.install-option__safety{
+  margin:12px 0 0!important;
+  padding:10px;
+  border-radius:7px;
+  background:color-mix(in srgb,var(--accent) 7%,transparent);
+  font-size:11px!important;
+}
+
+.install-pc-guide{
+  margin-top:12px;
+  padding:12px;
+  border:1px solid var(--border);
+  border-radius:8px;
+  color:var(--muted);
+  font-size:12px;
+}
+
+.install-pc-guide[hidden]{
+  display:none;
 }
 
 .install-option small{
