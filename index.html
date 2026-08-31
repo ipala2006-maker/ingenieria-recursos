@@ -12,6 +12,9 @@
     <meta property="og:title" content="Estudiemos" />
     <meta property="og:description" content="Aplicación de productividad para organizar archivos, Inbox, calendario y sesiones de estudio." />
     <meta property="og:url" content="https://estudiemos-app.vercel.app/" />
+    <meta property="og:image" content="https://estudiemos-app.vercel.app/assets/install/pilot-home-wide.png" />
+    <meta property="og:image:alt" content="Panel principal de Estudiemos con Mi espacio, calendario e Inbox" />
+    <meta name="twitter:card" content="summary_large_image" />
     <link rel="canonical" href="https://estudiemos-app.vercel.app/" />
     <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
     <link rel="manifest" href="./site.webmanifest" />
@@ -148,6 +151,12 @@
 
       <footer class="footer">
         <span>© <span id="year"></span> Estudiemos</span>
+        <nav class="footer__links" aria-label="Información de Estudiemos">
+          <a href="./instalar.html">Instalar</a>
+          <a href="./about.html#privacidad">Privacidad</a>
+          <a href="./about.html#terminos">Términos</a>
+          <a href="./about.html#contacto">Contacto</a>
+        </nav>
       </footer>
     </main>
 
@@ -159,9 +168,7 @@
     <script src="./scripts/workspace.js?v=20260827-real-plans"></script>
     <script src="./scripts/dashboard.js?v=20260826-calendar-sync-2"></script>
 
-    <script>
-      document.getElementById("year").textContent = new Date().getFullYear();
-    </script>
+    <script src="./scripts/page-shell.js?v=20260831-launch-audit"></script>
 
   </body>
 </html>

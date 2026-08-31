@@ -392,6 +392,19 @@ img{ max-width: 100%; display:block; }
 .about-back{
   margin-top:2px;
 }
+.about-contact{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:20px;
+  padding:20px 4px 2px;
+}
+.about-contact h2{
+  margin:0 0 4px;
+}
+.about-contact p{
+  margin:0;
+}
 
 @media(max-width:520px){
   .legal-disclosure summary{
@@ -399,6 +412,10 @@ img{ max-width: 100%; display:block; }
   }
   .legal-copy{
     font-size:14px;
+  }
+  .about-contact{
+    align-items:flex-start;
+    flex-direction:column;
   }
 }
 
@@ -1897,6 +1914,7 @@ img{ max-width: 100%; display:block; }
   display:flex;
   align-items:center;
   justify-content:center;
+  flex-wrap:wrap;
   gap: 10px;
   color: var(--muted-2);
   font-size: 13px;
@@ -3277,6 +3295,25 @@ html.theme-light .pomodoro-wheel-control input{
 }
 .pomodoro-controls{
   margin-top:7px;
+}
+.footer__links{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-wrap:wrap;
+  gap:10px;
+}
+.footer__links::before{
+  content:"·";
+  opacity:.6;
+}
+.footer__links a{
+  color:inherit;
+  text-decoration:none;
+}
+.footer__links a:hover,
+.footer__links a:focus-visible{
+  color:var(--text);
 }
 .agenda-day__streak{
   position:absolute;

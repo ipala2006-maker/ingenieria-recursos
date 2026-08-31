@@ -4,6 +4,12 @@ function csvCell(value) {
 }
 
 module.exports = async function handler(request, response) {
+  response.setHeader("Cache-Control", "private, no-store, max-age=0");
+  response.setHeader("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'");
+  response.setHeader("Referrer-Policy", "no-referrer");
+  response.setHeader("X-Content-Type-Options", "nosniff");
+  response.setHeader("X-Robots-Tag", "noindex, nofollow, noarchive");
+
   if (request.method !== "GET") {
     response.setHeader("Allow", "GET");
     return response.status(405).send("Method Not Allowed");
@@ -46,7 +52,6 @@ module.exports = async function handler(request, response) {
 
     response.setHeader("Content-Type", "text/csv; charset=utf-8");
     response.setHeader("Content-Disposition", 'inline; filename="usuarios-estudiemos.csv"');
-    response.setHeader("Cache-Control", "private, no-store, max-age=0");
     return response.status(200).send(`\uFEFF${csv}`);
   } catch (error) {
     console.error("Unable to export the user registry", error);

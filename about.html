@@ -12,6 +12,9 @@
     <meta property="og:title" content="Acerca de | Estudiemos" />
     <meta property="og:description" content="Aplicación de productividad para organizar archivos, Inbox, calendario y sesiones de estudio." />
     <meta property="og:url" content="https://estudiemos-app.vercel.app/about.html" />
+    <meta property="og:image" content="https://estudiemos-app.vercel.app/assets/install/pilot-home-wide.png" />
+    <meta property="og:image:alt" content="Panel principal de Estudiemos" />
+    <meta name="twitter:card" content="summary_large_image" />
     <link rel="canonical" href="https://estudiemos-app.vercel.app/about.html" />
     <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
     <link rel="manifest" href="./site.webmanifest" />
@@ -54,13 +57,13 @@
             <p class="muted">Condiciones vigentes durante la etapa gratuita de prueba.</p>
           </div>
 
-          <details class="legal-disclosure">
+          <details class="legal-disclosure" id="terminos">
             <summary>
               <span>Términos de uso</span>
               <span class="legal-disclosure__hint">Leer</span>
             </summary>
             <div class="legal-copy">
-              <p><strong>Última actualización:</strong> 22 de agosto de 2026.</p>
+              <p><strong>Última actualización:</strong> 31 de agosto de 2026.</p>
               <h3>1. Alcance</h3>
               <p>Estudiemos es una herramienta de productividad académica en etapa de prueba. Permite organizar archivos, carpetas, tareas, calendario y sesiones de estudio. El uso de la aplicación implica aceptar estas condiciones.</p>
 
@@ -90,13 +93,13 @@
             </div>
           </details>
 
-          <details class="legal-disclosure">
+          <details class="legal-disclosure" id="privacidad">
             <summary>
               <span>Privacidad y datos</span>
               <span class="legal-disclosure__hint">Leer</span>
             </summary>
             <div class="legal-copy">
-              <p><strong>Última actualización:</strong> 22 de agosto de 2026.</p>
+              <p><strong>Última actualización:</strong> 31 de agosto de 2026.</p>
               <h3>1. Datos utilizados</h3>
               <p>Estudiemos puede procesar datos de cuenta, archivos, carpetas, anotaciones, calendario, preferencias y datos técnicos básicos necesarios para iniciar sesión, sincronizar dispositivos y mantener la seguridad.</p>
 
@@ -109,15 +112,27 @@
               <h3>4. Almacenamiento local</h3>
               <p>Algunas preferencias, como el tema visual o la configuración del temporizador, pueden guardarse en el dispositivo. Esos datos pueden permanecer hasta borrar la información del sitio o desinstalar la aplicación.</p>
 
-              <h3>5. Control del usuario</h3>
+              <h3>5. Métricas y cookies</h3>
+              <p>Estudiemos no utiliza cookies publicitarias ni vende información de navegación. Si se habilitan métricas técnicas, se usarán de forma agregada para detectar fallos y mejorar el rendimiento, sin crear perfiles publicitarios.</p>
+
+              <h3>6. Control del usuario</h3>
               <p>El usuario puede solicitar acceso, corrección o eliminación de su información mediante el canal de Sugerencias. Determinados registros podrán conservarse cuando sean necesarios para seguridad, prevención de fraude o cumplimiento de obligaciones legales.</p>
 
-              <h3>6. Seguridad y menores</h3>
+              <h3>7. Seguridad y menores</h3>
               <p>Se aplican medidas razonables para separar y proteger los datos de cada cuenta. Estudiemos está orientado principalmente a estudiantes universitarios y no busca recopilar deliberadamente información de niños.</p>
 
               <p class="legal-copy__notice">Antes de habilitar pagos, esta política se completará con la identidad del responsable, CUIT, domicilio y correo específico de privacidad.</p>
             </div>
           </details>
+
+          <section class="about-contact" id="contacto" aria-labelledby="contact-title">
+            <div>
+              <p class="about-legal__eyebrow">Contacto</p>
+              <h2 id="contact-title">¿Encontraste un problema?</h2>
+              <p class="muted">Enviá una consulta o sugerencia desde el formulario oficial.</p>
+            </div>
+            <a class="btn" href="https://docs.google.com/forms/d/e/1FAIpQLSc8KLH9N0kcYRryZa0tNtLSRIMe0ol_wKWVUwBt9T-3m9WD1A/viewform?usp=header" target="_blank" rel="noopener noreferrer">Abrir formulario</a>
+          </section>
         </section>
 
         <a class="btn about-back" href="./">Volver</a>
@@ -125,12 +140,16 @@
 
       <footer class="footer">
         <span>&copy; <span id="year"></span> Estudiemos</span>
+        <nav class="footer__links" aria-label="Información de Estudiemos">
+          <a href="./instalar.html">Instalar</a>
+          <a href="#privacidad">Privacidad</a>
+          <a href="#terminos">Términos</a>
+          <a href="#contacto">Contacto</a>
+        </nav>
       </footer>
     </main>
 
-    <script>
-      document.getElementById("year").textContent = new Date().getFullYear();
-    </script>
+    <script src="./scripts/page-shell.js?v=20260831-launch-audit"></script>
     <script src="./data/data.js?v=20260804-ai-profesores"></script>
     <script src="./scripts/global-search.js?v=20260830-widget-frictionless"></script>
   </body>

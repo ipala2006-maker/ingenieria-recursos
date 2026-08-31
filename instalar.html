@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#09101d" />
     <meta name="description" content="Descubrí Estudiemos: organizá tus archivos, tu Inbox, tu calendario y tus sesiones de estudio. Instalá la última versión en Android, iPhone, iPad o PC." />
+    <meta property="og:site_name" content="Estudiemos" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Estudiemos | Tu estudio, conectado" />
+    <meta property="og:description" content="Organizá archivos, Inbox, calendario y sesiones de estudio desde todos tus dispositivos." />
+    <meta property="og:url" content="https://estudiemos-app.vercel.app/instalar.html" />
+    <meta property="og:image" content="https://estudiemos-app.vercel.app/assets/install/pilot-home-wide.png" />
+    <meta property="og:image:alt" content="Panel principal de Estudiemos" />
+    <meta name="twitter:card" content="summary_large_image" />
     <script>
       if ((location.protocol === "file:" || /^(localhost|127\.0\.0\.1)$/i.test(location.hostname)) && !new URLSearchParams(location.search).has("local")) {
         location.replace("https://estudiemos-app.vercel.app/instalar.html" + location.hash);
@@ -14,9 +22,10 @@
     <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
     <link rel="manifest" href="./site.webmanifest" />
     <link rel="apple-touch-icon" href="./assets/icon-180.png" />
+    <link rel="preload" href="./assets/fonts/space-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="./assets/install/pilot-home-wide.png" as="image" fetchpriority="high" />
     <title>Estudiemos | Tu estudio, conectado</title>
     <script src="./scripts/theme-init.js?v=20260830-install-experience"></script>
-    <link rel="stylesheet" href="./styles/app.css?v=20260830-install-experience" />
     <link rel="stylesheet" href="./styles/install.css?v=20260830-install-refined-v3" />
   </head>
   <body class="install-page">
@@ -50,7 +59,7 @@
             <small>estudiemos-app.vercel.app</small>
           </div>
           <div class="hero-product__viewport">
-            <img src="./assets/install/pilot-home-wide.png" alt="Mi espacio, calendario e Inbox en Estudiemos" />
+            <img src="./assets/install/pilot-home-wide.png" alt="Mi espacio, calendario e Inbox en Estudiemos" width="1920" height="1080" fetchpriority="high" />
           </div>
         </div>
         <a class="install-hero__scroll" href="#descubrir" aria-label="Conocer las funciones de Estudiemos">
@@ -205,7 +214,14 @@
         <span class="brand__mark" aria-hidden="true">&sum;</span>
         <span class="brand__text">Estudiemos</span>
       </a>
-      <p>Productividad académica, en todos tus dispositivos.</p>
+      <div class="install-footer__end">
+        <p>Productividad académica, en todos tus dispositivos.</p>
+        <nav aria-label="Información legal">
+          <a href="./about.html#privacidad">Privacidad</a>
+          <a href="./about.html#terminos">Términos</a>
+          <a href="./about.html#contacto">Contacto</a>
+        </nav>
+      </div>
     </footer>
 
     <script src="./scripts/install-page.js?v=20260830-install-refined-v3"></script>

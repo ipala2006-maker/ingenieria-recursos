@@ -25,8 +25,10 @@
   let streakState = loadStreakState();
   let timerId = 0;
   let audioContext = null;
+  let audioUnlockPromise = null;
   let alarmInterval = 0;
   let alarmActive = false;
+  let alarmGeneration = 0;
   let ambientGain = null;
   let ambientNodes = [];
   let ambientIntervals = [];
@@ -417,6 +419,7 @@
       if (videoPip) syncVideoPipPlayback();
       if (document.visibilityState !== "visible") return;
       reconcileTimer(true);
+      resumeActiveAlarm();
       render();
       syncWakeLock();
       renderNotificationAlert();
@@ -428,6 +431,7 @@
       saveState();
     });
     window.addEventListener("focus", () => {
+      resumeActiveAlarm();
       renderNotificationAlert();
       maybeShowStreakReminder();
     });
@@ -630,7 +634,7 @@
   }
 
   function openMenu() {
-    prepareAudio();
+    prepareAudio(true);
     closeStreakMenu();
     document.body.classList.remove("agenda-open");
     document.querySelector(".agenda-board")?.setAttribute("aria-hidden", "true");
@@ -1108,7 +1112,7 @@
       return;
     }
 
-    prepareAudio();
+    prepareAudio(true);
     reconcileTimer(true);
     if (state.running) {
       captureStudyProgress();
@@ -1802,6 +1806,7 @@
       badge: new URL("../assets/icon-192.png", SCRIPT_URL).href,
       tag: overrides.tag || "estudiemos-pomodoro",
       renotify: true,
+      silent: false,
       requireInteraction: overrides.requireInteraction ?? true,
       vibrate: [180, 90, 180, 90, 260],
       data: { url: location.href }
@@ -2205,12 +2210,23 @@
     else releaseWakeLock();
   }
 
-  function prepareAudio() {
-    try {
-      const context = getAudioContext();
-      if (!context) return;
-      if (context.state === "suspended") context.resume().catch(() => {});
-    } catch (error) {}
+  function prepareAudio(primeOutput = false) {
+    const context = getAudioContext();
+    if (!context) return Promise.resolve(null);
+    if (audioUnlockPromise) return audioUnlockPromise;
+
+    audioUnlockPromise = (async () => {
+      try {
+        if (context.state === "suspended") await context.resume();
+        if (primeOutput && context.state === "running") primeAudioOutput(context);
+        return context;
+      } catch (error) {
+        return context;
+      } finally {
+        audioUnlockPromise = null;
+      }
+    })();
+    return audioUnlockPromise;
   }
 
   function getAudioContext() {
@@ -2221,25 +2237,56 @@
     return audioContext;
   }
 
-  function startAlarm() {
+  function primeAudioOutput(context) {
+    try {
+      const buffer = context.createBuffer(1, 1, context.sampleRate);
+      const source = context.createBufferSource();
+      const gain = context.createGain();
+      gain.gain.value = 0.0001;
+      source.buffer = buffer;
+      source.connect(gain);
+      gain.connect(context.destination);
+      source.start(0);
+      source.addEventListener?.("ended", () => {
+        source.disconnect();
+        gain.disconnect();
+      }, { once: true });
+    } catch (error) {}
+  }
+
+  async function startAlarm() {
     stopAlarm();
-    prepareAudio();
-    if (!getAudioContext()) return;
+    const generation = ++alarmGeneration;
     alarmActive = true;
+    render();
+    syncWakeLock();
+
+    const context = await prepareAudio();
+    if (!alarmActive || generation !== alarmGeneration || !context || context.state !== "running") return;
     playAlarmPattern();
     alarmInterval = window.setInterval(playAlarmPattern, alarmPattern().repeat);
-    render();
   }
 
   function stopAlarm() {
     if (alarmInterval) clearInterval(alarmInterval);
     alarmInterval = 0;
+    alarmGeneration += 1;
     alarmActive = false;
+  }
+
+  function resumeActiveAlarm() {
+    if (!alarmActive) return;
+    prepareAudio().then((context) => {
+      if (alarmActive && context?.state === "running") playAlarmPattern();
+    });
   }
 
   function playAlarmPattern() {
     const context = getAudioContext();
-    if (!context) return;
+    if (!context || context.state !== "running") {
+      resumeActiveAlarm();
+      return;
+    }
     const pattern = alarmPattern();
     const now = context.currentTime;
     const master = context.createGain();
@@ -2280,7 +2327,7 @@
   }
 
   function toggleAmbient() {
-    prepareAudio();
+    prepareAudio(true);
     if (ambientPlaying) stopAmbient();
     else startAmbient();
     render();

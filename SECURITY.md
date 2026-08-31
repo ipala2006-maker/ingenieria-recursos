@@ -27,9 +27,21 @@ Estudiemos usa una función de Vercel para el asistente de Inbox y calendario, y
 4. Cambiar inmediatamente cualquier clave privada expuesta.
 5. Revisar los usuarios y registros desde Supabase.
 
+Los reportes de seguridad pueden enviarse mediante el [formulario oficial](https://docs.google.com/forms/d/e/1FAIpQLSc8KLH9N0kcYRryZa0tNtLSRIMe0ol_wKWVUwBt9T-3m9WD1A/viewform?usp=header). No incluyas contraseñas, tokens ni archivos privados en el primer mensaje.
+
+## Revisión antes de publicar
+
+- Ejecutar la revisión estática de secretos y las pruebas de rutas, formularios y cabeceras.
+- Ejecutar Strix sobre un entorno de prueba con una cuenta creada exclusivamente para la auditoría.
+- Excluir pagos, mensajería real y acciones destructivas del alcance salvo autorización expresa.
+- Corregir cada hallazgo validado y repetir el mismo caso antes de desplegar.
+- Un resultado sin hallazgos reduce el riesgo, pero no demuestra que una aplicación sea imposible de vulnerar.
+
 ## Variables utilizadas
 
 - `GEMINI_API_KEY`: privada, solo en Vercel.
 - `GEMINI_MODEL`: configuración no sensible.
 - `SUPABASE_URL`: pública.
 - `SUPABASE_PUBLISHABLE_KEY`: pública y restringida por Row Level Security.
+- `SUPABASE_SECRET_KEY`: privada, solo en funciones de servidor.
+- `WHATSAPP_APP_SECRET` y `WHATSAPP_ACCESS_TOKEN`: privadas, solo en funciones de servidor.
