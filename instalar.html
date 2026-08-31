@@ -23,10 +23,10 @@
     <link rel="manifest" href="./site.webmanifest" />
     <link rel="apple-touch-icon" href="./assets/icon-180.png" />
     <link rel="preload" href="./assets/fonts/space-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="./assets/install/pilot-home-wide.png" as="image" fetchpriority="high" />
+    <link rel="preload" href="./assets/install/pilot-home-wide.webp" as="image" type="image/webp" fetchpriority="high" />
     <title>Estudiemos | Tu estudio, conectado</title>
     <script src="./scripts/theme-init.js?v=20260830-install-experience"></script>
-    <link rel="stylesheet" href="./styles/install.css?v=20260830-install-refined-v3" />
+    <link rel="stylesheet" href="./styles/install.css?v=20260831-glass-journey" />
   </head>
   <body class="install-page">
     <header class="install-header" data-install-header>
@@ -41,8 +41,16 @@
       </nav>
     </header>
 
+    <nav class="journey-rail" aria-label="Recorrido por Estudiemos" data-journey-rail>
+      <span class="journey-rail__line" aria-hidden="true"><i data-journey-progress></i></span>
+      <a href="#inicio" class="is-active" data-journey-link="inicio"><span>01</span><strong>Inicio</strong></a>
+      <a href="#descubrir" data-journey-link="descubrir"><span>02</span><strong>Herramientas</strong></a>
+      <a href="#widgets" data-journey-link="widgets"><span>03</span><strong>Widgets</strong></a>
+      <a href="#instalar" data-journey-link="instalar"><span>04</span><strong>Instalar</strong></a>
+    </nav>
+
     <main>
-      <section class="install-hero" aria-labelledby="heroTitle">
+      <section class="install-hero" id="inicio" aria-labelledby="heroTitle" data-journey-stage="inicio">
         <div class="install-hero__content">
           <p class="install-kicker">TU ESTUDIO, CONECTADO</p>
           <h1 id="heroTitle">Estudiemos</h1>
@@ -53,13 +61,13 @@
           </div>
           <p class="install-hero__sync"><span aria-hidden="true"></span> Una cuenta. Todos tus dispositivos.</p>
         </div>
-        <div class="hero-product" aria-label="Vista principal de Estudiemos">
+        <div class="hero-product" aria-label="Vista principal de Estudiemos" data-hero-product>
           <div class="hero-product__bar" aria-hidden="true">
             <span></span><span></span><span></span>
             <small>estudiemos-app.vercel.app</small>
           </div>
           <div class="hero-product__viewport">
-            <img src="./assets/install/pilot-home-wide.png" alt="Mi espacio, calendario e Inbox en Estudiemos" width="1920" height="1080" fetchpriority="high" />
+            <img src="./assets/install/pilot-home-wide.webp" alt="Mi espacio, calendario e Inbox en Estudiemos" width="1920" height="1080" fetchpriority="high" />
           </div>
         </div>
         <a class="install-hero__scroll" href="#descubrir" aria-label="Conocer las funciones de Estudiemos">
@@ -68,7 +76,7 @@
         </a>
       </section>
 
-      <section class="install-manifest" id="descubrir" aria-labelledby="manifestTitle">
+      <section class="install-manifest" id="descubrir" aria-labelledby="manifestTitle" data-journey-stage="descubrir">
         <div class="install-section-heading" data-reveal>
           <p class="install-kicker">HECHO PARA ESTUDIAR</p>
           <h2 id="manifestTitle">Menos vueltas.<br />Más claridad.</h2>
@@ -76,36 +84,35 @@
         </div>
 
         <div class="product-tour" data-reveal>
-          <div class="product-tour__visual">
-            <img src="./assets/install/pilot-home-wide.png" alt="Mi espacio e Inbox en Estudiemos" data-tour-image />
+          <div class="product-tour__visual" id="tourPanel" role="tabpanel" aria-labelledby="tourTabSpace" aria-live="polite">
+            <div class="product-tour__chrome" aria-hidden="true"><span></span><span></span><span></span><small>Estudiemos</small></div>
+            <img src="./assets/install/pilot-home-wide.webp" alt="Mi espacio e Inbox en Estudiemos" width="1920" height="1080" data-tour-image />
             <span class="product-tour__glow" aria-hidden="true"></span>
+            <div class="product-tour__status" aria-hidden="true"><span data-tour-number>01</span><strong data-tour-title>Tu espacio</strong></div>
           </div>
-          <div class="product-tour__controls" role="tablist" aria-label="Herramientas de Estudiemos">
-            <button class="product-tour__tab is-active" type="button" role="tab" aria-selected="true" data-tour-target="space" data-image="./assets/install/pilot-home-wide.png" data-alt="Mi espacio e Inbox en Estudiemos" data-scale="1.16" data-origin="50% 15%">
-              <span>01</span>
-              <strong>Tu espacio</strong>
-              <small>Archivos, carpetas e Inbox en orden.</small>
+          <div class="product-tour__controls" role="tablist" aria-label="Herramientas de Estudiemos" data-tour-controls>
+            <span class="product-tour__path" aria-hidden="true"><i data-tour-progress></i></span>
+            <button class="product-tour__tab is-active" id="tourTabSpace" type="button" role="tab" aria-selected="true" aria-controls="tourPanel" data-tour-target="space" data-image="./assets/install/pilot-home-wide.webp" data-alt="Mi espacio e Inbox en Estudiemos" data-scale="1.16" data-origin="50% 15%">
+              <span>01</span><i aria-hidden="true"></i>
+              <span><strong>Tu espacio</strong><small>Archivos, carpetas e Inbox en orden.</small></span>
             </button>
-            <button class="product-tour__tab" type="button" role="tab" aria-selected="false" data-tour-target="ai" data-image="./assets/install/pilot-assistant-wide.png" data-alt="Organizador inteligente de Estudiemos" data-scale="1.52" data-origin="50% 50%">
-              <span>02</span>
-              <strong>IA que organiza</strong>
-              <small>Decilo como te salga. Estudiemos lo ordena.</small>
+            <button class="product-tour__tab" id="tourTabAi" type="button" role="tab" aria-selected="false" aria-controls="tourPanel" tabindex="-1" data-tour-target="ai" data-image="./assets/install/pilot-assistant-wide.webp" data-alt="Organizador inteligente de Estudiemos" data-scale="1.52" data-origin="50% 50%">
+              <span>02</span><i aria-hidden="true"></i>
+              <span><strong>IA que organiza</strong><small>Decilo como te salga. Estudiemos lo ordena.</small></span>
             </button>
-            <button class="product-tour__tab" type="button" role="tab" aria-selected="false" data-tour-target="focus" data-image="./assets/install/pilot-pomodoro-wide.png" data-alt="Temporizador Pomodoro de Estudiemos" data-scale="1.25" data-origin="69% 20%">
-              <span>03</span>
-              <strong>Enfoque real</strong>
-              <small>Bloques simples para avanzar sin ruido.</small>
+            <button class="product-tour__tab" id="tourTabFocus" type="button" role="tab" aria-selected="false" aria-controls="tourPanel" tabindex="-1" data-tour-target="focus" data-image="./assets/install/pilot-pomodoro-wide.webp" data-alt="Temporizador Pomodoro de Estudiemos" data-scale="1.25" data-origin="69% 20%">
+              <span>03</span><i aria-hidden="true"></i>
+              <span><strong>Enfoque real</strong><small>Bloques simples para avanzar sin ruido.</small></span>
             </button>
-            <button class="product-tour__tab" type="button" role="tab" aria-selected="false" data-tour-target="progress" data-image="./assets/install/pilot-streak-wide.png" data-alt="Racha y progreso de estudio en Estudiemos" data-scale="1.28" data-origin="76% 24%">
-              <span>04</span>
-              <strong>Progreso visible</strong>
-              <small>Racha, tiempo diario y evolución semanal.</small>
+            <button class="product-tour__tab" id="tourTabProgress" type="button" role="tab" aria-selected="false" aria-controls="tourPanel" tabindex="-1" data-tour-target="progress" data-image="./assets/install/pilot-streak-wide.webp" data-alt="Racha y progreso de estudio en Estudiemos" data-scale="1.28" data-origin="76% 24%">
+              <span>04</span><i aria-hidden="true"></i>
+              <span><strong>Progreso visible</strong><small>Racha, tiempo diario y evolución semanal.</small></span>
             </button>
           </div>
         </div>
       </section>
 
-      <section class="install-widgets" aria-labelledby="widgetsTitle">
+      <section class="install-widgets" id="widgets" aria-labelledby="widgetsTitle" data-journey-stage="widgets">
         <div class="install-widgets__copy" data-reveal>
           <p class="install-kicker">SIEMPRE A MANO</p>
           <h2 id="widgetsTitle">Tu día, sin abrir nada.</h2>
@@ -122,17 +129,17 @@
           </div>
           <div class="widget-gallery__viewport">
             <div class="widget-gallery__track" data-widget-track>
-              <figure class="widget-gallery__item"><img src="./assets/install/pilot-widget-workspace.png" alt="Widget Mi espacio" loading="lazy" /><figcaption>Mi espacio</figcaption></figure>
-              <figure class="widget-gallery__item"><img src="./assets/install/pilot-widget-calendar.png" alt="Widget Calendario" loading="lazy" /><figcaption>Calendario</figcaption></figure>
-              <figure class="widget-gallery__item"><img src="./assets/install/pilot-widget-inbox.png" alt="Widget Inbox" loading="lazy" /><figcaption>Inbox</figcaption></figure>
-              <figure class="widget-gallery__item"><img src="./assets/install/pilot-widget-pomodoro.png" alt="Widget Pomodoro" loading="lazy" /><figcaption>Pomodoro</figcaption></figure>
-              <figure class="widget-gallery__item"><img src="./assets/install/pilot-widget-streak.png" alt="Widget Racha" loading="lazy" /><figcaption>Racha</figcaption></figure>
+              <figure class="widget-gallery__item"><img src="./assets/install/pilot-widget-workspace.webp" alt="Widget Mi espacio" width="520" height="660" loading="lazy" /><figcaption>Mi espacio</figcaption></figure>
+              <figure class="widget-gallery__item"><img src="./assets/install/pilot-widget-calendar.webp" alt="Widget Calendario" width="520" height="660" loading="lazy" /><figcaption>Calendario</figcaption></figure>
+              <figure class="widget-gallery__item"><img src="./assets/install/pilot-widget-inbox.webp" alt="Widget Inbox" width="520" height="660" loading="lazy" /><figcaption>Inbox</figcaption></figure>
+              <figure class="widget-gallery__item"><img src="./assets/install/pilot-widget-pomodoro.webp" alt="Widget Pomodoro" width="520" height="660" loading="lazy" /><figcaption>Pomodoro</figcaption></figure>
+              <figure class="widget-gallery__item"><img src="./assets/install/pilot-widget-streak.webp" alt="Widget Racha" width="520" height="660" loading="lazy" /><figcaption>Racha</figcaption></figure>
             </div>
           </div>
         </div>
       </section>
 
-      <section class="install-downloads" id="instalar" aria-labelledby="installTitle">
+      <section class="install-downloads" id="instalar" aria-labelledby="installTitle" data-journey-stage="instalar">
         <div class="install-section-heading install-section-heading--center" data-reveal>
           <p class="install-kicker">EMPEZÁ AHORA</p>
           <h2 id="installTitle">Elegí tu dispositivo.</h2>
@@ -224,6 +231,6 @@
       </div>
     </footer>
 
-    <script src="./scripts/install-page.js?v=20260830-install-refined-v3"></script>
+    <script src="./scripts/install-page.js?v=20260831-glass-journey"></script>
   </body>
 </html>

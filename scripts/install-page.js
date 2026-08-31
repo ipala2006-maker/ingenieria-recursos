@@ -7,6 +7,13 @@
   const requestedWidgetMessage = document.querySelector("[data-requested-widget]");
   const tourImage = document.querySelector("[data-tour-image]");
   const tourTabs = Array.from(document.querySelectorAll("[data-tour-target]"));
+  const tourControls = document.querySelector("[data-tour-controls]");
+  const tourNumber = document.querySelector("[data-tour-number]");
+  const tourTitle = document.querySelector("[data-tour-title]");
+  const tourPanel = document.querySelector("#tourPanel");
+  const journeyRail = document.querySelector("[data-journey-rail]");
+  const journeyStages = Array.from(document.querySelectorAll("[data-journey-stage]"));
+  const journeyLinks = Array.from(document.querySelectorAll("[data-journey-link]"));
   const widgetCarousel = document.querySelector("[data-widget-carousel]");
   const widgetTrack = document.querySelector("[data-widget-track]");
   const widgetItems = Array.from(document.querySelectorAll(".widget-gallery__item"));
@@ -38,6 +45,7 @@
   }
 
   prepareMotion();
+  prepareJourney();
   prepareProductTour();
   prepareWidgetCarousel();
 
@@ -96,16 +104,38 @@
         activateTourTab(nextTab);
       });
     });
+
+    if (!reduceMotion && "IntersectionObserver" in window) {
+      const tourObserver = new IntersectionObserver((entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible) activateTourTab(visible.target);
+      }, { threshold: [0.2, 0.45, 0.7], rootMargin: "-28% 0px -38%" });
+
+      tourTabs.forEach((tab) => tourObserver.observe(tab));
+    }
   }
 
   function activateTourTab(tab) {
-    if (!tab || tab.classList.contains("is-active")) return;
+    if (!tab) return;
+
+    const activeIndex = tourTabs.indexOf(tab);
+    const wasActive = tab.classList.contains("is-active");
 
     tourTabs.forEach((item) => {
       const isActive = item === tab;
       item.classList.toggle("is-active", isActive);
       item.setAttribute("aria-selected", String(isActive));
+      item.tabIndex = isActive ? 0 : -1;
     });
+
+    tourControls?.style.setProperty("--tour-progress", `${(activeIndex / Math.max(1, tourTabs.length - 1)) * 100}%`);
+    if (tourNumber) tourNumber.textContent = String(activeIndex + 1).padStart(2, "0");
+    if (tourTitle) tourTitle.textContent = tab.querySelector("strong")?.textContent || "";
+    tourPanel?.setAttribute("aria-labelledby", tab.id);
+
+    if (wasActive) return;
 
     tourImage.classList.add("is-changing");
     window.setTimeout(() => {
@@ -123,6 +153,35 @@
   function applyTourFraming(tab) {
     tourImage.style.setProperty("--tour-scale", tab?.dataset.scale || "1");
     tourImage.style.setProperty("--tour-origin", tab?.dataset.origin || "50% 50%");
+  }
+
+  function prepareJourney() {
+    if (!journeyRail || journeyStages.length === 0) return;
+
+    let frame = null;
+    const updateJourney = () => {
+      frame = null;
+      const center = window.scrollY + window.innerHeight * 0.46;
+      let activeIndex = 0;
+
+      journeyStages.forEach((stage, index) => {
+        if (stage.offsetTop <= center) activeIndex = index;
+      });
+
+      const scrollable = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+      const progress = Math.max(0, Math.min(100, (window.scrollY / scrollable) * 100));
+      journeyRail.style.setProperty("--journey-progress", `${progress}%`);
+      journeyLinks.forEach((link) => link.classList.toggle("is-active", link.dataset.journeyLink === journeyStages[activeIndex]?.id));
+    };
+
+    const requestJourneyUpdate = () => {
+      if (frame !== null) return;
+      frame = window.requestAnimationFrame(updateJourney);
+    };
+
+    updateJourney();
+    window.addEventListener("scroll", requestJourneyUpdate, { passive: true });
+    window.addEventListener("resize", requestJourneyUpdate);
   }
 
   function prepareWidgetCarousel() {
@@ -178,16 +237,25 @@
   function renderWidgetCarousel() {
     if (!widgetTrack || widgetItems.length === 0) return;
 
-    const viewport = widgetCarousel.querySelector(".widget-gallery__viewport");
-    const firstItem = widgetItems[0];
-    const gap = parseFloat(getComputedStyle(widgetTrack).gap) || 0;
-    const step = firstItem.getBoundingClientRect().width + gap;
-    const maximumOffset = Math.max(0, widgetTrack.scrollWidth - (viewport?.clientWidth || 0));
-    const offset = Math.min(widgetIndex * step, maximumOffset);
+    const compact = window.innerWidth <= 680;
+    const step = compact ? Math.min(92, window.innerWidth * 0.23) : Math.min(150, window.innerWidth * 0.115);
 
-    widgetTrack.style.transform = `translate3d(${-offset}px, 0, 0)`;
     widgetStatus.textContent = `${widgetIndex + 1} de ${widgetItems.length}`;
-    widgetItems.forEach((item, index) => item.toggleAttribute("data-current", index === widgetIndex));
+    widgetItems.forEach((item, index) => {
+      let offset = index - widgetIndex;
+      const halfway = widgetItems.length / 2;
+      if (offset > halfway) offset -= widgetItems.length;
+      if (offset < -halfway) offset += widgetItems.length;
+
+      const distance = Math.abs(offset);
+      item.style.setProperty("--widget-x", `${offset * step}px`);
+      item.style.setProperty("--widget-y", `${distance * (compact ? 22 : 32)}px`);
+      item.style.setProperty("--widget-rotate", `${offset * -9}deg`);
+      item.style.setProperty("--widget-scale", String(1 - distance * (compact ? 0.1 : 0.085)));
+      item.style.setProperty("--widget-opacity", String(Math.max(0.32, 1 - distance * 0.27)));
+      item.style.setProperty("--widget-z", String(10 - distance));
+      item.toggleAttribute("data-current", index === widgetIndex);
+    });
   }
 
   function startWidgetRotation() {
