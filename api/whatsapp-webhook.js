@@ -1,25 +1,35 @@
 const crypto = require("crypto");
 const agendaAi = require("./agenda-ai");
 const { adminRequest, encodeFilter, isConfigured } = require("./_lib/supabase-admin");
+const { enforceRateLimit, setSecurityHeaders } = require("./_lib/request-security");
 
 const GRAPH_VERSION = process.env.WHATSAPP_GRAPH_VERSION || "v23.0";
 const MAX_AUDIO_BYTES = 8 * 1024 * 1024;
+const MAX_WEBHOOK_BYTES = 1024 * 1024;
 const MAX_MESSAGES_PER_WEBHOOK = 5;
 const DEFAULT_DAILY_LIMIT = 30;
 const PENDING_MINUTES = 15;
 
 module.exports = async function whatsappWebhook(request, response) {
-  response.setHeader("Cache-Control", "no-store, max-age=0");
-  response.setHeader("X-Content-Type-Options", "nosniff");
+  setSecurityHeaders(response);
 
-  if (request.method === "GET") return verifyWebhook(request, response);
+  if (request.method === "GET") {
+    if (!(await enforceRateLimit(request, response, { route: "whatsapp-verify", limit: 30, windowSeconds: 60 }))) return;
+    return verifyWebhook(request, response);
+  }
   if (request.method !== "POST") {
     response.setHeader("Allow", "GET, POST");
     return response.status(405).send("Method not allowed");
   }
+  if (!(await enforceRateLimit(request, response, { route: "whatsapp-webhook", limit: 240, windowSeconds: 60 }))) return;
   if (!webhookConfigured() || !isConfigured()) return response.status(503).send("Not configured");
 
-  const rawBody = await readRawBody(request);
+  let rawBody;
+  try {
+    rawBody = await readRawBody(request, MAX_WEBHOOK_BYTES);
+  } catch (error) {
+    return response.status(error?.code === "BODY_TOO_LARGE" ? 413 : 400).send("Invalid request body");
+  }
   if (!verifySignature(rawBody, request.headers["x-hub-signature-256"])) {
     return response.status(401).send("Invalid signature");
   }
@@ -508,9 +518,25 @@ function sha256(value) {
   return crypto.createHash("sha256").update(String(value)).digest("hex");
 }
 
-async function readRawBody(request) {
+async function readRawBody(request, maxBytes) {
+  const declared = Number(request.headers?.["content-length"] || 0);
+  if (Number.isFinite(declared) && declared > maxBytes) {
+    const error = new Error("Webhook body too large");
+    error.code = "BODY_TOO_LARGE";
+    throw error;
+  }
   const chunks = [];
-  for await (const chunk of request) chunks.push(Buffer.from(chunk));
+  let size = 0;
+  for await (const chunk of request) {
+    const buffer = Buffer.from(chunk);
+    size += buffer.length;
+    if (size > maxBytes) {
+      const error = new Error("Webhook body too large");
+      error.code = "BODY_TOO_LARGE";
+      throw error;
+    }
+    chunks.push(buffer);
+  }
   return Buffer.concat(chunks);
 }
 

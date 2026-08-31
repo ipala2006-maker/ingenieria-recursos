@@ -1,9 +1,13 @@
+const { enforceRateLimit, setSecurityHeaders } = require("./_lib/request-security");
+const { adminRequest, isConfigured } = require("./_lib/supabase-admin");
+
 function csvCell(value) {
   const text = value == null ? "" : String(value);
   return `"${text.replace(/"/g, '""')}"`;
 }
 
 module.exports = async function handler(request, response) {
+  setSecurityHeaders(response);
   response.setHeader("Cache-Control", "private, no-store, max-age=0");
   response.setHeader("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'");
   response.setHeader("Referrer-Policy", "no-referrer");
@@ -14,32 +18,20 @@ module.exports = async function handler(request, response) {
     response.setHeader("Allow", "GET");
     return response.status(405).send("Method Not Allowed");
   }
+  if (!(await enforceRateLimit(request, response, { route: "user-registry", limit: 8, windowSeconds: 300 }))) return;
 
-  const supabaseUrl = process.env.SUPABASE_URL || "";
-  const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY || "";
   const exportToken = typeof request.query?.token === "string" ? request.query.token : "";
 
-  if (!supabaseUrl || !publishableKey || !exportToken) {
+  if (!isConfigured() || !exportToken) {
     return response.status(401).send("Unauthorized");
   }
 
   try {
-    const upstream = await fetch(`${supabaseUrl}/rest/v1/rpc/export_user_registry`, {
+    const users = await adminRequest("/rest/v1/rpc/export_user_registry", {
       method: "POST",
-      headers: {
-        apikey: publishableKey,
-        Authorization: `Bearer ${publishableKey}`,
-        "Content-Type": "application/json"
-      },
       body: JSON.stringify({ export_token: exportToken })
     });
-
-    if (!upstream.ok) {
-      const status = upstream.status >= 400 && upstream.status < 500 ? 403 : 502;
-      return response.status(status).send("Registry unavailable");
-    }
-
-    const users = await upstream.json();
+    if (!Array.isArray(users)) return response.status(502).send("Registry unavailable");
     const header = ["ID de usuario", "Correo", "Fecha de registro", "Correo confirmado", "Ultimo acceso"];
     const rows = users.map((user) => [
       user.user_id,
@@ -55,6 +47,7 @@ module.exports = async function handler(request, response) {
     return response.status(200).send(`\uFEFF${csv}`);
   } catch (error) {
     console.error("Unable to export the user registry", error);
-    return response.status(502).send("Registry unavailable");
+    const status = error?.status >= 400 && error?.status < 500 ? 403 : 502;
+    return response.status(status).send("Registry unavailable");
   }
 };

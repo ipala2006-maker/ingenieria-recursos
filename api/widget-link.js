@@ -1,5 +1,6 @@
 const crypto = require("crypto");
 const { adminRequest, authenticateBearer, isConfigured } = require("./_lib/supabase-admin");
+const { enforceRateLimit, isSameOriginRequest, rejectOversizedBody, setSecurityHeaders } = require("./_lib/request-security");
 
 const LINK_LIFETIME_SECONDS = 120;
 const APP_ORIGIN = "https://estudiemos-app.vercel.app";
@@ -8,6 +9,8 @@ const VALID_WIDGETS = new Set(["workspace", "inbox", "calendar", "pomodoro", "st
 module.exports = async function widgetLink(request, response) {
   setHeaders(response);
   if (!isConfigured()) return response.status(503).json({ message: "La conexión de cuenta no está disponible." });
+  if (rejectOversizedBody(request, response, 8 * 1024)) return;
+  if (!(await enforceRateLimit(request, response, { route: "widget-link", limit: 30, windowSeconds: 60 }))) return;
 
   try {
     if (request.method === "POST") return createHandoff(request, response);
@@ -95,14 +98,5 @@ function normalizeWidget(value) {
 }
 
 function setHeaders(response) {
-  response.setHeader("Cache-Control", "no-store, max-age=0");
-  response.setHeader("Referrer-Policy", "no-referrer");
-  response.setHeader("X-Content-Type-Options", "nosniff");
-}
-
-function isSameOriginRequest(request) {
-  const origin = String(request.headers?.origin || "");
-  if (!origin) return true;
-  const host = String(request.headers?.["x-forwarded-host"] || request.headers?.host || "").split(",")[0].trim();
-  try { return new URL(origin).host === host; } catch (_) { return false; }
+  setSecurityHeaders(response);
 }

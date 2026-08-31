@@ -10,6 +10,7 @@ Estudiemos usa una función de Vercel para el asistente de Inbox y calendario, y
 - `SUPABASE_PUBLISHABLE_KEY` puede llegar al navegador y queda limitada por las políticas de acceso por usuario.
 - Nunca colocar `SUPABASE_SECRET_KEY` ni una clave `service_role` en HTML, JavaScript público, GitHub o `api/account-config.js`.
 - Mantener habilitado Row Level Security en `public.user_states`.
+- Mantener aplicadas las políticas de `supabase/workspace.sql`, `supabase/plans.sql` y el rate limit de `supabase/security.sql`.
 - No modificar las políticas de `supabase/schema.sql` para permitir acceso anónimo.
 
 ## Protección de los datos
@@ -44,4 +45,5 @@ Los reportes de seguridad pueden enviarse mediante el [formulario oficial](https
 - `SUPABASE_URL`: pública.
 - `SUPABASE_PUBLISHABLE_KEY`: pública y restringida por Row Level Security.
 - `SUPABASE_SECRET_KEY`: privada, solo en funciones de servidor.
+- `RATE_LIMIT_SECRET`: privada y opcional; se usa únicamente para anonimizar las claves del rate limit.
 - `WHATSAPP_APP_SECRET` y `WHATSAPP_ACCESS_TOKEN`: privadas, solo en funciones de servidor.

@@ -1,9 +1,13 @@
 const { authenticateBearer } = require("./_lib/supabase-admin");
 const { isConfigured, sendWidgetSync } = require("./_lib/firebase-push");
+const { enforceRateLimit, isSameOriginRequest, rejectOversizedBody, setSecurityHeaders } = require("./_lib/request-security");
 
 module.exports = async function widgetPush(request, response) {
-  response.setHeader("Cache-Control", "no-store, max-age=0");
+  setSecurityHeaders(response);
   if (request.method !== "POST") return response.status(405).json({ message: "Metodo no permitido." });
+  if (!isSameOriginRequest(request)) return response.status(403).json({ message: "Origen no permitido." });
+  if (rejectOversizedBody(request, response, 8 * 1024)) return;
+  if (!(await enforceRateLimit(request, response, { route: "widget-push", limit: 60, windowSeconds: 60 }))) return;
   const user = await authenticateBearer(request.headers.authorization);
   if (!user) return response.status(401).json({ message: "Sesion invalida." });
   if (!isConfigured()) return response.status(202).json({ enabled: false, sent: 0 });

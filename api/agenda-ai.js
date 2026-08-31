@@ -1,5 +1,6 @@
 // This function keeps the model credential on Vercel and out of the browser.
 const { consumePlanAction, planLimitMessage } = require("./_lib/plan-access");
+const { enforceRateLimit, isSameOriginRequest, rejectOversizedBody, setSecurityHeaders } = require("./_lib/request-security");
 
 const MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
 const MAX_AGENDA_ITEMS = 500;
@@ -104,6 +105,7 @@ const RESPONSE_SCHEMA = {
 
 module.exports = async function agendaAi(request, response) {
   setResponseHeaders(response);
+  setSecurityHeaders(response);
 
   if (request.method !== "POST") {
     response.setHeader("Allow", "POST");
@@ -113,6 +115,9 @@ module.exports = async function agendaAi(request, response) {
   if (!isSameOriginRequest(request)) {
     return response.status(403).json({ error: "Origen no permitido." });
   }
+
+  if (rejectOversizedBody(request, response, 512 * 1024)) return;
+  if (!(await enforceRateLimit(request, response, { route: "agenda-ai", limit: 12, windowSeconds: 60 }))) return;
 
   if (!process.env.GEMINI_API_KEY) {
     return response.status(503).json({
@@ -208,17 +213,6 @@ function wait(milliseconds) {
 function setResponseHeaders(response) {
   response.setHeader("Cache-Control", "no-store, max-age=0");
   response.setHeader("X-Content-Type-Options", "nosniff");
-}
-
-function isSameOriginRequest(request) {
-  const origin = String(request.headers?.origin || "");
-  if (!origin) return true;
-  const host = String(request.headers?.["x-forwarded-host"] || request.headers?.host || "").split(",")[0].trim();
-  try {
-    return new URL(origin).host === host;
-  } catch (_) {
-    return false;
-  }
 }
 
 function validateInput(body) {

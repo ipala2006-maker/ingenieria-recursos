@@ -1,4 +1,13 @@
-module.exports = function handler(_request, response) {
+const { enforceRateLimit, setSecurityHeaders } = require("./_lib/request-security");
+
+module.exports = async function handler(request, response) {
+  setSecurityHeaders(response);
+  if (request.method !== "GET") {
+    response.setHeader("Allow", "GET");
+    return response.status(405).json({ message: "Método no permitido." });
+  }
+  if (!(await enforceRateLimit(request, response, { route: "account-config", limit: 120, windowSeconds: 60 }))) return;
+
   const url = process.env.SUPABASE_URL || "";
   const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY || "";
   const firebase = {
@@ -7,8 +16,6 @@ module.exports = function handler(_request, response) {
     projectId: process.env.FIREBASE_PROJECT_ID || "",
     senderId: process.env.FIREBASE_SENDER_ID || ""
   };
-
-  response.setHeader("Cache-Control", "no-store, max-age=0");
 
   if (!url || !publishableKey) {
     return response.status(503).json({

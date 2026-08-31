@@ -1,6 +1,8 @@
 const MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
 const REQUEST_TIMEOUT_MS = 30000;
 const MAX_INSTRUCTION_LENGTH = 1200;
+const { getAuthenticatedPlan, planLimitMessage } = require("./_lib/plan-access");
+const { enforceRateLimit, isSameOriginRequest, rejectOversizedBody, setSecurityHeaders } = require("./_lib/request-security");
 
 const RESPONSE_SCHEMA = {
   type: "object",
@@ -13,17 +15,29 @@ const RESPONSE_SCHEMA = {
 };
 
 module.exports = async function assistantRouter(request, response) {
-  response.setHeader("Cache-Control", "no-store, max-age=0");
+  setSecurityHeaders(response);
   response.setHeader("Content-Type", "application/json; charset=utf-8");
-  response.setHeader("X-Content-Type-Options", "nosniff");
 
   if (request.method !== "POST") {
     response.setHeader("Allow", "POST");
     return response.status(405).json({ message: "Método no permitido." });
   }
   if (!isSameOriginRequest(request)) return response.status(403).json({ message: "Origen no permitido." });
+  if (rejectOversizedBody(request, response, 16 * 1024)) return;
+  if (!(await enforceRateLimit(request, response, { route: "assistant-router", limit: 20, windowSeconds: 60 }))) return;
+  if (!(await enforceRateLimit(request, response, { route: "assistant-router-hourly", limit: 120, windowSeconds: 3600 }))) return;
   if (!process.env.GEMINI_API_KEY) return response.status(503).json({ message: "La IA todavía no está configurada." });
-  if (!(await authenticateRequest(request))) return response.status(401).json({ message: "Ingresá a tu cuenta para usar el asistente." });
+
+  const access = await getAuthenticatedPlan(request).catch(() => ({ authenticated: false }));
+  if (!access.authenticated) return response.status(401).json({ message: "Ingresá a tu cuenta para usar el asistente." });
+  const aiUsage = access.status?.ai || {};
+  if (Number(aiUsage.limit) >= 0 && Number(aiUsage.used) >= Number(aiUsage.limit)) {
+    return response.status(429).json({
+      code: "AI_LIMIT_REACHED",
+      message: planLimitMessage("ai", aiUsage),
+      usage: aiUsage
+    });
+  }
 
   const instruction = cleanText(request.body?.instruction, MAX_INSTRUCTION_LENGTH);
   if (instruction.length < 3) return response.status(400).json({ message: "Escribí una indicación más completa." });
@@ -63,21 +77,6 @@ module.exports = async function assistantRouter(request, response) {
   }
 };
 
-async function authenticateRequest(request) {
-  const url = process.env.SUPABASE_URL || "";
-  const key = process.env.SUPABASE_PUBLISHABLE_KEY || "";
-  const authorization = String(request.headers.authorization || "");
-  if (!url || !key || !authorization.startsWith("Bearer ")) return false;
-  try {
-    const result = await fetch(`${url.replace(/\/$/, "")}/auth/v1/user`, {
-      headers: { apikey: key, Authorization: authorization }
-    });
-    return result.ok;
-  } catch (_) {
-    return false;
-  }
-}
-
 function buildModelRequest(instruction) {
   const systemInstruction = `Sos la entrada única del asistente de Estudiemos. Interpretá la intención del usuario y elegí qué herramienta especializada debe continuar.
 
@@ -109,17 +108,6 @@ function sanitizeRoute(raw) {
     clarification,
     acknowledgement: cleanText(raw?.acknowledgement, 180)
   };
-}
-
-function isSameOriginRequest(request) {
-  const origin = String(request.headers?.origin || "");
-  if (!origin) return true;
-  const host = String(request.headers?.["x-forwarded-host"] || request.headers?.host || "").split(",")[0].trim();
-  try {
-    return new URL(origin).host === host;
-  } catch (_) {
-    return false;
-  }
 }
 
 function cleanText(value, limit) {

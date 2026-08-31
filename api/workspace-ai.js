@@ -1,5 +1,6 @@
 const MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
 const { consumePlanAction, planLimitMessage } = require("./_lib/plan-access");
+const { enforceRateLimit, isSameOriginRequest, rejectOversizedBody, setSecurityHeaders } = require("./_lib/request-security");
 const REQUEST_TIMEOUT_MS = 45000;
 const MAX_ITEMS = 400;
 
@@ -39,7 +40,7 @@ const RESPONSE_SCHEMA = {
 };
 
 module.exports = async function workspaceAi(request, response) {
-  response.setHeader("Cache-Control", "no-store, max-age=0");
+  setSecurityHeaders(response);
   response.setHeader("Content-Type", "application/json; charset=utf-8");
 
   if (request.method !== "POST") {
@@ -47,6 +48,8 @@ module.exports = async function workspaceAi(request, response) {
     return response.status(405).json({ message: "Método no permitido." });
   }
   if (!isSameOriginRequest(request)) return response.status(403).json({ message: "Origen no permitido." });
+  if (rejectOversizedBody(request, response, 256 * 1024)) return;
+  if (!(await enforceRateLimit(request, response, { route: "workspace-ai", limit: 12, windowSeconds: 60 }))) return;
   if (!process.env.GEMINI_API_KEY) return response.status(503).json({ message: "La IA todavía no está configurada." });
 
   const input = validateInput(request.body);
@@ -266,13 +269,6 @@ function formatFolderName(value) {
     .replace(/\bcomputaci[oó]n\b/gi, "Computación")
     .replace(/\bc[aá]lculo\s+num[eé]rico\b/gi, "Cálculo Numérico")
     .replace(/\ban[aá]lisis\s+matem[aá]tico\b/gi, "Análisis Matemático");
-}
-
-function isSameOriginRequest(request) {
-  const origin = String(request.headers.origin || "");
-  if (!origin) return true;
-  const forwardedHost = String(request.headers["x-forwarded-host"] || request.headers.host || "").split(",")[0].trim();
-  try { return new URL(origin).host === forwardedHost; } catch (error) { return false; }
 }
 
 function cleanId(value) {

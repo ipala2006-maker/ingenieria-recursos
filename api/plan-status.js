@@ -1,11 +1,14 @@
 const { getAuthenticatedPlan, setTestPlan } = require("./_lib/plan-access");
 const plans = require("../shared/plans");
+const { enforceRateLimit, isSameOriginRequest, rejectOversizedBody, setSecurityHeaders } = require("./_lib/request-security");
 
 module.exports = async function planStatus(request, response) {
-  response.setHeader("Cache-Control", "no-store, max-age=0");
+  setSecurityHeaders(response);
   response.setHeader("Content-Type", "application/json; charset=utf-8");
 
   if (!isSameOriginRequest(request)) return response.status(403).json({ message: "Origen no permitido." });
+  if (rejectOversizedBody(request, response, 8 * 1024)) return;
+  if (!(await enforceRateLimit(request, response, { route: "plan-status", limit: 60, windowSeconds: 60 }))) return;
 
   try {
     if (request.method === "GET") {
@@ -42,11 +45,4 @@ function normalizeStatus(value) {
 
 function normalizeUsage(value, limit) {
   return { used: Math.max(0, Number(value?.used) || 0), limit };
-}
-
-function isSameOriginRequest(request) {
-  const origin = String(request.headers.origin || "");
-  if (!origin) return true;
-  const host = String(request.headers["x-forwarded-host"] || request.headers.host || "").split(",")[0].trim();
-  try { return new URL(origin).host === host; } catch (_) { return false; }
 }

@@ -88,6 +88,8 @@ La pantalla de planes funciona en modo de prueba y todavía no realiza cobros. E
 
 Para activar los planes en una instalación nueva, ejecutar una vez `supabase/plans.sql` en el editor SQL de Supabase. Esta migración crea el plan por usuario, el consumo mensual y la protección del límite de almacenamiento.
 
+Para activar el límite de solicitudes compartido entre todas las funciones de Vercel, ejecutar también `supabase/security.sql`. Si esa migración todavía no está aplicada, las APIs conservan un límite local de respaldo por instancia, pero la protección distribuida requiere la función SQL.
+
 ## Cuentas y sincronización
 
 Las cuentas usan Supabase Auth y tablas privadas protegidas con Row Level Security. Se sincronizan Inbox, el calendario, las preferencias y el tema visual. Los archivos se guardan aparte en almacenamiento privado para que sigan disponibles en todos los dispositivos.
@@ -96,7 +98,7 @@ Configuración inicial:
 
 1. Crear un proyecto gratuito en Supabase.
 2. Abrir **SQL Editor**, pegar el contenido de `supabase/schema.sql` y ejecutarlo una vez.
-3. En el mismo editor, ejecutar `supabase/workspace.sql` para crear el espacio privado de archivos y sus reglas de acceso.
+3. En el mismo editor, ejecutar `supabase/workspace.sql` para crear el espacio privado de archivos y sus reglas de acceso, y `supabase/security.sql` para activar el rate limit distribuido.
 4. En **Authentication → URL Configuration**, usar `https://estudiemos-app.vercel.app` como Site URL y agregar `https://estudiemos-app.vercel.app/**` a Redirect URLs.
 5. Copiar la Project URL y la Publishable key desde **Project Settings → API Keys**.
 6. En Vercel agregar para Production las variables `SUPABASE_URL` y `SUPABASE_PUBLISHABLE_KEY`.
@@ -110,7 +112,7 @@ Los archivos se guardan en el bucket privado `workspace-files`, con un máximo d
 
 El archivo privado de Google Sheets puede mostrar un registro de cuentas en una hoja llamada `Usuarios`. La fuente real sigue siendo Supabase Auth y solamente se exportan ID, correo y fechas de registro, confirmación y último acceso. Nunca se exportan contraseñas, agenda ni recursos guardados.
 
-- `supabase/user-registry.sql` crea una copia administrativa bloqueada y una exportación protegida por un token privado.
+- `supabase/user-registry.sql` crea una copia administrativa bloqueada y una exportación protegida por un token privado, ejecutable únicamente por el servidor.
 - `api/user-registry.js` entrega el registro como CSV para la función `IMPORTDATA` de Google Sheets.
 - El token de exportación se guarda únicamente en la hoja privada y no debe publicarse ni agregarse al repositorio.
 

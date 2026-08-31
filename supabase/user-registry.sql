@@ -22,6 +22,7 @@ create table if not exists public.user_registry (
 
 alter table public.user_registry enable row level security;
 revoke all on table public.user_registry from public, anon, authenticated;
+grant select on table public.user_registry to service_role;
 
 create or replace function private.sync_user_registry()
 returns trigger
@@ -106,4 +107,5 @@ end;
 $$;
 
 revoke all on function public.export_user_registry(text) from public;
-grant execute on function public.export_user_registry(text) to anon;
+revoke all on function public.export_user_registry(text) from anon, authenticated;
+grant execute on function public.export_user_registry(text) to service_role;

@@ -1,5 +1,6 @@
 const crypto = require("crypto");
 const { adminRequest, authenticateBearer, encodeFilter, isConfigured } = require("./_lib/supabase-admin");
+const { enforceRateLimit, isSameOriginRequest, rejectOversizedBody, setSecurityHeaders } = require("./_lib/request-security");
 
 const CODE_LIFETIME_MINUTES = 15;
 
@@ -10,6 +11,8 @@ module.exports = async function whatsappLink(request, response) {
     return response.status(405).json({ message: "Método no permitido." });
   }
   if (!isSameOriginRequest(request)) return response.status(403).json({ message: "Origen no permitido." });
+  if (rejectOversizedBody(request, response, 8 * 1024)) return;
+  if (!(await enforceRateLimit(request, response, { route: "whatsapp-link", limit: 30, windowSeconds: 60 }))) return;
   if (!isConfigured() || !whatsappConfigured()) {
     return response.status(503).json({ configured: false, message: "WhatsApp todavía no está configurado." });
   }
@@ -84,15 +87,6 @@ function whatsappConfigured() {
 }
 
 function setHeaders(response) {
-  response.setHeader("Cache-Control", "no-store, max-age=0");
+  setSecurityHeaders(response);
   response.setHeader("Content-Type", "application/json; charset=utf-8");
-  response.setHeader("X-Content-Type-Options", "nosniff");
 }
-
-function isSameOriginRequest(request) {
-  const origin = String(request.headers?.origin || "");
-  if (!origin) return true;
-  const host = String(request.headers?.["x-forwarded-host"] || request.headers?.host || "").split(",")[0].trim();
-  try { return new URL(origin).host === host; } catch (_) { return false; }
-}
-
