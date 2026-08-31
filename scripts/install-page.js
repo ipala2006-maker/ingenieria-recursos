@@ -5,8 +5,8 @@
   const manualGuide = document.querySelector("[data-install-pc-guide]");
   const widgetInstaller = document.querySelector("[data-install-windows-widgets]");
   const requestedWidgetMessage = document.querySelector("[data-requested-widget]");
-  const tourImage = document.querySelector("[data-tour-image]");
   const tourTabs = Array.from(document.querySelectorAll("[data-tour-target]"));
+  const tourScenes = Array.from(document.querySelectorAll("[data-scene]"));
   const tourControls = document.querySelector("[data-tour-controls]");
   const tourNumber = document.querySelector("[data-tour-number]");
   const tourTitle = document.querySelector("[data-tour-title]");
@@ -28,6 +28,8 @@
   let widgetTimer = null;
   let widgetPausedByUser = false;
   let widgetPointerStart = null;
+  let activeTourIndex = 0;
+  let tourManualLockUntil = 0;
 
   const requestedWidget = new URLSearchParams(location.search).get("widget");
   const widgetLabel = {
@@ -89,12 +91,20 @@
   }
 
   function prepareProductTour() {
-    if (!tourImage || tourTabs.length === 0) return;
+    if (tourScenes.length === 0 || tourTabs.length === 0) return;
 
-    applyTourFraming(tourTabs[0]);
+    tourScenes.forEach((scene, index) => {
+      scene.classList.toggle("is-active", index === 0);
+      scene.classList.toggle("is-after", index > 0);
+      scene.setAttribute("aria-hidden", String(index !== 0));
+    });
+    tourControls?.style.setProperty("--tour-progress", "0%");
 
     tourTabs.forEach((tab, index) => {
-      tab.addEventListener("click", () => activateTourTab(tab));
+      tab.addEventListener("click", () => {
+        tourManualLockUntil = performance.now() + 900;
+        activateTourTab(tab);
+      });
       tab.addEventListener("keydown", (event) => {
         if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
         event.preventDefault();
@@ -107,6 +117,7 @@
 
     if (!reduceMotion && "IntersectionObserver" in window) {
       const tourObserver = new IntersectionObserver((entries) => {
+        if (performance.now() < tourManualLockUntil) return;
         const visible = entries
           .filter((entry) => entry.isIntersecting)
           .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
@@ -137,22 +148,18 @@
 
     if (wasActive) return;
 
-    tourImage.classList.add("is-changing");
-    window.setTimeout(() => {
-      tourImage.src = tab.dataset.image;
-      tourImage.alt = tab.dataset.alt || "";
-      applyTourFraming(tab);
-      requestAnimationFrame(() => tourImage.classList.remove("is-changing"));
-    }, reduceMotion ? 0 : 170);
+    tourPanel?.setAttribute("data-direction", activeIndex > activeTourIndex ? "forward" : "back");
+    tourScenes.forEach((scene, index) => {
+      scene.classList.toggle("is-active", index === activeIndex);
+      scene.classList.toggle("is-before", index < activeIndex);
+      scene.classList.toggle("is-after", index > activeIndex);
+      scene.setAttribute("aria-hidden", String(index !== activeIndex));
+    });
+    activeTourIndex = activeIndex;
 
     if (window.innerWidth <= 680) {
-      tab.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "nearest", inline: "center" });
+      tab.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center", inline: "center" });
     }
-  }
-
-  function applyTourFraming(tab) {
-    tourImage.style.setProperty("--tour-scale", tab?.dataset.scale || "1");
-    tourImage.style.setProperty("--tour-origin", tab?.dataset.origin || "50% 50%");
   }
 
   function prepareJourney() {
@@ -193,6 +200,14 @@
     widgetPrevious?.addEventListener("click", () => moveWidgetCarousel(-1));
     widgetNext?.addEventListener("click", () => moveWidgetCarousel(1));
     widgetPause?.addEventListener("click", toggleWidgetRotation);
+    widgetItems.forEach((item, index) => {
+      item.addEventListener("click", () => {
+        if (index === widgetIndex) return;
+        widgetIndex = index;
+        renderWidgetCarousel();
+        restartWidgetRotation();
+      });
+    });
 
     widgetCarousel.addEventListener("keydown", (event) => {
       if (event.key === "ArrowLeft") moveWidgetCarousel(-1);
@@ -238,7 +253,7 @@
     if (!widgetTrack || widgetItems.length === 0) return;
 
     const compact = window.innerWidth <= 680;
-    const step = compact ? Math.min(92, window.innerWidth * 0.23) : Math.min(150, window.innerWidth * 0.115);
+    const step = compact ? Math.min(102, window.innerWidth * 0.25) : Math.min(175, window.innerWidth * 0.13);
 
     widgetStatus.textContent = `${widgetIndex + 1} de ${widgetItems.length}`;
     widgetItems.forEach((item, index) => {
@@ -249,10 +264,11 @@
 
       const distance = Math.abs(offset);
       item.style.setProperty("--widget-x", `${offset * step}px`);
-      item.style.setProperty("--widget-y", `${distance * (compact ? 22 : 32)}px`);
-      item.style.setProperty("--widget-rotate", `${offset * -9}deg`);
-      item.style.setProperty("--widget-scale", String(1 - distance * (compact ? 0.1 : 0.085)));
-      item.style.setProperty("--widget-opacity", String(Math.max(0.32, 1 - distance * 0.27)));
+      item.style.setProperty("--widget-y", `${distance * (compact ? 28 : 42)}px`);
+      item.style.setProperty("--widget-rotate", `${offset * -17}deg`);
+      item.style.setProperty("--widget-tilt", `${offset * (compact ? 2.5 : 4)}deg`);
+      item.style.setProperty("--widget-scale", String(1 - distance * (compact ? 0.11 : 0.105)));
+      item.style.setProperty("--widget-opacity", String(Math.max(0.26, 1 - distance * 0.3)));
       item.style.setProperty("--widget-z", String(10 - distance));
       item.toggleAttribute("data-current", index === widgetIndex);
     });
@@ -263,7 +279,7 @@
     widgetTimer = window.setInterval(() => {
       widgetIndex = (widgetIndex + 1) % widgetItems.length;
       renderWidgetCarousel();
-    }, 4600);
+    }, 3400);
   }
 
   function stopWidgetRotation() {

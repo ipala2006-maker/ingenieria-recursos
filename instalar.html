@@ -1,32 +1,31 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#09101d" />
-    <meta name="description" content="Descubrí Estudiemos: organizá tus archivos, tu Inbox, tu calendario y tus sesiones de estudio. Instalá la última versión en Android, iPhone, iPad o PC." />
-    <meta property="og:site_name" content="Estudiemos" />
-    <meta property="og:type" content="website" />
-    <meta property="og:title" content="Estudiemos | Tu estudio, conectado" />
-    <meta property="og:description" content="Organizá archivos, Inbox, calendario y sesiones de estudio desde todos tus dispositivos." />
-    <meta property="og:url" content="https://estudiemos-app.vercel.app/instalar.html" />
-    <meta property="og:image" content="https://estudiemos-app.vercel.app/assets/install/pilot-home-wide.png" />
-    <meta property="og:image:alt" content="Panel principal de Estudiemos" />
-    <meta name="twitter:card" content="summary_large_image" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#09101d">
+    <meta name="description" content="Descubrí Estudiemos: organizá tus archivos, tu Inbox, tu calendario y tus sesiones de estudio. Instalá la última versión en Android, iPhone, iPad o PC.">
+    <meta property="og:site_name" content="Estudiemos">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Estudiemos | Tu estudio, conectado">
+    <meta property="og:description" content="Organizá archivos, Inbox, calendario y sesiones de estudio desde todos tus dispositivos.">
+    <meta property="og:url" content="https://estudiemos-app.vercel.app/instalar.html">
+    <meta property="og:image" content="https://estudiemos-app.vercel.app/assets/install/pilot-home-wide.png">
+    <meta property="og:image:alt" content="Panel principal de Estudiemos">
+    <meta name="twitter:card" content="summary_large_image">
     <script>
       if ((location.protocol === "file:" || /^(localhost|127\.0\.0\.1)$/i.test(location.hostname)) && !new URLSearchParams(location.search).has("local")) {
         location.replace("https://estudiemos-app.vercel.app/instalar.html" + location.hash);
       }
     </script>
-    <link rel="canonical" href="https://estudiemos-app.vercel.app/instalar.html" />
-    <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
-    <link rel="manifest" href="./site.webmanifest" />
-    <link rel="apple-touch-icon" href="./assets/icon-180.png" />
-    <link rel="preload" href="./assets/fonts/space-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="./assets/install/pilot-home-wide.webp" as="image" type="image/webp" fetchpriority="high" />
+    <link rel="canonical" href="https://estudiemos-app.vercel.app/instalar.html">
+    <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
+    <link rel="manifest" href="./site.webmanifest">
+    <link rel="apple-touch-icon" href="./assets/icon-180.png">
+    <link rel="preload" href="./assets/fonts/space-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin>
     <title>Estudiemos | Tu estudio, conectado</title>
     <script src="./scripts/theme-init.js?v=20260830-install-experience"></script>
-    <link rel="stylesheet" href="./styles/install.css?v=20260831-glass-journey" />
+    <link rel="stylesheet" href="./styles/install.css?v=20260831-live-product">
   </head>
   <body class="install-page">
     <header class="install-header" data-install-header>
@@ -61,13 +60,36 @@
           </div>
           <p class="install-hero__sync"><span aria-hidden="true"></span> Una cuenta. Todos tus dispositivos.</p>
         </div>
-        <div class="hero-product" aria-label="Vista principal de Estudiemos" data-hero-product>
+        <div class="hero-product" role="img" aria-label="Vista principal de Estudiemos" data-hero-product>
           <div class="hero-product__bar" aria-hidden="true">
             <span></span><span></span><span></span>
             <small>estudiemos-app.vercel.app</small>
           </div>
           <div class="hero-product__viewport">
-            <img src="./assets/install/pilot-home-wide.webp" alt="Mi espacio, calendario e Inbox en Estudiemos" width="1920" height="1080" fetchpriority="high" />
+            <div class="demo-app demo-app--hero" aria-hidden="true">
+              <div class="demo-topbar">
+                <div class="demo-brand"><b>&sum;</b><strong>Estudiemos</strong></div>
+                <div class="demo-nav"><i></i><i></i><i></i><i class="is-hot"></i><i></i><i></i></div>
+              </div>
+              <div class="demo-dashboard">
+                <section class="demo-space">
+                  <div class="demo-heading"><span>CUENTA PILOTO · ARCHIVOS</span><h3>Mi espacio</h3><small>Guardá y ordená lo que necesitás.</small></div>
+                  <div class="demo-toolbar"><span>Buscar en mi espacio</span><b>Más recientes</b></div>
+                  <div class="demo-folder-grid">
+                    <article><i class="folder-blue"></i><span><strong>Álgebra</strong><small>9 archivos</small></span></article>
+                    <article><i class="folder-green"></i><span><strong>Programación</strong><small>14 archivos</small></span></article>
+                    <article><i class="folder-violet"></i><span><strong>Materiales</strong><small>7 archivos</small></span></article>
+                    <article><i class="folder-yellow"></i><span><strong>Proyecto piloto</strong><small>5 archivos</small></span></article>
+                    <article class="demo-file"><i></i><span><strong>Guía de matrices.pdf</strong><small>PDF · 1,8 MB</small></span></article>
+                    <article class="demo-add"><b>+</b><span><strong>Agregar</strong><small>Carpeta o archivo</small></span></article>
+                  </div>
+                </section>
+                <aside class="demo-side">
+                  <section class="demo-calendar"><header><span>CALENDARIO</span><strong>24 – 30 de agosto</strong></header><div class="demo-week"><p><b>LUN 24</b><i>08:00</i><span>Álgebra</span></p><p><b>MAR 25</b><i>09:00</i><span>Programación</span></p><p><b>MIÉ 26</b><i>10:00</i><span>Materiales</span></p><p><b>JUE 27</b><i>08:00</i><span>Mecánica</span></p><p><b>VIE 28</b><i>08:00</i><span>Programación</span></p></div></section>
+                  <section class="demo-inbox"><header><span>PENDIENTES</span><strong>Inbox</strong></header><p><i></i><span><b>Completar guía de matrices</b><small>Álgebra</small></span></p><p><i></i><span><b>Preparar simulacro</b><small>Viernes</small></span></p><p><i></i><span><b>Entregar informe</b><small>Proyecto</small></span></p></section>
+                </aside>
+              </div>
+            </div>
           </div>
         </div>
         <a class="install-hero__scroll" href="#descubrir" aria-label="Conocer las funciones de Estudiemos">
@@ -79,32 +101,69 @@
       <section class="install-manifest" id="descubrir" aria-labelledby="manifestTitle" data-journey-stage="descubrir">
         <div class="install-section-heading" data-reveal>
           <p class="install-kicker">HECHO PARA ESTUDIAR</p>
-          <h2 id="manifestTitle">Menos vueltas.<br />Más claridad.</h2>
+          <h2 id="manifestTitle">Menos vueltas.<br>Más claridad.</h2>
           <p>Un solo lugar para ordenar lo que tenés que hacer y sostener el ritmo cada día.</p>
         </div>
 
         <div class="product-tour" data-reveal>
           <div class="product-tour__visual" id="tourPanel" role="tabpanel" aria-labelledby="tourTabSpace" aria-live="polite">
             <div class="product-tour__chrome" aria-hidden="true"><span></span><span></span><span></span><small>Estudiemos</small></div>
-            <img src="./assets/install/pilot-home-wide.webp" alt="Mi espacio e Inbox en Estudiemos" width="1920" height="1080" data-tour-image />
+            <div class="product-scenes" data-tour-scenes>
+              <section class="product-scene product-scene--space is-active" data-scene="space" aria-label="Mi espacio e Inbox">
+                <div class="scene-space-head"><span>MI ESPACIO</span><h3>Todo encuentra su lugar.</h3></div>
+                <div class="scene-search"><i></i><span>Buscar archivos y carpetas</span><b>⌘ K</b></div>
+                <div class="scene-folders">
+                  <article><i class="folder-blue"></i><strong>Álgebra</strong><small>9 archivos</small><span>•••</span></article>
+                  <article><i class="folder-green"></i><strong>Programación</strong><small>14 archivos</small><span>•••</span></article>
+                  <article><i class="folder-violet"></i><strong>Materiales</strong><small>7 archivos</small><span>•••</span></article>
+                  <article><i class="folder-yellow"></i><strong>Proyecto</strong><small>5 archivos</small><span>•••</span></article>
+                </div>
+                <div class="scene-inbox-strip"><span>INBOX</span><p><i></i><b>Completar guía de matrices</b><small>Sin fecha</small></p><p><i></i><b>Preparar simulacro</b><small>Viernes</small></p></div>
+              </section>
+
+              <section class="product-scene product-scene--ai" data-scene="ai" aria-label="Organizador inteligente">
+                <header><span>ORGANIZADOR INTELIGENTE</span><h3>Pedilo como te salga.</h3></header>
+                <div class="scene-chat">
+                  <p class="scene-message scene-message--user">Anotá preparar el parcial de Álgebra y ordená mis apuntes.</p>
+                  <div class="scene-thinking"><i></i><i></i><i></i></div>
+                  <div class="scene-message scene-message--ai"><b>Listo.</b><span>Creé la tarea en Inbox y organicé los archivos dentro de Álgebra.</span><div><small>Tarea agregada</small><small>3 archivos ordenados</small></div></div>
+                </div>
+                <div class="scene-prompt"><span>Escribí o dictá una indicación</span><b>↑</b></div>
+              </section>
+
+              <section class="product-scene product-scene--focus" data-scene="focus" aria-label="Temporizador Pomodoro">
+                <header><span>MODO ENFOQUE</span><h3>Una cosa a la vez.</h3></header>
+                <div class="scene-focus-body">
+                  <div class="scene-timer"><div><strong>24:36</strong><small>Bloque 1 de 4</small></div></div>
+                  <div class="scene-session"><span>SESIÓN ACTUAL</span><strong>Preparar parcial de Álgebra</strong><small>Las notificaciones quedan en silencio.</small><div><button type="button" tabindex="-1">Pausar</button><button type="button" tabindex="-1">Terminar</button></div></div>
+                </div>
+                <div class="scene-focus-progress"><i></i><i></i><i></i><i></i></div>
+              </section>
+
+              <section class="product-scene product-scene--progress" data-scene="progress" aria-label="Racha y progreso de estudio">
+                <header><span>PROGRESO</span><h3>Tu constancia, visible.</h3></header>
+                <div class="scene-metrics"><article><span>RACHA ACTUAL</span><strong>12 días</strong><small>Tu mejor ritmo</small></article><article><span>HOY</span><strong>1 h 25 min</strong><small>3 bloques</small></article><article><span>ESTA SEMANA</span><strong>7 h 40 min</strong><small>+18% que la anterior</small></article></div>
+                <div class="scene-chart"><div><span>Horas de estudio</span><b>Semana</b></div><svg viewBox="0 0 560 190" role="img" aria-label="Progreso semanal ascendente"><path d="M20 150 C75 142 82 120 120 126 S183 94 220 103 S278 61 320 78 S383 34 420 52 S488 29 540 35"></path><path class="scene-chart-fill" d="M20 150 C75 142 82 120 120 126 S183 94 220 103 S278 61 320 78 S383 34 420 52 S488 29 540 35 L540 175 L20 175 Z"></path><g><circle cx="20" cy="150" r="5"></circle><circle cx="120" cy="126" r="5"></circle><circle cx="220" cy="103" r="5"></circle><circle cx="320" cy="78" r="5"></circle><circle cx="420" cy="52" r="5"></circle><circle cx="540" cy="35" r="5"></circle></g></svg><div class="scene-days"><span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span></div></div>
+              </section>
+            </div>
             <span class="product-tour__glow" aria-hidden="true"></span>
             <div class="product-tour__status" aria-hidden="true"><span data-tour-number>01</span><strong data-tour-title>Tu espacio</strong></div>
           </div>
           <div class="product-tour__controls" role="tablist" aria-label="Herramientas de Estudiemos" data-tour-controls>
             <span class="product-tour__path" aria-hidden="true"><i data-tour-progress></i></span>
-            <button class="product-tour__tab is-active" id="tourTabSpace" type="button" role="tab" aria-selected="true" aria-controls="tourPanel" data-tour-target="space" data-image="./assets/install/pilot-home-wide.webp" data-alt="Mi espacio e Inbox en Estudiemos" data-scale="1.16" data-origin="50% 15%">
+            <button class="product-tour__tab is-active" id="tourTabSpace" type="button" role="tab" aria-selected="true" aria-controls="tourPanel" data-tour-target="space">
               <span>01</span><i aria-hidden="true"></i>
               <span><strong>Tu espacio</strong><small>Archivos, carpetas e Inbox en orden.</small></span>
             </button>
-            <button class="product-tour__tab" id="tourTabAi" type="button" role="tab" aria-selected="false" aria-controls="tourPanel" tabindex="-1" data-tour-target="ai" data-image="./assets/install/pilot-assistant-wide.webp" data-alt="Organizador inteligente de Estudiemos" data-scale="1.52" data-origin="50% 50%">
+            <button class="product-tour__tab" id="tourTabAi" type="button" role="tab" aria-selected="false" aria-controls="tourPanel" tabindex="-1" data-tour-target="ai">
               <span>02</span><i aria-hidden="true"></i>
               <span><strong>IA que organiza</strong><small>Decilo como te salga. Estudiemos lo ordena.</small></span>
             </button>
-            <button class="product-tour__tab" id="tourTabFocus" type="button" role="tab" aria-selected="false" aria-controls="tourPanel" tabindex="-1" data-tour-target="focus" data-image="./assets/install/pilot-pomodoro-wide.webp" data-alt="Temporizador Pomodoro de Estudiemos" data-scale="1.25" data-origin="69% 20%">
+            <button class="product-tour__tab" id="tourTabFocus" type="button" role="tab" aria-selected="false" aria-controls="tourPanel" tabindex="-1" data-tour-target="focus">
               <span>03</span><i aria-hidden="true"></i>
               <span><strong>Enfoque real</strong><small>Bloques simples para avanzar sin ruido.</small></span>
             </button>
-            <button class="product-tour__tab" id="tourTabProgress" type="button" role="tab" aria-selected="false" aria-controls="tourPanel" tabindex="-1" data-tour-target="progress" data-image="./assets/install/pilot-streak-wide.webp" data-alt="Racha y progreso de estudio en Estudiemos" data-scale="1.28" data-origin="76% 24%">
+            <button class="product-tour__tab" id="tourTabProgress" type="button" role="tab" aria-selected="false" aria-controls="tourPanel" tabindex="-1" data-tour-target="progress">
               <span>04</span><i aria-hidden="true"></i>
               <span><strong>Progreso visible</strong><small>Racha, tiempo diario y evolución semanal.</small></span>
             </button>
@@ -118,7 +177,7 @@
           <h2 id="widgetsTitle">Tu día, sin abrir nada.</h2>
           <p>Inbox, calendario, Mi espacio, Pomodoro y racha viven también en tu pantalla de inicio o escritorio.</p>
         </div>
-        <div class="widget-gallery" id="widget-stage" data-reveal data-widget-carousel aria-roledescription="carrusel" aria-label="Widgets de Estudiemos">
+        <section class="widget-gallery" id="widget-stage" data-reveal data-widget-carousel aria-roledescription="carrusel" aria-label="Widgets de Estudiemos">
           <div class="widget-gallery__toolbar">
             <span data-widget-status aria-live="polite">1 de 5</span>
             <div class="widget-gallery__buttons">
@@ -129,14 +188,24 @@
           </div>
           <div class="widget-gallery__viewport">
             <div class="widget-gallery__track" data-widget-track>
-              <figure class="widget-gallery__item"><img src="./assets/install/pilot-widget-workspace.webp" alt="Widget Mi espacio" width="520" height="660" loading="lazy" /><figcaption>Mi espacio</figcaption></figure>
-              <figure class="widget-gallery__item"><img src="./assets/install/pilot-widget-calendar.webp" alt="Widget Calendario" width="520" height="660" loading="lazy" /><figcaption>Calendario</figcaption></figure>
-              <figure class="widget-gallery__item"><img src="./assets/install/pilot-widget-inbox.webp" alt="Widget Inbox" width="520" height="660" loading="lazy" /><figcaption>Inbox</figcaption></figure>
-              <figure class="widget-gallery__item"><img src="./assets/install/pilot-widget-pomodoro.webp" alt="Widget Pomodoro" width="520" height="660" loading="lazy" /><figcaption>Pomodoro</figcaption></figure>
-              <figure class="widget-gallery__item"><img src="./assets/install/pilot-widget-streak.webp" alt="Widget Racha" width="520" height="660" loading="lazy" /><figcaption>Racha</figcaption></figure>
+              <figure class="widget-gallery__item widget-card widget-card--workspace">
+                <div class="widget-preview"><header><b>&sum;</b><span>Mi espacio</span><small>4 carpetas</small></header><div class="widget-file-list"><p><i class="folder-blue"></i><span><b>Álgebra</b><small>9 archivos</small></span><em>›</em></p><p><i class="folder-green"></i><span><b>Programación</b><small>14 archivos</small></span><em>›</em></p><p><i class="folder-violet"></i><span><b>Materiales</b><small>7 archivos</small></span><em>›</em></p><p><i class="folder-yellow"></i><span><b>Proyecto piloto</b><small>5 archivos</small></span><em>›</em></p></div></div><figcaption>Mi espacio</figcaption>
+              </figure>
+              <figure class="widget-gallery__item widget-card widget-card--calendar">
+                <div class="widget-preview"><header><b>24</b><span>Esta semana</span><small>Agosto</small></header><div class="widget-calendar-list"><p><strong>Lun</strong><i>08:00</i><span>Álgebra</span></p><p><strong>Mar</strong><i>09:00</i><span>Programación</span></p><p><strong>Mié</strong><i>10:00</i><span>Materiales</span></p><p><strong>Jue</strong><i>08:00</i><span>Mecánica</span></p><p><strong>Vie</strong><i>08:00</i><span>Programación</span></p></div></div><figcaption>Calendario</figcaption>
+              </figure>
+              <figure class="widget-gallery__item widget-card widget-card--inbox">
+                <div class="widget-preview"><header><b>3</b><span>Inbox</span><small>Pendientes</small></header><div class="widget-task-list"><p><i></i><span><b>Completar guía</b><small>Álgebra</small></span></p><p><i></i><span><b>Preparar simulacro</b><small>Viernes</small></span></p><p><i></i><span><b>Entregar informe</b><small>Proyecto</small></span></p></div><button type="button" tabindex="-1">+ Nueva tarea</button></div><figcaption>Inbox</figcaption>
+              </figure>
+              <figure class="widget-gallery__item widget-card widget-card--pomodoro">
+                <div class="widget-preview"><header><b>1</b><span>Pomodoro</span><small>Enfoque</small></header><div class="widget-timer"><div><strong>24:36</strong><small>Bloque 1</small></div></div><button type="button" tabindex="-1">Pausar</button></div><figcaption>Pomodoro</figcaption>
+              </figure>
+              <figure class="widget-gallery__item widget-card widget-card--streak">
+                <div class="widget-preview"><header><b>12</b><span>Racha</span><small>días</small></header><div class="widget-streak-metric"><span>Hoy</span><strong>1 h 25 min</strong></div><div class="widget-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="widget-bar-labels"><span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span></div><button type="button" tabindex="-1">Estudiar 25 minutos</button></div><figcaption>Racha</figcaption>
+              </figure>
             </div>
           </div>
-        </div>
+        </section>
       </section>
 
       <section class="install-downloads" id="instalar" aria-labelledby="installTitle" data-journey-stage="instalar">
@@ -146,7 +215,7 @@
           <p>Tu cuenta mantiene todo sincronizado. Acá siempre encontrás la versión más reciente.</p>
         </div>
 
-        <div class="install-options" aria-label="Opciones de instalación">
+        <div class="install-options" role="group" aria-label="Opciones de instalación">
           <article class="install-option" data-reveal>
             <div class="install-option__meta"><span class="install-option__platform">Android</span><span class="install-option__current">Versión actual</span></div>
             <div class="install-option__glyph" aria-hidden="true">A</div>
@@ -231,6 +300,6 @@
       </div>
     </footer>
 
-    <script src="./scripts/install-page.js?v=20260831-glass-journey"></script>
+    <script src="./scripts/install-page.js?v=20260831-live-product"></script>
   </body>
 </html>
