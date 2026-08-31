@@ -157,37 +157,38 @@
             <section class="agenda-assistant" id="agendaAssistant" hidden>
               <div class="agenda-assistant__head">
                 <div>
-                  <p class="tray-kicker">Asistente inteligente</p>
-                  <h3>Organizar Inbox y calendario</h3>
+                  <p class="tray-kicker">Organizador inteligente</p>
+                  <h3>Decilo como te salga.</h3>
                 </div>
                 <button class="agenda-assistant__close" type="button" data-agenda-assistant-close aria-label="Cerrar asistente">${icon("lineClose")}</button>
               </div>
-              <p class="agenda-assistant__intro">Decile qué necesitás organizar. Puede crear, corregir o eliminar anotaciones usando el contexto de tu Inbox y calendario.</p>
+
+              <div class="agenda-assistant__conversation" aria-live="polite">
+                <div class="agenda-assistant__message agenda-assistant__message--ai">
+                  <span class="agenda-assistant__avatar" aria-hidden="true">${icon("sparkles")}</span>
+                  <p>Puedo crear, corregir o eliminar tareas usando el contexto de tu Inbox y calendario.</p>
+                </div>
+                <div class="agenda-assistant__message agenda-assistant__message--user" id="agendaAssistantUserMessage" hidden><p></p></div>
+                <div id="agendaAssistantStatus" class="agenda-assistant__status" role="status"></div>
+                <div id="agendaAssistantPreview" class="agenda-assistant__preview" hidden></div>
+                <button id="agendaAssistantConfirm" class="agenda-assistant__confirm" type="button" data-agenda-assistant-confirm hidden>Guardar cambios</button>
+              </div>
 
               <form id="agendaAssistantForm" class="agenda-assistant__form">
-                <label class="tray-field">
-                  Tu indicación
-                  <textarea id="agendaAssistantPrompt" rows="5" maxlength="1200" placeholder="Ej: Anotá comprar los materiales de Física."></textarea>
-                </label>
-                <p class="agenda-assistant__hint">Escribí con naturalidad. Si no indicás una fecha, la tarea quedará en Inbox.</p>
-
-                <div class="agenda-assistant__dates">
-                  <label class="tray-field">
-                    Desde
-                    <input id="agendaAssistantFrom" type="date" required />
-                  </label>
-                  <label class="tray-field">
-                    Hasta
-                    <input id="agendaAssistantUntil" type="date" required />
-                  </label>
+                <label class="sr-only" for="agendaAssistantPrompt">Tu indicación</label>
+                <div class="agenda-assistant__composer">
+                  <textarea id="agendaAssistantPrompt" rows="3" maxlength="1200" placeholder="Escribí o dictá una indicación..."></textarea>
+                  <button class="agenda-assistant__interpret" type="submit" aria-label="Enviar indicación">${icon("sparkles")}<span data-agenda-assistant-label>Enviar</span></button>
                 </div>
-
-                <button class="agenda-assistant__interpret" type="submit">${icon("sparkles")}<span>Interpretar con IA</span></button>
+                <p class="agenda-assistant__hint">Sin fecha queda en Inbox. Siempre revisás antes de aplicar.</p>
+                <details class="agenda-assistant__context">
+                  <summary>Rango que puede revisar</summary>
+                  <div class="agenda-assistant__dates">
+                    <label class="tray-field">Desde<input id="agendaAssistantFrom" type="date" required /></label>
+                    <label class="tray-field">Hasta<input id="agendaAssistantUntil" type="date" required /></label>
+                  </div>
+                </details>
               </form>
-
-              <div id="agendaAssistantStatus" class="agenda-assistant__status" role="status" aria-live="polite"></div>
-              <div id="agendaAssistantPreview" class="agenda-assistant__preview" hidden></div>
-              <button id="agendaAssistantConfirm" class="agenda-assistant__confirm" type="button" data-agenda-assistant-confirm hidden>Guardar cambios</button>
               <p class="agenda-assistant__privacy">Solo se envían esta instrucción y los datos necesarios de Inbox y calendario. Los cambios requieren confirmación.</p>
             </section>
 
@@ -867,6 +868,7 @@
       return;
     }
 
+    showAgendaAssistantUserMessage(prompt);
     setAgendaAssistantLoading(interpret, true);
     setAgendaAssistantStatus("La IA está revisando tu Inbox y calendario...", "info");
 
@@ -921,8 +923,16 @@
     if (!button) return;
     button.disabled = loading;
     button.setAttribute("aria-busy", String(loading));
-    const label = button.querySelector("span");
-    if (label) label.textContent = loading ? "Interpretando..." : "Interpretar con IA";
+    const label = button.querySelector("[data-agenda-assistant-label]");
+    if (label) label.textContent = loading ? "Pensando..." : "Enviar";
+  }
+
+  function showAgendaAssistantUserMessage(message) {
+    const bubble = document.getElementById("agendaAssistantUserMessage");
+    const text = bubble?.querySelector("p");
+    if (!bubble || !text) return;
+    text.textContent = message;
+    bubble.hidden = false;
   }
 
   function getAgendaAssistantContext() {

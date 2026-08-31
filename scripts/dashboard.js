@@ -80,14 +80,24 @@
       shell.innerHTML = `
         <div class="quick-panel quick-panel--assistant" role="dialog" aria-modal="true" aria-labelledby="generalAiTitle">
           <header class="quick-panel__head">
-            <div><p>Asistente de Estudiemos</p><h2 id="generalAiTitle">¿Qué querés organizar?</h2></div>
+            <div><p>Organizador inteligente</p><h2 id="generalAiTitle">Decilo como te salga.</h2></div>
             <button class="quick-panel__close" type="button" data-quick-panel-close aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
           </header>
-          <form class="quick-panel__form" data-general-ai-form>
-            <label class="quick-panel__field">Tu indicación<textarea name="instruction" maxlength="1200" rows="5" required placeholder="Ej: Agendá el parcial de Física para el viernes, o creá carpetas para ordenar mis apuntes."></textarea></label>
-            <p class="quick-panel__hint">Puede ayudarte con Inbox, el calendario, las carpetas y los archivos. Siempre revisás los cambios antes de aplicarlos.</p>
-            <p class="quick-panel__status" data-general-ai-status role="status" aria-live="polite"></p>
-            <button class="quick-panel__submit" type="submit"><svg viewBox="0 0 24 24"><path d="m12 3 1.3 4.2L17 9l-3.7 1.8L12 15l-1.3-4.2L7 9l3.7-1.8L12 3Z"/></svg><span>Continuar</span></button>
+          <div class="assistant-chat" aria-live="polite">
+            <div class="assistant-chat__message assistant-chat__message--assistant">
+              <span class="assistant-chat__avatar" aria-hidden="true">✦</span>
+              <div><strong>¿Qué necesitás organizar?</strong><p>Puedo trabajar con tu Inbox, calendario, carpetas y archivos.</p></div>
+            </div>
+            <div class="assistant-chat__message assistant-chat__message--user" data-general-ai-user hidden><p></p></div>
+            <p class="quick-panel__status assistant-chat__message assistant-chat__message--assistant" data-general-ai-status role="status"></p>
+          </div>
+          <form class="quick-panel__form quick-panel__form--assistant" data-general-ai-form>
+            <label class="sr-only" for="generalAiInstruction">Tu indicación</label>
+            <div class="assistant-chat__composer">
+              <textarea id="generalAiInstruction" name="instruction" maxlength="1200" rows="3" required placeholder="Escribí o dictá una indicación..."></textarea>
+              <button class="quick-panel__submit" type="submit" aria-label="Enviar indicación"><span aria-hidden="true">↑</span></button>
+            </div>
+            <p class="quick-panel__hint">Vas a revisar los cambios antes de aplicarlos.</p>
           </form>
         </div>`;
       document.body.appendChild(shell);
@@ -238,7 +248,8 @@
     const instruction = form.elements.instruction.value.trim();
     const button = form.querySelector('[type="submit"]');
     if (!instruction || button.disabled) return;
-    setAssistantStatus("Interpretando lo que necesitás...", "");
+    showGeneralAssistantUserMessage(instruction);
+    setAssistantStatus("Estoy entendiendo qué querés organizar...", "loading");
     button.disabled = true;
 
     try {
@@ -269,6 +280,9 @@
         setAssistantStatus("¿Querés organizar tu Inbox, calendario o archivos?", "info");
         return;
       }
+      setAssistantStatus(destination === "agenda" ? "Entendí. Voy a preparar los cambios en tu Inbox y calendario." : "Entendí. Voy a preparar la organización de tu espacio.", "success");
+      form.reset();
+      await new Promise((resolve) => window.setTimeout(resolve, 380));
       closeActivePanel();
       window.setTimeout(() => handOffToAssistant(destination, instruction), 100);
     } catch (error) {
@@ -311,7 +325,15 @@
     const status = document.querySelector("[data-general-ai-status]");
     if (!status) return;
     status.textContent = message;
-    status.className = `quick-panel__status${type ? ` is-${type}` : ""}`;
+    status.className = `quick-panel__status assistant-chat__message assistant-chat__message--assistant${type ? ` is-${type}` : ""}`;
+  }
+
+  function showGeneralAssistantUserMessage(message) {
+    const bubble = document.querySelector("[data-general-ai-user]");
+    const text = bubble?.querySelector("p");
+    if (!bubble || !text) return;
+    text.textContent = message;
+    bubble.hidden = false;
   }
 
   function waitForElement(selector, callback, attempts = 80) {

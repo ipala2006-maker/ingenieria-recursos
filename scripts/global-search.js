@@ -180,7 +180,7 @@
     if (document.querySelector('link[href*="styles/dashboard.css"]')) return;
     const link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = `${rootPath}styles/dashboard.css?v=20260826-calendar-sync-2`;
+    link.href = `${rootPath}styles/dashboard.css?v=20260831-ai-chat`;
     document.head.appendChild(link);
   }
 
@@ -234,7 +234,7 @@
     if (document.querySelector('script[src*="scripts/bandeja.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/bandeja.js?v=20260827-real-plans`;
+    script.src = `${rootPath}scripts/bandeja.js?v=20260831-ai-chat`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -251,7 +251,7 @@
   function loadDashboardScript() {
     if (document.querySelector('script[src*="scripts/dashboard.js"]')) return;
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/dashboard.js?v=20260826-calendar-sync-2`;
+    script.src = `${rootPath}scripts/dashboard.js?v=20260831-ai-chat`;
     script.defer = true;
     document.head.appendChild(script);
   }
