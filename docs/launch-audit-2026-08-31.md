@@ -33,7 +33,7 @@ Fecha: 31 de agosto de 2026.
 24. Menú mobile: herramientas adaptadas a iconos y nombres accesibles.
 25. Scroll horizontal: ausente en home, instalación, legales y 404.
 26. Overflow mobile: contenido ajustado al viewport.
-27. Carga: Lighthouse 90 rendimiento, 100 accesibilidad, 100 buenas prácticas y 100 SEO en la página de instalación local.
+27. Carga: Lighthouse 100 rendimiento, 100 accesibilidad, 100 buenas prácticas y 100 SEO en la página de instalación pública.
 28. Imágenes prioritarias: dimensiones, precarga y prioridad de descarga definidas.
 29. Otros navegadores: sintaxis estándar y degradación sin funciones experimentales obligatorias; falta una pasada física final en Safari de iPhone.
 30. Pomodoro iPhone: desbloqueo de audio por gesto, reanudación tras volver del fondo y notificación del sistema con sonido.
