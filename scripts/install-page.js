@@ -5,17 +5,23 @@
   const manualGuide = document.querySelector("[data-install-pc-guide]");
   const widgetInstaller = document.querySelector("[data-install-windows-widgets]");
   const requestedWidgetMessage = document.querySelector("[data-requested-widget]");
-  const heroScene = document.querySelector("[data-hero-scene]");
-  const heroInterface = document.querySelector("[data-hero-interface]");
   const tourImage = document.querySelector("[data-tour-image]");
   const tourTabs = Array.from(document.querySelectorAll("[data-tour-target]"));
-  const sectionBridges = Array.from(document.querySelectorAll("[data-section-bridge]"));
-  const widgetStage = document.querySelector("[data-widget-stage]");
-  const draggableWidgets = Array.from(document.querySelectorAll("[data-draggable-widget]"));
+  const widgetCarousel = document.querySelector("[data-widget-carousel]");
+  const widgetTrack = document.querySelector("[data-widget-track]");
+  const widgetItems = Array.from(document.querySelectorAll(".widget-gallery__item"));
+  const widgetStatus = document.querySelector("[data-widget-status]");
+  const widgetPrevious = document.querySelector("[data-widget-prev]");
+  const widgetPause = document.querySelector("[data-widget-pause]");
+  const widgetNext = document.querySelector("[data-widget-next]");
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   let installPrompt = null;
-  let tourTimer = null;
+  let widgetIndex = 0;
+  let widgetTimer = null;
+  let widgetPausedByUser = false;
+  let widgetPointerStart = null;
+
   const requestedWidget = new URLSearchParams(location.search).get("widget");
   const widgetLabel = {
     workspace: "Mi espacio",
@@ -33,9 +39,7 @@
 
   prepareMotion();
   prepareProductTour();
-  prepareImmersiveScene();
-  prepareSectionBridges();
-  prepareDraggableWidgets();
+  prepareWidgetCarousel();
 
   if (installButton) {
     if (isInstalled()) showInstalledState();
@@ -51,19 +55,14 @@
     installButton.addEventListener("click", installApplication);
   }
 
-  widgetInstaller?.addEventListener("click", (event) => {
-    if (widgetInstaller.dataset.downloadStarted === "true") {
-      event.preventDefault();
-    } else {
-      widgetInstaller.dataset.downloadStarted = "true";
-      widgetInstaller.classList.add("is-started");
-      widgetInstaller.textContent = "Descarga iniciada";
-    }
+  widgetInstaller?.addEventListener("click", () => {
+    widgetInstaller.classList.add("is-started");
+    widgetInstaller.innerHTML = "Descarga iniciada <span aria-hidden=\"true\">✓</span>";
+
     window.setTimeout(() => {
       const help = document.querySelector("[data-windows-download-help]");
       help?.setAttribute("open", "");
-      help?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 600);
+    }, 900);
   });
 
   function prepareMotion() {
@@ -76,7 +75,7 @@
         entry.target.classList.add("is-visible");
         observer.unobserve(entry.target);
       });
-    }, { threshold: 0.12 });
+    }, { threshold: 0.08, rootMargin: "0px 0px -8%" });
 
     document.querySelectorAll("[data-reveal]").forEach((element) => observer.observe(element));
   }
@@ -84,29 +83,19 @@
   function prepareProductTour() {
     if (!tourImage || tourTabs.length === 0) return;
 
-    tourTabs.forEach((tab, index) => {
-      tab.addEventListener("click", () => {
-        stopTourRotation();
-        activateTourTab(tab);
-      });
+    applyTourFraming(tourTabs[0]);
 
+    tourTabs.forEach((tab, index) => {
+      tab.addEventListener("click", () => activateTourTab(tab));
       tab.addEventListener("keydown", (event) => {
         if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
         event.preventDefault();
-        stopTourRotation();
         const direction = event.key === "ArrowRight" ? 1 : -1;
         const nextTab = tourTabs[(index + direction + tourTabs.length) % tourTabs.length];
         nextTab.focus();
         activateTourTab(nextTab);
       });
     });
-
-    if (!reduceMotion) {
-      tourTimer = window.setInterval(() => {
-        const activeIndex = Math.max(0, tourTabs.findIndex((tab) => tab.classList.contains("is-active")));
-        activateTourTab(tourTabs[(activeIndex + 1) % tourTabs.length]);
-      }, 5200);
-    }
   }
 
   function activateTourTab(tab) {
@@ -122,100 +111,111 @@
     window.setTimeout(() => {
       tourImage.src = tab.dataset.image;
       tourImage.alt = tab.dataset.alt || "";
+      applyTourFraming(tab);
       requestAnimationFrame(() => tourImage.classList.remove("is-changing"));
     }, reduceMotion ? 0 : 170);
+
+    if (window.innerWidth <= 680) {
+      tab.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "nearest", inline: "center" });
+    }
   }
 
-  function stopTourRotation() {
-    if (!tourTimer) return;
-    window.clearInterval(tourTimer);
-    tourTimer = null;
+  function applyTourFraming(tab) {
+    tourImage.style.setProperty("--tour-scale", tab?.dataset.scale || "1");
+    tourImage.style.setProperty("--tour-origin", tab?.dataset.origin || "50% 50%");
   }
 
-  function prepareImmersiveScene() {
-    if (!heroScene || !heroInterface || reduceMotion) return;
+  function prepareWidgetCarousel() {
+    if (!widgetCarousel || !widgetTrack || widgetItems.length === 0) return;
 
-    heroScene.addEventListener("pointermove", (event) => {
-      const bounds = heroScene.getBoundingClientRect();
-      const x = ((event.clientX - bounds.left) / bounds.width - 0.5) * 2;
-      const y = ((event.clientY - bounds.top) / bounds.height - 0.5) * 2;
-      heroInterface.style.setProperty("--hero-x", x.toFixed(3));
-      heroInterface.style.setProperty("--hero-y", y.toFixed(3));
+    renderWidgetCarousel();
+    startWidgetRotation();
+
+    widgetPrevious?.addEventListener("click", () => moveWidgetCarousel(-1));
+    widgetNext?.addEventListener("click", () => moveWidgetCarousel(1));
+    widgetPause?.addEventListener("click", toggleWidgetRotation);
+
+    widgetCarousel.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowLeft") moveWidgetCarousel(-1);
+      if (event.key === "ArrowRight") moveWidgetCarousel(1);
     });
 
-    heroScene.addEventListener("pointerleave", () => {
-      heroInterface.style.setProperty("--hero-x", "0");
-      heroInterface.style.setProperty("--hero-y", "0");
+    widgetCarousel.addEventListener("pointerenter", stopWidgetRotation);
+    widgetCarousel.addEventListener("pointerleave", startWidgetRotation);
+    widgetCarousel.addEventListener("focusin", stopWidgetRotation);
+    widgetCarousel.addEventListener("focusout", (event) => {
+      if (!widgetCarousel.contains(event.relatedTarget)) startWidgetRotation();
     });
+
+    const viewport = widgetCarousel.querySelector(".widget-gallery__viewport");
+    viewport?.addEventListener("pointerdown", (event) => {
+      widgetPointerStart = event.clientX;
+    });
+    viewport?.addEventListener("pointerup", (event) => {
+      if (widgetPointerStart === null) return;
+      const distance = event.clientX - widgetPointerStart;
+      widgetPointerStart = null;
+      if (Math.abs(distance) < 36) return;
+      moveWidgetCarousel(distance > 0 ? -1 : 1);
+    });
+    viewport?.addEventListener("pointercancel", () => {
+      widgetPointerStart = null;
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) stopWidgetRotation();
+      else startWidgetRotation();
+    });
+    window.addEventListener("resize", renderWidgetCarousel);
   }
 
-  function prepareSectionBridges() {
-    if (sectionBridges.length === 0) return;
-
-    let ticking = false;
-    const updateBridges = () => {
-      const viewportHeight = window.innerHeight || 1;
-      sectionBridges.forEach((bridge) => {
-        const bounds = bridge.getBoundingClientRect();
-        const progress = Math.min(1, Math.max(0, (viewportHeight - bounds.top) / (viewportHeight + bounds.height * 0.2)));
-        bridge.style.setProperty("--bridge-progress", progress.toFixed(3));
-      });
-      ticking = false;
-    };
-
-    const requestUpdate = () => {
-      if (ticking) return;
-      ticking = true;
-      window.requestAnimationFrame(updateBridges);
-    };
-
-    updateBridges();
-    window.addEventListener("scroll", requestUpdate, { passive: true });
-    window.addEventListener("resize", requestUpdate);
+  function moveWidgetCarousel(direction) {
+    widgetIndex = (widgetIndex + direction + widgetItems.length) % widgetItems.length;
+    renderWidgetCarousel();
+    restartWidgetRotation();
   }
 
-  function prepareDraggableWidgets() {
-    if (!widgetStage || draggableWidgets.length === 0) return;
+  function renderWidgetCarousel() {
+    if (!widgetTrack || widgetItems.length === 0) return;
 
-    draggableWidgets.forEach((widget) => {
-      widget.addEventListener("pointerdown", (event) => {
-        if (event.pointerType === "touch" || window.innerWidth <= 680) return;
+    const viewport = widgetCarousel.querySelector(".widget-gallery__viewport");
+    const firstItem = widgetItems[0];
+    const gap = parseFloat(getComputedStyle(widgetTrack).gap) || 0;
+    const step = firstItem.getBoundingClientRect().width + gap;
+    const maximumOffset = Math.max(0, widgetTrack.scrollWidth - (viewport?.clientWidth || 0));
+    const offset = Math.min(widgetIndex * step, maximumOffset);
 
-        event.preventDefault();
-        const stageBounds = widgetStage.getBoundingClientRect();
-        const widgetBounds = widget.getBoundingClientRect();
-        const offsetX = event.clientX - widgetBounds.left;
-        const offsetY = event.clientY - widgetBounds.top;
+    widgetTrack.style.transform = `translate3d(${-offset}px, 0, 0)`;
+    widgetStatus.textContent = `${widgetIndex + 1} de ${widgetItems.length}`;
+    widgetItems.forEach((item, index) => item.toggleAttribute("data-current", index === widgetIndex));
+  }
 
-        widget.classList.add("is-dragged");
-        widget.style.left = `${widgetBounds.left - stageBounds.left}px`;
-        widget.style.top = `${widgetBounds.top - stageBounds.top}px`;
-        widget.style.right = "auto";
-        widget.style.bottom = "auto";
-        widget.setPointerCapture(event.pointerId);
+  function startWidgetRotation() {
+    if (reduceMotion || widgetPausedByUser || widgetTimer || document.hidden) return;
+    widgetTimer = window.setInterval(() => {
+      widgetIndex = (widgetIndex + 1) % widgetItems.length;
+      renderWidgetCarousel();
+    }, 4600);
+  }
 
-        const moveWidget = (moveEvent) => {
-          const currentStage = widgetStage.getBoundingClientRect();
-          const maxLeft = Math.max(8, currentStage.width - widget.offsetWidth - 8);
-          const maxTop = Math.max(8, currentStage.height - widget.offsetHeight - 8);
-          const left = Math.min(maxLeft, Math.max(8, moveEvent.clientX - currentStage.left - offsetX));
-          const top = Math.min(maxTop, Math.max(8, moveEvent.clientY - currentStage.top - offsetY));
-          widget.style.left = `${left}px`;
-          widget.style.top = `${top}px`;
-        };
+  function stopWidgetRotation() {
+    if (!widgetTimer) return;
+    window.clearInterval(widgetTimer);
+    widgetTimer = null;
+  }
 
-        const finishDrag = () => {
-          widget.releasePointerCapture?.(event.pointerId);
-          widget.removeEventListener("pointermove", moveWidget);
-          widget.removeEventListener("pointerup", finishDrag);
-          widget.removeEventListener("pointercancel", finishDrag);
-        };
+  function restartWidgetRotation() {
+    stopWidgetRotation();
+    startWidgetRotation();
+  }
 
-        widget.addEventListener("pointermove", moveWidget);
-        widget.addEventListener("pointerup", finishDrag);
-        widget.addEventListener("pointercancel", finishDrag);
-      });
-    });
+  function toggleWidgetRotation() {
+    widgetPausedByUser = !widgetPausedByUser;
+    widgetPause.setAttribute("aria-pressed", String(widgetPausedByUser));
+    widgetPause.setAttribute("aria-label", widgetPausedByUser ? "Reanudar movimiento" : "Pausar movimiento");
+    widgetPause.textContent = widgetPausedByUser ? "▶" : "Ⅱ";
+    if (widgetPausedByUser) stopWidgetRotation();
+    else startWidgetRotation();
   }
 
   async function installApplication() {

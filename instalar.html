@@ -17,7 +17,7 @@
     <title>Estudiemos | Tu estudio, conectado</title>
     <script src="./scripts/theme-init.js?v=20260830-install-experience"></script>
     <link rel="stylesheet" href="./styles/app.css?v=20260830-install-experience" />
-    <link rel="stylesheet" href="./styles/install.css?v=20260830-install-immersive-v2" />
+    <link rel="stylesheet" href="./styles/install.css?v=20260830-install-refined-v3" />
   </head>
   <body class="install-page">
     <header class="install-header" data-install-header>
@@ -33,43 +33,31 @@
     </header>
 
     <main>
-      <section class="install-hero" aria-labelledby="heroTitle" data-hero-scene>
-        <div class="hero-interface" data-hero-interface aria-hidden="true">
-          <img src="./assets/install/pilot-home-wide.png" alt="" />
-          <span class="hero-interface__edge hero-interface__edge--top"></span>
-          <span class="hero-interface__edge hero-interface__edge--right"></span>
-          <span class="hero-interface__edge hero-interface__edge--bottom"></span>
-          <span class="hero-interface__edge hero-interface__edge--left"></span>
-          <div class="hero-interface__signal hero-interface__signal--sync"><i></i><span>Sincronización activa</span></div>
-          <div class="hero-interface__signal hero-interface__signal--tools"><span>05</span><small>herramientas conectadas</small></div>
-        </div>
-        <div class="hero-data-lines" aria-hidden="true">
-          <i></i><i></i><i></i><i></i><i></i>
-        </div>
-        <div class="install-hero__scrim" aria-hidden="true"></div>
+      <section class="install-hero" aria-labelledby="heroTitle">
         <div class="install-hero__content">
           <p class="install-kicker">TU ESTUDIO, CONECTADO</p>
           <h1 id="heroTitle">Estudiemos</h1>
-          <p class="install-hero__lead">Organizá tu día. Enfocate. Avanzá.</p>
+          <p class="install-hero__lead">Todo lo que necesitás para organizarte y estudiar mejor.</p>
           <div class="install-hero__actions">
             <a class="install-action install-action--primary" href="#instalar">Instalar ahora <span aria-hidden="true">↓</span></a>
             <a class="install-action install-action--quiet" href="https://estudiemos-app.vercel.app/">Abrir la app <span aria-hidden="true">↗</span></a>
           </div>
           <p class="install-hero__sync"><span aria-hidden="true"></span> Una cuenta. Todos tus dispositivos.</p>
         </div>
+        <div class="hero-product" aria-label="Vista principal de Estudiemos">
+          <div class="hero-product__bar" aria-hidden="true">
+            <span></span><span></span><span></span>
+            <small>estudiemos-app.vercel.app</small>
+          </div>
+          <div class="hero-product__viewport">
+            <img src="./assets/install/pilot-home-wide.png" alt="Mi espacio, calendario e Inbox en Estudiemos" />
+          </div>
+        </div>
         <a class="install-hero__scroll" href="#descubrir" aria-label="Conocer las funciones de Estudiemos">
           <span>Descubrir</span>
           <i aria-hidden="true"></i>
         </a>
       </section>
-
-      <div class="section-bridge section-bridge--organize" id="transicion-organizar" data-section-bridge aria-hidden="true">
-        <div class="section-bridge__sticky">
-          <span>01</span>
-          <div class="section-bridge__line"><i></i></div>
-          <strong>Todo entra en foco.</strong>
-        </div>
-      </div>
 
       <section class="install-manifest" id="descubrir" aria-labelledby="manifestTitle">
         <div class="install-section-heading" data-reveal>
@@ -84,22 +72,22 @@
             <span class="product-tour__glow" aria-hidden="true"></span>
           </div>
           <div class="product-tour__controls" role="tablist" aria-label="Herramientas de Estudiemos">
-            <button class="product-tour__tab is-active" type="button" role="tab" aria-selected="true" data-tour-target="space" data-image="./assets/install/pilot-home-wide.png" data-alt="Mi espacio e Inbox en Estudiemos">
+            <button class="product-tour__tab is-active" type="button" role="tab" aria-selected="true" data-tour-target="space" data-image="./assets/install/pilot-home-wide.png" data-alt="Mi espacio e Inbox en Estudiemos" data-scale="1.16" data-origin="50% 15%">
               <span>01</span>
               <strong>Tu espacio</strong>
               <small>Archivos, carpetas e Inbox en orden.</small>
             </button>
-            <button class="product-tour__tab" type="button" role="tab" aria-selected="false" data-tour-target="ai" data-image="./assets/install/pilot-assistant-wide.png" data-alt="Organizador inteligente de Estudiemos">
+            <button class="product-tour__tab" type="button" role="tab" aria-selected="false" data-tour-target="ai" data-image="./assets/install/pilot-assistant-wide.png" data-alt="Organizador inteligente de Estudiemos" data-scale="1.52" data-origin="50% 50%">
               <span>02</span>
               <strong>IA que organiza</strong>
               <small>Decilo como te salga. Estudiemos lo ordena.</small>
             </button>
-            <button class="product-tour__tab" type="button" role="tab" aria-selected="false" data-tour-target="focus" data-image="./assets/install/pilot-pomodoro-wide.png" data-alt="Temporizador Pomodoro de Estudiemos">
+            <button class="product-tour__tab" type="button" role="tab" aria-selected="false" data-tour-target="focus" data-image="./assets/install/pilot-pomodoro-wide.png" data-alt="Temporizador Pomodoro de Estudiemos" data-scale="1.25" data-origin="69% 20%">
               <span>03</span>
               <strong>Enfoque real</strong>
               <small>Bloques simples para avanzar sin ruido.</small>
             </button>
-            <button class="product-tour__tab" type="button" role="tab" aria-selected="false" data-tour-target="progress" data-image="./assets/install/pilot-streak-wide.png" data-alt="Racha y progreso de estudio en Estudiemos">
+            <button class="product-tour__tab" type="button" role="tab" aria-selected="false" data-tour-target="progress" data-image="./assets/install/pilot-streak-wide.png" data-alt="Racha y progreso de estudio en Estudiemos" data-scale="1.28" data-origin="76% 24%">
               <span>04</span>
               <strong>Progreso visible</strong>
               <small>Racha, tiempo diario y evolución semanal.</small>
@@ -108,37 +96,32 @@
         </div>
       </section>
 
-      <div class="section-bridge section-bridge--widgets" id="transicion-widgets" data-section-bridge aria-hidden="true">
-        <div class="section-bridge__sticky">
-          <span>02</span>
-          <div class="section-bridge__line"><i></i></div>
-          <strong>De la app a tu pantalla.</strong>
-        </div>
-      </div>
-
       <section class="install-widgets" aria-labelledby="widgetsTitle">
         <div class="install-widgets__copy" data-reveal>
           <p class="install-kicker">SIEMPRE A MANO</p>
           <h2 id="widgetsTitle">Tu día, sin abrir nada.</h2>
           <p>Inbox, calendario, Mi espacio, Pomodoro y racha viven también en tu pantalla de inicio o escritorio.</p>
         </div>
-        <div class="widget-orbit" id="widget-stage" data-reveal data-widget-stage aria-label="Widgets de Estudiemos">
-          <span class="widget-orbit__hint" aria-hidden="true">Mover <i>↔</i></span>
-          <figure class="widget-orbit__item widget-orbit__item--workspace" data-draggable-widget><img src="./assets/install/pilot-widget-workspace.png" alt="Widget Mi espacio" loading="lazy" /></figure>
-          <figure class="widget-orbit__item widget-orbit__item--calendar" data-draggable-widget><img src="./assets/install/pilot-widget-calendar.png" alt="Widget Calendario" loading="lazy" /></figure>
-          <figure class="widget-orbit__item widget-orbit__item--inbox" data-draggable-widget><img src="./assets/install/pilot-widget-inbox.png" alt="Widget Inbox" loading="lazy" /></figure>
-          <figure class="widget-orbit__item widget-orbit__item--pomodoro" data-draggable-widget><img src="./assets/install/pilot-widget-pomodoro.png" alt="Widget Pomodoro" loading="lazy" /></figure>
-          <figure class="widget-orbit__item widget-orbit__item--streak" data-draggable-widget><img src="./assets/install/pilot-widget-streak.png" alt="Widget Racha" loading="lazy" /></figure>
+        <div class="widget-gallery" id="widget-stage" data-reveal data-widget-carousel aria-roledescription="carrusel" aria-label="Widgets de Estudiemos">
+          <div class="widget-gallery__toolbar">
+            <span data-widget-status aria-live="polite">1 de 5</span>
+            <div class="widget-gallery__buttons">
+              <button type="button" data-widget-prev aria-label="Widget anterior">←</button>
+              <button type="button" data-widget-pause aria-label="Pausar movimiento" aria-pressed="false">Ⅱ</button>
+              <button type="button" data-widget-next aria-label="Widget siguiente">→</button>
+            </div>
+          </div>
+          <div class="widget-gallery__viewport">
+            <div class="widget-gallery__track" data-widget-track>
+              <figure class="widget-gallery__item"><img src="./assets/install/pilot-widget-workspace.png" alt="Widget Mi espacio" loading="lazy" /><figcaption>Mi espacio</figcaption></figure>
+              <figure class="widget-gallery__item"><img src="./assets/install/pilot-widget-calendar.png" alt="Widget Calendario" loading="lazy" /><figcaption>Calendario</figcaption></figure>
+              <figure class="widget-gallery__item"><img src="./assets/install/pilot-widget-inbox.png" alt="Widget Inbox" loading="lazy" /><figcaption>Inbox</figcaption></figure>
+              <figure class="widget-gallery__item"><img src="./assets/install/pilot-widget-pomodoro.png" alt="Widget Pomodoro" loading="lazy" /><figcaption>Pomodoro</figcaption></figure>
+              <figure class="widget-gallery__item"><img src="./assets/install/pilot-widget-streak.png" alt="Widget Racha" loading="lazy" /><figcaption>Racha</figcaption></figure>
+            </div>
+          </div>
         </div>
       </section>
-
-      <div class="section-bridge section-bridge--install" id="transicion-instalar" data-section-bridge aria-hidden="true">
-        <div class="section-bridge__sticky">
-          <span>03</span>
-          <div class="section-bridge__line"><i></i></div>
-          <strong>Elegí dónde empezar.</strong>
-        </div>
-      </div>
 
       <section class="install-downloads" id="instalar" aria-labelledby="installTitle">
         <div class="install-section-heading install-section-heading--center" data-reveal>
@@ -225,6 +208,6 @@
       <p>Productividad académica, en todos tus dispositivos.</p>
     </footer>
 
-    <script src="./scripts/install-page.js?v=20260830-install-immersive-v2"></script>
+    <script src="./scripts/install-page.js?v=20260830-install-refined-v3"></script>
   </body>
 </html>
