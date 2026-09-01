@@ -9,6 +9,7 @@ create table if not exists private.api_rate_limits (
   primary key (rate_key, route, window_start)
 );
 
+alter table private.api_rate_limits enable row level security;
 revoke all on table private.api_rate_limits from public, anon, authenticated;
 
 create or replace function public.consume_api_rate_limit(
