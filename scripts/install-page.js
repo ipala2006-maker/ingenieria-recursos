@@ -22,6 +22,8 @@
   const widgetPause = document.querySelector("[data-widget-pause]");
   const widgetNext = document.querySelector("[data-widget-next]");
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const isIosWebKit = /iP(?:hone|ad|od)/i.test(navigator.userAgent)
+    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
   let installPrompt = null;
   let widgetIndex = 0;
@@ -30,6 +32,11 @@
   let widgetPointerStart = null;
   let activeTourIndex = 0;
   let tourManualLockUntil = 0;
+  let widgetInView = false;
+  let widgetViewportWidth = window.innerWidth;
+  let widgetResizeFrame = null;
+
+  document.documentElement.classList.toggle("is-ios-webkit", isIosWebKit);
 
   const requestedWidget = new URLSearchParams(location.search).get("widget");
   const widgetLabel = {
@@ -157,13 +164,10 @@
     });
     activeTourIndex = activeIndex;
 
-    if (window.innerWidth <= 680) {
-      tab.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center", inline: "center" });
-    }
   }
 
   function prepareJourney() {
-    if (!journeyRail || journeyStages.length === 0) return;
+    if (!journeyRail || journeyStages.length === 0 || window.matchMedia("(max-width: 920px)").matches) return;
 
     let frame = null;
     const updateJourney = () => {
@@ -195,7 +199,19 @@
     if (!widgetCarousel || !widgetTrack || widgetItems.length === 0) return;
 
     renderWidgetCarousel();
-    startWidgetRotation();
+    if ("IntersectionObserver" in window) {
+      const visibilityObserver = new IntersectionObserver(([entry]) => {
+        widgetInView = Boolean(entry?.isIntersecting);
+        widgetCarousel.classList.toggle("is-in-view", widgetInView);
+        if (widgetInView) startWidgetRotation();
+        else stopWidgetRotation();
+      }, { threshold: 0.01, rootMargin: "120px 0px" });
+      visibilityObserver.observe(widgetCarousel);
+    } else {
+      widgetInView = true;
+      widgetCarousel.classList.add("is-in-view");
+      startWidgetRotation();
+    }
 
     widgetPrevious?.addEventListener("click", () => moveWidgetCarousel(-1));
     widgetNext?.addEventListener("click", () => moveWidgetCarousel(1));
@@ -240,7 +256,15 @@
       if (document.hidden) stopWidgetRotation();
       else startWidgetRotation();
     });
-    window.addEventListener("resize", renderWidgetCarousel);
+    window.addEventListener("resize", () => {
+      const nextWidth = window.innerWidth;
+      if (Math.abs(nextWidth - widgetViewportWidth) < 2 || widgetResizeFrame !== null) return;
+      widgetViewportWidth = nextWidth;
+      widgetResizeFrame = window.requestAnimationFrame(() => {
+        widgetResizeFrame = null;
+        renderWidgetCarousel();
+      });
+    });
   }
 
   function moveWidgetCarousel(direction) {
@@ -265,7 +289,7 @@
       const distance = Math.abs(offset);
       item.style.setProperty("--widget-x", `${offset * step}px`);
       item.style.setProperty("--widget-y", `${distance * (compact ? 28 : 42)}px`);
-      item.style.setProperty("--widget-rotate", `${offset * -17}deg`);
+      item.style.setProperty("--widget-rotate", `${isIosWebKit ? 0 : offset * -17}deg`);
       item.style.setProperty("--widget-tilt", `${offset * (compact ? 2.5 : 4)}deg`);
       item.style.setProperty("--widget-scale", String(1 - distance * (compact ? 0.11 : 0.105)));
       item.style.setProperty("--widget-opacity", String(Math.max(0.26, 1 - distance * 0.3)));
@@ -275,7 +299,7 @@
   }
 
   function startWidgetRotation() {
-    if (reduceMotion || widgetPausedByUser || widgetTimer || document.hidden) return;
+    if (reduceMotion || widgetPausedByUser || widgetTimer || document.hidden || !widgetInView) return;
     widgetTimer = window.setInterval(() => {
       widgetIndex = (widgetIndex + 1) % widgetItems.length;
       renderWidgetCarousel();

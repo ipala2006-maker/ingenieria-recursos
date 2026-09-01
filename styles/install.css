@@ -322,13 +322,13 @@ body.install-page main{overflow:clip}
 .widget-calendar-list p{display:grid;grid-template-columns:34px 42px minmax(0,1fr);align-items:center;gap:6px;padding:10px}.widget-calendar-list strong{color:#8293a9;font-size:8px}.widget-calendar-list i{color:var(--install-blue);font-size:8px;font-style:normal;font-weight:800}.widget-calendar-list span{overflow:hidden;font-size:9px;text-overflow:ellipsis;white-space:nowrap}.widget-calendar-list p:nth-child(3){border-color:rgba(140,183,255,.23);background:#1b2d49}
 .widget-task-list p{display:grid;grid-template-columns:16px minmax(0,1fr);gap:8px;padding:11px}.widget-task-list p>i{width:14px;height:14px;border:1px solid #75869d;border-radius:3px}.widget-preview>button{width:100%;min-height:38px;margin-top:13px;border:1px solid color-mix(in srgb,var(--widget-accent,var(--install-blue)) 28%,transparent);border-radius:9px;color:#d9e9fb;background:color-mix(in srgb,var(--widget-accent,var(--install-blue)) 16%,#132039);font:750 9px var(--font)}
 .widget-card--workspace{--widget-accent:#7ca9ff}.widget-card--calendar{--widget-accent:#65d4c0}.widget-card--inbox{--widget-accent:#bb8df0}.widget-card--pomodoro{--widget-accent:#8db6ff}.widget-card--streak{--widget-accent:#f2b351}
-.widget-card[data-current] .widget-preview{animation:widget-float 3.4s cubic-bezier(.22,.75,.25,1) infinite}
-.widget-card--workspace[data-current] .widget-file-list p:nth-child(2){animation:widget-file-focus 3.4s ease-in-out infinite}
-.widget-card--calendar[data-current] .widget-calendar-list p:nth-child(3){animation:widget-calendar-focus 3.4s ease-in-out infinite}
+.widget-gallery.is-in-view .widget-card[data-current] .widget-preview{animation:widget-float 3.4s cubic-bezier(.22,.75,.25,1) infinite}
+.widget-gallery.is-in-view .widget-card--workspace[data-current] .widget-file-list p:nth-child(2){animation:widget-file-focus 3.4s ease-in-out infinite}
+.widget-gallery.is-in-view .widget-card--calendar[data-current] .widget-calendar-list p:nth-child(3){animation:widget-calendar-focus 3.4s ease-in-out infinite}
 .widget-card--inbox .widget-task-list p:first-child>i{position:relative}.widget-card--inbox .widget-task-list p:first-child>i::after{content:"";position:absolute;left:3px;top:1px;width:6px;height:3px;border:solid #d7b9fa;border-width:0 0 2px 2px;opacity:0;transform:rotate(-45deg) scale(.5)}
-.widget-card--inbox[data-current] .widget-task-list p:first-child>i::after{animation:widget-task-check 3.4s ease-in-out infinite}
-.widget-card--pomodoro[data-current] .widget-timer{animation:widget-timer-pulse 3.4s ease-in-out infinite}
-.widget-card--streak[data-current] .widget-bars i{transform-origin:bottom;animation:widget-bar-rise 3.4s ease-in-out infinite}.widget-card--streak[data-current] .widget-bars i:nth-child(2){animation-delay:.06s}.widget-card--streak[data-current] .widget-bars i:nth-child(3){animation-delay:.12s}.widget-card--streak[data-current] .widget-bars i:nth-child(4){animation-delay:.18s}.widget-card--streak[data-current] .widget-bars i:nth-child(5){animation-delay:.24s}.widget-card--streak[data-current] .widget-bars i:nth-child(6){animation-delay:.3s}.widget-card--streak[data-current] .widget-bars i:nth-child(7){animation-delay:.36s}
+.widget-gallery.is-in-view .widget-card--inbox[data-current] .widget-task-list p:first-child>i::after{animation:widget-task-check 3.4s ease-in-out infinite}
+.widget-gallery.is-in-view .widget-card--pomodoro[data-current] .widget-timer{animation:widget-timer-pulse 3.4s ease-in-out infinite}
+.widget-gallery.is-in-view .widget-card--streak[data-current] .widget-bars i{transform-origin:bottom;animation:widget-bar-rise 3.4s ease-in-out infinite}.widget-gallery.is-in-view .widget-card--streak[data-current] .widget-bars i:nth-child(2){animation-delay:.06s}.widget-gallery.is-in-view .widget-card--streak[data-current] .widget-bars i:nth-child(3){animation-delay:.12s}.widget-gallery.is-in-view .widget-card--streak[data-current] .widget-bars i:nth-child(4){animation-delay:.18s}.widget-gallery.is-in-view .widget-card--streak[data-current] .widget-bars i:nth-child(5){animation-delay:.24s}.widget-gallery.is-in-view .widget-card--streak[data-current] .widget-bars i:nth-child(6){animation-delay:.3s}.widget-gallery.is-in-view .widget-card--streak[data-current] .widget-bars i:nth-child(7){animation-delay:.36s}
 @keyframes widget-float{0%,100%{transform:translateY(0)}48%{transform:translateY(-5px)}}
 @keyframes widget-file-focus{0%,22%,100%{border-color:rgba(168,195,231,.08);transform:translateX(0)}42%,62%{border-color:rgba(124,169,255,.3);transform:translateX(5px)}}
 @keyframes widget-calendar-focus{0%,22%,100%{box-shadow:none;transform:scale(1)}42%,62%{box-shadow:0 0 22px rgba(101,212,192,.1);transform:scale(1.025)}}
@@ -479,6 +479,37 @@ html.theme-light .install-closing{background:linear-gradient(#edf3f8,#e5edf4)}ht
   .product-scene{padding:14px 12px 48px}.product-scene>header h3,.scene-space-head h3{font-size:22px}.scene-focus-body{grid-template-columns:118px minmax(0,1fr)}.scene-timer{width:116px}.scene-timer strong{font-size:25px}.scene-session>small{display:none}
   .widget-gallery__viewport{height:414px}.widget-gallery__item{width:76vw}.widget-preview{height:328px}.widget-timer{width:155px}.widget-bars{height:76px}
 }
+
+@media (max-width:680px){
+  html.is-ios-webkit{scroll-behavior:auto}
+  html.is-ios-webkit body.install-page::before{position:absolute}
+  html.is-ios-webkit .install-header,
+  html.is-ios-webkit .hero-product,
+  html.is-ios-webkit .hero-product__bar,
+  html.is-ios-webkit .product-tour__visual,
+  html.is-ios-webkit .product-tour__chrome,
+  html.is-ios-webkit .product-tour__status,
+  html.is-ios-webkit .widget-gallery__buttons button,
+  html.is-ios-webkit .widget-gallery__item,
+  html.is-ios-webkit .install-option,
+  html.is-ios-webkit .install-action{-webkit-backdrop-filter:none;backdrop-filter:none}
+  html.is-ios-webkit .install-header{background:rgba(9,18,33,.96)}
+  html.is-ios-webkit .hero-product{background:rgba(10,20,36,.98);transform:translateX(-50%)}
+  html.is-ios-webkit .product-tour__visual{contain:paint;backface-visibility:hidden;background:rgba(10,20,36,.98);transform:translateZ(0)}
+  html.is-ios-webkit .product-scene{transform:translate3d(0,20px,0);transition:opacity .18s ease,transform .38s cubic-bezier(.3,0,.55,1)}
+  html.is-ios-webkit .product-scene.is-before{transform:translate3d(0,-24px,0)}
+  html.is-ios-webkit .product-scene.is-after{transform:translate3d(0,24px,0)}
+  html.is-ios-webkit .product-scene.is-active{transform:none;transition:opacity .2s ease .05s,transform .42s cubic-bezier(.16,.74,.18,1)}
+  html.is-ios-webkit .widget-gallery__viewport{perspective:none}
+  html.is-ios-webkit .widget-gallery__track{transform-style:flat}
+  html.is-ios-webkit .widget-gallery__item{background:rgba(15,27,47,.97);will-change:auto}
+  html.is-ios-webkit .widget-gallery__item[data-current]{will-change:transform,opacity}
+  html.is-ios-webkit .widget-gallery.is-in-view .widget-card--pomodoro[data-current] .widget-timer{animation-name:widget-timer-soft}
+  html.theme-light.is-ios-webkit .install-header{background:rgba(243,247,251,.97)}
+  html.theme-light.is-ios-webkit .widget-gallery__item{background:rgba(248,251,253,.97)}
+}
+
+@keyframes widget-timer-soft{0%,100%{transform:scale(1)}50%{transform:scale(1.02)}}
 
 @media (prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
