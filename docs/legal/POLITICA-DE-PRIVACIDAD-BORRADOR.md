@@ -52,7 +52,7 @@ Estudiemos utiliza o podrá utilizar:
 - Vercel: alojamiento, distribución y ejecución de funciones del servidor.
 - Google Gemini: interpretación de instrucciones mediante inteligencia artificial.
 - Mercado Pago: procesamiento de pagos y suscripciones, cuando se habiliten.
-- Google Forms o herramientas equivalentes: recepción de sugerencias voluntarias.
+- Google Forms y Google Sheets: recepción de sugerencias voluntarias y copia administrativa privada del registro mínimo de cuentas.
 
 Estos proveedores pueden procesar datos fuera de Argentina. Antes del lanzamiento comercial se revisarán sus contratos, ubicaciones y mecanismos aplicables a transferencias internacionales.
 

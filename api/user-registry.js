@@ -1,3 +1,4 @@
+const crypto = require("crypto");
 const { enforceRateLimit, setSecurityHeaders } = require("./_lib/request-security");
 const { adminRequest, isConfigured } = require("./_lib/supabase-admin");
 
@@ -24,21 +25,17 @@ module.exports = async function handler(request, response) {
   }
   if (!(await enforceRateLimit(request, response, { route: "user-registry", limit: 8, windowSeconds: 300 }))) return;
 
-  const exportToken = typeof request.query?.token === "string" ? request.query.token : "";
-
-  if (!isConfigured() || !exportToken) {
+  if (!isConfigured() || !hasValidExportToken(request)) {
     return response.status(401).send("Unauthorized");
   }
 
   try {
-    const users = await adminRequest("/rest/v1/rpc/export_user_registry", {
-      method: "POST",
-      body: JSON.stringify({ export_token: exportToken })
-    });
+    const users = await adminRequest(
+      "/rest/v1/user_registry?select=email,registered_at,confirmed_at,last_sign_in_at&order=registered_at.desc&limit=10000"
+    );
     if (!Array.isArray(users)) return response.status(502).send("Registry unavailable");
-    const header = ["ID de usuario", "Correo", "Fecha de registro", "Correo confirmado", "Ultimo acceso"];
+    const header = ["Correo", "Fecha de registro", "Correo confirmado", "Ultimo acceso"];
     const rows = users.slice(0, MAX_EXPORT_ROWS).map((user) => [
-      user.user_id,
       user.email,
       user.registered_at,
       user.confirmed_at,
@@ -58,3 +55,11 @@ module.exports = async function handler(request, response) {
     return response.status(status).send("Registry unavailable");
   }
 };
+
+function hasValidExportToken(request) {
+  const expected = String(process.env.USER_REGISTRY_EXPORT_TOKEN || "");
+  const authorization = String(request.headers?.authorization || "");
+  const received = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
+  if (expected.length < 32 || received.length !== expected.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(received), Buffer.from(expected));
+}

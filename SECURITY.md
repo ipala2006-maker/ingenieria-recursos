@@ -61,5 +61,6 @@ Los reportes de seguridad pueden enviarse mediante el [formulario oficial](https
 - `SUPABASE_URL`: pública.
 - `SUPABASE_PUBLISHABLE_KEY`: pública y restringida por Row Level Security.
 - `SUPABASE_SECRET_KEY`: privada, solo en funciones de servidor.
+- `USER_REGISTRY_EXPORT_TOKEN`: privada, compartida únicamente entre Vercel y las propiedades del Apps Script administrativo.
 - `RATE_LIMIT_SECRET`: privada y opcional; se usa únicamente para anonimizar las claves del rate limit.
 - `WHATSAPP_APP_SECRET` y `WHATSAPP_ACCESS_TOKEN`: privadas, solo en funciones de servidor.

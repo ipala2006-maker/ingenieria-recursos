@@ -49,3 +49,13 @@ test("global web responses include the expected security policy", () => {
     "Permissions-Policy"
   ]) assert.match(config, new RegExp(header));
 });
+
+test("the private user registry never exposes passwords or URL tokens", () => {
+  const endpoint = read("api/user-registry.js");
+  const sheetSync = read("google-apps-script/user-registry.gs");
+  assert.doesNotMatch(endpoint, /request\.query/);
+  assert.match(endpoint, /headers\?\.authorization/);
+  assert.doesNotMatch(endpoint, /password/i);
+  assert.match(sheetSync, /PropertiesService\.getScriptProperties/);
+  assert.doesNotMatch(sheetSync, /\?token=/);
+});

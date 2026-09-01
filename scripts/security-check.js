@@ -4,7 +4,7 @@ const path = require("node:path");
 
 const root = path.resolve(__dirname, "..");
 const textExtensions = new Set([
-  ".css", ".gradle", ".html", ".java", ".js", ".json", ".md", ".properties", ".sql", ".xml", ".yaml", ".yml"
+  ".css", ".gradle", ".gs", ".html", ".java", ".js", ".json", ".md", ".properties", ".sql", ".xml", ".yaml", ".yml"
 ]);
 const secretPatterns = [
   ["private key", /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/],

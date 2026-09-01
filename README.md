@@ -110,11 +110,11 @@ Los archivos se guardan en el bucket privado `workspace-files`, con un máximo d
 
 ### Registro administrativo de usuarios
 
-El archivo privado de Google Sheets puede mostrar un registro de cuentas en una hoja llamada `Usuarios`. La fuente real sigue siendo Supabase Auth y solamente se exportan ID, correo y fechas de registro, confirmación y último acceso. Nunca se exportan contraseñas, agenda ni recursos guardados.
+El archivo privado de Google Sheets puede mostrar un registro de cuentas en una hoja llamada `Usuarios`. La fuente real sigue siendo Supabase Auth y solamente se exportan correo y fechas de registro, confirmación y último acceso. Nunca se exportan contraseñas, agenda ni recursos guardados.
 
-- `supabase/user-registry.sql` crea una copia administrativa bloqueada y una exportación protegida por un token privado, ejecutable únicamente por el servidor.
-- `api/user-registry.js` entrega el registro como CSV para la función `IMPORTDATA` de Google Sheets.
-- El token de exportación se guarda únicamente en la hoja privada y no debe publicarse ni agregarse al repositorio.
+- `supabase/user-registry.sql` crea una copia administrativa bloqueada que solamente puede leer el servidor.
+- `api/user-registry.js` entrega el registro como CSV cuando recibe el token privado en la cabecera `Authorization`.
+- `google-apps-script/user-registry.gs` actualiza la hoja cada 15 minutos. El token se guarda en las propiedades privadas del script, nunca en una celda, una URL o el repositorio.
 
 ## Widgets de Android
 

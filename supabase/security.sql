@@ -77,9 +77,5 @@ begin
     revoke all on table public.user_registry from public, anon, authenticated;
     grant select on table public.user_registry to service_role;
   end if;
-  if to_regprocedure('public.export_user_registry(text)') is not null then
-    revoke all on function public.export_user_registry(text) from public, anon, authenticated;
-    grant execute on function public.export_user_registry(text) to service_role;
-  end if;
 end;
 $$;
