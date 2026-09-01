@@ -2,9 +2,13 @@ const { enforceRateLimit, setSecurityHeaders } = require("./_lib/request-securit
 const { adminRequest, isConfigured } = require("./_lib/supabase-admin");
 
 function csvCell(value) {
-  const text = value == null ? "" : String(value);
+  const raw = value == null ? "" : String(value);
+  const text = /^[=+\-@]/.test(raw) ? `'${raw}` : raw;
   return `"${text.replace(/"/g, '""')}"`;
 }
+
+const MAX_EXPORT_ROWS = 10000;
+const MAX_EXPORT_BYTES = 2 * 1024 * 1024;
 
 module.exports = async function handler(request, response) {
   setSecurityHeaders(response);
@@ -33,7 +37,7 @@ module.exports = async function handler(request, response) {
     });
     if (!Array.isArray(users)) return response.status(502).send("Registry unavailable");
     const header = ["ID de usuario", "Correo", "Fecha de registro", "Correo confirmado", "Ultimo acceso"];
-    const rows = users.map((user) => [
+    const rows = users.slice(0, MAX_EXPORT_ROWS).map((user) => [
       user.user_id,
       user.email,
       user.registered_at,
@@ -41,9 +45,12 @@ module.exports = async function handler(request, response) {
       user.last_sign_in_at
     ]);
     const csv = [header, ...rows].map((row) => row.map(csvCell).join(",")).join("\n");
+    if (Buffer.byteLength(csv, "utf8") > MAX_EXPORT_BYTES) {
+      return response.status(413).send("Registry export is too large");
+    }
 
     response.setHeader("Content-Type", "text/csv; charset=utf-8");
-    response.setHeader("Content-Disposition", 'inline; filename="usuarios-estudiemos.csv"');
+    response.setHeader("Content-Disposition", 'attachment; filename="usuarios-estudiemos.csv"');
     return response.status(200).send(`\uFEFF${csv}`);
   } catch (error) {
     console.error("Unable to export the user registry", error);

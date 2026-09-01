@@ -17,6 +17,8 @@ create table if not exists public.plan_usage_monthly (
 
 alter table public.user_plans enable row level security;
 alter table public.plan_usage_monthly enable row level security;
+alter table public.user_plans force row level security;
+alter table public.plan_usage_monthly force row level security;
 
 revoke all on table public.user_plans from public, anon, authenticated;
 revoke all on table public.plan_usage_monthly from public, anon, authenticated;

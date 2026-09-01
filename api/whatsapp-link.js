@@ -1,6 +1,6 @@
 const crypto = require("crypto");
 const { adminRequest, authenticateBearer, encodeFilter, isConfigured } = require("./_lib/supabase-admin");
-const { enforceRateLimit, isSameOriginRequest, rejectOversizedBody, setSecurityHeaders } = require("./_lib/request-security");
+const { enforceRateLimit, isSameOriginRequest, rejectOversizedBody, requireJsonRequest, setSecurityHeaders } = require("./_lib/request-security");
 
 const CODE_LIFETIME_MINUTES = 15;
 
@@ -11,6 +11,7 @@ module.exports = async function whatsappLink(request, response) {
     return response.status(405).json({ message: "Método no permitido." });
   }
   if (!isSameOriginRequest(request)) return response.status(403).json({ message: "Origen no permitido." });
+  if (request.method === "POST" && !requireJsonRequest(request, response)) return;
   if (rejectOversizedBody(request, response, 8 * 1024)) return;
   if (!(await enforceRateLimit(request, response, { route: "whatsapp-link", limit: 30, windowSeconds: 60 }))) return;
   if (!isConfigured() || !whatsappConfigured()) {

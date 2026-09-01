@@ -2,7 +2,7 @@ const MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
 const REQUEST_TIMEOUT_MS = 30000;
 const MAX_INSTRUCTION_LENGTH = 1200;
 const { getAuthenticatedPlan, planLimitMessage } = require("./_lib/plan-access");
-const { enforceRateLimit, isSameOriginRequest, rejectOversizedBody, setSecurityHeaders } = require("./_lib/request-security");
+const { enforceRateLimit, isSameOriginRequest, rejectOversizedBody, requireJsonRequest, setSecurityHeaders } = require("./_lib/request-security");
 
 const RESPONSE_SCHEMA = {
   type: "object",
@@ -23,6 +23,7 @@ module.exports = async function assistantRouter(request, response) {
     return response.status(405).json({ message: "Método no permitido." });
   }
   if (!isSameOriginRequest(request)) return response.status(403).json({ message: "Origen no permitido." });
+  if (!requireJsonRequest(request, response)) return;
   if (rejectOversizedBody(request, response, 16 * 1024)) return;
   if (!(await enforceRateLimit(request, response, { route: "assistant-router", limit: 20, windowSeconds: 60 }))) return;
   if (!(await enforceRateLimit(request, response, { route: "assistant-router-hourly", limit: 120, windowSeconds: 3600 }))) return;

@@ -1,6 +1,6 @@
 // This function keeps the model credential on Vercel and out of the browser.
 const { consumePlanAction, planLimitMessage } = require("./_lib/plan-access");
-const { enforceRateLimit, isSameOriginRequest, rejectOversizedBody, setSecurityHeaders } = require("./_lib/request-security");
+const { enforceRateLimit, isSameOriginRequest, rejectOversizedBody, requireJsonRequest, setSecurityHeaders } = require("./_lib/request-security");
 
 const MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
 const MAX_AGENDA_ITEMS = 500;
@@ -116,6 +116,7 @@ module.exports = async function agendaAi(request, response) {
     return response.status(403).json({ error: "Origen no permitido." });
   }
 
+  if (!requireJsonRequest(request, response)) return;
   if (rejectOversizedBody(request, response, 512 * 1024)) return;
   if (!(await enforceRateLimit(request, response, { route: "agenda-ai", limit: 12, windowSeconds: 60 }))) return;
 

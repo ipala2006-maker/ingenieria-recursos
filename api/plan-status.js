@@ -1,12 +1,13 @@
 const { getAuthenticatedPlan, setTestPlan } = require("./_lib/plan-access");
 const plans = require("../shared/plans");
-const { enforceRateLimit, isSameOriginRequest, rejectOversizedBody, setSecurityHeaders } = require("./_lib/request-security");
+const { enforceRateLimit, isSameOriginRequest, rejectOversizedBody, requireJsonRequest, setSecurityHeaders } = require("./_lib/request-security");
 
 module.exports = async function planStatus(request, response) {
   setSecurityHeaders(response);
   response.setHeader("Content-Type", "application/json; charset=utf-8");
 
   if (!isSameOriginRequest(request)) return response.status(403).json({ message: "Origen no permitido." });
+  if (request.method === "POST" && !requireJsonRequest(request, response)) return;
   if (rejectOversizedBody(request, response, 8 * 1024)) return;
   if (!(await enforceRateLimit(request, response, { route: "plan-status", limit: 60, windowSeconds: 60 }))) return;
 

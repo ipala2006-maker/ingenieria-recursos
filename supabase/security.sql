@@ -10,6 +10,7 @@ create table if not exists private.api_rate_limits (
 );
 
 alter table private.api_rate_limits enable row level security;
+alter table private.api_rate_limits force row level security;
 revoke all on table private.api_rate_limits from public, anon, authenticated;
 
 create or replace function public.consume_api_rate_limit(

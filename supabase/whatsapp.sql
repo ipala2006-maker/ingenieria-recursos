@@ -54,6 +54,11 @@ alter table public.whatsapp_link_codes enable row level security;
 alter table public.whatsapp_pending_actions enable row level security;
 alter table public.whatsapp_message_log enable row level security;
 alter table public.whatsapp_daily_usage enable row level security;
+alter table public.whatsapp_links force row level security;
+alter table public.whatsapp_link_codes force row level security;
+alter table public.whatsapp_pending_actions force row level security;
+alter table public.whatsapp_message_log force row level security;
+alter table public.whatsapp_daily_usage force row level security;
 
 revoke all on table public.whatsapp_links from public, anon, authenticated;
 revoke all on table public.whatsapp_link_codes from public, anon, authenticated;
@@ -92,4 +97,3 @@ $$;
 
 revoke all on function public.increment_whatsapp_usage(uuid, date) from public, anon, authenticated;
 grant execute on function public.increment_whatsapp_usage(uuid, date) to service_role;
-

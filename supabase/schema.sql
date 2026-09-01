@@ -5,6 +5,7 @@ create table if not exists public.user_states (
 );
 
 alter table public.user_states enable row level security;
+alter table public.user_states force row level security;
 
 revoke all on table public.user_states from anon;
 grant select, insert, update, delete on table public.user_states to authenticated;

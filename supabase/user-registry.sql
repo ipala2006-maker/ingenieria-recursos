@@ -21,6 +21,7 @@ create table if not exists public.user_registry (
 );
 
 alter table public.user_registry enable row level security;
+alter table public.user_registry force row level security;
 revoke all on table public.user_registry from public, anon, authenticated;
 grant select on table public.user_registry to service_role;
 

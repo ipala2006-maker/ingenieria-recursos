@@ -1,6 +1,6 @@
 const crypto = require("crypto");
 const { adminRequest, authenticateBearer, isConfigured } = require("./_lib/supabase-admin");
-const { enforceRateLimit, isSameOriginRequest, rejectOversizedBody, setSecurityHeaders } = require("./_lib/request-security");
+const { enforceRateLimit, isSameOriginRequest, rejectOversizedBody, requireJsonRequest, setSecurityHeaders } = require("./_lib/request-security");
 
 const LINK_LIFETIME_SECONDS = 120;
 const APP_ORIGIN = "https://estudiemos-app.vercel.app";
@@ -25,6 +25,7 @@ module.exports = async function widgetLink(request, response) {
 
 async function createHandoff(request, response) {
   if (!isSameOriginRequest(request)) return response.status(403).json({ message: "Origen no permitido." });
+  if (!requireJsonRequest(request, response)) return;
   const user = await authenticateBearer(request.headers.authorization);
   if (!user?.id) return response.status(401).json({ message: "Ingresá a tu cuenta antes de agregar el widget." });
 

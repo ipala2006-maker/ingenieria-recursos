@@ -1,6 +1,6 @@
 const MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
 const { consumePlanAction, planLimitMessage } = require("./_lib/plan-access");
-const { enforceRateLimit, isSameOriginRequest, rejectOversizedBody, setSecurityHeaders } = require("./_lib/request-security");
+const { enforceRateLimit, isSameOriginRequest, rejectOversizedBody, requireJsonRequest, setSecurityHeaders } = require("./_lib/request-security");
 const REQUEST_TIMEOUT_MS = 45000;
 const MAX_ITEMS = 400;
 
@@ -48,6 +48,7 @@ module.exports = async function workspaceAi(request, response) {
     return response.status(405).json({ message: "Método no permitido." });
   }
   if (!isSameOriginRequest(request)) return response.status(403).json({ message: "Origen no permitido." });
+  if (!requireJsonRequest(request, response)) return;
   if (rejectOversizedBody(request, response, 256 * 1024)) return;
   if (!(await enforceRateLimit(request, response, { route: "workspace-ai", limit: 12, windowSeconds: 60 }))) return;
   if (!process.env.GEMINI_API_KEY) return response.status(503).json({ message: "La IA todavía no está configurada." });

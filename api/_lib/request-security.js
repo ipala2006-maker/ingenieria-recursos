@@ -14,10 +14,25 @@ globalThis[STORE_KEY] = shared;
 
 function setSecurityHeaders(response) {
   response.setHeader("Cache-Control", "no-store, max-age=0");
+  response.setHeader("Content-Security-Policy", "default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'");
   response.setHeader("X-Content-Type-Options", "nosniff");
   response.setHeader("Referrer-Policy", "no-referrer");
   response.setHeader("X-Frame-Options", "DENY");
   response.setHeader("Cross-Origin-Resource-Policy", "same-origin");
+  response.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=()");
+  response.setHeader("X-Permitted-Cross-Domain-Policies", "none");
+}
+
+function requireJsonRequest(request, response) {
+  const contentType = String(request.headers?.["content-type"] || "")
+    .split(";", 1)[0]
+    .trim()
+    .toLowerCase();
+  if (contentType === "application/json" || /^application\/[a-z0-9!#$&^_.+-]+\+json$/.test(contentType)) {
+    return true;
+  }
+  response.status(415).json({ message: "El contenido debe enviarse como JSON." });
+  return false;
 }
 
 function isSameOriginRequest(request) {
@@ -183,6 +198,7 @@ function clampInteger(value, minimum, maximum) {
 module.exports = {
   enforceRateLimit,
   isSameOriginRequest,
+  requireJsonRequest,
   rejectOversizedBody,
   setSecurityHeaders
 };

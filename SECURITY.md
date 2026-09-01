@@ -12,6 +12,8 @@ Estudiemos usa una función de Vercel para el asistente de Inbox y calendario, y
 - Mantener habilitado Row Level Security en `public.user_states`.
 - Mantener aplicadas las políticas de `supabase/workspace.sql`, `supabase/plans.sql` y el rate limit de `supabase/security.sql`.
 - No modificar las políticas de `supabase/schema.sql` para permitir acceso anónimo.
+- Los archivos admitidos tienen una extensión y un tipo permitidos, un máximo de 50 MB por archivo y el límite total del plan se valida en la base.
+- Los tokens persistentes de los widgets Android se cifran con una clave no exportable de Android Keystore.
 
 ## Protección de los datos
 
@@ -19,6 +21,20 @@ Estudiemos usa una función de Vercel para el asistente de Inbox y calendario, y
 - Las políticas permiten seleccionar, crear, actualizar o eliminar únicamente el registro propio.
 - La contraseña es administrada por Supabase Auth y nunca se guarda en el repositorio ni en la tabla de Estudiemos.
 - La copia local permite seguir usando la plataforma cuando no hay conexión.
+
+## Revisión automática
+
+- Cada cambio ejecuta las pruebas de seguridad y consulta OSV para detectar vulnerabilidades conocidas en las dependencias declaradas.
+- Gitleaks revisa el historial completo de Git para impedir que una clave privada llegue a producción.
+- Dependabot revisa semanalmente Gradle y las acciones de GitHub.
+- Las respuestas web y API incluyen HTTPS estricto, CSP, aislamiento de marcos, bloqueo de detección MIME y una política restrictiva de permisos.
+
+## Controles externos
+
+- Supabase Auth limita intentos de autenticación. Revisar sus límites antes de un lanzamiento grande.
+- Activar CAPTCHA en Supabase Auth cuando exista una clave de Cloudflare Turnstile o hCaptcha para producción.
+- Revisar periódicamente Database Logs, Auth Logs y los Security Advisors de Supabase; configurar alertas o un Log Drain cuando el volumen lo justifique.
+- Antes de cobrar, deshabilitar la selección libre de planes de prueba y permitir cambios de plan únicamente desde webhooks de la pasarela de pago.
 
 ## Si aparece un problema
 

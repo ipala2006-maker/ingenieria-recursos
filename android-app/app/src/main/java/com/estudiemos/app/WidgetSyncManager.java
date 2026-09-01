@@ -6,6 +6,9 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.net.Uri;
+import android.security.keystore.KeyGenParameterSpec;
+import android.security.keystore.KeyProperties;
+import android.util.Base64;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -17,9 +20,15 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.security.KeyStore;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import javax.crypto.Cipher;
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.GCMParameterSpec;
 
 final class WidgetSyncManager {
     private static final String PREFS = "estudiemos_widget_cloud";
@@ -30,6 +39,9 @@ final class WidgetSyncManager {
     private static final String KEY_REFRESH_TOKEN = "refresh_token";
     private static final String KEY_EXPIRES_AT = "expires_at";
     private static final String KEY_PUSH_TOKEN = "push_token";
+    private static final String KEYSTORE_PROVIDER = "AndroidKeyStore";
+    private static final String KEYSTORE_ALIAS = "estudiemos_widget_session_v1";
+    private static final String ENCRYPTED_PREFIX = "enc:v1:";
     private static final int JOB_ID = 0x455357;
     private static final long PERIOD_MS = 15 * 60 * 1000L;
     private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor();
@@ -59,12 +71,15 @@ final class WidgetSyncManager {
         SharedPreferences prefs = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         String previousUser = prefs.getString(KEY_USER_ID, "");
         if (!previousUser.isEmpty() && !previousUser.equals(userId)) clearWidgetData(appContext);
+        String encryptedAccessToken = encryptSecret(accessToken);
+        String encryptedRefreshToken = encryptSecret(refreshToken);
+        if (encryptedAccessToken.isEmpty() || (!refreshToken.isEmpty() && encryptedRefreshToken.isEmpty())) return;
         prefs.edit()
                 .putString(KEY_URL, url)
                 .putString(KEY_PUBLIC_KEY, publicKey)
                 .putString(KEY_USER_ID, userId)
-                .putString(KEY_ACCESS_TOKEN, accessToken)
-                .putString(KEY_REFRESH_TOKEN, refreshToken)
+                .putString(KEY_ACCESS_TOKEN, encryptedAccessToken)
+                .putString(KEY_REFRESH_TOKEN, encryptedRefreshToken)
                 .putLong(KEY_EXPIRES_AT, expiresAt)
                 .apply();
         schedule(appContext);
@@ -232,14 +247,14 @@ final class WidgetSyncManager {
         String url = normalizeSupabaseUrl(prefs.getString(KEY_URL, ""));
         String publicKey = prefs.getString(KEY_PUBLIC_KEY, "");
         String userId = prefs.getString(KEY_USER_ID, "");
-        String accessToken = prefs.getString(KEY_ACCESS_TOKEN, "");
+        String accessToken = readSecret(prefs, KEY_ACCESS_TOKEN);
         if (url.isEmpty() || publicKey.isEmpty() || userId.isEmpty() || accessToken.isEmpty()) return null;
         return new Session(
                 url,
                 publicKey,
                 userId,
                 accessToken,
-                prefs.getString(KEY_REFRESH_TOKEN, ""),
+                readSecret(prefs, KEY_REFRESH_TOKEN),
                 prefs.getLong(KEY_EXPIRES_AT, 0)
         );
     }
@@ -272,9 +287,12 @@ final class WidgetSyncManager {
             long expiresIn = Math.max(60L, refreshed.optLong("expires_in", 3600L));
             if (accessToken.isEmpty() || refreshToken.isEmpty()) return null;
             long expiresAt = now + expiresIn;
+            String encryptedAccessToken = encryptSecret(accessToken);
+            String encryptedRefreshToken = encryptSecret(refreshToken);
+            if (encryptedAccessToken.isEmpty() || encryptedRefreshToken.isEmpty()) return null;
             context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-                    .putString(KEY_ACCESS_TOKEN, accessToken)
-                    .putString(KEY_REFRESH_TOKEN, refreshToken)
+                    .putString(KEY_ACCESS_TOKEN, encryptedAccessToken)
+                    .putString(KEY_REFRESH_TOKEN, encryptedRefreshToken)
                     .putLong(KEY_EXPIRES_AT, expiresAt)
                     .apply();
             return new Session(
@@ -293,15 +311,19 @@ final class WidgetSyncManager {
     static void storePushToken(Context context, String token) {
         String clean = token == null ? "" : token.trim();
         if (clean.isEmpty()) return;
+        String encrypted = encryptSecret(clean);
+        if (encrypted.isEmpty()) return;
         context.getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .edit()
-                .putString(KEY_PUSH_TOKEN, clean)
+                .putString(KEY_PUSH_TOKEN, encrypted)
                 .apply();
     }
 
     static String getPushToken(Context context) {
-        return context.getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                .getString(KEY_PUSH_TOKEN, "");
+        return readSecret(
+                context.getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE),
+                KEY_PUSH_TOKEN
+        );
     }
 
     static JSONObject getSessionForWeb(Context context) {
@@ -319,6 +341,63 @@ final class WidgetSyncManager {
 
     private static boolean hasSession(Context context) {
         return readSession(context) != null;
+    }
+
+    private static String encryptSecret(String value) {
+        if (value == null || value.isEmpty()) return "";
+        try {
+            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+            cipher.init(Cipher.ENCRYPT_MODE, getOrCreateEncryptionKey());
+            byte[] iv = cipher.getIV();
+            byte[] encrypted = cipher.doFinal(value.getBytes(StandardCharsets.UTF_8));
+            return ENCRYPTED_PREFIX
+                    + Base64.encodeToString(iv, Base64.NO_WRAP)
+                    + ":"
+                    + Base64.encodeToString(encrypted, Base64.NO_WRAP);
+        } catch (Exception ignored) {
+            return "";
+        }
+    }
+
+    private static String readSecret(SharedPreferences prefs, String key) {
+        String stored = prefs.getString(key, "");
+        if (stored == null || stored.isEmpty()) return "";
+        if (!stored.startsWith(ENCRYPTED_PREFIX)) {
+            String migrated = encryptSecret(stored);
+            if (migrated.isEmpty()) return "";
+            prefs.edit().putString(key, migrated).apply();
+            return stored;
+        }
+        try {
+            String[] parts = stored.substring(ENCRYPTED_PREFIX.length()).split(":", 2);
+            if (parts.length != 2) return "";
+            byte[] iv = Base64.decode(parts[0], Base64.NO_WRAP);
+            byte[] encrypted = Base64.decode(parts[1], Base64.NO_WRAP);
+            if (iv.length != 12 || encrypted.length < 16) return "";
+            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+            cipher.init(Cipher.DECRYPT_MODE, getOrCreateEncryptionKey(), new GCMParameterSpec(128, iv));
+            return new String(cipher.doFinal(encrypted), StandardCharsets.UTF_8);
+        } catch (Exception ignored) {
+            return "";
+        }
+    }
+
+    private static SecretKey getOrCreateEncryptionKey() throws Exception {
+        KeyStore keyStore = KeyStore.getInstance(KEYSTORE_PROVIDER);
+        keyStore.load(null);
+        java.security.Key existing = keyStore.getKey(KEYSTORE_ALIAS, null);
+        if (existing instanceof SecretKey) return (SecretKey) existing;
+
+        KeyGenerator generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, KEYSTORE_PROVIDER);
+        generator.init(new KeyGenParameterSpec.Builder(
+                KEYSTORE_ALIAS,
+                KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT
+        )
+                .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+                .setRandomizedEncryptionRequired(true)
+                .build());
+        return generator.generateKey();
     }
 
     private static String normalizeSupabaseUrl(String value) {

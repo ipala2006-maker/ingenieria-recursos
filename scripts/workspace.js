@@ -525,8 +525,9 @@
   async function uploadFiles(files) {
     if (!files.length || state.busy) return;
     const accepted = files.filter((file) => {
-      if (file.size <= MAX_FILE_SIZE) return true;
-      setStatus(`${file.name} supera el máximo de 50 MB.`, "error");
+      const validation = validateUploadFile(file);
+      if (validation.ok) return true;
+      setStatus(`${file.name}: ${validation.message}`, "error");
       return false;
     });
     if (!accepted.length) return;
@@ -545,10 +546,11 @@
     for (const file of accepted) {
       const id = crypto.randomUUID();
       const path = `${state.user.id}/${id}/${safeStorageName(file.name)}`;
+      const contentType = uploadContentType(file);
       const upload = await state.client.storage.from(BUCKET).upload(path, file, {
         cacheControl: "3600",
         upsert: false,
-        contentType: file.type || "application/octet-stream"
+        contentType
       });
       if (upload.error) {
         failures.push(file.name);
@@ -561,7 +563,7 @@
         kind: "file",
         name: cleanName(file.name),
         storage_path: path,
-        mime_type: file.type || "application/octet-stream",
+        mime_type: contentType,
         size_bytes: file.size
       });
       if (insert.error) {
@@ -1024,6 +1026,37 @@
   function safeStorageName(value) {
     const clean = cleanName(value).normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/-+/g, "-");
     return clean || "archivo";
+  }
+
+  function validateUploadFile(file) {
+    if (!file || !cleanName(file.name)) return { ok: false, message: "el nombre no es válido." };
+    if (file.size <= 0) return { ok: false, message: "el archivo está vacío." };
+    if (file.size > MAX_FILE_SIZE) return { ok: false, message: "supera el máximo de 50 MB." };
+    const extension = file.name.includes(".") ? file.name.split(".").pop().toLowerCase() : "";
+    const allowedExtensions = new Set([
+      "7z", "csv", "doc", "docx", "gif", "heic", "jpeg", "jpg", "json", "m4a", "md", "mov", "mp3",
+      "mp4", "pdf", "png", "ppt", "pptx", "rar", "rtf", "txt", "wav", "webm", "webp", "xls", "xlsx", "xml", "zip"
+    ]);
+    if (!allowedExtensions.has(extension)) {
+      return { ok: false, message: "ese tipo de archivo no está permitido por seguridad." };
+    }
+    return { ok: true, message: "" };
+  }
+
+  function uploadContentType(file) {
+    const extension = file.name.includes(".") ? file.name.split(".").pop().toLowerCase() : "";
+    const types = {
+      "7z": "application/x-7z-compressed", csv: "text/csv", doc: "application/msword",
+      docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", gif: "image/gif",
+      heic: "image/heic", jpeg: "image/jpeg", jpg: "image/jpeg", json: "application/json", m4a: "audio/mp4",
+      md: "text/markdown", mov: "video/quicktime", mp3: "audio/mpeg", mp4: "video/mp4", pdf: "application/pdf",
+      png: "image/png", ppt: "application/vnd.ms-powerpoint",
+      pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation", rar: "application/vnd.rar",
+      rtf: "application/rtf", txt: "text/plain", wav: "audio/wav", webm: "video/webm", webp: "image/webp",
+      xls: "application/vnd.ms-excel", xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      xml: "application/xml", zip: "application/zip"
+    };
+    return types[extension] || "application/octet-stream";
   }
 
   function normalize(value) {
