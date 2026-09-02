@@ -29,6 +29,7 @@ module.exports = async function handler(request, response) {
     enabled: true,
     url,
     publishableKey,
+    captchaSiteKey: process.env.TURNSTILE_SITE_KEY || "",
     firebase: firebaseEnabled ? firebase : null
   });
 };

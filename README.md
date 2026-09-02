@@ -115,6 +115,7 @@ El archivo privado de Google Sheets puede mostrar un registro de cuentas en una 
 - `supabase/user-registry.sql` crea una copia administrativa bloqueada que solamente puede leer el servidor.
 - `api/user-registry.js` entrega el registro como CSV cuando recibe el token privado en la cabecera `Authorization`.
 - `google-apps-script/user-registry.gs` actualiza la hoja cada 15 minutos. El token se guarda en las propiedades privadas del script, nunca en una celda, una URL o el repositorio.
+- El mismo script mantiene una pestaña `Monitoreo` con disponibilidad, integraciones, versión y latencia, además de un historial acotado de las últimas comprobaciones.
 
 ## Widgets de Android
 

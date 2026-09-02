@@ -2,6 +2,7 @@
   if (window.EstudiemosAccount) return;
 
   const SUPABASE_CDN = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.min.js";
+  const TURNSTILE_SCRIPT = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
   const SYNC_KEYS = [
     "bandeja_favoritos",
     "bandeja_guardados",
@@ -45,6 +46,8 @@
   let whatsappStatusLoaded = false;
   let whatsappBusy = false;
   let readySettled = false;
+  let captchaToken = "";
+  let captchaWidgetId = null;
   let resolveReady;
   const readyPromise = new Promise((resolve) => { resolveReady = resolve; });
 
@@ -126,6 +129,7 @@
               <span>Contraseña</span>
               <input type="password" name="password" minlength="${MIN_PASSWORD_LENGTH}" autocomplete="current-password" required placeholder="Mínimo ${MIN_PASSWORD_LENGTH} caracteres" />
             </label>
+            <div class="account-captcha" data-account-captcha hidden aria-label="Comprobación de seguridad"></div>
             <button class="account-primary" type="submit" data-account-signin>Ingresar</button>
             <button class="account-secondary" type="button" data-account-signup>Crear cuenta</button>
             <button class="account-link" type="button" data-account-reset>Olvidé mi contraseña</button>
@@ -283,6 +287,7 @@
       accountConfig = {
         url: config.url,
         publishableKey: config.publishableKey,
+        captchaSiteKey: config.captchaSiteKey || "",
         firebase: config.firebase || null
       };
       stage = "library";
@@ -290,6 +295,7 @@
       client = window.supabase.createClient(config.url, config.publishableKey, {
         auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
       });
+      setupCaptcha();
       configAvailable = true;
 
       stage = "session";
@@ -388,9 +394,12 @@
     if (!client) return;
     const credentials = getCredentials();
     if (!credentials) return;
+    const captcha = getCaptchaOptions();
+    if (captcha === null) return;
     setBusy(true, "Ingresando...");
-    const result = await client.auth.signInWithPassword(credentials);
+    const result = await client.auth.signInWithPassword({ ...credentials, options: captcha });
     setBusy(false);
+    resetCaptcha();
     if (result.error) return setStatus(authErrorMessage(result.error), "error");
     session = result.data.session;
     prepareLocalAccountSwitch(session.user.id);
@@ -405,12 +414,15 @@
     if (!client) return;
     const credentials = getCredentials();
     if (!credentials) return;
+    const captcha = getCaptchaOptions();
+    if (captcha === null) return;
     setBusy(true, "Creando tu cuenta...");
     const result = await client.auth.signUp({
       ...credentials,
-      options: { emailRedirectTo: `${location.origin}${getRootPath()}` }
+      options: { emailRedirectTo: `${location.origin}${getRootPath()}`, ...captcha }
     });
     setBusy(false);
+    resetCaptcha();
     if (result.error) return setStatus(authErrorMessage(result.error), "error");
     if (result.data.session) {
       session = result.data.session;
@@ -429,13 +441,68 @@
     if (!client) return;
     const email = document.querySelector('[data-account-form] input[name="email"]')?.value.trim() || "";
     if (!isValidEmail(email)) return setStatus("Escribí primero tu correo electrónico.", "error");
+    const captcha = getCaptchaOptions();
+    if (captcha === null) return;
     setBusy(true, "Enviando correo...");
     const result = await client.auth.resetPasswordForEmail(email, {
-      redirectTo: `${location.origin}${getRootPath()}`
+      redirectTo: `${location.origin}${getRootPath()}`,
+      ...captcha
     });
     setBusy(false);
+    resetCaptcha();
     if (result.error) return setStatus(authErrorMessage(result.error), "error");
     setStatus("Te enviamos un enlace para recuperar tu contraseña.", "success");
+  }
+
+  function setupCaptcha() {
+    const container = document.querySelector("[data-account-captcha]");
+    const sitekey = accountConfig?.captchaSiteKey || "";
+    if (!container || !sitekey) return;
+    container.hidden = false;
+    loadExternalScript(TURNSTILE_SCRIPT).then(() => {
+      if (!window.turnstile || captchaWidgetId !== null) return;
+      captchaWidgetId = window.turnstile.render(container, {
+        sitekey,
+        theme: document.documentElement.classList.contains("theme-light") ? "light" : "dark",
+        size: "flexible",
+        appearance: "interaction-only",
+        language: "es",
+        callback: (token) => { captchaToken = String(token || ""); },
+        "expired-callback": () => { captchaToken = ""; },
+        "error-callback": () => { captchaToken = ""; }
+      });
+    }).catch(() => {
+      setStatus("No pudimos cargar la comprobación de seguridad. Revisá tu conexión.", "error");
+    });
+  }
+
+  function loadExternalScript(source) {
+    const existing = document.querySelector(`script[src="${source}"]`);
+    if (existing?.dataset.loaded === "true") return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const script = existing || document.createElement("script");
+      const loaded = () => { script.dataset.loaded = "true"; resolve(); };
+      script.addEventListener("load", loaded, { once: true });
+      script.addEventListener("error", reject, { once: true });
+      if (!existing) {
+        script.src = source;
+        script.async = true;
+        script.defer = true;
+        document.head.appendChild(script);
+      }
+    });
+  }
+
+  function getCaptchaOptions() {
+    if (!accountConfig?.captchaSiteKey) return {};
+    if (captchaToken) return { captchaToken };
+    setStatus("Completá la comprobación de seguridad para continuar.", "error");
+    return null;
+  }
+
+  function resetCaptcha() {
+    captchaToken = "";
+    if (captchaWidgetId !== null && window.turnstile) window.turnstile.reset(captchaWidgetId);
   }
 
   async function updatePassword() {

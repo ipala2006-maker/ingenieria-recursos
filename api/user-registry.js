@@ -1,4 +1,4 @@
-const crypto = require("crypto");
+const { hasValidAdminToken } = require("./_lib/admin-auth");
 const { enforceRateLimit, setSecurityHeaders } = require("./_lib/request-security");
 const { adminRequest, isConfigured } = require("./_lib/supabase-admin");
 
@@ -25,7 +25,7 @@ module.exports = async function handler(request, response) {
   }
   if (!(await enforceRateLimit(request, response, { route: "user-registry", limit: 8, windowSeconds: 300 }))) return;
 
-  if (!isConfigured() || !hasValidExportToken(request)) {
+  if (!isConfigured() || !hasValidAdminToken(request)) {
     return response.status(401).send("Unauthorized");
   }
 
@@ -55,11 +55,3 @@ module.exports = async function handler(request, response) {
     return response.status(status).send("Registry unavailable");
   }
 };
-
-function hasValidExportToken(request) {
-  const expected = String(process.env.USER_REGISTRY_EXPORT_TOKEN || "");
-  const authorization = String(request.headers?.authorization || "");
-  const received = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
-  if (expected.length < 32 || received.length !== expected.length) return false;
-  return crypto.timingSafeEqual(Buffer.from(received), Buffer.from(expected));
-}

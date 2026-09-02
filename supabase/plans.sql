@@ -209,6 +209,7 @@ create trigger enforce_workspace_plan_limit
 before insert or update of size_bytes, kind on public.workspace_items
 for each row execute function public.enforce_workspace_plan_limit();
 
+revoke all on function public.enforce_workspace_plan_limit() from public, anon, authenticated;
 revoke all on function public.estudiemos_plan_limits(text) from public, anon, authenticated;
 revoke all on function public.estudiemos_current_plan(uuid) from public, anon, authenticated;
 revoke all on function public.get_plan_status() from public, anon;

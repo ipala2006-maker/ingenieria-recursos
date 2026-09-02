@@ -113,7 +113,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://img.youtube.com https://i.ytimg.com; font-src 'self'; media-src 'self' blob:; connect-src 'self' https://noembed.com https://*.supabase.co wss://*.supabase.co; frame-src estudiemos-widgets: https://www.youtube.com https://www.youtube-nocookie.com https://open.spotify.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self' https://docs.google.com; frame-ancestors 'none'; upgrade-insecure-requests"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://img.youtube.com https://i.ytimg.com; font-src 'self'; media-src 'self' blob:; connect-src 'self' https://noembed.com https://*.supabase.co wss://*.supabase.co; frame-src estudiemos-widgets: https://challenges.cloudflare.com https://www.youtube.com https://www.youtube-nocookie.com https://open.spotify.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self' https://docs.google.com; frame-ancestors 'none'; upgrade-insecure-requests"
         }
       ]
     }

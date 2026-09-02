@@ -33,6 +33,7 @@ Estudiemos usa una función de Vercel para el asistente de Inbox y calendario, y
 
 - Supabase Auth limita intentos de autenticación. Revisar sus límites antes de un lanzamiento grande.
 - Activar CAPTCHA en Supabase Auth cuando exista una clave de Cloudflare Turnstile o hCaptcha para producción.
+- El formulario ya admite Cloudflare Turnstile mediante `TURNSTILE_SITE_KEY`; la protección solo queda activa cuando la clave secreta correspondiente también se habilita en Supabase Auth.
 - Revisar periódicamente Database Logs, Auth Logs y los Security Advisors de Supabase; configurar alertas o un Log Drain cuando el volumen lo justifique.
 - Antes de cobrar, deshabilitar la selección libre de planes de prueba y permitir cambios de plan únicamente desde webhooks de la pasarela de pago.
 

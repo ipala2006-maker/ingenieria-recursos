@@ -52,10 +52,32 @@ test("global web responses include the expected security policy", () => {
 
 test("the private user registry never exposes passwords or URL tokens", () => {
   const endpoint = read("api/user-registry.js");
+  const adminAuth = read("api/_lib/admin-auth.js");
   const sheetSync = read("google-apps-script/user-registry.gs");
   assert.doesNotMatch(endpoint, /request\.query/);
-  assert.match(endpoint, /headers\?\.authorization/);
+  assert.match(endpoint, /hasValidAdminToken/);
+  assert.match(adminAuth, /headers\?\.authorization/);
   assert.doesNotMatch(endpoint, /password/i);
   assert.match(sheetSync, /PropertiesService\.getScriptProperties/);
   assert.doesNotMatch(sheetSync, /\?token=/);
+});
+
+test("CAPTCHA is wired into every public password authentication flow", () => {
+  const account = read("scripts/account.js");
+  const config = read("api/account-config.js");
+  const vercel = read("vercel.json");
+  assert.match(account, /captchaToken/);
+  assert.match(account, /signInWithPassword\(\{ \.\.\.credentials, options: captcha \}\)/);
+  assert.match(account, /emailRedirectTo:.*\.\.\.captcha/);
+  assert.match(account, /resetPasswordForEmail[\s\S]*\.\.\.captcha/);
+  assert.match(config, /TURNSTILE_SITE_KEY/);
+  assert.match(vercel, /challenges\.cloudflare\.com/);
+});
+
+test("administrative monitoring requires the same private header token", () => {
+  const monitor = read("api/admin-monitoring.js");
+  const adminAuth = read("api/_lib/admin-auth.js");
+  assert.match(monitor, /hasValidAdminToken/);
+  assert.doesNotMatch(monitor, /request\.query/);
+  assert.match(adminAuth, /timingSafeEqual/);
 });

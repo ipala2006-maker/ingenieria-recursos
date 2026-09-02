@@ -4518,6 +4518,8 @@ html.theme-light .app-install-sheet__close{
   line-height:1.55;
 }
 .account-form,.account-password-form{display:grid;gap:12px}
+.account-captcha{min-height:0;overflow:hidden;border-radius:10px}
+.account-captcha:not([hidden]){min-height:1px}
 .account-form label,.account-password-form label{
   display:grid;
   gap:7px;
