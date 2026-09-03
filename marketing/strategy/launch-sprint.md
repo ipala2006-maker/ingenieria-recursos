@@ -12,6 +12,18 @@ La campaña no intenta explicar toda la aplicacion en cada pieza.
 - 6 secuencias breves de historias.
 - 1 video horizontal para YouTube y pagina de presentacion.
 
+## Serie reconocible
+
+Tres de los seis videos se publican bajo el formato `Una traba menos` para que
+la cuenta construya reconocimiento sin depender de la cara del fundador:
+
+- `Una traba menos #01`: una frase se convierte en tarea.
+- `Una traba menos #02`: 25 minutos empiezan una racha.
+- `Una traba menos #03`: una tarea aparece en todos los dispositivos.
+
+Cada episodio usa la misma apertura de 0,5 segundos y cambia el problema. El
+contenido debe sentirse nativo de la red, no como una presentacion corporativa.
+
 ## Guiones verticales
 
 ### V1 - Tu cabeza no es un calendario
@@ -106,3 +118,6 @@ como anuncio la que combine mejor retencion, visitas al perfil e instalaciones.
 La primera prueba paga debe comparar dos aperturas del mismo video, no dos videos
 completamente distintos.
 
+Antes de pagar, probar tambien una segunda apertura para cada ganador. La pieza
+elegida debe superar la mediana en retencion y generar una accion posterior
+(visita, clic, registro o primera tarea), no solo likes.
