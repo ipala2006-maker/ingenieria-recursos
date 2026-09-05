@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Estudiemos Social Launch</title>
+  <style>
+    @font-face{font-family:"Space Grotesk";src:url("../assets/fonts/space-grotesk-latin.woff2") format("woff2");font-weight:300 700}
+    :root{--bg:#07101f;--panel:#101b2d;--panel2:#17243a;--line:rgba(159,190,234,.18);--text:#f7faff;--muted:#9eb0ca;--blue:#82b4ff;--cyan:#6be3dd;--orange:#ffab4c}
+    *{box-sizing:border-box}
+    html,body{width:100%;height:100%;margin:0;overflow:hidden;background:var(--bg);font-family:"Space Grotesk",sans-serif;color:var(--text)}
+    body{background:radial-gradient(circle at 50% 15%,#152a48 0,#091426 34%,#060d19 72%)}
+    .grain{position:fixed;inset:0;opacity:.06;pointer-events:none;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E")}
+    .stage{position:relative;width:100%;height:100%;perspective:1800px}
+    .brand{position:absolute;top:70px;left:72px;display:flex;align-items:center;gap:18px;font-size:27px;font-weight:650;z-index:20}
+    .logo{width:56px;height:56px;border-radius:15px;background:linear-gradient(145deg,#9ec7ff,#5396f8);display:grid;place-items:center;box-shadow:0 16px 46px rgba(55,132,245,.34);font-size:31px;font-weight:700}
+    .scene{position:absolute;inset:0;opacity:0;transform:scale(.96);transition:opacity .42s ease,transform .72s cubic-bezier(.18,.84,.22,1)}
+    .scene.on{opacity:1;transform:scale(1)}
+    .kicker{color:var(--blue);font-size:24px;font-weight:700;text-transform:uppercase;letter-spacing:0}
+    h1{font-size:84px;line-height:.99;letter-spacing:0;margin:12px 0 24px;max-width:870px}
+    .sub{font-size:31px;line-height:1.35;color:var(--muted);max-width:760px}
+    .copy{position:absolute;left:72px;top:210px;z-index:8}
+    .glass{background:linear-gradient(145deg,rgba(25,42,69,.94),rgba(11,23,41,.94));border:1px solid var(--line);box-shadow:0 34px 100px rgba(0,0,0,.38),inset 0 1px rgba(255,255,255,.07);backdrop-filter:blur(18px)}
+    .prompt-card{position:absolute;left:72px;right:72px;top:560px;padding:34px;border-radius:30px;transform:translateY(70px) rotateX(8deg);opacity:0;transition:all .78s cubic-bezier(.18,.84,.22,1)}
+    .on .prompt-card{transform:none;opacity:1}
+    .prompt-label{font-size:21px;color:var(--muted);margin-bottom:18px}.prompt{font-size:34px;line-height:1.35;min-height:96px}.cursor{display:inline-block;width:3px;height:37px;background:var(--blue);vertical-align:-6px;animation:blink .8s steps(1) infinite}
+    .flow{position:absolute;left:74px;right:74px;top:845px;display:grid;gap:18px}
+    .result{display:grid;grid-template-columns:70px 1fr auto;align-items:center;gap:18px;padding:24px 26px;border-radius:24px;opacity:0;transform:translateX(110px);transition:all .65s cubic-bezier(.18,.84,.22,1)}
+    .result.show{opacity:1;transform:none}.result:nth-child(2){transition-delay:.1s}.result:nth-child(3){transition-delay:.2s}
+    .ico{width:60px;height:60px;border-radius:17px;display:grid;place-items:center;background:rgba(130,180,255,.13);color:var(--blue);font-size:29px}.result b{font-size:28px}.result small{display:block;margin-top:5px;color:var(--muted);font-size:20px}.pill{padding:10px 15px;border-radius:999px;background:rgba(107,227,221,.12);color:var(--cyan);font-weight:650;font-size:17px}
+    .focus-wrap{position:absolute;inset:270px 55px 130px;display:grid;place-items:center}.timer{width:650px;height:650px;border-radius:50%;display:grid;place-items:center;position:relative;background:radial-gradient(circle,#142641 0,#0d192c 62%,#091322 100%);box-shadow:0 0 0 2px rgba(130,180,255,.17),0 50px 120px rgba(0,0,0,.45)}
+    .ring{position:absolute;inset:34px;border-radius:50%;background:conic-gradient(var(--blue) 0 81%,rgba(130,180,255,.1) 81%);mask:radial-gradient(transparent 64%,#000 65%)}
+    .time{font-size:116px;font-weight:650}.time small{display:block;text-align:center;font-size:24px;color:var(--muted);margin-top:12px}.focus-copy{position:absolute;bottom:85px;text-align:center}.focus-copy h1{font-size:68px;margin:0 0 10px}.focus-copy .sub{font-size:27px}
+    .streak{position:absolute;top:265px;left:70px;right:70px;border-radius:30px;padding:32px}.streak-head{display:flex;align-items:center;gap:20px}.flame{width:76px;height:76px;border-radius:21px;display:grid;place-items:center;background:rgba(255,171,76,.14);font-size:42px}.streak h2{font-size:38px;margin:0}.stats{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:28px}.stat{background:rgba(255,255,255,.035);border:1px solid var(--line);border-radius:22px;padding:24px}.stat strong{font-size:43px}.stat span{display:block;color:var(--muted);font-size:19px;margin-top:5px}.chart{height:300px;margin-top:24px;position:relative;border-bottom:1px solid var(--line);background:linear-gradient(to bottom,transparent 32%,var(--line) 33%,transparent 34%,transparent 65%,var(--line) 66%,transparent 67%)}
+    .chart svg{width:100%;height:100%;overflow:visible}.chart path{stroke:var(--blue);stroke-width:8;fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1200;stroke-dashoffset:1200;transition:stroke-dashoffset 2s cubic-bezier(.2,.8,.2,1)}.on .chart path{stroke-dashoffset:0}.chart circle{fill:var(--cyan);stroke:#0c192d;stroke-width:7}
+    .week{display:grid;grid-template-columns:repeat(7,1fr);margin-top:18px;color:var(--muted);font-size:18px;text-align:center}
+    .widget-field{position:absolute;inset:390px 0 100px}.widget{position:absolute;width:620px;border-radius:31px;padding:29px;box-shadow:0 36px 100px rgba(0,0,0,.48);transition:all 1s cubic-bezier(.18,.84,.22,1);opacity:0}.on .widget{opacity:1}.widget h3{font-size:31px;margin:0 0 18px}.widget p{font-size:21px;color:var(--muted);margin:7px 0}.w1{left:42px;top:85px;transform:translate(-170px,-30px) rotate(-11deg)}.on .w1{transform:rotate(-4deg)}.w2{right:35px;top:350px;transform:translate(160px,35px) rotate(10deg)}.on .w2{transform:rotate(4deg)}.w3{left:120px;top:690px;transform:translate(-120px,150px) rotate(-8deg)}.on .w3{transform:rotate(2deg)}.widget .line{height:13px;border-radius:8px;background:rgba(130,180,255,.17);margin:13px 0}.widget .line.short{width:56%}.mini-time{font-size:74px;font-weight:650;text-align:center;padding:16px 0}.cta{position:absolute;inset:0;display:grid;place-items:center;text-align:center}.cta .logo{margin:auto;width:108px;height:108px;border-radius:28px;font-size:56px}.cta h1{font-size:89px;margin:30px auto 16px}.cta p{font-size:31px;color:var(--muted);margin:0 0 42px}.button{display:inline-flex;padding:22px 34px;border-radius:20px;background:var(--blue);color:#07101f;font-size:25px;font-weight:700;box-shadow:0 20px 60px rgba(82,150,248,.28)}
+    @media (min-aspect-ratio:1/1){
+      .brand{top:40px;left:54px}.copy{left:100px;top:210px}.copy h1{font-size:75px;max-width:700px}.sub{font-size:27px}
+      .prompt-card{left:850px;right:90px;top:170px}.flow{left:850px;right:90px;top:470px}.result{padding:18px 22px}.result b{font-size:23px}.result small{font-size:17px}.ico{width:50px;height:50px}
+      .focus-wrap{inset:75px;justify-items:end}.timer{width:560px;height:560px;margin-right:220px}.focus-copy{left:100px;right:auto;bottom:270px;text-align:left}.focus-copy h1{font-size:64px;max-width:600px}.focus-copy .sub{font-size:26px}
+      .streak{left:760px;right:100px;top:150px;padding:26px}.chart{height:220px}.stats{margin-top:18px}.stat{padding:18px}.stat strong{font-size:36px}#growth .focus-copy{top:390px;bottom:auto}
+      #widgets .copy{top:185px}.widget-field{inset:90px 0}.widget{width:560px}.w1{left:790px;top:45px}.w2{right:85px;top:340px}.w3{left:700px;top:620px}
+      .cta h1{font-size:78px}.cta .logo{width:94px;height:94px}
+    }
+    .progress{position:absolute;left:72px;right:72px;bottom:46px;height:4px;background:rgba(255,255,255,.1);border-radius:4px;overflow:hidden;z-index:30}.progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--blue),var(--cyan));animation:progress 15s linear forwards}
+    @keyframes blink{50%{opacity:0}}@keyframes progress{to{width:100%}}
+  </style>
+</head>
+<body>
+  <div class="grain"></div><main class="stage">
+    <div class="brand"><span class="logo">Σ</span><span>Estudiemos</span></div>
+    <section class="scene" id="ai1"><div class="copy"><div class="kicker">Una traba menos #01</div><h1>Decilo como te salga.</h1><p class="sub">La IA organiza. Vos confirmás.</p></div><div class="prompt-card glass"><div class="prompt-label">Organizador inteligente</div><div class="prompt" id="typed"></div></div><div class="flow"><div class="result glass"><span class="ico">✓</span><div><b>Preparar ejercicios</b><small>Inbox</small></div><span class="pill">Tarea</span></div><div class="result glass"><span class="ico">□</span><div><b>Parcial de Álgebra</b><small>Viernes · 10:00</small></div><span class="pill">Calendario</span></div><div class="result glass"><span class="ico">◷</span><div><b>Bloque de práctica</b><small>25 minutos</small></div><span class="pill">Pomodoro</span></div></div></section>
+    <section class="scene" id="focus"><div class="focus-wrap"><div class="timer"><div class="ring"></div><div class="time">24:58<small>Bloque 1</small></div></div><div class="focus-copy"><h1>25 minutos cuentan.</h1><p class="sub">Empezá. La racha viene después.</p></div></div></section>
+    <section class="scene" id="growth"><div class="streak glass"><div class="streak-head"><span class="flame">◆</span><div><div class="kicker">Presencia de estudio</div><h2>Racha: 4 días</h2></div></div><div class="stats"><div class="stat"><strong>25 min</strong><span>Hoy</span></div><div class="stat"><strong>3 h 40</strong><span>Esta semana</span></div></div><div class="chart"><svg viewBox="0 0 850 280"><path d="M20 245 C110 245 130 228 200 225 S310 105 385 112 S500 150 570 92 S710 58 830 34"/><circle cx="20" cy="245" r="11"/><circle cx="200" cy="225" r="11"/><circle cx="385" cy="112" r="11"/><circle cx="570" cy="92" r="11"/><circle cx="830" cy="34" r="11"/></svg></div><div class="week"><span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span></div></div><div class="focus-copy"><h1>Tu progreso, visible.</h1></div></section>
+    <section class="scene" id="widgets"><div class="copy"><div class="kicker">En todos tus dispositivos</div><h1>Tu día, siempre a mano.</h1></div><div class="widget-field"><article class="widget glass w1"><div class="kicker">Inbox</div><h3>Lo que sigue</h3><p>□ Preparar ejercicios</p><p>□ Entregar informe</p><p>□ Repasar Álgebra</p></article><article class="widget glass w2"><div class="kicker">Calendario</div><h3>Esta semana</h3><div class="line"></div><div class="line short"></div><div class="line"></div></article><article class="widget glass w3"><div class="kicker">Pomodoro</div><div class="mini-time">25:00</div><p style="text-align:center">Listo para empezar</p></article></div></section>
+    <section class="scene" id="end"><div class="cta"><div><div class="logo">Σ</div><h1>Estudiemos</h1><p>Tu estudio, conectado.</p><span class="button">Probalo gratis</span></div></div></section>
+    <div class="progress"><i></i></div>
+  </main>
+  <script>
+    const scenes=["ai1","focus","growth","widgets","end"];
+    const timings=[0,4.2,7.1,10.2,13.1];
+    const started=performance.now();
+    const typed=document.querySelector("#typed");
+    const message="El viernes tengo parcial de Álgebra. Recordame practicar.";
+    function frame(now){const t=(now-started)/1000;let active=0;for(let i=0;i<timings.length;i++)if(t>=timings[i])active=i;scenes.forEach((id,i)=>document.getElementById(id).classList.toggle("on",i===active));if(t<4.2){const count=Math.max(0,Math.min(message.length,Math.floor((t-.65)*22)));typed.innerHTML=message.slice(0,count)+(t>0.6?'<span class="cursor"></span>':'');if(t>2.55)document.querySelectorAll('.result').forEach((el,i)=>setTimeout(()=>el.classList.add('show'),i*90));}if(t<15.35)requestAnimationFrame(frame);}
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>
