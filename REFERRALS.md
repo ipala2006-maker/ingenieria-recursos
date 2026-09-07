@@ -23,4 +23,6 @@
 4. Desde el webhook firmado de Mercado Pago, después de consultar el pago y comprobar que está aprobado, llamar como `service_role` a `qualify_referral_after_first_payment(user_id, payment_id)`.
 5. Aplicar `discount_percent` al crear o renovar la suscripción. Nunca aceptar el porcentaje enviado por el cliente.
 
+La consulta y las acciones de referidos comparten `/api/plan-status` para respetar el límite de funciones del plan actual de Vercel sin agregar costo.
+
 Mientras los cobros sigan deshabilitados, la interfaz muestra el recorrido y los referidos quedan esperando el primer pago. No se simulan pagos ni descuentos ganados desde el navegador.

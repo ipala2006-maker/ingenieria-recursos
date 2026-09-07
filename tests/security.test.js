@@ -33,7 +33,7 @@ test("database tables enforce RLS and workspace uploads are constrained", () => 
 
 test("referral benefits are server-owned and require verified identity plus first payment", () => {
   const sql = read("supabase/referrals.sql");
-  const endpoint = read("api/referrals.js");
+  const endpoint = read("api/_lib/referrals.js");
   assert.match(sql, /phone_hash text unique/i);
   assert.match(sql, /invited_user_id uuid not null unique/i);
   assert.match(sql, /PHONE_VERIFICATION_REQUIRED/);

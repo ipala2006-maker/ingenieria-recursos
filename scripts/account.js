@@ -492,14 +492,14 @@
     referralBusy = true;
     setReferralButtonsBusy(true);
     try {
-      const response = await fetch(`${getRootPath()}api/referrals`, {
+      const response = await fetch(`${getRootPath()}api/plan-status`, {
         headers: { Authorization: `Bearer ${session.access_token}` },
         cache: "no-store"
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.message || "referrals-unavailable");
       referralStatusLoaded = true;
-      renderReferralStatus(result);
+      renderReferralStatus(result.referral || {});
     } catch (_) {
       const section = document.querySelector("[data-account-referrals]");
       if (section) section.hidden = true;
@@ -544,7 +544,7 @@
       const verified = await client.auth.verifyOtp({ phone: pendingPhone, token, type: "phone_change" });
       if (verified.error) throw verified.error;
       if (verified.data?.session) session = verified.data.session;
-      const response = await referralRequest({ action: "confirm-phone" });
+      const response = await referralRequest({ action: "confirm-referral-phone" });
       pendingPhone = "";
       referralStatusLoaded = true;
       renderReferralStatus(response);
@@ -572,7 +572,7 @@
     referralBusy = true;
     setReferralButtonsBusy(true);
     try {
-      const result = await referralRequest({ action: "claim", code });
+      const result = await referralRequest({ action: "claim-referral", code });
       localStorage.removeItem(PENDING_REFERRAL_KEY);
       referralStatusLoaded = true;
       renderReferralStatus(result);
@@ -586,7 +586,7 @@
   }
 
   async function referralRequest(body) {
-    const response = await fetch(`${getRootPath()}api/referrals`, {
+    const response = await fetch(`${getRootPath()}api/plan-status`, {
       method: "POST",
       headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
       body: JSON.stringify(body)
