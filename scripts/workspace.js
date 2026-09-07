@@ -391,16 +391,16 @@
       body: `<div class="workspace-modal__body workspace-plans-preview">
         <p class="workspace-plans-preview__notice"><strong>Sin cobros todavía.</strong> El plan que elijas sí aplicará sus límites para que podamos probar la experiencia completa antes del lanzamiento.</p>
         ${state.planStatus.referral?.discountPercent ? `<p class="workspace-plans-preview__notice"><strong>Beneficio ganado:</strong> tu ${state.planStatus.referral.discountPercent}% se aplicará automáticamente cuando habilitemos las suscripciones.</p>` : ""}
+        <aside class="workspace-referral-note" aria-label="Descuentos por referidos">
+          <span><strong>Descuentos por referidos.</strong> Obtené 35% al continuar una cadena de invitaciones o 45% al sumar 3 personas verificadas con su primer pago.</span>
+          <button type="button" data-workspace-referrals-open>Ver referidos</button>
+        </aside>
         ${renderCurrentUsage()}
         <div class="workspace-plan-grid">
           ${planCard("initial", false, "Gratis")}
           ${planCard("plus", true, "Recomendado")}
           ${planCard("pro")}
         </div>
-        <aside class="workspace-referral-note" aria-label="Descuentos por referidos">
-          <span><strong>Descuentos por referidos.</strong> Obtené 35% al continuar una cadena de invitaciones o 45% al sumar 3 personas verificadas con su primer pago.</span>
-          <button type="button" data-workspace-referrals-open>Ver referidos</button>
-        </aside>
         <p class="workspace-plans-preview__foot"><strong>Al lanzamiento:</strong> habrá prueba de Plus y opciones mensual y por cuatrimestre. Los precios son referencias y todavía no existe contratación ni renovación automática.</p>
         <p class="workspace-plans-preview__foot">WhatsApp se habilitará cuando esté conectado el número oficial. El almacenamiento y la IA ya respetan el plan de prueba elegido.</p>
       </div>`,
