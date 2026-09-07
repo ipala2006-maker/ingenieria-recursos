@@ -31,12 +31,14 @@ test("database tables enforce RLS and workspace uploads are constrained", () => 
   assert.match(workspace, /workspace_storage_upload_allowed/);
 });
 
-test("referral benefits are server-owned and require verified identity plus first payment", () => {
+test("referral benefits are server-owned and require verified identities", () => {
   const sql = read("supabase/referrals.sql");
   const endpoint = read("api/_lib/referrals.js");
   assert.match(sql, /phone_hash text unique/i);
   assert.match(sql, /invited_user_id uuid not null unique/i);
   assert.match(sql, /PHONE_VERIFICATION_REQUIRED/);
+  assert.match(sql, /values \(inviter_id, target_user, 'qualified', now\(\)\)/i);
+  assert.match(sql, /perform private\.refresh_referral_benefit\(inviter_id\)/i);
   assert.match(sql, /qualify_referral_after_first_payment/);
   assert.match(sql, /grant execute on function public\.qualify_referral_after_first_payment\(uuid, text\) to service_role/i);
   assert.doesNotMatch(sql, /grant execute on function public\.qualify_referral_after_first_payment\(uuid, text\) to authenticated/i);

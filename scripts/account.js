@@ -24,6 +24,8 @@
   const WINDOWS_WIDGET_PENDING_KEY = "estudiemos_windows_widget_pending";
   const WINDOWS_WIDGET_SETUP_URL = "https://estudiemos-app.vercel.app/instalar.html#pc-widgets";
   const PENDING_REFERRAL_KEY = "estudiemos_pending_referral";
+  const PENDING_PHONE_KEY = "estudiemos_pending_signup_phone";
+  const PHONE_REQUESTED_KEY = "estudiemos_signup_phone_requested";
   const MIN_PASSWORD_LENGTH = 8;
   const INSTANCE_ID = window.crypto?.randomUUID?.() || Math.random().toString(36).slice(2);
 
@@ -134,10 +136,11 @@
               <span>Contraseña</span>
               <input type="password" name="password" minlength="${MIN_PASSWORD_LENGTH}" autocomplete="current-password" required placeholder="Mínimo ${MIN_PASSWORD_LENGTH} caracteres" />
             </label>
-            <label>
-              <span>Código de invitación <small>(opcional)</small></span>
-              <input type="text" name="referralCode" maxlength="12" autocomplete="off" placeholder="Ej. A1B2C3D4" data-account-signup-referral />
+            <label data-account-signup-phone>
+              <span>Teléfono <small>(necesario al crear la cuenta)</small></span>
+              <input type="tel" name="phone" inputmode="tel" autocomplete="tel" placeholder="+54 9 2966 123456" />
             </label>
+            <p class="account-referral-invite" data-account-signup-invite hidden>Invitación detectada. El descuento se aplicará al verificar tu cuenta.</p>
             <div class="account-captcha" data-account-captcha hidden aria-label="Comprobación de seguridad"></div>
             <button class="account-primary" type="submit" data-account-signin>Ingresar</button>
             <button class="account-secondary" type="button" data-account-signup>Crear cuenta</button>
@@ -160,7 +163,7 @@
           </div>
           <section class="account-referrals" data-account-referrals>
             <header>
-              <div><strong>Referidos</strong><small>Tu beneficio se activa con el primer pago de cada invitado.</small></div>
+              <div><strong>Referidos</strong><small>Compartí tu enlace. Al verificar su correo y teléfono, ambos reciben el beneficio.</small></div>
               <span class="account-referral-discount" data-account-referral-discount>Sin descuento</span>
             </header>
             <div class="account-referral-phone" data-account-referral-phone>
@@ -179,7 +182,7 @@
               <label><span>¿Te invitó alguien?</span><input type="text" maxlength="12" autocomplete="off" placeholder="Código de invitación" data-account-referral-claim-input /></label>
               <button class="account-secondary" type="button" data-account-referral-claim-button>Aplicar</button>
             </div>
-            <p class="account-referral-progress" data-account-referral-progress>0 de 3 referidos con primer pago.</p>
+            <p class="account-referral-progress" data-account-referral-progress>0 de 3 invitados verificados.</p>
           </section>
           <section class="account-whatsapp" data-account-whatsapp hidden>
             <span class="account-whatsapp__icon" aria-hidden="true">${messageIcon()}</span>
@@ -355,6 +358,7 @@
         connectRealtime(session.user.id);
         startCloudPolling();
         await synchronize("startup");
+        window.setTimeout(beginPendingPhoneVerification, 500);
       }
 
       client.auth.onAuthStateChange((event, nextSession) => {
@@ -376,6 +380,7 @@
           renderAccountState();
           if (session && session.user.id !== previousUser) {
             await synchronize("signin");
+            window.setTimeout(beginPendingPhoneVerification, 500);
           } else if (!session && previousUser) {
             clearLocalAccountData();
           }
@@ -450,9 +455,11 @@
     if (!client) return;
     const credentials = getCredentials();
     if (!credentials) return;
+    const phone = getSignupPhone();
+    if (!phone) return;
     const captcha = getCaptchaOptions();
     if (captcha === null) return;
-    rememberSignupReferral();
+    localStorage.setItem(PENDING_PHONE_KEY, phone);
     setBusy(true, "Creando tu cuenta...");
     const result = await client.auth.signUp({
       ...credentials,
@@ -469,6 +476,7 @@
       renderAccountState();
       await synchronize("signin");
       setStatus("Cuenta creada y datos sincronizados.", "success");
+      window.setTimeout(beginPendingPhoneVerification, 300);
       return;
     }
     setStatus("Te enviamos un correo. Abrilo para confirmar tu cuenta y después ingresá.", "success");
@@ -477,14 +485,32 @@
   function captureReferralFromUrl() {
     const code = normalizeReferralCode(new URL(location.href).searchParams.get("ref"));
     if (code.length >= 8) localStorage.setItem(PENDING_REFERRAL_KEY, code);
-    const input = document.querySelector("[data-account-signup-referral]");
-    if (input && code) input.value = code;
+    const message = document.querySelector("[data-account-signup-invite]");
+    if (message) message.hidden = !normalizeReferralCode(localStorage.getItem(PENDING_REFERRAL_KEY));
   }
 
-  function rememberSignupReferral() {
-    const input = document.querySelector("[data-account-signup-referral]");
-    const code = normalizeReferralCode(input?.value);
-    if (code.length >= 8) localStorage.setItem(PENDING_REFERRAL_KEY, code);
+  async function beginPendingPhoneVerification() {
+    if (!session || !client) return;
+    const savedPhone = normalizePhone(localStorage.getItem(PENDING_PHONE_KEY));
+    if (!savedPhone) return;
+    if (session.user?.phone_confirmed_at) {
+      try {
+        const result = await referralRequest({ action: "confirm-referral-phone" });
+        localStorage.removeItem(PENDING_PHONE_KEY);
+        sessionStorage.removeItem(PHONE_REQUESTED_KEY);
+        renderReferralStatus(result);
+        const code = normalizeReferralCode(localStorage.getItem(PENDING_REFERRAL_KEY));
+        if (code) await claimReferralCode(code);
+      } catch (_) {}
+      return;
+    }
+    const marker = `${session.user.id}:${savedPhone}`;
+    if (sessionStorage.getItem(PHONE_REQUESTED_KEY) === marker) return;
+    sessionStorage.setItem(PHONE_REQUESTED_KEY, marker);
+    const input = document.querySelector("[data-account-referral-phone-input]");
+    if (input) input.value = savedPhone;
+    openDialog();
+    await sendReferralPhoneCode();
   }
 
   async function refreshReferralStatus(force = false) {
@@ -525,6 +551,7 @@
       if (otp) otp.hidden = false;
       setStatus("Te enviamos un código de 6 dígitos. Puede demorar unos segundos.", "success");
     } catch (error) {
+      sessionStorage.removeItem(PHONE_REQUESTED_KEY);
       setStatus(phoneErrorMessage(error), "error");
     } finally {
       referralBusy = false;
@@ -546,6 +573,8 @@
       if (verified.data?.session) session = verified.data.session;
       const response = await referralRequest({ action: "confirm-referral-phone" });
       pendingPhone = "";
+      localStorage.removeItem(PENDING_PHONE_KEY);
+      sessionStorage.removeItem(PHONE_REQUESTED_KEY);
       referralStatusLoaded = true;
       renderReferralStatus(response);
       const pendingCode = normalizeReferralCode(localStorage.getItem(PENDING_REFERRAL_KEY));
@@ -576,7 +605,7 @@
       localStorage.removeItem(PENDING_REFERRAL_KEY);
       referralStatusLoaded = true;
       renderReferralStatus(result);
-      setStatus("Invitación vinculada. Se validará cuando completes tu primer pago.", "success");
+      setStatus("Invitación verificada. El 35% ya quedó aplicado para ambos.", "success");
     } catch (error) {
       setStatus(error.message || "No pudimos aplicar la invitación.", "error");
     } finally {
@@ -613,9 +642,8 @@
     const badge = document.querySelector("[data-account-referral-discount]");
     if (badge) badge.textContent = discount ? `${discount}% de descuento` : "Sin descuento";
     const count = Math.max(0, Number(status.qualifiedDirectCount) || 0);
-    const pending = Math.max(0, Number(status.pendingPaymentCount) || 0);
     const progress = document.querySelector("[data-account-referral-progress]");
-    if (progress) progress.textContent = `${Math.min(count, 3)} de 3 referidos con primer pago${pending ? ` · ${pending} esperando pago` : ""}.`;
+    if (progress) progress.textContent = `${Math.min(count, 3)} de 3 invitados verificados${count >= 3 ? " · beneficio máximo" : ""}.`;
     const pendingCode = normalizeReferralCode(localStorage.getItem(PENDING_REFERRAL_KEY));
     const claimInput = document.querySelector("[data-account-referral-claim-input]");
     if (claimInput && !claimInput.value && pendingCode) claimInput.value = pendingCode;
@@ -624,7 +652,7 @@
   async function copyReferralLink() {
     const code = document.querySelector("[data-account-referral-code]")?.textContent || "";
     if (!code || code === "—") return;
-    const link = `${location.origin}${getRootPath()}?ref=${encodeURIComponent(code)}`;
+    const link = `https://estudiemos-app.vercel.app/instalar.html?ref=${encodeURIComponent(code)}`;
     try {
       if (navigator.share) await navigator.share({ title: "Estudiemos", text: "Organizate conmigo en Estudiemos", url: link });
       else await navigator.clipboard.writeText(link);
@@ -1082,6 +1110,16 @@
       return null;
     }
     return { email, password };
+  }
+
+  function getSignupPhone() {
+    const value = document.querySelector('[data-account-form] input[name="phone"]')?.value || "";
+    const phone = normalizePhone(value);
+    if (!phone) {
+      setStatus("Para crear la cuenta, escribí un teléfono válido con código de país.", "error");
+      return "";
+    }
+    return phone;
   }
 
   function isValidEmail(value) {

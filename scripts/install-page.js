@@ -38,6 +38,17 @@
 
   document.documentElement.classList.toggle("is-ios-webkit", isIosWebKit);
 
+  const referralCode = normalizeReferralCode(new URLSearchParams(location.search).get("ref"));
+  if (referralCode) {
+    localStorage.setItem("estudiemos_pending_referral", referralCode);
+    const appUrl = `https://estudiemos-app.vercel.app/?ref=${encodeURIComponent(referralCode)}`;
+    document.querySelectorAll("[data-open-estudiemos]").forEach((link) => { link.href = appUrl; });
+    const androidLink = document.querySelector("[data-install-android]");
+    if (androidLink) {
+      androidLink.href = `intent://open?ref=${encodeURIComponent(referralCode)}#Intent;scheme=estudiemos;package=com.estudiemos.app;S.browser_fallback_url=https%3A%2F%2Fgithub.com%2Fipala2006-maker%2Fingenieria-recursos%2Freleases%2Fdownload%2Fandroid-latest%2FEstudiemos-Android.apk;end`;
+    }
+  }
+
   const requestedWidget = new URLSearchParams(location.search).get("widget");
   const widgetLabel = {
     workspace: "Mi espacio",
@@ -361,5 +372,10 @@
   function isInstalled() {
     return window.navigator.standalone === true
       || ["standalone", "window-controls-overlay", "fullscreen"].some((mode) => window.matchMedia(`(display-mode: ${mode})`).matches);
+  }
+
+  function normalizeReferralCode(value) {
+    const code = String(value || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12);
+    return code.length >= 8 ? code : "";
   }
 })();

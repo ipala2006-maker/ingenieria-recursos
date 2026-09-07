@@ -15,12 +15,14 @@ create table if not exists public.referrals (
   id bigint generated always as identity primary key,
   inviter_user_id uuid not null references auth.users(id) on delete cascade,
   invited_user_id uuid not null unique references auth.users(id) on delete cascade,
-  status text not null default 'verified' check (status in ('verified', 'qualified', 'rejected')),
+  status text not null default 'qualified' check (status in ('verified', 'qualified', 'rejected')),
   first_payment_reference text unique,
   registered_at timestamptz not null default now(),
   qualified_at timestamptz,
   check (inviter_user_id <> invited_user_id)
 );
+
+alter table public.referrals alter column status set default 'qualified';
 
 create index if not exists referrals_inviter_status_idx on public.referrals (inviter_user_id, status);
 
@@ -28,9 +30,13 @@ create table if not exists public.referral_benefits (
   user_id uuid primary key references auth.users(id) on delete cascade,
   discount_percent smallint not null default 0 check (discount_percent in (0, 35, 45)),
   qualified_direct_count integer not null default 0 check (qualified_direct_count >= 0),
-  reason text not null default 'none' check (reason in ('none', 'cascade', 'three_paid')),
+  reason text not null default 'none' check (reason in ('none', 'verified_invite', 'three_verified', 'cascade', 'three_paid')),
   updated_at timestamptz not null default now()
 );
+
+alter table public.referral_benefits drop constraint if exists referral_benefits_reason_check;
+alter table public.referral_benefits add constraint referral_benefits_reason_check
+  check (reason in ('none', 'verified_invite', 'three_verified', 'cascade', 'three_paid'));
 
 alter table public.referral_identities enable row level security;
 alter table public.referrals enable row level security;
@@ -88,9 +94,9 @@ begin
     select 1 from public.referrals where invited_user_id = target_user and status = 'qualified'
   ) into arrived_as_qualified_referral;
   if direct_count >= 3 then
-    next_discount := 45; next_reason := 'three_paid';
-  elsif arrived_as_qualified_referral and direct_count >= 1 then
-    next_discount := 35; next_reason := 'cascade';
+    next_discount := 45; next_reason := 'three_verified';
+  elsif arrived_as_qualified_referral or direct_count >= 1 then
+    next_discount := 35; next_reason := 'verified_invite';
   end if;
   insert into public.referral_benefits (user_id, discount_percent, qualified_direct_count, reason, updated_at)
   values (target_user, next_discount, direct_count, next_reason, now())
@@ -160,8 +166,33 @@ begin
       and phone_verified_at is not null;
   if inviter_id is null then raise invalid_parameter_value using message = 'INVALID_REFERRAL_CODE'; end if;
   if inviter_id = target_user then raise check_violation using message = 'SELF_REFERRAL_NOT_ALLOWED'; end if;
-  insert into public.referrals (inviter_user_id, invited_user_id) values (inviter_id, target_user);
+  insert into public.referrals (inviter_user_id, invited_user_id, status, qualified_at)
+  values (inviter_id, target_user, 'qualified', now());
+  perform private.refresh_referral_benefit(inviter_id);
+  perform private.refresh_referral_benefit(target_user);
   return public.get_referral_status();
+end;
+$$;
+
+-- Convierte relaciones antiguas que ya tenían ambas identidades verificadas.
+update public.referrals as relation
+set status = 'qualified', qualified_at = coalesce(relation.qualified_at, now())
+where relation.status = 'verified'
+  and exists (
+    select 1 from public.referral_identities as invited
+    where invited.user_id = relation.invited_user_id and invited.phone_verified_at is not null
+  )
+  and exists (
+    select 1 from public.referral_identities as inviter
+    where inviter.user_id = relation.inviter_user_id and inviter.phone_verified_at is not null
+  );
+
+do $$
+declare identity_row record;
+begin
+  for identity_row in select user_id from public.referral_identities loop
+    perform private.refresh_referral_benefit(identity_row.user_id);
+  end loop;
 end;
 $$;
 

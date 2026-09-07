@@ -3,12 +3,12 @@
   if (typeof module === "object" && module.exports) module.exports = referrals;
   else root.EstudiemosReferrals = referrals;
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
-  const DISCOUNTS = Object.freeze({ cascade: 35, threePaid: 45 });
+  const DISCOUNTS = Object.freeze({ verifiedInvite: 35, threeVerified: 45 });
 
   function discountFor({ wasReferred = false, qualifiedDirectCount = 0 } = {}) {
     const count = Math.max(0, Math.floor(Number(qualifiedDirectCount) || 0));
-    if (count >= 3) return DISCOUNTS.threePaid;
-    if (wasReferred && count >= 1) return DISCOUNTS.cascade;
+    if (count >= 3) return DISCOUNTS.threeVerified;
+    if (wasReferred || count >= 1) return DISCOUNTS.verifiedInvite;
     return 0;
   }
 

@@ -422,7 +422,7 @@ public class MainActivity extends Activity {
         openPomodoroRequested = intent.getBooleanExtra(EXTRA_OPEN_POMODORO, false);
         String workspaceItemId = intent.getStringExtra(EXTRA_WORKSPACE_ITEM_ID);
         if (intent.getData() != null && "estudiemos".equals(intent.getData().getScheme())) {
-            webView.loadUrl(APP_URL);
+            webView.loadUrl(referralUrl(intent.getData().getQueryParameter("ref")));
         } else if (workspaceItemId != null && !workspaceItemId.trim().isEmpty()) {
             webView.loadUrl(workspaceUrl(workspaceItemId, intent.getStringExtra(EXTRA_WORKSPACE_ITEM_KIND)));
         }
@@ -535,9 +535,21 @@ public class MainActivity extends Activity {
 
     private static String initialUrl(Intent intent) {
         if (intent == null) return APP_URL;
+        Uri data = intent.getData();
+        if (data != null && "estudiemos".equals(data.getScheme())) {
+            return referralUrl(data.getQueryParameter("ref"));
+        }
         String itemId = intent.getStringExtra(EXTRA_WORKSPACE_ITEM_ID);
         if (itemId == null || itemId.trim().isEmpty()) return APP_URL;
         return workspaceUrl(itemId, intent.getStringExtra(EXTRA_WORKSPACE_ITEM_KIND));
+    }
+
+    private static String referralUrl(String code) {
+        if (code == null) return APP_URL;
+        String normalized = code.toUpperCase().replaceAll("[^A-Z0-9]", "");
+        if (normalized.length() < 8) return APP_URL;
+        if (normalized.length() > 12) normalized = normalized.substring(0, 12);
+        return Uri.parse(APP_URL).buildUpon().appendQueryParameter("ref", normalized).build().toString();
     }
 
     private static String workspaceUrl(String itemId, String kind) {

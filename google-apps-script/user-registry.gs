@@ -22,7 +22,7 @@ function sincronizarUsuarios() {
     }
 
     const rows = Utilities.parseCsv(response.getContentText().replace(/^\uFEFF/, ""));
-    const expectedHeader = ["Correo", "Fecha de registro", "Correo confirmado", "Ultimo acceso"];
+    const expectedHeader = ["Correo", "Teléfono", "Fecha de registro", "Correo confirmado", "Teléfono confirmado", "Ultimo acceso"];
     if (
       !rows.length ||
       rows.length > 10001 ||

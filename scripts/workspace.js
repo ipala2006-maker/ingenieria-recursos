@@ -392,7 +392,7 @@
         <p class="workspace-plans-preview__notice"><strong>Sin cobros todavía.</strong> El plan que elijas sí aplicará sus límites para que podamos probar la experiencia completa antes del lanzamiento.</p>
         ${state.planStatus.referral?.discountPercent ? `<p class="workspace-plans-preview__notice"><strong>Beneficio ganado:</strong> tu ${state.planStatus.referral.discountPercent}% se aplicará automáticamente cuando habilitemos las suscripciones.</p>` : ""}
         <aside class="workspace-referral-note" aria-label="Descuentos por referidos">
-          <span><strong>Descuentos por referidos.</strong> Obtené 35% al continuar una cadena de invitaciones o 45% al sumar 3 personas verificadas con su primer pago.</span>
+          <span><strong>Descuentos por referidos.</strong> Compartí tu enlace de descarga: cuando la otra persona confirma su correo y teléfono, ambos reciben 35%. Con 3 invitados verificados, quien invita obtiene 45%.</span>
           <button type="button" data-workspace-referrals-open>Ver referidos</button>
         </aside>
         ${renderCurrentUsage()}

@@ -289,7 +289,7 @@
     if (document.querySelector('script[src*="scripts/account.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/account.js?v=20260906-referrals`;
+    script.src = `${rootPath}scripts/account.js?v=20260907-referrals-auto`;
     script.defer = true;
     document.head.appendChild(script);
   }

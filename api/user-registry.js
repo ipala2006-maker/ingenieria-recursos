@@ -31,14 +31,16 @@ module.exports = async function handler(request, response) {
 
   try {
     const users = await adminRequest(
-      "/rest/v1/user_registry?select=email,registered_at,confirmed_at,last_sign_in_at&order=registered_at.desc&limit=10000"
+      "/rest/v1/user_registry?select=email,phone,registered_at,confirmed_at,phone_confirmed_at,last_sign_in_at&order=registered_at.desc&limit=10000"
     );
     if (!Array.isArray(users)) return response.status(502).send("Registry unavailable");
-    const header = ["Correo", "Fecha de registro", "Correo confirmado", "Ultimo acceso"];
+    const header = ["Correo", "Teléfono", "Fecha de registro", "Correo confirmado", "Teléfono confirmado", "Ultimo acceso"];
     const rows = users.slice(0, MAX_EXPORT_ROWS).map((user) => [
       user.email,
+      user.phone,
       user.registered_at,
       user.confirmed_at,
+      user.phone_confirmed_at,
       user.last_sign_in_at
     ]);
     const csv = [header, ...rows].map((row) => row.map(csvCell).join(",")).join("\n");
