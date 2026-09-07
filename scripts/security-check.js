@@ -14,6 +14,7 @@ const secretPatterns = [
   ["AWS access key", /AKIA[0-9A-Z]{16}/]
 ];
 const dependencies = [
+  { package: { ecosystem: "npm", name: "three" }, version: "0.185.1" },
   { package: { ecosystem: "npm", name: "@supabase/supabase-js" }, version: "2.112.3" },
   { package: { ecosystem: "Maven", name: "androidx.webkit:webkit" }, version: "1.12.1" },
   { package: { ecosystem: "Maven", name: "com.google.firebase:firebase-messaging" }, version: "25.1.2" },

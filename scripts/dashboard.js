@@ -8,6 +8,8 @@
   const CALENDAR_VIEW_KEY = "estudiemos_calendar_view";
   const workspaceHome = document.body.classList.contains("workspace-home");
   const MAX_AGENDA_ITEMS = 500;
+  const mobileHome = matchMedia("(max-width:620px)");
+  mobileHome.addEventListener("change", () => renderAgenda());
   const state = {
     month: new Date().getMonth(),
     year: new Date().getFullYear(),
@@ -400,7 +402,7 @@
   function renderAgenda() {
     const container = document.querySelector("[data-dashboard-agenda]");
     if (!container) return;
-    const items = readAgenda().filter((item) => isCompletable(item) && !item.done).sort(compareAgenda).slice(0, 4);
+    const items = readAgenda().filter((item) => isCompletable(item) && !item.done).sort(compareAgenda).slice(0, mobileHome.matches ? MAX_AGENDA_ITEMS : 4);
     if (!items.length) {
       container.innerHTML = '<p class="dashboard-agenda__empty">No tenés tareas pendientes.</p>';
       return;

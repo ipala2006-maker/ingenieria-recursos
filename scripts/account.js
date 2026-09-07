@@ -50,7 +50,9 @@
   let whatsappBusy = false;
   let referralStatusLoaded = false;
   let referralBusy = false;
+  let referralShareCode = "";
   let pendingPhone = "";
+  let pendingPhoneTimer = 0;
   let readySettled = false;
   let captchaToken = "";
   let captchaWidgetId = null;
@@ -175,12 +177,8 @@
               <button class="account-secondary" type="button" data-account-referral-verify>Verificar</button>
             </div>
             <div class="account-referral-share" data-account-referral-share hidden>
-              <div><small>Tu código</small><strong data-account-referral-code>—</strong></div>
-              <button class="account-secondary" type="button" data-account-referral-copy>Copiar enlace</button>
-            </div>
-            <div class="account-referral-claim" data-account-referral-claim>
-              <label><span>¿Te invitó alguien?</span><input type="text" maxlength="12" autocomplete="off" placeholder="Código de invitación" data-account-referral-claim-input /></label>
-              <button class="account-secondary" type="button" data-account-referral-claim-button>Aplicar</button>
+              <div><small>Tu enlace personal</small><strong>Invitá a tus amigos</strong></div>
+              <button class="account-secondary" type="button" data-account-referral-copy>Compartir enlace</button>
             </div>
             <p class="account-referral-progress" data-account-referral-progress>0 de 3 invitados verificados.</p>
           </section>
@@ -271,7 +269,6 @@
       if (event.target.closest("[data-account-whatsapp-unlink]")) unlinkWhatsApp();
       if (event.target.closest("[data-account-referral-send]")) sendReferralPhoneCode();
       if (event.target.closest("[data-account-referral-verify]")) verifyReferralPhoneCode();
-      if (event.target.closest("[data-account-referral-claim-button]")) claimReferralCode();
       if (event.target.closest("[data-account-referral-copy]")) copyReferralLink();
       const widgetButton = event.target.closest("[data-account-widget]");
       if (widgetButton) requestAndroidWidget(widgetButton.dataset.accountWidget);
@@ -496,6 +493,11 @@
     if (!session || !client) return;
     const savedPhone = normalizePhone(localStorage.getItem(PENDING_PHONE_KEY));
     if (!savedPhone) return;
+    if (referralBusy) {
+      clearTimeout(pendingPhoneTimer);
+      pendingPhoneTimer = window.setTimeout(beginPendingPhoneVerification, 500);
+      return;
+    }
     if (session.user?.phone_confirmed_at) {
       try {
         const result = await referralRequest({ action: "confirm-referral-phone" });
@@ -512,14 +514,16 @@
     sessionStorage.setItem(PHONE_REQUESTED_KEY, marker);
     const input = document.querySelector("[data-account-referral-phone-input]");
     if (input) input.value = savedPhone;
-    openDialog();
+    openDialog({ refreshReferrals: false });
     await sendReferralPhoneCode();
   }
 
   async function refreshReferralStatus(force = false) {
     if (!session?.access_token || (referralStatusLoaded && !force) || referralBusy) return;
+    const requestingUser = session.user?.id;
     referralBusy = true;
     setReferralButtonsBusy(true);
+    let canClaim = false;
     try {
       const response = await fetch(`${getRootPath()}api/plan-status`, {
         headers: { Authorization: `Bearer ${session.access_token}` },
@@ -527,14 +531,19 @@
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.message || "referrals-unavailable");
+      if (!session || session.user?.id !== requestingUser) return;
       referralStatusLoaded = true;
       renderReferralStatus(result.referral || {});
+      canClaim = Boolean(result.referral?.phoneVerified && !result.referral?.wasReferred);
     } catch (_) {
       const section = document.querySelector("[data-account-referrals]");
       if (section) section.hidden = true;
     } finally {
       referralBusy = false;
       setReferralButtonsBusy(false);
+    }
+    if (canClaim && session?.user?.id === requestingUser && normalizeReferralCode(localStorage.getItem(PENDING_REFERRAL_KEY))) {
+      await claimReferralCode();
     }
   }
 
@@ -598,9 +607,8 @@
 
   async function claimReferralCode(explicitCode) {
     if (!session?.access_token || referralBusy) return;
-    const input = document.querySelector("[data-account-referral-claim-input]");
-    const code = normalizeReferralCode(explicitCode || input?.value || localStorage.getItem(PENDING_REFERRAL_KEY));
-    if (code.length < 8) return setStatus("Escribí un código de invitación válido.", "error");
+    const code = normalizeReferralCode(explicitCode || localStorage.getItem(PENDING_REFERRAL_KEY));
+    if (code.length < 8) return;
     referralBusy = true;
     setReferralButtonsBusy(true);
     try {
@@ -610,6 +618,7 @@
       renderReferralStatus(result);
       setStatus("Invitación verificada. Tenés 35% este mes por registrarte con una invitación.", "success");
     } catch (error) {
+      referralStatusLoaded = false;
       setStatus(error.message || "No pudimos aplicar la invitación.", "error");
     } finally {
       referralBusy = false;
@@ -633,14 +642,12 @@
     const phone = document.querySelector("[data-account-referral-phone]");
     const otp = document.querySelector("[data-account-referral-otp]");
     const share = document.querySelector("[data-account-referral-share]");
-    const claim = document.querySelector("[data-account-referral-claim]");
     if (section) section.hidden = !session;
     if (phone) phone.hidden = Boolean(status.phoneVerified);
     if (otp && status.phoneVerified) otp.hidden = true;
     if (share) share.hidden = !status.phoneVerified;
-    if (claim) claim.hidden = Boolean(status.wasReferred);
-    const code = document.querySelector("[data-account-referral-code]");
-    if (code) code.textContent = status.code || "—";
+    referralShareCode = status.phoneVerified ? normalizeReferralCode(status.code) : "";
+    if (status.wasReferred) localStorage.removeItem(PENDING_REFERRAL_KEY);
     const discount = Math.max(0, Number(status.discountPercent) || 0);
     const badge = document.querySelector("[data-account-referral-discount]");
     if (badge) badge.textContent = discount ? `${discount}% este mes` : "Sin descuento";
@@ -651,14 +658,11 @@
       else if (discount === 35) progress.textContent = `35% por registrarte con una invitación · ${count} de 3 invitados propios.`;
       else progress.textContent = `${count} de 3 invitados verificados este mes. No necesitan pagar.`;
     }
-    const pendingCode = normalizeReferralCode(localStorage.getItem(PENDING_REFERRAL_KEY));
-    const claimInput = document.querySelector("[data-account-referral-claim-input]");
-    if (claimInput && !claimInput.value && pendingCode) claimInput.value = pendingCode;
   }
 
   async function copyReferralLink() {
-    const code = document.querySelector("[data-account-referral-code]")?.textContent || "";
-    if (!code || code === "—") return;
+    const code = referralShareCode;
+    if (!session || !code) return;
     const link = `https://estudiemos-app.vercel.app/instalar.html?ref=${encodeURIComponent(code)}`;
     try {
       if (navigator.share) await navigator.share({ title: "Estudiemos", text: "Organizate conmigo en Estudiemos", url: link });
@@ -1160,6 +1164,7 @@
     if (!session) {
       whatsappStatusLoaded = false;
       referralStatusLoaded = false;
+      referralShareCode = "";
       renderWhatsAppStatus({ linked: false, configured: true });
     }
     updateAccountIndicator(Boolean(session));
@@ -1557,12 +1562,13 @@
     }
   }
 
-  function openDialog() {
+  function openDialog(options = {}) {
     const shell = document.querySelector(".account-shell");
     if (!shell) return;
     shell.hidden = false;
     shell.setAttribute("aria-hidden", "false");
     document.body.classList.add("account-open");
+    if (session && options.refreshReferrals !== false) refreshReferralStatus(true);
     if (sessionStorage.getItem("estudiemos_app_update_complete") === "true") {
       sessionStorage.removeItem("estudiemos_app_update_complete");
       setStatus("Estudiemos está actualizado.", "success");

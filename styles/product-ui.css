@@ -1,0 +1,228 @@
+/* Shared application surfaces. Native widget layouts keep their own renderer. */
+:root, html.theme-light {
+  --bg:#f4f6f5;
+  --panel:#ffffff;
+  --panel-2:#eaf0ee;
+  --text:#182624;
+  --muted:#526763;
+  --muted-2:#647872;
+  --border:#d6e1dd;
+  --accent:#086e68;
+  --accent-2:#297cba;
+  --accent-3:#b86b09;
+  --shadow:0 12px 34px #182c2510;
+  --ring:0 0 0 3px #16867b30;
+  --ui-ease:cubic-bezier(.2,.8,.2,1);
+}
+html.theme-dark {
+  --bg:#101616;
+  --panel:#182120;
+  --panel-2:#222e2c;
+  --text:#eaf3f0;
+  --muted:#a9beb7;
+  --muted-2:#8ea69e;
+  --border:#31423d;
+  --accent:#7cdac7;
+  --accent-2:#8fbffa;
+  --accent-3:#f8bc64;
+  --shadow:0 12px 34px #00000024;
+  --ring:0 0 0 3px #7cdac730;
+}
+html body.workspace-home, html body.productivity-page {
+  background:var(--bg);
+  color:var(--text);
+  --workspace-surface:var(--panel);
+  --workspace-surface-soft:color-mix(in srgb,var(--panel-2) 55%,var(--panel));
+}
+html.theme-dark .topbar, html.theme-light .topbar {
+  background:var(--panel);
+  border-bottom:1px solid color-mix(in srgb,var(--border) 55%,transparent);
+  box-shadow:none;
+}
+/* app.css has legacy important light-theme tokens; keep this override explicit. */
+html.theme-light {
+  --bg:#f4f6f5!important;
+  --panel:#ffffff!important;
+  --panel-2:#eaf0ee!important;
+  --text:#182624!important;
+  --muted:#526763!important;
+  --muted-2:#647872!important;
+  --border:#d6e1dd!important;
+  --accent:#086e68!important;
+  --accent-2:#297cba!important;
+  --accent-3:#b86b09!important;
+  --shadow:0 12px 34px #182c2510!important;
+  --ring:0 0 0 3px #16867b30!important;
+}
+html.theme-light body.workspace-home { background:var(--bg)!important; }
+html.theme-light .topbar { background:var(--panel)!important; box-shadow:none!important; }
+html.theme-light .topbar .topbar-icon-btn { background:transparent!important; border-color:transparent!important; box-shadow:none!important; }
+html.theme-light .topbar .topbar-icon-btn:hover { background:var(--panel-2)!important; }
+html.theme-light .workspace-home .workspace-browser,
+html.theme-light .workspace-home .dashboard-widget { background:transparent; box-shadow:none; }
+html.theme-light .workspace-home .workspace-item { background:var(--panel); }
+html .topbar-icon-btn {
+  border-radius:8px;
+  transition:background .18s ease, color .18s ease, transform .18s var(--ui-ease);
+}
+html .topbar-icon-btn:active { transform:scale(.93); }
+html :is(button,a,input,select,textarea):focus-visible {
+  outline:2px solid var(--accent);
+  outline-offset:3px;
+}
+.workspace-home .workspace-browser {
+  border:0;
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+}
+.workspace-home .workspace-toolbar {
+  background:transparent;
+  border-bottom:1px solid var(--border);
+  padding:12px 0;
+}
+.workspace-home .workspace-breadcrumbs:has(> button:only-child[aria-current="page"]) { display:none; }
+.workspace-home .workspace-toolbar:has(.workspace-breadcrumbs > button:only-child) { justify-content:flex-end; }
+.workspace-home .workspace-dropzone { padding:16px 0; }
+.workspace-home .workspace-section__head { margin:6px 0 12px; }
+.workspace-home .workspace-section__head h1 { font-size:26px; font-weight:650; }
+html .workspace-eyebrow, html .dashboard-widget__eyebrow { letter-spacing:0; color:var(--muted); }
+html .workspace-plan-summary {
+  background:transparent;
+  border:0;
+  border-left:2px solid var(--accent);
+  border-radius:0;
+  box-shadow:none;
+}
+.workspace-home .workspace-item {
+  background:var(--panel);
+  border:1px solid color-mix(in srgb,var(--border) 50%,transparent);
+  border-radius:8px;
+  box-shadow:0 2px 3px #00000003;
+  transition:transform .2s var(--ui-ease),box-shadow .2s ease,border-color .2s ease;
+}
+.workspace-home .workspace-item__icon {
+  width:42px;
+  height:42px;
+  background:color-mix(in srgb,var(--item-color,var(--accent)) 12%,var(--panel));
+  box-shadow:inset 0 1px 0 #ffffff26;
+}
+.workspace-home .workspace-item__name { font-weight:600; }
+.workspace-home .workspace-item__menu { opacity:1; }
+html .workspace-search, html .workspace-sort select, html .workspace-view-toggle {
+  background:var(--panel);
+  border:1px solid color-mix(in srgb,var(--border) 65%,transparent);
+}
+html .workspace-view-toggle button.is-active, html .dashboard-calendar__view button.is-active {
+  background:var(--panel-2);
+  color:var(--accent);
+  box-shadow:0 1px 3px #0000000d;
+}
+.workspace-home .dashboard-widget {
+  background:transparent;
+  border:0;
+  border-radius:0;
+  box-shadow:none;
+}
+.workspace-home .home-dashboard { border-left:1px solid var(--border); padding-left:18px; }
+.workspace-home .dashboard-widget__head { padding:10px 0; }
+.workspace-home .dashboard-widget__head h2 { font-size:18px; font-weight:650; }
+.workspace-home .dashboard-agenda__item {
+  border-bottom:1px solid color-mix(in srgb,var(--border) 55%,transparent);
+  border-radius:0;
+  background:transparent;
+}
+html :is(.quick-panel,.account-dialog,.pomodoro-menu__panel,.streak-menu__panel) {
+  background:var(--panel);
+  border:1px solid var(--border);
+  box-shadow:var(--shadow);
+  backdrop-filter:none;
+}
+html .pomodoro-ring__track { stroke:var(--border); }
+html .pomodoro-ring__progress { stroke:var(--accent); }
+.pomodoro-timer { position:relative; }
+.pomodoro-depth {
+  display:block;
+  z-index:0;
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  pointer-events:none;
+}
+.pomodoro-timer.has-depth .pomodoro-ring { visibility:hidden; }
+.pomodoro-timer .pomodoro-time { z-index:1; pointer-events:none; }
+html .pomodoro-time strong { font-variant-numeric:tabular-nums; letter-spacing:0; }
+.streak-chart__plot[role="slider"] { cursor:crosshair; touch-action:pan-y; border-radius:4px; }
+.streak-chart__point.is-selected { stroke:var(--text); stroke-width:2; fill:var(--accent); }
+.streak-chart__selection { display:block; min-height:36px; padding:8px 0; font-size:12px; color:var(--text); font-variant-numeric:tabular-nums; }
+.product-home-navigation { display:none; }
+.workspace-home :is(.workspace-section,.home-dashboard,.dashboard-calendar,.dashboard-agenda)[hidden] { display:none!important; }
+@media (hover:hover) and (pointer:fine) {
+  .workspace-home .workspace-item:hover {
+    transform:translateY(-3px);
+    border-color:color-mix(in srgb,var(--item-color,var(--accent)) 45%,var(--border));
+    box-shadow:0 8px 20px #0000000c;
+  }
+  html .topbar-icon-btn:hover { background:var(--panel-2); }
+}
+@media (max-width:900px) {
+  .workspace-home .home-dashboard { border-left:0; border-top:1px solid var(--border); padding:8px 0 0; }
+  .workspace-home .home-layout { gap:12px; }
+}
+@media (max-width:620px) {
+  .workspace-home .workspace-page { flex-direction:column; padding-bottom:env(safe-area-inset-bottom); }
+  .workspace-home .home-layout { display:flex; flex-direction:column; }
+  .workspace-home .workspace-section, .workspace-home .home-dashboard { flex:1; min-height:0; }
+  .workspace-home .home-dashboard { border:0; padding:0; margin:0; }
+  .workspace-home .home-dashboard__grid { display:flex; flex-direction:column; height:100%; }
+  .workspace-home .dashboard-widget { flex:1; min-height:0; }
+  .workspace-home .dashboard-calendar__grid { flex:1; min-height:0; overflow:auto; align-content:start; }
+  .workspace-home .dashboard-calendar[data-view="week"] .dashboard-calendar__grid { height:auto; grid-template-rows:repeat(7,minmax(48px,auto)); gap:4px; overflow:auto; }
+  .workspace-home .dashboard-calendar[data-view="week"] .dashboard-calendar__day { min-height:44px; padding:8px; grid-template-columns:64px minmax(0,1fr) auto; gap:10px; }
+  .workspace-home .dashboard-calendar[data-view="month"] .dashboard-calendar__day { height:44px; font-size:13px; }
+  .workspace-home .dashboard-calendar__date small { font-size:11px; }
+  .workspace-home .dashboard-calendar__date strong { font-size:15px; }
+  .workspace-home .dashboard-calendar__event { font-size:12px; grid-template-columns:76px minmax(0,1fr); }
+  .workspace-home .dashboard-calendar__empty { display:inline; font-size:12px; }
+  .workspace-home .dashboard-widget__head h2 { font-size:22px; }
+  .workspace-home .dashboard-agenda__list { flex:1; overflow:auto; }
+  .workspace-home .dashboard-agenda__item:nth-child(n) { display:grid; }
+  .workspace-home .dashboard-agenda__copy strong { font-size:14px; }
+  .workspace-home .dashboard-widget__nav button, .workspace-home .dashboard-widget__action { width:44px; height:44px; }
+  .workspace-home .dashboard-calendar__views button { min-height:36px; }
+  .product-home-navigation:not([hidden]) {
+    display:grid;
+    flex:0 0 auto;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:4px;
+    padding:8px 0;
+    border-top:1px solid var(--border);
+  }
+  .product-home-navigation button {
+    min-height:44px;
+    padding:8px 4px;
+    border:0;
+    border-radius:6px;
+    background:transparent;
+    color:var(--muted);
+    font:inherit;
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  .product-home-navigation button[aria-selected="true"] { background:var(--panel-2); color:var(--accent); }
+  .workspace-home .workspace-section__head h1 { font-size:22px; }
+  .workspace-home .workspace-section__head { margin:2px 0 8px; }
+  .workspace-home .workspace-toolbar { padding:8px 0; }
+  .workspace-home .workspace-dropzone { padding:10px 0; }
+  .workspace-home .home-dashboard__grid { gap:14px; }
+  .workspace-home .dashboard-widget__head { padding:5px 0; }
+  .workspace-home .dashboard-agenda__copy small { font-size:11px; }
+  .workspace-home .dashboard-agenda__item { min-height:44px; }
+  html .workspace-item__menu, html .workspace-view-toggle button { min-width:40px; min-height:40px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  html *, html *::before, html *::after { scroll-behavior:auto!important; transition:none!important; animation:none!important; }
+  .workspace-home .workspace-item:hover { transform:none; }
+}

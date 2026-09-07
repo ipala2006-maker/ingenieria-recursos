@@ -22,6 +22,8 @@
   loadBandejaScript();
   loadDashboardStyle();
   loadDashboardScript();
+  loadProductStyle();
+  loadProductInterface();
 
   if (workspaceHome) return;
 
@@ -164,6 +166,21 @@
     document.head.appendChild(link);
   }
 
+  function loadProductStyle() {
+    if (document.querySelector('link[href*="styles/product-ui.css"]')) return;
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = `${rootPath}styles/product-ui.css?v=20260907-depth`;
+    document.head.appendChild(link);
+  }
+
+  function loadProductInterface() {
+    if (document.querySelector('script[src*="scripts/product-ui.js"]')) return;
+    const script = document.createElement("script");
+    script.src = `${rootPath}scripts/product-ui.js?v=20260907-depth`;
+    document.head.appendChild(script);
+  }
+
   function configureWindowControlsOverlay() {
     const overlay = navigator.windowControlsOverlay;
     if (!overlay) return;
@@ -243,7 +260,7 @@
     if (document.querySelector('script[src*="scripts/pomodoro.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/pomodoro.js?v=20260826-notifications-pip`;
+    script.src = `${rootPath}scripts/pomodoro.js?v=20260907-depth`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -251,7 +268,7 @@
   function loadDashboardScript() {
     if (document.querySelector('script[src*="scripts/dashboard.js"]')) return;
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/dashboard.js?v=20260831-ai-chat`;
+    script.src = `${rootPath}scripts/dashboard.js?v=20260907-product-ui`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -289,7 +306,7 @@
     if (document.querySelector('script[src*="scripts/account.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/account.js?v=20260907-referrals-monthly`;
+    script.src = `${rootPath}scripts/account.js?v=20260907-referrals-auto`;
     script.defer = true;
     document.head.appendChild(script);
   }

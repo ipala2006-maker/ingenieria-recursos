@@ -46,8 +46,21 @@
   let streakViewMonth = new Date().getMonth();
   let streakViewYear = new Date().getFullYear();
   let streakChartRange = "week";
+  let streakChartValues = [];
+  let streakChartSelected = -1;
   let streakReminderTimer = 0;
   let androidNotificationPermission = "unknown";
+  let focusDepth = null;
+  let focusDepthRequested = false;
+  let focusDepthGeneration = 0;
+  const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
+  reducedMotion.addEventListener("change", () => {
+    focusDepth?.dispose();
+    focusDepth = null;
+    focusDepthRequested = false;
+    focusDepthGeneration += 1;
+    if (isOpen()) prepareFocusDepth();
+  });
 
   addButton();
   addMenu();
@@ -164,7 +177,8 @@
               <button type="button" data-streak-chart-range="month" aria-pressed="false">Mes</button>
             </div>
           </header>
-          <div class="streak-chart__plot" data-streak-chart></div>
+          <div class="streak-chart__plot" data-streak-chart role="slider" tabindex="0" aria-label="Día del gráfico de estudio" aria-valuemin="0" aria-valuemax="6" aria-valuenow="6"></div>
+          <output class="streak-chart__selection" data-streak-chart-selection></output>
           <footer><span data-streak-chart-period>Últimos 7 días</span><strong data-streak-chart-average>0 min por día</strong></footer>
         </section>
 
@@ -350,6 +364,18 @@
 
   function bindEvents() {
     document.addEventListener("click", handleDocumentClick);
+    const chart = document.querySelector("[data-streak-chart]");
+    chart?.addEventListener("pointerdown", (event) => {
+      const bounds = chart.getBoundingClientRect();
+      const fraction = ((event.clientX - bounds.left) / bounds.width * 308 - 30) / 248;
+      selectStreakChartPoint(Math.round(fraction * (streakChartValues.length - 1)));
+    });
+    chart?.addEventListener("keydown", (event) => {
+      const movement = { ArrowLeft:-1, ArrowRight:1, ArrowDown:-1, ArrowUp:1 }[event.key];
+      if (movement === undefined && !["Home", "End"].includes(event.key)) return;
+      event.preventDefault();
+      selectStreakChartPoint(event.key === "Home" ? 0 : event.key === "End" ? streakChartValues.length - 1 : streakChartSelected + movement);
+    });
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && isOpen()) closeMenu();
       if (event.key === "Escape" && isStreakOpen()) closeStreakMenu();
@@ -499,6 +525,7 @@
     }
     if (streakRangeButton) {
       streakChartRange = streakRangeButton.dataset.streakChartRange === "month" ? "month" : "week";
+      streakChartSelected = -1;
       renderStreakChart();
       return;
     }
@@ -643,6 +670,7 @@
     document.querySelector("[data-pomodoro-open]")?.setAttribute("aria-expanded", "true");
     placeMenu();
     render();
+    prepareFocusDepth();
   }
 
   function closeMenu() {
@@ -1139,6 +1167,20 @@
     render();
   }
 
+  async function prepareFocusDepth() {
+    if (focusDepthRequested || reducedMotion.matches || navigator.connection?.saveData) return;
+    focusDepthRequested = true;
+    const generation = ++focusDepthGeneration;
+    try {
+      const { createFocusDepth } = await import(new URL("focus-depth.js?v=20260907-depth", SCRIPT_URL).href);
+      if (reducedMotion.matches || generation !== focusDepthGeneration) return;
+      focusDepth = createFocusDepth(document.querySelector(".pomodoro-timer"));
+      renderTimerOnly();
+    } catch (_) {
+      // The accessible SVG timer remains fully functional without WebGL.
+    }
+  }
+
   function resetTimer() {
     captureStudyProgress();
     flushStudyCredit();
@@ -1326,6 +1368,7 @@
     const progress = total > 0 ? Math.min(1, Math.max(0, 1 - preciseRemaining / total)) : 0;
     const circle = document.querySelector(".pomodoro-ring__progress");
     if (circle) circle.style.strokeDashoffset = String(603.19 * (1 - progress));
+    if (isOpen()) focusDepth?.update(progress);
 
     const topButton = document.querySelector("[data-pomodoro-open]");
     if (topButton) {
@@ -2032,6 +2075,7 @@
     }
 
     const totalMinutes = values.reduce((sum, item) => sum + item.minutes, 0);
+    streakChartValues = values;
     const maxMinutes = Math.max(60, ...values.map((item) => item.minutes));
     const ceilingMinutes = Math.max(60, Math.ceil(maxMinutes / 60) * 60);
     const left = 30;
@@ -2075,11 +2119,28 @@
     if (total) total.textContent = formatStudyDuration(totalMinutes);
     if (average) average.textContent = `${Math.round(totalMinutes / count)} min por día`;
     if (period) period.textContent = streakChartRange === "month" ? "Últimos 30 días" : "Últimos 7 días";
+    selectStreakChartPoint(streakChartSelected < 0 ? values.length - 1 : streakChartSelected);
     document.querySelectorAll("[data-streak-chart-range]").forEach((button) => {
       const active = button.dataset.streakChartRange === streakChartRange;
       button.classList.toggle("is-active", active);
       button.setAttribute("aria-pressed", String(active));
     });
+  }
+
+  function selectStreakChartPoint(index) {
+    if (!streakChartValues.length) return;
+    streakChartSelected = Math.min(streakChartValues.length - 1, Math.max(0, index));
+    const item = streakChartValues[streakChartSelected];
+    const label = `${formatLongStudyDate(item.date)} · ${formatStudyDuration(item.minutes)}`;
+    const plot = document.querySelector("[data-streak-chart]");
+    plot?.setAttribute("aria-valuemax", String(streakChartValues.length - 1));
+    plot?.setAttribute("aria-valuenow", String(streakChartSelected));
+    plot?.setAttribute("aria-valuetext", label);
+    plot?.querySelectorAll(".streak-chart__point").forEach((point, i) => {
+      point.classList.toggle("is-selected", i === streakChartSelected);
+    });
+    const selection = document.querySelector("[data-streak-chart-selection]");
+    if (selection) selection.textContent = label;
   }
 
   function formatStudyDuration(minutes) {
