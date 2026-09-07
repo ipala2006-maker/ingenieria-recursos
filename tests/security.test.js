@@ -21,7 +21,7 @@ test("JSON endpoints reject non-JSON content", () => {
 });
 
 test("database tables enforce RLS and workspace uploads are constrained", () => {
-  for (const file of ["schema.sql", "plans.sql", "security.sql", "user-registry.sql", "whatsapp.sql", "workspace.sql"]) {
+  for (const file of ["schema.sql", "plans.sql", "referrals.sql", "security.sql", "user-registry.sql", "whatsapp.sql", "workspace.sql"]) {
     assert.match(read(`supabase/${file}`), /force row level security/i, file);
   }
   const workspace = read("supabase/workspace.sql");
@@ -29,6 +29,20 @@ test("database tables enforce RLS and workspace uploads are constrained", () => 
   assert.match(workspace, /allowed_mime_types/i);
   assert.match(workspace, /IMMUTABLE_WORKSPACE_FIELDS/);
   assert.match(workspace, /workspace_storage_upload_allowed/);
+});
+
+test("referral benefits are server-owned and require verified identity plus first payment", () => {
+  const sql = read("supabase/referrals.sql");
+  const endpoint = read("api/referrals.js");
+  assert.match(sql, /phone_hash text unique/i);
+  assert.match(sql, /invited_user_id uuid not null unique/i);
+  assert.match(sql, /PHONE_VERIFICATION_REQUIRED/);
+  assert.match(sql, /qualify_referral_after_first_payment/);
+  assert.match(sql, /grant execute on function public\.qualify_referral_after_first_payment\(uuid, text\) to service_role/i);
+  assert.doesNotMatch(sql, /grant execute on function public\.qualify_referral_after_first_payment\(uuid, text\) to authenticated/i);
+  assert.match(endpoint, /phone_confirmed_at/);
+  assert.match(endpoint, /createHmac\("sha256"/);
+  assert.doesNotMatch(endpoint, /discountPercent\s*:\s*request\.body/);
 });
 
 test("Android widget credentials use the platform keystore", () => {

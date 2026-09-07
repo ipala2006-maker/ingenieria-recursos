@@ -876,6 +876,7 @@
 .workspace-plan-card h3{margin:0;font-size:16px}
 .workspace-plan-card header > strong{min-height:34px;color:var(--text);font-size:14px;line-height:1.25}
 .workspace-plan-card header > strong span{display:block;margin-top:2px;color:var(--muted);font-size:10px;font-weight:650}
+.workspace-plan-card header > strong .workspace-plan-price-old{display:inline;margin:0 4px 0 0;color:var(--muted);font-size:11px;text-decoration:line-through}
 .workspace-plan-card .workspace-btn{width:100%;margin-top:auto}
 
 .workspace-plan-features{

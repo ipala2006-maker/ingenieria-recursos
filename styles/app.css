@@ -4626,6 +4626,30 @@ html.theme-light .app-install-sheet__close{
   font-size:13px;
 }
 .account-benefits svg{width:16px;height:16px;flex:0 0 auto;fill:#34d399}
+.account-referrals{
+  display:grid;
+  gap:10px;
+  padding:13px;
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:12px;
+  background:rgba(110,231,255,.025);
+}
+.account-referrals[hidden],.account-referral-phone[hidden],.account-referral-otp[hidden],.account-referral-share[hidden],.account-referral-claim[hidden]{display:none}
+.account-referrals>header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.account-referrals>header>div{min-width:0;display:grid;gap:2px}
+.account-referrals>header strong{font-size:13px}
+.account-referrals>header small,.account-referral-progress{color:var(--muted);font-size:11px;line-height:1.4}
+.account-referral-discount{flex:0 0 auto;padding:5px 8px;border-radius:999px;background:rgba(110,231,255,.10);color:var(--accent);font-size:10px;font-weight:850}
+.account-referral-phone,.account-referral-otp,.account-referral-claim{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:8px}
+.account-referrals label{display:grid;gap:5px;color:var(--muted);font-size:11px;font-weight:750}
+.account-referrals input{width:100%;min-height:38px;padding:8px 10px;border:1px solid rgba(255,255,255,.12);border-radius:9px;outline:none;background:var(--panel-2);color:var(--text);font:inherit}
+.account-referrals input:focus{border-color:var(--accent);box-shadow:var(--ring)}
+.account-referrals .account-secondary{min-height:38px;padding:7px 10px;font-size:11px;white-space:nowrap}
+.account-referral-share{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.account-referral-share>div{display:grid;gap:2px}
+.account-referral-share small{color:var(--muted);font-size:10px}
+.account-referral-share strong{font-size:16px;letter-spacing:1px}
+.account-referral-progress{margin:0}
 .account-whatsapp{
   display:grid;
   grid-template-columns:auto minmax(0,1fr) auto;
@@ -4758,6 +4782,8 @@ html.theme-light .account-password-form input{border-color:rgba(86,105,130,.22)}
 html.theme-light .account-primary{color:#fff}
 html.theme-light .account-secondary,html.theme-light .account-identity{border-color:rgba(86,105,130,.18)}
 html.theme-light .account-whatsapp{border-color:rgba(86,105,130,.16);background:rgba(86,105,130,.025)}
+html.theme-light .account-referrals{border-color:rgba(86,105,130,.16);background:rgba(66,133,244,.025)}
+html.theme-light .account-referrals input{border-color:rgba(86,105,130,.20)}
 html.theme-light .account-widget-installer{border-color:rgba(66,133,244,.22);background:rgba(66,133,244,.045)}
 html.theme-light .account-app-actions{border-color:rgba(86,105,130,.14)}
 html.theme-light .account-update{border-color:rgba(86,105,130,.18);background:rgba(86,105,130,.035)}
@@ -4773,6 +4799,8 @@ html.theme-light .account-status[data-type="success"]{color:#137333}
     border-radius:15px;
   }
   .account-head{margin-bottom:14px}
+  .account-referrals>header{align-items:center}
+  .account-referral-phone,.account-referral-otp,.account-referral-claim{grid-template-columns:1fr}
 }
 
 /* Agenda: la IA es la accion principal y la carga manual queda plegada. */

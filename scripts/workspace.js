@@ -362,12 +362,17 @@
     const selected = state.planStatus.planId;
     const planCard = (id, featured = false, badge = "") => {
       const plan = PLANS.get(id);
+      const discount = id === "initial" ? 0 : Math.max(0, Number(state.planStatus.referral?.discountPercent) || 0);
+      const effectivePrice = Math.round(plan.priceArs * (1 - discount / 100));
+      const priceLabel = discount
+        ? `<span class="workspace-plan-price-old">$${new Intl.NumberFormat("es-AR").format(plan.priceArs)}</span> $${new Intl.NumberFormat("es-AR").format(effectivePrice)} ARS <span>${plan.billing}</span>`
+        : `$${new Intl.NumberFormat("es-AR").format(plan.priceArs)} ARS <span>${plan.billing}</span>`;
       return `
       <article class="workspace-plan-card ${featured ? "workspace-plan-card--featured" : ""} ${selected === id ? "is-selected" : ""}">
-        ${badge ? `<span class="workspace-plan-badge">${badge}</span>` : ""}
+        ${badge || discount ? `<span class="workspace-plan-badge">${discount ? `${discount}% por referidos` : badge}</span>` : ""}
         <header>
           <div><small>${selected === id ? "Plan de prueba activo" : id === "initial" ? "Organización manual" : id === "pro" ? "Uso intensivo" : "Organización activa"}</small><h3>${plan.shortName}</h3></div>
-          <strong>$${new Intl.NumberFormat("es-AR").format(plan.priceArs)} ARS <span>${plan.billing}</span></strong>
+          <strong>${priceLabel}</strong>
         </header>
         <p>${escapeHtml(plan.description)}</p>
         <ul class="workspace-plan-features">${plan.features.map((feature) => `<li>${icon("check")}<span>${feature}</span></li>`).join("")}</ul>
@@ -380,6 +385,7 @@
       wide: true,
       body: `<div class="workspace-modal__body workspace-plans-preview">
         <p class="workspace-plans-preview__notice"><strong>Sin cobros todavía.</strong> El plan que elijas sí aplicará sus límites para que podamos probar la experiencia completa antes del lanzamiento.</p>
+        ${state.planStatus.referral?.discountPercent ? `<p class="workspace-plans-preview__notice"><strong>Beneficio ganado:</strong> tu ${state.planStatus.referral.discountPercent}% se aplicará automáticamente cuando habilitemos las suscripciones.</p>` : ""}
         ${renderCurrentUsage()}
         <div class="workspace-plan-grid">
           ${planCard("initial", false, "Gratis")}
@@ -936,7 +942,8 @@
       billingEnabled: false,
       storageBytes: plan.storageBytes,
       ai: { used: 0, limit: plan.monthlyAiActions },
-      whatsapp: { used: 0, limit: plan.monthlyWhatsappActions }
+      whatsapp: { used: 0, limit: plan.monthlyWhatsappActions },
+      referral: { discountPercent: 0, qualifiedDirectCount: 0 }
     };
   }
 
@@ -948,7 +955,11 @@
       billingEnabled: Boolean(value?.billingEnabled),
       storageBytes: plan.storageBytes,
       ai: normalizeUsage(value?.ai, plan.monthlyAiActions),
-      whatsapp: normalizeUsage(value?.whatsapp, plan.monthlyWhatsappActions)
+      whatsapp: normalizeUsage(value?.whatsapp, plan.monthlyWhatsappActions),
+      referral: {
+        discountPercent: Math.max(0, Number(value?.referral?.discountPercent) || 0),
+        qualifiedDirectCount: Math.max(0, Number(value?.referral?.qualifiedDirectCount) || 0)
+      }
     };
   }
 

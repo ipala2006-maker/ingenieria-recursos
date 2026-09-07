@@ -1,4 +1,4 @@
-const { getAuthenticatedPlan, setTestPlan } = require("./_lib/plan-access");
+const { getAuthenticatedPlan, setTestPlan, userRpc } = require("./_lib/plan-access");
 const plans = require("../shared/plans");
 const { enforceRateLimit, isSameOriginRequest, rejectOversizedBody, requireJsonRequest, setSecurityHeaders } = require("./_lib/request-security");
 
@@ -15,14 +15,16 @@ module.exports = async function planStatus(request, response) {
     if (request.method === "GET") {
       const result = await getAuthenticatedPlan(request);
       if (!result.authenticated) return response.status(401).json({ message: "Ingresá a tu cuenta para ver el plan." });
-      return response.status(200).json(normalizeStatus(result.status));
+      const referral = await referralStatus(request).catch(() => null);
+      return response.status(200).json(normalizeStatus(result.status, referral));
     }
     if (request.method === "POST") {
       const planId = String(request.body?.planId || "");
       if (!plans.ids().includes(planId)) return response.status(400).json({ message: "Plan inválido." });
       const result = await setTestPlan(request, planId);
       if (!result.authenticated) return response.status(401).json({ message: "Ingresá a tu cuenta para probar un plan." });
-      return response.status(200).json(normalizeStatus(result.status));
+      const referral = await referralStatus(request).catch(() => null);
+      return response.status(200).json(normalizeStatus(result.status, referral));
     }
     response.setHeader("Allow", "GET, POST");
     return response.status(405).json({ message: "Método no permitido." });
@@ -32,7 +34,11 @@ module.exports = async function planStatus(request, response) {
   }
 };
 
-function normalizeStatus(value) {
+async function referralStatus(request) {
+  return userRpc(String(request.headers.authorization || ""), "get_referral_status", {});
+}
+
+function normalizeStatus(value, referral = null) {
   const plan = plans.get(value?.planId);
   return {
     planId: plan.id,
@@ -40,7 +46,11 @@ function normalizeStatus(value) {
     billingEnabled: Boolean(value?.billingEnabled),
     storageBytes: plan.storageBytes,
     ai: normalizeUsage(value?.ai, plan.monthlyAiActions),
-    whatsapp: normalizeUsage(value?.whatsapp, plan.monthlyWhatsappActions)
+    whatsapp: normalizeUsage(value?.whatsapp, plan.monthlyWhatsappActions),
+    referral: {
+      discountPercent: Math.max(0, Number(referral?.discountPercent) || 0),
+      qualifiedDirectCount: Math.max(0, Number(referral?.qualifiedDirectCount) || 0)
+    }
   };
 }
 

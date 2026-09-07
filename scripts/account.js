@@ -23,6 +23,7 @@
   const WINDOWS_WIDGETS_READY_KEY = "estudiemos_windows_widgets_ready";
   const WINDOWS_WIDGET_PENDING_KEY = "estudiemos_windows_widget_pending";
   const WINDOWS_WIDGET_SETUP_URL = "https://estudiemos-app.vercel.app/instalar.html#pc-widgets";
+  const PENDING_REFERRAL_KEY = "estudiemos_pending_referral";
   const MIN_PASSWORD_LENGTH = 8;
   const INSTANCE_ID = window.crypto?.randomUUID?.() || Math.random().toString(36).slice(2);
 
@@ -45,6 +46,9 @@
   let recoveryMode = false;
   let whatsappStatusLoaded = false;
   let whatsappBusy = false;
+  let referralStatusLoaded = false;
+  let referralBusy = false;
+  let pendingPhone = "";
   let readySettled = false;
   let captchaToken = "";
   let captchaWidgetId = null;
@@ -53,6 +57,7 @@
 
   addAccountButton();
   addAccountDialog();
+  captureReferralFromUrl();
   consumeWindowsWidgetsReadyMarker();
   bindAccountEvents();
   cleanUpdateMarker();
@@ -129,6 +134,10 @@
               <span>Contraseña</span>
               <input type="password" name="password" minlength="${MIN_PASSWORD_LENGTH}" autocomplete="current-password" required placeholder="Mínimo ${MIN_PASSWORD_LENGTH} caracteres" />
             </label>
+            <label>
+              <span>Código de invitación <small>(opcional)</small></span>
+              <input type="text" name="referralCode" maxlength="12" autocomplete="off" placeholder="Ej. A1B2C3D4" data-account-signup-referral />
+            </label>
             <div class="account-captcha" data-account-captcha hidden aria-label="Comprobación de seguridad"></div>
             <button class="account-primary" type="submit" data-account-signin>Ingresar</button>
             <button class="account-secondary" type="button" data-account-signup>Crear cuenta</button>
@@ -149,6 +158,29 @@
             <p>${checkIcon()} Archivos y carpetas personales</p>
             <p>${checkIcon()} Tema y preferencias</p>
           </div>
+          <section class="account-referrals" data-account-referrals>
+            <header>
+              <div><strong>Referidos</strong><small>Tu beneficio se activa con el primer pago de cada invitado.</small></div>
+              <span class="account-referral-discount" data-account-referral-discount>Sin descuento</span>
+            </header>
+            <div class="account-referral-phone" data-account-referral-phone>
+              <label><span>Verificá tu teléfono</span><input type="tel" inputmode="tel" autocomplete="tel" placeholder="+54 9 11 1234 5678" data-account-referral-phone-input /></label>
+              <button class="account-secondary" type="button" data-account-referral-send>Enviar SMS</button>
+            </div>
+            <div class="account-referral-otp" data-account-referral-otp hidden>
+              <label><span>Código SMS</span><input type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" data-account-referral-otp-input /></label>
+              <button class="account-secondary" type="button" data-account-referral-verify>Verificar</button>
+            </div>
+            <div class="account-referral-share" data-account-referral-share hidden>
+              <div><small>Tu código</small><strong data-account-referral-code>—</strong></div>
+              <button class="account-secondary" type="button" data-account-referral-copy>Copiar enlace</button>
+            </div>
+            <div class="account-referral-claim" data-account-referral-claim>
+              <label><span>¿Te invitó alguien?</span><input type="text" maxlength="12" autocomplete="off" placeholder="Código de invitación" data-account-referral-claim-input /></label>
+              <button class="account-secondary" type="button" data-account-referral-claim-button>Aplicar</button>
+            </div>
+            <p class="account-referral-progress" data-account-referral-progress>0 de 3 referidos con primer pago.</p>
+          </section>
           <section class="account-whatsapp" data-account-whatsapp hidden>
             <span class="account-whatsapp__icon" aria-hidden="true">${messageIcon()}</span>
             <div class="account-whatsapp__copy">
@@ -234,6 +266,10 @@
       if (event.target.closest("[data-account-update]")) updateApplication();
       if (event.target.closest("[data-account-whatsapp-connect]")) connectWhatsApp();
       if (event.target.closest("[data-account-whatsapp-unlink]")) unlinkWhatsApp();
+      if (event.target.closest("[data-account-referral-send]")) sendReferralPhoneCode();
+      if (event.target.closest("[data-account-referral-verify]")) verifyReferralPhoneCode();
+      if (event.target.closest("[data-account-referral-claim-button]")) claimReferralCode();
+      if (event.target.closest("[data-account-referral-copy]")) copyReferralLink();
       const widgetButton = event.target.closest("[data-account-widget]");
       if (widgetButton) requestAndroidWidget(widgetButton.dataset.accountWidget);
       const desktopWidgetButton = event.target.closest("[data-account-desktop-widget]");
@@ -416,6 +452,7 @@
     if (!credentials) return;
     const captcha = getCaptchaOptions();
     if (captcha === null) return;
+    rememberSignupReferral();
     setBusy(true, "Creando tu cuenta...");
     const result = await client.auth.signUp({
       ...credentials,
@@ -435,6 +472,190 @@
       return;
     }
     setStatus("Te enviamos un correo. Abrilo para confirmar tu cuenta y después ingresá.", "success");
+  }
+
+  function captureReferralFromUrl() {
+    const code = normalizeReferralCode(new URL(location.href).searchParams.get("ref"));
+    if (code.length >= 8) localStorage.setItem(PENDING_REFERRAL_KEY, code);
+    const input = document.querySelector("[data-account-signup-referral]");
+    if (input && code) input.value = code;
+  }
+
+  function rememberSignupReferral() {
+    const input = document.querySelector("[data-account-signup-referral]");
+    const code = normalizeReferralCode(input?.value);
+    if (code.length >= 8) localStorage.setItem(PENDING_REFERRAL_KEY, code);
+  }
+
+  async function refreshReferralStatus(force = false) {
+    if (!session?.access_token || (referralStatusLoaded && !force) || referralBusy) return;
+    referralBusy = true;
+    setReferralButtonsBusy(true);
+    try {
+      const response = await fetch(`${getRootPath()}api/referrals`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        cache: "no-store"
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.message || "referrals-unavailable");
+      referralStatusLoaded = true;
+      renderReferralStatus(result);
+    } catch (_) {
+      const section = document.querySelector("[data-account-referrals]");
+      if (section) section.hidden = true;
+    } finally {
+      referralBusy = false;
+      setReferralButtonsBusy(false);
+    }
+  }
+
+  async function sendReferralPhoneCode() {
+    if (!client || !session || referralBusy) return;
+    const input = document.querySelector("[data-account-referral-phone-input]");
+    const phone = normalizePhone(input?.value);
+    if (!phone) return setStatus("Escribí un teléfono válido con código de país.", "error");
+    referralBusy = true;
+    setReferralButtonsBusy(true);
+    setStatus("Enviando el código por SMS...", "info");
+    try {
+      const result = await client.auth.updateUser({ phone });
+      if (result.error) throw result.error;
+      pendingPhone = phone;
+      const otp = document.querySelector("[data-account-referral-otp]");
+      if (otp) otp.hidden = false;
+      setStatus("Te enviamos un código de 6 dígitos. Puede demorar unos segundos.", "success");
+    } catch (error) {
+      setStatus(phoneErrorMessage(error), "error");
+    } finally {
+      referralBusy = false;
+      setReferralButtonsBusy(false);
+    }
+  }
+
+  async function verifyReferralPhoneCode() {
+    const token = String(document.querySelector("[data-account-referral-otp-input]")?.value || "").replace(/\D/g, "");
+    if (!client || !session || !pendingPhone || token.length !== 6 || referralBusy) {
+      return setStatus("Escribí el código de 6 dígitos que recibiste.", "error");
+    }
+    referralBusy = true;
+    setReferralButtonsBusy(true);
+    setStatus("Verificando tu teléfono...", "info");
+    try {
+      const verified = await client.auth.verifyOtp({ phone: pendingPhone, token, type: "phone_change" });
+      if (verified.error) throw verified.error;
+      if (verified.data?.session) session = verified.data.session;
+      const response = await referralRequest({ action: "confirm-phone" });
+      pendingPhone = "";
+      referralStatusLoaded = true;
+      renderReferralStatus(response);
+      const pendingCode = normalizeReferralCode(localStorage.getItem(PENDING_REFERRAL_KEY));
+      if (pendingCode) {
+        referralBusy = false;
+        setReferralButtonsBusy(false);
+        await claimReferralCode(pendingCode);
+      } else {
+        setStatus("Teléfono verificado. Ya podés compartir tu enlace.", "success");
+      }
+    } catch (error) {
+      setStatus(phoneErrorMessage(error), "error");
+    } finally {
+      referralBusy = false;
+      setReferralButtonsBusy(false);
+    }
+  }
+
+  async function claimReferralCode(explicitCode) {
+    if (!session?.access_token || referralBusy) return;
+    const input = document.querySelector("[data-account-referral-claim-input]");
+    const code = normalizeReferralCode(explicitCode || input?.value || localStorage.getItem(PENDING_REFERRAL_KEY));
+    if (code.length < 8) return setStatus("Escribí un código de invitación válido.", "error");
+    referralBusy = true;
+    setReferralButtonsBusy(true);
+    try {
+      const result = await referralRequest({ action: "claim", code });
+      localStorage.removeItem(PENDING_REFERRAL_KEY);
+      referralStatusLoaded = true;
+      renderReferralStatus(result);
+      setStatus("Invitación vinculada. Se validará cuando completes tu primer pago.", "success");
+    } catch (error) {
+      setStatus(error.message || "No pudimos aplicar la invitación.", "error");
+    } finally {
+      referralBusy = false;
+      setReferralButtonsBusy(false);
+    }
+  }
+
+  async function referralRequest(body) {
+    const response = await fetch(`${getRootPath()}api/referrals`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.message || "No pudimos actualizar tus referidos.");
+    return result;
+  }
+
+  function renderReferralStatus(status) {
+    const section = document.querySelector("[data-account-referrals]");
+    const phone = document.querySelector("[data-account-referral-phone]");
+    const otp = document.querySelector("[data-account-referral-otp]");
+    const share = document.querySelector("[data-account-referral-share]");
+    const claim = document.querySelector("[data-account-referral-claim]");
+    if (section) section.hidden = !session;
+    if (phone) phone.hidden = Boolean(status.phoneVerified);
+    if (otp && status.phoneVerified) otp.hidden = true;
+    if (share) share.hidden = !status.phoneVerified;
+    if (claim) claim.hidden = Boolean(status.wasReferred);
+    const code = document.querySelector("[data-account-referral-code]");
+    if (code) code.textContent = status.code || "—";
+    const discount = Math.max(0, Number(status.discountPercent) || 0);
+    const badge = document.querySelector("[data-account-referral-discount]");
+    if (badge) badge.textContent = discount ? `${discount}% de descuento` : "Sin descuento";
+    const count = Math.max(0, Number(status.qualifiedDirectCount) || 0);
+    const pending = Math.max(0, Number(status.pendingPaymentCount) || 0);
+    const progress = document.querySelector("[data-account-referral-progress]");
+    if (progress) progress.textContent = `${Math.min(count, 3)} de 3 referidos con primer pago${pending ? ` · ${pending} esperando pago` : ""}.`;
+    const pendingCode = normalizeReferralCode(localStorage.getItem(PENDING_REFERRAL_KEY));
+    const claimInput = document.querySelector("[data-account-referral-claim-input]");
+    if (claimInput && !claimInput.value && pendingCode) claimInput.value = pendingCode;
+  }
+
+  async function copyReferralLink() {
+    const code = document.querySelector("[data-account-referral-code]")?.textContent || "";
+    if (!code || code === "—") return;
+    const link = `${location.origin}${getRootPath()}?ref=${encodeURIComponent(code)}`;
+    try {
+      if (navigator.share) await navigator.share({ title: "Estudiemos", text: "Organizate conmigo en Estudiemos", url: link });
+      else await navigator.clipboard.writeText(link);
+      setStatus(navigator.share ? "Invitación lista para compartir." : "Enlace de invitación copiado.", "success");
+    } catch (_) {}
+  }
+
+  function normalizeReferralCode(value) {
+    return String(value || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12);
+  }
+
+  function normalizePhone(value) {
+    const raw = String(value || "").trim();
+    const digits = raw.replace(/\D/g, "");
+    if (digits.length < 8 || digits.length > 15) return "";
+    if (!raw.startsWith("+") && digits.length === 10) return `+549${digits}`;
+    if (digits.startsWith("54") && !digits.startsWith("549")) return `+549${digits.slice(2)}`;
+    return `+${digits}`;
+  }
+
+  function phoneErrorMessage(error) {
+    const message = String(error?.message || "").toLowerCase();
+    if (message.includes("already") || message.includes("unique")) return "Ese teléfono ya está vinculado a otra cuenta.";
+    if (message.includes("rate") || message.includes("60")) return "Esperá un minuto antes de pedir otro código.";
+    if (message.includes("invalid") || message.includes("expired")) return "El código venció o no es correcto. Pedí uno nuevo.";
+    if (message.includes("provider") || message.includes("sms")) return "El envío de SMS todavía no está habilitado. Falta conectar el proveedor.";
+    return error?.message || "No pudimos verificar el teléfono en este momento.";
+  }
+
+  function setReferralButtonsBusy(busy) {
+    document.querySelectorAll("[data-account-referrals] button").forEach((button) => { button.disabled = busy; });
   }
 
   async function resetPassword() {
@@ -530,6 +751,8 @@
     setBusy(false);
     if (result.error) return setStatus("No se pudo cerrar la sesión. Probá nuevamente.", "error");
     session = null;
+    referralStatusLoaded = false;
+    pendingPhone = "";
     disconnectRealtime();
     clearLocalAccountData();
     renderAccountState();
@@ -888,8 +1111,10 @@
     const email = document.querySelector("[data-account-email]");
     if (email) email.textContent = session?.user?.email || "";
     if (session && !whatsappStatusLoaded) refreshWhatsAppStatus();
+    if (session && !referralStatusLoaded) refreshReferralStatus();
     if (!session) {
       whatsappStatusLoaded = false;
+      referralStatusLoaded = false;
       renderWhatsAppStatus({ linked: false, configured: true });
     }
     updateAccountIndicator(Boolean(session));

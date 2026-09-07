@@ -1,0 +1,225 @@
+create schema if not exists private;
+revoke all on schema private from public, anon, authenticated;
+
+create table if not exists public.referral_identities (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  referral_code text not null unique check (referral_code ~ '^[A-Z0-9]{8,12}$'),
+  phone_hash text unique check (phone_hash is null or length(phone_hash) = 64),
+  phone_masked text,
+  phone_verified_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.referrals (
+  id bigint generated always as identity primary key,
+  inviter_user_id uuid not null references auth.users(id) on delete cascade,
+  invited_user_id uuid not null unique references auth.users(id) on delete cascade,
+  status text not null default 'verified' check (status in ('verified', 'qualified', 'rejected')),
+  first_payment_reference text unique,
+  registered_at timestamptz not null default now(),
+  qualified_at timestamptz,
+  check (inviter_user_id <> invited_user_id)
+);
+
+create index if not exists referrals_inviter_status_idx on public.referrals (inviter_user_id, status);
+
+create table if not exists public.referral_benefits (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  discount_percent smallint not null default 0 check (discount_percent in (0, 35, 45)),
+  qualified_direct_count integer not null default 0 check (qualified_direct_count >= 0),
+  reason text not null default 'none' check (reason in ('none', 'cascade', 'three_paid')),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.referral_identities enable row level security;
+alter table public.referrals enable row level security;
+alter table public.referral_benefits enable row level security;
+alter table public.referral_identities force row level security;
+alter table public.referrals force row level security;
+alter table public.referral_benefits force row level security;
+
+revoke all on table public.referral_identities from public, anon, authenticated;
+revoke all on table public.referrals from public, anon, authenticated;
+revoke all on table public.referral_benefits from public, anon, authenticated;
+grant select, insert, update, delete on table public.referral_identities to service_role;
+grant select, insert, update, delete on table public.referrals to service_role;
+grant select, insert, update, delete on table public.referral_benefits to service_role;
+grant usage, select on sequence public.referrals_id_seq to service_role;
+
+create or replace function private.ensure_referral_identity(target_user uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public, private, pg_temp
+as $$
+declare
+  candidate text;
+begin
+  if target_user is null then raise insufficient_privilege using message = 'Authentication required'; end if;
+  if exists (select 1 from public.referral_identities where user_id = target_user) then return; end if;
+  loop
+    candidate := upper(substr(md5(target_user::text || clock_timestamp()::text || random()::text), 1, 10));
+    begin
+      insert into public.referral_identities (user_id, referral_code) values (target_user, candidate);
+      return;
+    exception when unique_violation then
+      if exists (select 1 from public.referral_identities where user_id = target_user) then return; end if;
+    end;
+  end loop;
+end;
+$$;
+
+create or replace function private.refresh_referral_benefit(target_user uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public, private, pg_temp
+as $$
+declare
+  direct_count integer;
+  arrived_as_qualified_referral boolean;
+  next_discount smallint := 0;
+  next_reason text := 'none';
+begin
+  select count(*)::integer into direct_count
+  from public.referrals where inviter_user_id = target_user and status = 'qualified';
+  select exists (
+    select 1 from public.referrals where invited_user_id = target_user and status = 'qualified'
+  ) into arrived_as_qualified_referral;
+  if direct_count >= 3 then
+    next_discount := 45; next_reason := 'three_paid';
+  elsif arrived_as_qualified_referral and direct_count >= 1 then
+    next_discount := 35; next_reason := 'cascade';
+  end if;
+  insert into public.referral_benefits (user_id, discount_percent, qualified_direct_count, reason, updated_at)
+  values (target_user, next_discount, direct_count, next_reason, now())
+  on conflict (user_id) do update set
+    discount_percent = excluded.discount_percent,
+    qualified_direct_count = excluded.qualified_direct_count,
+    reason = excluded.reason,
+    updated_at = excluded.updated_at;
+end;
+$$;
+
+create or replace function public.get_referral_status()
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, private, pg_temp
+as $$
+declare
+  target_user uuid := auth.uid();
+  identity_row public.referral_identities%rowtype;
+  benefit_row public.referral_benefits%rowtype;
+  pending_count integer := 0;
+  was_referred boolean := false;
+begin
+  if target_user is null then raise insufficient_privilege using message = 'Authentication required'; end if;
+  perform private.ensure_referral_identity(target_user);
+  perform private.refresh_referral_benefit(target_user);
+  select * into identity_row from public.referral_identities where user_id = target_user;
+  select * into benefit_row from public.referral_benefits where user_id = target_user;
+  select count(*)::integer into pending_count from public.referrals
+    where inviter_user_id = target_user and status = 'verified';
+  select exists (select 1 from public.referrals where invited_user_id = target_user)
+    into was_referred;
+  return jsonb_build_object(
+    'code', identity_row.referral_code,
+    'phoneVerified', identity_row.phone_verified_at is not null,
+    'phoneMasked', coalesce(identity_row.phone_masked, ''),
+    'wasReferred', was_referred,
+    'qualifiedDirectCount', coalesce(benefit_row.qualified_direct_count, 0),
+    'pendingPaymentCount', pending_count,
+    'discountPercent', coalesce(benefit_row.discount_percent, 0),
+    'reason', coalesce(benefit_row.reason, 'none')
+  );
+end;
+$$;
+
+create or replace function public.claim_referral_code(target_code text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, private, pg_temp
+as $$
+declare
+  target_user uuid := auth.uid();
+  inviter_id uuid;
+begin
+  if target_user is null then raise insufficient_privilege using message = 'Authentication required'; end if;
+  perform private.ensure_referral_identity(target_user);
+  if not exists (select 1 from public.referral_identities where user_id = target_user and phone_verified_at is not null) then
+    raise check_violation using message = 'PHONE_VERIFICATION_REQUIRED';
+  end if;
+  if exists (select 1 from public.referrals where invited_user_id = target_user) then
+    raise unique_violation using message = 'REFERRAL_ALREADY_CLAIMED';
+  end if;
+  select user_id into inviter_id from public.referral_identities
+    where referral_code = upper(regexp_replace(coalesce(target_code, ''), '[^A-Za-z0-9]', '', 'g'))
+      and phone_verified_at is not null;
+  if inviter_id is null then raise invalid_parameter_value using message = 'INVALID_REFERRAL_CODE'; end if;
+  if inviter_id = target_user then raise check_violation using message = 'SELF_REFERRAL_NOT_ALLOWED'; end if;
+  insert into public.referrals (inviter_user_id, invited_user_id) values (inviter_id, target_user);
+  return public.get_referral_status();
+end;
+$$;
+
+create or replace function public.register_verified_referral_phone(target_user_id uuid, target_phone_hash text, target_phone_masked text)
+returns void
+language plpgsql
+security definer
+set search_path = public, private, pg_temp
+as $$
+begin
+  if target_user_id is null or length(coalesce(target_phone_hash, '')) <> 64 then
+    raise invalid_parameter_value using message = 'INVALID_PHONE_IDENTITY';
+  end if;
+  perform private.ensure_referral_identity(target_user_id);
+  update public.referral_identities set
+    phone_hash = target_phone_hash,
+    phone_masked = left(coalesce(target_phone_masked, ''), 32),
+    phone_verified_at = now(),
+    updated_at = now()
+  where user_id = target_user_id;
+end;
+$$;
+
+create or replace function public.qualify_referral_after_first_payment(target_user_id uuid, payment_reference text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, private, pg_temp
+as $$
+declare
+  relation public.referrals%rowtype;
+begin
+  if length(trim(coalesce(payment_reference, ''))) < 6 then
+    raise invalid_parameter_value using message = 'INVALID_PAYMENT_REFERENCE';
+  end if;
+  if not exists (select 1 from public.referral_identities where user_id = target_user_id and phone_verified_at is not null) then
+    raise check_violation using message = 'PHONE_VERIFICATION_REQUIRED';
+  end if;
+  select * into relation from public.referrals where invited_user_id = target_user_id for update;
+  if relation.id is null then return jsonb_build_object('qualified', false, 'reason', 'not_referred'); end if;
+  if relation.status = 'qualified' then
+    return jsonb_build_object('qualified', true, 'idempotent', true);
+  end if;
+  update public.referrals set status = 'qualified', first_payment_reference = trim(payment_reference), qualified_at = now()
+    where id = relation.id;
+  perform private.refresh_referral_benefit(relation.inviter_user_id);
+  perform private.refresh_referral_benefit(target_user_id);
+  return jsonb_build_object('qualified', true, 'idempotent', false);
+end;
+$$;
+
+revoke all on function private.ensure_referral_identity(uuid) from public, anon, authenticated;
+revoke all on function private.refresh_referral_benefit(uuid) from public, anon, authenticated;
+revoke all on function public.get_referral_status() from public, anon;
+revoke all on function public.claim_referral_code(text) from public, anon;
+revoke all on function public.register_verified_referral_phone(uuid, text, text) from public, anon, authenticated;
+revoke all on function public.qualify_referral_after_first_payment(uuid, text) from public, anon, authenticated;
+grant execute on function public.get_referral_status() to authenticated;
+grant execute on function public.claim_referral_code(text) to authenticated;
+grant execute on function public.register_verified_referral_phone(uuid, text, text) to service_role;
+grant execute on function public.qualify_referral_after_first_payment(uuid, text) to service_role;

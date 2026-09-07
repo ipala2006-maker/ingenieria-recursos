@@ -1,6 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const plans = require("../shared/plans");
+const referrals = require("../shared/referrals");
 
 test("the public plan catalog exposes the three supported plans", () => {
   assert.deepEqual(plans.ids(), ["initial", "plus", "pro"]);
@@ -22,4 +23,17 @@ test("each plan has the enforced storage and monthly usage limits", () => {
 
 test("unknown plans safely fall back to Initial", () => {
   assert.equal(plans.get("unknown").id, "initial");
+});
+
+test("referral discounts follow the cascade and three-payment rules without stacking", () => {
+  assert.equal(referrals.discountFor({ wasReferred: false, qualifiedDirectCount: 2 }), 0);
+  assert.equal(referrals.discountFor({ wasReferred: true, qualifiedDirectCount: 1 }), 35);
+  assert.equal(referrals.discountFor({ wasReferred: true, qualifiedDirectCount: 3 }), 45);
+  assert.equal(referrals.discountFor({ wasReferred: false, qualifiedDirectCount: 3 }), 45);
+});
+
+test("referral prices and codes are normalized defensively", () => {
+  assert.equal(referrals.priceAfterDiscount(8900, 35), 5785);
+  assert.equal(referrals.priceAfterDiscount(16900, 45), 9295);
+  assert.equal(referrals.normalizeCode(" ab-12 cd_34 "), "AB12CD34");
 });
