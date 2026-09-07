@@ -42,7 +42,8 @@
   if (referralCode) {
     localStorage.setItem("estudiemos_pending_referral", referralCode);
     const appUrl = `https://estudiemos-app.vercel.app/?ref=${encodeURIComponent(referralCode)}`;
-    document.querySelectorAll("[data-open-estudiemos]").forEach((link) => { link.href = appUrl; });
+    document.querySelectorAll("[data-open-estudiemos], a[href='https://estudiemos-app.vercel.app/']")
+      .forEach((link) => { link.href = appUrl; });
     const androidLink = document.querySelector("[data-install-android]");
     if (androidLink) {
       androidLink.href = `intent://open?ref=${encodeURIComponent(referralCode)}#Intent;scheme=estudiemos;package=com.estudiemos.app;S.browser_fallback_url=https%3A%2F%2Fgithub.com%2Fipala2006-maker%2Fingenieria-recursos%2Freleases%2Fdownload%2Fandroid-latest%2FEstudiemos-Android.apk;end`;
@@ -339,7 +340,9 @@
 
   async function installApplication() {
     if (isInstalled()) {
-      location.href = "https://estudiemos-app.vercel.app/";
+      location.href = referralCode
+        ? `https://estudiemos-app.vercel.app/?ref=${encodeURIComponent(referralCode)}`
+        : "https://estudiemos-app.vercel.app/";
       return;
     }
 
