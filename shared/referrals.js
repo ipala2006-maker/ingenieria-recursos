@@ -8,7 +8,7 @@
   function discountFor({ wasReferred = false, qualifiedDirectCount = 0 } = {}) {
     const count = Math.max(0, Math.floor(Number(qualifiedDirectCount) || 0));
     if (count >= 3) return DISCOUNTS.threeVerified;
-    if (wasReferred || count >= 1) return DISCOUNTS.verifiedInvite;
+    if (wasReferred) return DISCOUNTS.verifiedInvite;
     return 0;
   }
 

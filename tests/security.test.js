@@ -39,6 +39,8 @@ test("referral benefits are server-owned and require verified identities", () =>
   assert.match(sql, /PHONE_VERIFICATION_REQUIRED/);
   assert.match(sql, /values \(inviter_id, target_user, 'qualified', now\(\)\)/i);
   assert.match(sql, /perform private\.refresh_referral_benefit\(inviter_id\)/i);
+  assert.match(sql, /America\/Argentina\/Buenos_Aires/);
+  assert.match(sql, /discount_valid_until/i);
   assert.match(sql, /qualify_referral_after_first_payment/);
   assert.match(sql, /grant execute on function public\.qualify_referral_after_first_payment\(uuid, text\) to service_role/i);
   assert.doesNotMatch(sql, /grant execute on function public\.qualify_referral_after_first_payment\(uuid, text\) to authenticated/i);

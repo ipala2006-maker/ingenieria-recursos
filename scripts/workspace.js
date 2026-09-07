@@ -365,6 +365,9 @@
   async function openPlansModal() {
     if (state.user) await loadPlanStatus();
     const selected = state.planStatus.planId;
+    const referralReason = state.planStatus.referral?.reason === "three_verified"
+      ? "por invitar a 3 personas verificadas"
+      : "por registrarte con una invitación";
     const planCard = (id, featured = false, badge = "") => {
       const plan = PLANS.get(id);
       const discount = id === "initial" ? 0 : Math.max(0, Number(state.planStatus.referral?.discountPercent) || 0);
@@ -390,9 +393,9 @@
       wide: true,
       body: `<div class="workspace-modal__body workspace-plans-preview">
         <p class="workspace-plans-preview__notice"><strong>Sin cobros todavía.</strong> El plan que elijas sí aplicará sus límites para que podamos probar la experiencia completa antes del lanzamiento.</p>
-        ${state.planStatus.referral?.discountPercent ? `<p class="workspace-plans-preview__notice"><strong>Beneficio ganado:</strong> tu ${state.planStatus.referral.discountPercent}% se aplicará automáticamente cuando habilitemos las suscripciones.</p>` : ""}
+        ${state.planStatus.referral?.discountPercent ? `<p class="workspace-plans-preview__notice"><strong>Tu descuento:</strong> ${state.planStatus.referral.discountPercent}% ${referralReason}. Quedó guardado para este mes.</p>` : ""}
         <aside class="workspace-referral-note" aria-label="Descuentos por referidos">
-          <span><strong>Descuentos por referidos.</strong> Compartí tu enlace de descarga: cuando la otra persona confirma su correo y teléfono, ambos reciben 35%. Con 3 invitados verificados, quien invita obtiene 45%.</span>
+          <span><strong>Descuentos simples.</strong> Si llegás con una invitación, tenés 35% este mes. Si invitás a 3 personas que se registran y verifican su teléfono, tenés 45%. No necesitan pagar.</span>
           <button type="button" data-workspace-referrals-open>Ver referidos</button>
         </aside>
         ${renderCurrentUsage()}
@@ -952,7 +955,7 @@
       storageBytes: plan.storageBytes,
       ai: { used: 0, limit: plan.monthlyAiActions },
       whatsapp: { used: 0, limit: plan.monthlyWhatsappActions },
-      referral: { discountPercent: 0, qualifiedDirectCount: 0 }
+      referral: { discountPercent: 0, qualifiedDirectCount: 0, reason: "none", discountValidUntil: null }
     };
   }
 
@@ -967,7 +970,9 @@
       whatsapp: normalizeUsage(value?.whatsapp, plan.monthlyWhatsappActions),
       referral: {
         discountPercent: Math.max(0, Number(value?.referral?.discountPercent) || 0),
-        qualifiedDirectCount: Math.max(0, Number(value?.referral?.qualifiedDirectCount) || 0)
+        qualifiedDirectCount: Math.max(0, Number(value?.referral?.qualifiedDirectCount) || 0),
+        reason: String(value?.referral?.reason || "none"),
+        discountValidUntil: value?.referral?.discountValidUntil || null
       }
     };
   }

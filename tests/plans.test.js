@@ -25,10 +25,11 @@ test("unknown plans safely fall back to Initial", () => {
   assert.equal(plans.get("unknown").id, "initial");
 });
 
-test("referral discounts apply to both people after verification and do not stack", () => {
+test("invitees receive 35 percent and inviters receive 45 percent after three verifications", () => {
   assert.equal(referrals.discountFor({ wasReferred: false, qualifiedDirectCount: 0 }), 0);
   assert.equal(referrals.discountFor({ wasReferred: true, qualifiedDirectCount: 0 }), 35);
-  assert.equal(referrals.discountFor({ wasReferred: false, qualifiedDirectCount: 1 }), 35);
+  assert.equal(referrals.discountFor({ wasReferred: false, qualifiedDirectCount: 1 }), 0);
+  assert.equal(referrals.discountFor({ wasReferred: false, qualifiedDirectCount: 2 }), 0);
   assert.equal(referrals.discountFor({ wasReferred: true, qualifiedDirectCount: 3 }), 45);
   assert.equal(referrals.discountFor({ wasReferred: false, qualifiedDirectCount: 3 }), 45);
 });

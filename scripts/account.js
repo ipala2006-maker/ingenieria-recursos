@@ -163,7 +163,7 @@
           </div>
           <section class="account-referrals" data-account-referrals>
             <header>
-              <div><strong>Referidos</strong><small>Compartí tu enlace. Al verificar su correo y teléfono, ambos reciben el beneficio.</small></div>
+              <div><strong>Referidos</strong><small>Quien llega con tu enlace obtiene 35%. Vos obtenés 45% al sumar 3 registros verificados este mes.</small></div>
               <span class="account-referral-discount" data-account-referral-discount>Sin descuento</span>
             </header>
             <div class="account-referral-phone" data-account-referral-phone>
@@ -460,10 +460,13 @@
     const captcha = getCaptchaOptions();
     if (captcha === null) return;
     localStorage.setItem(PENDING_PHONE_KEY, phone);
+    const emailRedirect = new URL(getRootPath(), location.href);
+    const pendingReferral = normalizeReferralCode(localStorage.getItem(PENDING_REFERRAL_KEY));
+    if (pendingReferral) emailRedirect.searchParams.set("ref", pendingReferral);
     setBusy(true, "Creando tu cuenta...");
     const result = await client.auth.signUp({
       ...credentials,
-      options: { emailRedirectTo: `${location.origin}${getRootPath()}`, ...captcha }
+      options: { emailRedirectTo: emailRedirect.href, ...captcha }
     });
     setBusy(false);
     resetCaptcha();
@@ -605,7 +608,7 @@
       localStorage.removeItem(PENDING_REFERRAL_KEY);
       referralStatusLoaded = true;
       renderReferralStatus(result);
-      setStatus("Invitación verificada. El 35% ya quedó aplicado para ambos.", "success");
+      setStatus("Invitación verificada. Tenés 35% este mes por registrarte con una invitación.", "success");
     } catch (error) {
       setStatus(error.message || "No pudimos aplicar la invitación.", "error");
     } finally {
@@ -640,10 +643,14 @@
     if (code) code.textContent = status.code || "—";
     const discount = Math.max(0, Number(status.discountPercent) || 0);
     const badge = document.querySelector("[data-account-referral-discount]");
-    if (badge) badge.textContent = discount ? `${discount}% de descuento` : "Sin descuento";
+    if (badge) badge.textContent = discount ? `${discount}% este mes` : "Sin descuento";
     const count = Math.max(0, Number(status.qualifiedDirectCount) || 0);
     const progress = document.querySelector("[data-account-referral-progress]");
-    if (progress) progress.textContent = `${Math.min(count, 3)} de 3 invitados verificados${count >= 3 ? " · beneficio máximo" : ""}.`;
+    if (progress) {
+      if (count >= 3) progress.textContent = "45% por invitar a 3 personas verificadas este mes.";
+      else if (discount === 35) progress.textContent = `35% por registrarte con una invitación · ${count} de 3 invitados propios.`;
+      else progress.textContent = `${count} de 3 invitados verificados este mes. No necesitan pagar.`;
+    }
     const pendingCode = normalizeReferralCode(localStorage.getItem(PENDING_REFERRAL_KEY));
     const claimInput = document.querySelector("[data-account-referral-claim-input]");
     if (claimInput && !claimInput.value && pendingCode) claimInput.value = pendingCode;

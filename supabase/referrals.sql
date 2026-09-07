@@ -31,8 +31,13 @@ create table if not exists public.referral_benefits (
   discount_percent smallint not null default 0 check (discount_percent in (0, 35, 45)),
   qualified_direct_count integer not null default 0 check (qualified_direct_count >= 0),
   reason text not null default 'none' check (reason in ('none', 'verified_invite', 'three_verified', 'cascade', 'three_paid')),
+  benefit_month date,
+  discount_valid_until timestamptz,
   updated_at timestamptz not null default now()
 );
+
+alter table public.referral_benefits add column if not exists benefit_month date;
+alter table public.referral_benefits add column if not exists discount_valid_until timestamptz;
 
 alter table public.referral_benefits drop constraint if exists referral_benefits_reason_check;
 alter table public.referral_benefits add constraint referral_benefits_reason_check
@@ -85,25 +90,36 @@ as $$
 declare
   direct_count integer;
   arrived_as_qualified_referral boolean;
+  month_start date := date_trunc('month', timezone('America/Argentina/Buenos_Aires', now()))::date;
+  month_end timestamptz;
   next_discount smallint := 0;
   next_reason text := 'none';
 begin
+  month_end := ((month_start + interval '1 month')::timestamp at time zone 'America/Argentina/Buenos_Aires');
   select count(*)::integer into direct_count
-  from public.referrals where inviter_user_id = target_user and status = 'qualified';
+  from public.referrals
+  where inviter_user_id = target_user
+    and status = 'qualified'
+    and (qualified_at at time zone 'America/Argentina/Buenos_Aires')::date >= month_start;
   select exists (
-    select 1 from public.referrals where invited_user_id = target_user and status = 'qualified'
+    select 1 from public.referrals
+    where invited_user_id = target_user
+      and status = 'qualified'
+      and (qualified_at at time zone 'America/Argentina/Buenos_Aires')::date >= month_start
   ) into arrived_as_qualified_referral;
   if direct_count >= 3 then
     next_discount := 45; next_reason := 'three_verified';
-  elsif arrived_as_qualified_referral or direct_count >= 1 then
+  elsif arrived_as_qualified_referral then
     next_discount := 35; next_reason := 'verified_invite';
   end if;
-  insert into public.referral_benefits (user_id, discount_percent, qualified_direct_count, reason, updated_at)
-  values (target_user, next_discount, direct_count, next_reason, now())
+  insert into public.referral_benefits (user_id, discount_percent, qualified_direct_count, reason, benefit_month, discount_valid_until, updated_at)
+  values (target_user, next_discount, direct_count, next_reason, month_start, month_end, now())
   on conflict (user_id) do update set
     discount_percent = excluded.discount_percent,
     qualified_direct_count = excluded.qualified_direct_count,
     reason = excluded.reason,
+    benefit_month = excluded.benefit_month,
+    discount_valid_until = excluded.discount_valid_until,
     updated_at = excluded.updated_at;
 end;
 $$;
@@ -138,6 +154,7 @@ begin
     'qualifiedDirectCount', coalesce(benefit_row.qualified_direct_count, 0),
     'pendingPaymentCount', pending_count,
     'discountPercent', coalesce(benefit_row.discount_percent, 0),
+    'discountValidUntil', benefit_row.discount_valid_until,
     'reason', coalesce(benefit_row.reason, 'none')
   );
 end;

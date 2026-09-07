@@ -70,6 +70,7 @@ function normalizeStatus(value, referral = null) {
       phoneMasked: String(referral?.phoneMasked || ""),
       wasReferred: Boolean(referral?.wasReferred),
       discountPercent: Math.max(0, Number(referral?.discountPercent) || 0),
+      discountValidUntil: referral?.discountValidUntil || null,
       qualifiedDirectCount: Math.max(0, Number(referral?.qualifiedDirectCount) || 0),
       pendingPaymentCount: Math.max(0, Number(referral?.pendingPaymentCount) || 0),
       reason: String(referral?.reason || "none")

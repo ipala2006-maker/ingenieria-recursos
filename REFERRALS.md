@@ -4,9 +4,10 @@
 
 - Cada cuenta conserva un correo único en Supabase Auth.
 - Para compartir o usar un código se exige un teléfono único confirmado por SMS.
-- Un usuario que llegó referido y luego consigue un referido calificado obtiene 35%.
-- Cualquier usuario que consiga tres referidos calificados obtiene 45%.
-- Los descuentos no se acumulan; siempre se aplica el mayor beneficio vigente.
+- Un usuario que llega desde un enlace y verifica correo y teléfono obtiene 35% durante ese mes.
+- El invitador obtiene 45% durante el mes en que consigue tres registros verificados.
+- Uno o dos invitados no generan descuento para el invitador.
+- Los descuentos no se acumulan, vencen al terminar el mes y siempre se aplica el mayor beneficio vigente.
 - Un referido se califica al registrarse desde el enlace de invitación y confirmar correo y teléfono únicos.
 
 ## Estados
