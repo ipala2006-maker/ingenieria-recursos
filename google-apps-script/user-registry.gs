@@ -114,7 +114,8 @@ function configurarSincronizacion() {
       "actualizarPanelAdministrativo"
     ].includes(trigger.getHandlerFunction()))
     .forEach((trigger) => ScriptApp.deleteTrigger(trigger));
-  ScriptApp.newTrigger("actualizarPanelAdministrativo").timeBased().everyMinutes(15).create();
+  ScriptApp.newTrigger("actualizarMonitoreo").timeBased().everyHours(1).create();
+  ScriptApp.newTrigger("sincronizarUsuarios").timeBased().everyHours(6).create();
   actualizarPanelAdministrativo();
 }
 
