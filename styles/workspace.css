@@ -879,6 +879,31 @@
 .workspace-plan-card header > strong .workspace-plan-price-old{display:inline;margin:0 4px 0 0;color:var(--muted);font-size:11px;text-decoration:line-through}
 .workspace-plan-card .workspace-btn{width:100%;margin-top:auto}
 
+.workspace-referral-note{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  padding:10px 12px;
+  border-top:1px solid var(--workspace-edge-soft);
+  border-bottom:1px solid var(--workspace-edge-soft);
+  color:var(--muted);
+  font-size:11px;
+  line-height:1.45;
+}
+.workspace-referral-note strong{color:var(--text)}
+.workspace-referral-note button{
+  flex:0 0 auto;
+  padding:4px 0;
+  border:0;
+  background:transparent;
+  color:var(--accent);
+  font:inherit;
+  font-weight:800;
+  cursor:pointer;
+}
+.workspace-referral-note button:hover{text-decoration:underline}
+
 .workspace-plan-features{
   display:grid;
   gap:8px;
@@ -1016,6 +1041,7 @@ html.theme-light .workspace-btn--ai{
   .workspace-modal-shell{align-items:end;padding:0}
   .workspace-modal{width:100%;max-height:min(82dvh,720px);border-radius:8px 8px 0 0}
   .workspace-plan-usage{grid-template-columns:1fr}
+  .workspace-referral-note{align-items:flex-start;flex-direction:column;gap:5px}
 }
 
 @media(max-width:700px){

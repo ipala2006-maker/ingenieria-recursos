@@ -65,6 +65,7 @@
       const signIn = event.target.closest("[data-workspace-signin]");
       const plans = event.target.closest("[data-workspace-plans]");
       const planSelect = event.target.closest("[data-workspace-plan-select]");
+      const referralsOpen = event.target.closest("[data-workspace-referrals-open]");
 
       if (upload) runAuthenticated(() => elements.fileInput?.click());
       if (folder) runAuthenticated(openNewFolderModal);
@@ -78,6 +79,10 @@
       if (signIn) window.EstudiemosAccount?.open();
       if (plans) openPlansModal();
       if (planSelect) selectPlanPreview(planSelect.dataset.workspacePlanSelect);
+      if (referralsOpen) {
+        closeModal();
+        window.EstudiemosAccount?.open();
+      }
       if (view) setView(view.dataset.workspaceView);
       if (breadcrumb) openFolder(breadcrumb.dataset.workspaceFolder || null);
       if (open) openItem(open.dataset.workspaceOpen);
@@ -392,6 +397,10 @@
           ${planCard("plus", true, "Recomendado")}
           ${planCard("pro")}
         </div>
+        <aside class="workspace-referral-note" aria-label="Descuentos por referidos">
+          <span><strong>Descuentos por referidos.</strong> Obtené 35% al continuar una cadena de invitaciones o 45% al sumar 3 personas verificadas con su primer pago.</span>
+          <button type="button" data-workspace-referrals-open>Ver referidos</button>
+        </aside>
         <p class="workspace-plans-preview__foot"><strong>Al lanzamiento:</strong> habrá prueba de Plus y opciones mensual y por cuatrimestre. Los precios son referencias y todavía no existe contratación ni renovación automática.</p>
         <p class="workspace-plans-preview__foot">WhatsApp se habilitará cuando esté conectado el número oficial. El almacenamiento y la IA ya respetan el plan de prueba elegido.</p>
       </div>`,
