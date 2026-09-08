@@ -66,6 +66,7 @@ function normalizeStatus(value, referral = null) {
     whatsapp: normalizeUsage(value?.whatsapp, plan.monthlyWhatsappActions),
     referral: {
       code: String(referral?.code || ""),
+      emailVerified: Boolean(referral?.emailVerified),
       phoneVerified: Boolean(referral?.phoneVerified),
       phoneMasked: String(referral?.phoneMasked || ""),
       wasReferred: Boolean(referral?.wasReferred),

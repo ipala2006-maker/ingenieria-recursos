@@ -24,8 +24,6 @@
   const WINDOWS_WIDGET_PENDING_KEY = "estudiemos_windows_widget_pending";
   const WINDOWS_WIDGET_SETUP_URL = "https://estudiemos-app.vercel.app/instalar.html#pc-widgets";
   const PENDING_REFERRAL_KEY = "estudiemos_pending_referral";
-  const PENDING_PHONE_KEY = "estudiemos_pending_signup_phone";
-  const PHONE_REQUESTED_KEY = "estudiemos_signup_phone_requested";
   const MIN_PASSWORD_LENGTH = 8;
   const INSTANCE_ID = window.crypto?.randomUUID?.() || Math.random().toString(36).slice(2);
 
@@ -51,8 +49,6 @@
   let referralStatusLoaded = false;
   let referralBusy = false;
   let referralShareCode = "";
-  let pendingPhone = "";
-  let pendingPhoneTimer = 0;
   let readySettled = false;
   let captchaToken = "";
   let captchaWidgetId = null;
@@ -138,10 +134,6 @@
               <span>Contraseña</span>
               <input type="password" name="password" minlength="${MIN_PASSWORD_LENGTH}" autocomplete="current-password" required placeholder="Mínimo ${MIN_PASSWORD_LENGTH} caracteres" />
             </label>
-            <label data-account-signup-phone>
-              <span>Teléfono <small>(necesario al crear la cuenta)</small></span>
-              <input type="tel" name="phone" inputmode="tel" autocomplete="tel" placeholder="+54 9 2966 123456" />
-            </label>
             <p class="account-referral-invite" data-account-signup-invite hidden>Invitación detectada. El descuento se aplicará al verificar tu cuenta.</p>
             <div class="account-captcha" data-account-captcha hidden aria-label="Comprobación de seguridad"></div>
             <button class="account-primary" type="submit" data-account-signin>Ingresar</button>
@@ -168,14 +160,7 @@
               <div><strong>Referidos</strong><small>Quien llega con tu enlace obtiene 35%. Vos obtenés 45% al sumar 3 registros verificados este mes.</small></div>
               <span class="account-referral-discount" data-account-referral-discount>Sin descuento</span>
             </header>
-            <div class="account-referral-phone" data-account-referral-phone>
-              <label><span>Verificá tu teléfono</span><input type="tel" inputmode="tel" autocomplete="tel" placeholder="+54 9 11 1234 5678" data-account-referral-phone-input /></label>
-              <button class="account-secondary" type="button" data-account-referral-send>Enviar SMS</button>
-            </div>
-            <div class="account-referral-otp" data-account-referral-otp hidden>
-              <label><span>Código SMS</span><input type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" data-account-referral-otp-input /></label>
-              <button class="account-secondary" type="button" data-account-referral-verify>Verificar</button>
-            </div>
+            <p data-account-referral-email hidden>Confirmá tu correo desde el enlace que recibiste para activar los referidos. No necesitás SMS ni un primer pago.</p>
             <div class="account-referral-share" data-account-referral-share hidden>
               <div><small>Tu enlace personal</small><strong>Invitá a tus amigos</strong></div>
               <button class="account-secondary" type="button" data-account-referral-copy>Compartir enlace</button>
@@ -267,8 +252,6 @@
       if (event.target.closest("[data-account-update]")) updateApplication();
       if (event.target.closest("[data-account-whatsapp-connect]")) connectWhatsApp();
       if (event.target.closest("[data-account-whatsapp-unlink]")) unlinkWhatsApp();
-      if (event.target.closest("[data-account-referral-send]")) sendReferralPhoneCode();
-      if (event.target.closest("[data-account-referral-verify]")) verifyReferralPhoneCode();
       if (event.target.closest("[data-account-referral-copy]")) copyReferralLink();
       const widgetButton = event.target.closest("[data-account-widget]");
       if (widgetButton) requestAndroidWidget(widgetButton.dataset.accountWidget);
@@ -355,7 +338,7 @@
         connectRealtime(session.user.id);
         startCloudPolling();
         await synchronize("startup");
-        window.setTimeout(beginPendingPhoneVerification, 500);
+        window.setTimeout(() => refreshReferralStatus(true), 500);
       }
 
       client.auth.onAuthStateChange((event, nextSession) => {
@@ -377,7 +360,7 @@
           renderAccountState();
           if (session && session.user.id !== previousUser) {
             await synchronize("signin");
-            window.setTimeout(beginPendingPhoneVerification, 500);
+            window.setTimeout(() => refreshReferralStatus(true), 500);
           } else if (!session && previousUser) {
             clearLocalAccountData();
           }
@@ -452,11 +435,8 @@
     if (!client) return;
     const credentials = getCredentials();
     if (!credentials) return;
-    const phone = getSignupPhone();
-    if (!phone) return;
     const captcha = getCaptchaOptions();
     if (captcha === null) return;
-    localStorage.setItem(PENDING_PHONE_KEY, phone);
     const emailRedirect = new URL(getRootPath(), location.href);
     const pendingReferral = normalizeReferralCode(localStorage.getItem(PENDING_REFERRAL_KEY));
     if (pendingReferral) emailRedirect.searchParams.set("ref", pendingReferral);
@@ -476,7 +456,7 @@
       renderAccountState();
       await synchronize("signin");
       setStatus("Cuenta creada y datos sincronizados.", "success");
-      window.setTimeout(beginPendingPhoneVerification, 300);
+      window.setTimeout(() => refreshReferralStatus(true), 300);
       return;
     }
     setStatus("Te enviamos un correo. Abrilo para confirmar tu cuenta y después ingresá.", "success");
@@ -489,34 +469,6 @@
     if (message) message.hidden = !normalizeReferralCode(localStorage.getItem(PENDING_REFERRAL_KEY));
   }
 
-  async function beginPendingPhoneVerification() {
-    if (!session || !client) return;
-    const savedPhone = normalizePhone(localStorage.getItem(PENDING_PHONE_KEY));
-    if (!savedPhone) return;
-    if (referralBusy) {
-      clearTimeout(pendingPhoneTimer);
-      pendingPhoneTimer = window.setTimeout(beginPendingPhoneVerification, 500);
-      return;
-    }
-    if (session.user?.phone_confirmed_at) {
-      try {
-        const result = await referralRequest({ action: "confirm-referral-phone" });
-        localStorage.removeItem(PENDING_PHONE_KEY);
-        sessionStorage.removeItem(PHONE_REQUESTED_KEY);
-        renderReferralStatus(result);
-        const code = normalizeReferralCode(localStorage.getItem(PENDING_REFERRAL_KEY));
-        if (code) await claimReferralCode(code);
-      } catch (_) {}
-      return;
-    }
-    const marker = `${session.user.id}:${savedPhone}`;
-    if (sessionStorage.getItem(PHONE_REQUESTED_KEY) === marker) return;
-    sessionStorage.setItem(PHONE_REQUESTED_KEY, marker);
-    const input = document.querySelector("[data-account-referral-phone-input]");
-    if (input) input.value = savedPhone;
-    openDialog({ refreshReferrals: false });
-    await sendReferralPhoneCode();
-  }
 
   async function refreshReferralStatus(force = false) {
     if (!session?.access_token || (referralStatusLoaded && !force) || referralBusy) return;
@@ -534,7 +486,7 @@
       if (!session || session.user?.id !== requestingUser) return;
       referralStatusLoaded = true;
       renderReferralStatus(result.referral || {});
-      canClaim = Boolean(result.referral?.phoneVerified && !result.referral?.wasReferred);
+      canClaim = Boolean(result.referral?.emailVerified && !result.referral?.wasReferred);
     } catch (_) {
       const section = document.querySelector("[data-account-referrals]");
       if (section) section.hidden = true;
@@ -547,63 +499,6 @@
     }
   }
 
-  async function sendReferralPhoneCode() {
-    if (!client || !session || referralBusy) return;
-    const input = document.querySelector("[data-account-referral-phone-input]");
-    const phone = normalizePhone(input?.value);
-    if (!phone) return setStatus("Escribí un teléfono válido con código de país.", "error");
-    referralBusy = true;
-    setReferralButtonsBusy(true);
-    setStatus("Enviando el código por SMS...", "info");
-    try {
-      const result = await client.auth.updateUser({ phone });
-      if (result.error) throw result.error;
-      pendingPhone = phone;
-      const otp = document.querySelector("[data-account-referral-otp]");
-      if (otp) otp.hidden = false;
-      setStatus("Te enviamos un código de 6 dígitos. Puede demorar unos segundos.", "success");
-    } catch (error) {
-      sessionStorage.removeItem(PHONE_REQUESTED_KEY);
-      setStatus(phoneErrorMessage(error), "error");
-    } finally {
-      referralBusy = false;
-      setReferralButtonsBusy(false);
-    }
-  }
-
-  async function verifyReferralPhoneCode() {
-    const token = String(document.querySelector("[data-account-referral-otp-input]")?.value || "").replace(/\D/g, "");
-    if (!client || !session || !pendingPhone || token.length !== 6 || referralBusy) {
-      return setStatus("Escribí el código de 6 dígitos que recibiste.", "error");
-    }
-    referralBusy = true;
-    setReferralButtonsBusy(true);
-    setStatus("Verificando tu teléfono...", "info");
-    try {
-      const verified = await client.auth.verifyOtp({ phone: pendingPhone, token, type: "phone_change" });
-      if (verified.error) throw verified.error;
-      if (verified.data?.session) session = verified.data.session;
-      const response = await referralRequest({ action: "confirm-referral-phone" });
-      pendingPhone = "";
-      localStorage.removeItem(PENDING_PHONE_KEY);
-      sessionStorage.removeItem(PHONE_REQUESTED_KEY);
-      referralStatusLoaded = true;
-      renderReferralStatus(response);
-      const pendingCode = normalizeReferralCode(localStorage.getItem(PENDING_REFERRAL_KEY));
-      if (pendingCode) {
-        referralBusy = false;
-        setReferralButtonsBusy(false);
-        await claimReferralCode(pendingCode);
-      } else {
-        setStatus("Teléfono verificado. Ya podés compartir tu enlace.", "success");
-      }
-    } catch (error) {
-      setStatus(phoneErrorMessage(error), "error");
-    } finally {
-      referralBusy = false;
-      setReferralButtonsBusy(false);
-    }
-  }
 
   async function claimReferralCode(explicitCode) {
     if (!session?.access_token || referralBusy) return;
@@ -639,14 +534,12 @@
 
   function renderReferralStatus(status) {
     const section = document.querySelector("[data-account-referrals]");
-    const phone = document.querySelector("[data-account-referral-phone]");
-    const otp = document.querySelector("[data-account-referral-otp]");
     const share = document.querySelector("[data-account-referral-share]");
     if (section) section.hidden = !session;
-    if (phone) phone.hidden = Boolean(status.phoneVerified);
-    if (otp && status.phoneVerified) otp.hidden = true;
-    if (share) share.hidden = !status.phoneVerified;
-    referralShareCode = status.phoneVerified ? normalizeReferralCode(status.code) : "";
+    const emailNotice = document.querySelector("[data-account-referral-email]");
+    if (emailNotice) emailNotice.hidden = Boolean(status.emailVerified);
+    if (share) share.hidden = !status.emailVerified;
+    referralShareCode = status.emailVerified ? normalizeReferralCode(status.code) : "";
     if (status.wasReferred) localStorage.removeItem(PENDING_REFERRAL_KEY);
     const discount = Math.max(0, Number(status.discountPercent) || 0);
     const badge = document.querySelector("[data-account-referral-discount]");
@@ -675,23 +568,7 @@
     return String(value || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12);
   }
 
-  function normalizePhone(value) {
-    const raw = String(value || "").trim();
-    const digits = raw.replace(/\D/g, "");
-    if (digits.length < 8 || digits.length > 15) return "";
-    if (!raw.startsWith("+") && digits.length === 10) return `+549${digits}`;
-    if (digits.startsWith("54") && !digits.startsWith("549")) return `+549${digits.slice(2)}`;
-    return `+${digits}`;
-  }
 
-  function phoneErrorMessage(error) {
-    const message = String(error?.message || "").toLowerCase();
-    if (message.includes("already") || message.includes("unique")) return "Ese teléfono ya está vinculado a otra cuenta.";
-    if (message.includes("rate") || message.includes("60")) return "Esperá un minuto antes de pedir otro código.";
-    if (message.includes("invalid") || message.includes("expired")) return "El código venció o no es correcto. Pedí uno nuevo.";
-    if (message.includes("provider") || message.includes("sms")) return "El envío de SMS todavía no está habilitado. Falta conectar el proveedor.";
-    return error?.message || "No pudimos verificar el teléfono en este momento.";
-  }
 
   function setReferralButtonsBusy(busy) {
     document.querySelectorAll("[data-account-referrals] button").forEach((button) => { button.disabled = busy; });
@@ -791,7 +668,6 @@
     if (result.error) return setStatus("No se pudo cerrar la sesión. Probá nuevamente.", "error");
     session = null;
     referralStatusLoaded = false;
-    pendingPhone = "";
     disconnectRealtime();
     clearLocalAccountData();
     renderAccountState();
@@ -1123,15 +999,6 @@
     return { email, password };
   }
 
-  function getSignupPhone() {
-    const value = document.querySelector('[data-account-form] input[name="phone"]')?.value || "";
-    const phone = normalizePhone(value);
-    if (!phone) {
-      setStatus("Para crear la cuenta, escribí un teléfono válido con código de país.", "error");
-      return "";
-    }
-    return phone;
-  }
 
   function isValidEmail(value) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);

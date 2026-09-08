@@ -20,7 +20,7 @@ function refreshHarness(status) {
   };
   vm.createContext(context);
   const start = source.indexOf('  async function refreshReferralStatus(');
-  const end = source.indexOf('  async function sendReferralPhoneCode(', start);
+  const end = source.indexOf('  async function claimReferralCode(', start);
   vm.runInContext(source.slice(start, end), context);
   return { context, claims };
 }
@@ -29,41 +29,39 @@ test('profile has a share link, never a manual invitation field', () => {
   assert.doesNotMatch(source, /data-account-referral-claim-input|data-account-referral-claim-button|Tu código/);
   assert.match(source, /Compartir enlace/);
   assert.match(source, /instalar\.html\?ref=/);
-  assert.match(source, /autocomplete="one-time-code"/);
+  assert.doesNotMatch(source, /name="phone"|Enviar SMS|beginPendingPhoneVerification/);
 });
 
 test('verified pending invitation resumes after status fetch releases its lock', async () => {
-  const { context, claims } = refreshHarness({ phoneVerified:true, wasReferred:false });
+  const { context, claims } = refreshHarness({ emailVerified:true, wasReferred:false });
   await context.refreshReferralStatus();
   assert.equal(claims.length, 1);
 });
 
 test('unverified identity never automatically claims an invitation', async () => {
-  const { context, claims } = refreshHarness({ phoneVerified:false });
+  const { context, claims } = refreshHarness({ emailVerified:false });
   await context.refreshReferralStatus();
   assert.equal(claims.length, 0);
 });
 
 test('already linked invitation does not run twice on reopening profile', async () => {
-  const { context, claims } = refreshHarness({ phoneVerified:true, wasReferred:true });
+  const { context, claims } = refreshHarness({ emailVerified:true, wasReferred:true });
   await context.refreshReferralStatus();
   await context.refreshReferralStatus(true);
   assert.equal(claims.length, 0);
 });
 
 test('signing out while the status loads cannot apply the pending invitation', async () => {
-  const { context, claims } = refreshHarness({ phoneVerified:true });
+  const { context, claims } = refreshHarness({ emailVerified:true });
   context.fetch = async () => {
     context.session = null;
-    return {ok:true,json:async()=>({referral:{phoneVerified:true}})};
+    return {ok:true,json:async()=>({referral:{emailVerified:true}})};
   };
   await context.refreshReferralStatus();
   assert.equal(claims.length, 0);
 });
 
-test('automatic SMS dialog does not launch a competing referral request', () => {
-  const start = source.indexOf('  async function beginPendingPhoneVerification(');
-  const end = source.indexOf('  async function refreshReferralStatus(',start);
-  assert.match(source.slice(start,end), /openDialog\(\{ refreshReferrals: false \}\)/);
-  assert.match(source.slice(start,end), /if \(referralBusy\)/);
+test('signup keeps email confirmation without phone verification', () => {
+  assert.doesNotMatch(source, /getSignupPhone|verifyOtp|sendReferralPhoneCode/);
+  assert.match(source, /emailRedirectTo: emailRedirect.href/);
 });

@@ -395,7 +395,7 @@
         <p class="workspace-plans-preview__notice"><strong>Sin cobros todavía.</strong> El plan que elijas sí aplicará sus límites para que podamos probar la experiencia completa antes del lanzamiento.</p>
         ${state.planStatus.referral?.discountPercent ? `<p class="workspace-plans-preview__notice"><strong>Tu descuento:</strong> ${state.planStatus.referral.discountPercent}% ${referralReason}. Quedó guardado para este mes.</p>` : ""}
         <aside class="workspace-referral-note" aria-label="Descuentos por referidos">
-          <span><strong>Descuentos simples.</strong> Si llegás con una invitación, tenés 35% este mes. Si invitás a 3 personas que se registran y verifican su teléfono, tenés 45%. No necesitan pagar.</span>
+          <span><strong>Descuentos simples.</strong> Compartí tu enlace: tus invitados tienen 35% al registrarse y confirmar su correo. Cuando lo hacen 3 personas este mes, vos tenés 45%. Duran hasta fin de mes, no se suman y no requieren SMS ni un primer pago.</span>
           <button type="button" data-workspace-referrals-open>Ver referidos</button>
         </aside>
         ${renderCurrentUsage()}

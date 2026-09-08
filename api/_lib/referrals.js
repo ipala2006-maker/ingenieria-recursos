@@ -51,6 +51,7 @@ function maskPhone(phone) {
 
 function referralErrorMessage(error) {
   const raw = `${error?.message || ""} ${error?.data?.message || ""}`.toUpperCase();
+  if (raw.includes("EMAIL_VERIFICATION_REQUIRED")) return "Confirmá tu correo antes de usar una invitación.";
   if (raw.includes("PHONE_VERIFICATION_REQUIRED")) return "Verificá tu teléfono antes de usar una invitación.";
   if (raw.includes("REFERRAL_ALREADY_CLAIMED")) return "Esta cuenta ya fue vinculada a una invitación.";
   if (raw.includes("SELF_REFERRAL")) return "No podés usar tu propio código.";

@@ -148,6 +148,7 @@ begin
     into was_referred;
   return jsonb_build_object(
     'code', identity_row.referral_code,
+    'emailVerified', exists (select 1 from auth.users where id = target_user and email_confirmed_at is not null and nullif(trim(email), '') is not null),
     'phoneVerified', identity_row.phone_verified_at is not null,
     'phoneMasked', coalesce(identity_row.phone_masked, ''),
     'wasReferred', was_referred,
@@ -172,17 +173,25 @@ declare
 begin
   if target_user is null then raise insufficient_privilege using message = 'Authentication required'; end if;
   perform private.ensure_referral_identity(target_user);
-  if not exists (select 1 from public.referral_identities where user_id = target_user and phone_verified_at is not null) then
-    raise check_violation using message = 'PHONE_VERIFICATION_REQUIRED';
+  if not exists (select 1 from auth.users where id = target_user and email_confirmed_at is not null and nullif(trim(email), '') is not null) then
+    raise check_violation using message = 'EMAIL_VERIFICATION_REQUIRED';
   end if;
   if exists (select 1 from public.referrals where invited_user_id = target_user) then
     raise unique_violation using message = 'REFERRAL_ALREADY_CLAIMED';
   end if;
-  select user_id into inviter_id from public.referral_identities
-    where referral_code = upper(regexp_replace(coalesce(target_code, ''), '[^A-Za-z0-9]', '', 'g'))
-      and phone_verified_at is not null;
+  select identity.user_id into inviter_id from public.referral_identities identity
+    join auth.users account on account.id = identity.user_id
+    where identity.referral_code = upper(regexp_replace(coalesce(target_code, ''), '[^A-Za-z0-9]', '', 'g'))
+      and account.email_confirmed_at is not null and nullif(trim(account.email), '') is not null;
   if inviter_id is null then raise invalid_parameter_value using message = 'INVALID_REFERRAL_CODE'; end if;
   if inviter_id = target_user then raise check_violation using message = 'SELF_REFERRAL_NOT_ALLOWED'; end if;
+  if exists (select 1 from auth.users inviter join auth.users invited
+    on lower(trim(inviter.email)) = lower(trim(invited.email))
+    where inviter.id = inviter_id and invited.id = target_user) then
+    raise check_violation using message = 'SELF_REFERRAL_NOT_ALLOWED';
+  end if;
+  -- Serialize concurrent invitations so the third registration cannot be lost.
+  perform 1 from public.referral_identities where user_id = inviter_id for update;
   insert into public.referrals (inviter_user_id, invited_user_id, status, qualified_at)
   values (inviter_id, target_user, 'qualified', now());
   perform private.refresh_referral_benefit(inviter_id);
@@ -245,8 +254,8 @@ begin
   if length(trim(coalesce(payment_reference, ''))) < 6 then
     raise invalid_parameter_value using message = 'INVALID_PAYMENT_REFERENCE';
   end if;
-  if not exists (select 1 from public.referral_identities where user_id = target_user_id and phone_verified_at is not null) then
-    raise check_violation using message = 'PHONE_VERIFICATION_REQUIRED';
+  if not exists (select 1 from auth.users where id = target_user_id and email_confirmed_at is not null and nullif(trim(email), '') is not null) then
+    raise check_violation using message = 'EMAIL_VERIFICATION_REQUIRED';
   end if;
   select * into relation from public.referrals where invited_user_id = target_user_id for update;
   if relation.id is null then return jsonb_build_object('qualified', false, 'reason', 'not_referred'); end if;

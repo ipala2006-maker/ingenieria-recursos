@@ -36,7 +36,11 @@ test("referral benefits are server-owned and require verified identities", () =>
   const endpoint = read("api/_lib/referrals.js");
   assert.match(sql, /phone_hash text unique/i);
   assert.match(sql, /invited_user_id uuid not null unique/i);
-  assert.match(sql, /PHONE_VERIFICATION_REQUIRED/);
+  assert.match(sql, /EMAIL_VERIFICATION_REQUIRED/);
+  assert.match(sql, /from auth\.users where id = target_user and email_confirmed_at is not null/);
+  assert.match(sql, /account\.email_confirmed_at is not null/);
+  assert.match(sql, /where user_id = inviter_id for update/);
+  assert.match(read("api/plan-status.js"), /emailVerified: Boolean\(referral\?\.emailVerified\)/);
   assert.match(sql, /values \(inviter_id, target_user, 'qualified', now\(\)\)/i);
   assert.match(sql, /perform private\.refresh_referral_benefit\(inviter_id\)/i);
   assert.match(sql, /America\/Argentina\/Buenos_Aires/);
