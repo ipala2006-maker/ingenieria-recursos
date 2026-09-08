@@ -1,32 +1,32 @@
 /* Shared application surfaces. Native widget layouts keep their own renderer. */
 :root, html.theme-light {
-  --bg:#f4f6f5;
+  --bg:#edf1f5;
   --panel:#ffffff;
-  --panel-2:#eaf0ee;
-  --text:#182624;
-  --muted:#526763;
-  --muted-2:#647872;
-  --border:#d6e1dd;
-  --accent:#086e68;
+  --panel-2:#e8edf3;
+  --text:#263244;
+  --muted:#526176;
+  --muted-2:#657387;
+  --border:#d2dae5;
+  --accent:#1a73e8;
   --accent-2:#297cba;
   --accent-3:#b86b09;
-  --shadow:0 12px 34px #182c2510;
-  --ring:0 0 0 3px #16867b30;
+  --shadow:0 12px 34px #0f172a10;
+  --ring:0 0 0 3px #1a73e830;
   --ui-ease:cubic-bezier(.2,.8,.2,1);
 }
 html.theme-dark {
-  --bg:#101616;
-  --panel:#182120;
-  --panel-2:#222e2c;
-  --text:#eaf3f0;
-  --muted:#a9beb7;
-  --muted-2:#8ea69e;
-  --border:#31423d;
-  --accent:#7cdac7;
+  --bg:#0b1220;
+  --panel:#111827;
+  --panel-2:#1e293b;
+  --text:#e5edf9;
+  --muted:#aab8cb;
+  --muted-2:#94a3b8;
+  --border:#334155;
+  --accent:#8bb5ff;
   --accent-2:#8fbffa;
   --accent-3:#f8bc64;
   --shadow:0 12px 34px #00000024;
-  --ring:0 0 0 3px #7cdac730;
+  --ring:0 0 0 3px #8bb5ff30;
 }
 html body.workspace-home, html body.productivity-page {
   background:var(--bg);
@@ -41,18 +41,18 @@ html.theme-dark .topbar, html.theme-light .topbar {
 }
 /* app.css has legacy important light-theme tokens; keep this override explicit. */
 html.theme-light {
-  --bg:#f4f6f5!important;
+  --bg:#edf1f5!important;
   --panel:#ffffff!important;
-  --panel-2:#eaf0ee!important;
-  --text:#182624!important;
-  --muted:#526763!important;
-  --muted-2:#647872!important;
-  --border:#d6e1dd!important;
-  --accent:#086e68!important;
+  --panel-2:#e8edf3!important;
+  --text:#263244!important;
+  --muted:#526176!important;
+  --muted-2:#657387!important;
+  --border:#d2dae5!important;
+  --accent:#1a73e8!important;
   --accent-2:#297cba!important;
   --accent-3:#b86b09!important;
-  --shadow:0 12px 34px #182c2510!important;
-  --ring:0 0 0 3px #16867b30!important;
+  --shadow:0 12px 34px #0f172a10!important;
+  --ring:0 0 0 3px #1a73e830!important;
 }
 html.theme-light body.workspace-home { background:var(--bg)!important; }
 html.theme-light .topbar { background:var(--panel)!important; box-shadow:none!important; }

@@ -170,7 +170,7 @@
     if (document.querySelector('link[href*="styles/product-ui.css"]')) return;
     const link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = `${rootPath}styles/product-ui.css?v=20260907-depth`;
+    link.href = `${rootPath}styles/product-ui.css?v=20260908-brand-blue`;
     document.head.appendChild(link);
   }
 
