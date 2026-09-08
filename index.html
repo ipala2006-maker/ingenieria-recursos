@@ -28,6 +28,7 @@
     <link rel="stylesheet" href="./styles/workspace.css?v=20260906-referrals-2" />
     <link rel="stylesheet" href="./styles/dashboard.css?v=20260831-ai-chat" />
     <link rel="stylesheet" href="./styles/product-ui.css?v=20260908-brand-blue" />
+    <link rel="stylesheet" href="./styles/study-home.css?v=20260908-home" />
   </head>
 
   <body class="workspace-home">
@@ -41,12 +42,43 @@
     </header>
 
     <main class="workspace-page">
+      <section class="study-home" aria-labelledby="studyHomeTitle" data-study-home>
+        <header class="study-home__head">
+          <div><p class="workspace-eyebrow" data-home-date>Tu día de estudio</p><h1 id="studyHomeTitle">Un momento para avanzar.</h1></div>
+          <span class="study-home__presence" data-home-presence>Hoy, a tu ritmo</span>
+        </header>
+        <div class="study-home__tools">
+          <section class="study-focus" aria-labelledby="homeFocusTitle">
+            <header class="study-tool-head"><h2 id="homeFocusTitle">Pomodoro</h2><button type="button" class="study-icon" data-home-open="pomodoro" aria-label="Abrir ajustes de Pomodoro" title="Abrir Pomodoro">↗</button></header>
+            <div class="study-focus__body">
+              <div class="study-focus__stage" data-home-depth>
+                <div class="study-focus__fallback" aria-hidden="true"></div>
+                <div class="study-focus__clock"><span data-home-phase>Estudio</span><strong data-home-clock>25:00</strong><small data-home-block>Bloque 1 de 4</small></div>
+              </div>
+              <div class="study-focus__actions"><button type="button" class="study-start" data-home-timer disabled><span aria-hidden="true" data-home-play>▶</span><span data-home-timer-label>Preparando</span></button><span class="study-focus__state" data-home-timer-state>Tu próxima sesión</span></div>
+            </div>
+          </section>
+          <section class="study-progress" aria-labelledby="homeProgressTitle">
+            <header class="study-tool-head"><h2 id="homeProgressTitle">Tu progreso</h2><button type="button" class="study-icon" data-home-open="streak" aria-label="Abrir estadísticas de la racha" title="Todas las estadísticas">↗</button></header>
+            <div class="study-progress__numbers"><div><span>Hoy</span><strong data-home-today>0 h 0 min</strong></div><div><span>Últimos 7 días</span><strong data-home-week>0 h 0 min</strong></div></div>
+            <div class="study-progress__chart" data-home-chart role="group" aria-label="Tiempo de estudio por día"></div>
+            <div class="study-progress__foot"><span class="study-progress__streak"><span data-home-flame aria-hidden="true"></span><span data-home-streak>0 días de racha</span></span><span data-home-chart-detail role="status">Todavía sin sesiones</span></div>
+          </section>
+          <section class="study-assistant" aria-labelledby="homeAssistantTitle">
+            <header class="study-tool-head"><h2 id="homeAssistantTitle">Organizador IA</h2><button type="button" class="study-icon" data-home-open="assistant" aria-label="Abrir chat del organizador" title="Abrir chat">↗</button></header>
+            <div class="study-assistant__route" aria-hidden="true"><span data-home-ai-icon></span><i></i><span>Inbox</span><i></i><span>Calendario</span></div>
+            <form data-home-ai-form class="study-assistant__composer"><label for="homeAiPrompt">¿Qué organizamos?</label><textarea id="homeAiPrompt" maxlength="1200" rows="2" placeholder="Anotá un repaso de Física para mañana..."></textarea><button type="submit" class="study-icon" aria-label="Abrir chat con esta indicación" title="Continuar en el chat">↑</button></form>
+            <div class="study-assistant__suggestions"><button type="button" data-home-prompt="Ayudame a organizar mi semana.">Mi semana <span aria-hidden="true">↗</span></button><button type="button" data-home-prompt="Ayudame a ordenar mis carpetas y archivos.">Mis archivos <span aria-hidden="true">↗</span></button></div>
+          </section>
+        </div>
+        <nav class="study-home__shortcuts" aria-label="Tu organización"><button type="button" data-home-shortcut="space"><span>Mi espacio</span><small>Carpetas y archivos</small><b aria-hidden="true">↗</b></button><button type="button" data-home-shortcut="calendar"><span>Calendario</span><small data-home-next>Tu semana</small><b aria-hidden="true">↗</b></button><button type="button" data-home-shortcut="inbox"><span>Inbox</span><small data-home-pending>Sin pendientes</small><b aria-hidden="true">↗</b></button></nav>
+      </section>
       <div class="home-layout">
         <section class="workspace-section" id="mi-espacio" aria-labelledby="workspaceSectionTitle">
           <header class="workspace-section__head">
             <div class="workspace-section__intro">
               <p class="workspace-eyebrow">Archivos personales</p>
-              <h1 id="workspaceSectionTitle">Mi espacio</h1>
+              <h2 id="workspaceSectionTitle">Mi espacio</h2>
               <p>Guardá y ordená lo que necesitás.</p>
             </div>
             <button class="workspace-plan-summary" type="button" data-workspace-plans aria-label="Ver planes y almacenamiento">
@@ -163,11 +195,12 @@
 
     <!-- DATA SIEMPRE PRIMERO -->
     <script src="./data/data.js?v=20260804-quimica-completa"></script>
-    <script src="./scripts/global-search.js?v=20260908-brand-blue"></script>
+    <script src="./scripts/global-search.js?v=20260908-home"></script>
 
     <script src="./shared/plans.js?v=20260827-real-plans"></script>
     <script src="./scripts/workspace.js?v=20260908-referrals-email"></script>
-    <script src="./scripts/dashboard.js?v=20260907-product-ui"></script>
+    <script src="./scripts/dashboard.js?v=20260908-home"></script>
+    <script type="module" src="./scripts/study-home.js?v=20260908-home"></script>
 
     <script src="./scripts/page-shell.js?v=20260831-launch-audit"></script>
 

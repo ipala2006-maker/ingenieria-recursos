@@ -5,6 +5,7 @@
   const dashboard = document.querySelector('.home-dashboard');
   const calendar = document.querySelector('.dashboard-calendar');
   const inbox = document.querySelector('.dashboard-agenda');
+  const overview = document.querySelector('[data-study-home]');
   if (!page || !workspace || !dashboard || !calendar || !inbox) return;
   const mobile = matchMedia('(max-width:620px)');
   const nav = document.createElement('nav');
@@ -12,9 +13,9 @@
   nav.dataset.homeNavigation = '';
   nav.setAttribute('aria-label', 'Vistas de inicio');
   nav.setAttribute('role', 'tablist');
-  const views = [['space','Mi espacio',workspace],['calendar','Calendario',calendar],['inbox','Inbox',inbox]];
+  const views = [...(overview ? [['overview','Inicio',overview]] : []), ['space','Mi espacio',workspace],['calendar','Calendario',calendar],['inbox','Inbox',inbox]];
   const panelLabels = new Map(views.map(([, , panel]) => [panel, panel.getAttribute('aria-labelledby')]));
-  let current = views.some(([key]) => key === history.state?.homeView) ? history.state.homeView : 'space';
+  let current = views.some(([key]) => key === history.state?.homeView) ? history.state.homeView : views[0][0];
   for (const [key,label,panel] of views) {
     const button = document.createElement('button');
     button.type = 'button';
@@ -29,8 +30,10 @@
   page.appendChild(nav);
   const render = () => {
     nav.hidden = !mobile.matches;
+    if (overview) overview.hidden = mobile.matches && current !== 'overview';
+    document.querySelector('.home-layout').hidden = mobile.matches && current === 'overview';
     workspace.hidden = mobile.matches && current !== 'space';
-    dashboard.hidden = mobile.matches && current === 'space';
+    dashboard.hidden = mobile.matches && !['calendar','inbox'].includes(current);
     calendar.hidden = mobile.matches && current !== 'calendar';
     inbox.hidden = mobile.matches && current !== 'inbox';
     for (const [key,,panel] of views) {
@@ -43,7 +46,16 @@
       if (label) panel.setAttribute('aria-labelledby', label);
       else panel.removeAttribute('aria-labelledby');
     }
+    window.dispatchEvent(new CustomEvent('estudiemos:home-view', { detail: { view: current, mobile: mobile.matches } }));
   };
+  window.addEventListener('estudiemos:home-navigate', event => {
+    const view = views.find(([key]) => key === event.detail?.view);
+    if (!view) return;
+    if (mobile.matches) nav.querySelector(`[data-home-view="${view[0]}"]`).click();
+    else view[2].scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block:'nearest' });
+    view[2].setAttribute('tabindex','-1');
+    view[2].focus({ preventScroll:true });
+  });
   nav.addEventListener('click', event => {
     const button = event.target.closest('[data-home-view]');
     if (!button) return;
@@ -51,20 +63,21 @@
     current = button.dataset.homeView;
     history.pushState({ ...(history.state || {}), homeView:current }, '', location.href);
     render();
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) views.find(([key]) => key === current)?.[2].animate([{opacity:.3,transform:'translateY(6px)'},{opacity:1,transform:'none'}], {duration:220,easing:'ease-out'});
   });
   nav.addEventListener('keydown', event => {
     const direction = {ArrowLeft:-1,ArrowRight:1}[event.key];
     if (direction === undefined && !['Home','End'].includes(event.key)) return;
     event.preventDefault();
     const index = views.findIndex(([key]) => key === current);
-    current = views[event.key === 'Home' ? 0 : event.key === 'End' ? 2 : (index + direction + 3) % 3][0];
+    current = views[event.key === 'Home' ? 0 : event.key === 'End' ? views.length - 1 : (index + direction + views.length) % views.length][0];
     history.replaceState({ ...(history.state || {}), homeView:current }, '', location.href);
     render();
     nav.querySelector(`[data-home-view="${current}"]`).focus();
   });
   mobile.addEventListener('change', render);
   window.addEventListener('popstate', event => {
-    current = views.some(([key]) => key === event.state?.homeView) ? event.state.homeView : 'space';
+    current = views.some(([key]) => key === event.state?.homeView) ? event.state.homeView : views[0][0];
     render();
   });
   render();

@@ -79,6 +79,26 @@
   openPomodoroFromUrl();
   if (state.running) requestWakeLock();
 
+  // All home controls share the existing timer, persistence and native sync.
+  window.EstudiemosStudy = Object.freeze({ snapshot: homeSnapshot, toggle: toggleTimer });
+  window.dispatchEvent(new CustomEvent("estudiemos:study-ready"));
+
+  function homeSnapshot() {
+    const summary = streakSummary();
+    const remaining = Math.max(0, Math.ceil(state.running ? preciseRemainingSeconds() : state.remaining));
+    const total = durationSeconds(state.phase);
+    const days = Array.from({ length: 7 }, (_, index) => {
+      const date = dateKey(index - 6);
+      return { date, minutes: Math.max(0, Number(streakState.days[date]) || 0) };
+    });
+    return {
+      ...summary, days, remaining, running: state.running, alarm: alarmActive,
+      phase: state.phase, block: state.currentBlock, blocks: state.config.blocks,
+      progress: total > 0 ? Math.min(1, Math.max(0, 1 - remaining / total)) : 0,
+      weekMinutes: days.reduce((sum, day) => sum + day.minutes, 0)
+    };
+  }
+
   function addButton() {
     let nav = topbar.querySelector(".topbar__nav");
     if (!nav) {
@@ -1377,6 +1397,7 @@
     }
     syncVideoPipControlState();
     renderPipTimer(timeText, progress);
+    if (window.EstudiemosStudy) window.dispatchEvent(new CustomEvent("estudiemos:study-update"));
   }
 
   function renderPipControls() {

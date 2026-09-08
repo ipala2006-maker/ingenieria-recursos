@@ -172,7 +172,14 @@
       renderDashboard();
     });
     window.addEventListener("estudiemos:workspace-update", updateSpaceSummary);
-    window.addEventListener("estudiemos:open-general-ai", () => openPanel("assistant"));
+    window.addEventListener("estudiemos:open-general-ai", (event) => {
+      openPanel("assistant");
+      const input = document.querySelector("[data-general-ai-form] textarea");
+      if (input && typeof event.detail?.instruction === "string") {
+        input.value = event.detail.instruction.slice(0, 1200);
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+    });
     window.addEventListener("estudiemos:calendar-view-change", (event) => {
       state.calendarView = event.detail?.view === "month" ? "month" : "week";
       renderCalendar();
