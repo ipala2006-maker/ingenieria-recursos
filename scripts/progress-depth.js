@@ -25,21 +25,34 @@ export function createProgressDepth(host, onSelect) {
   for(const y of [0,30,60,90]) vertices.push(-140,y,-15,140,y,-15);
   const gridGeometry=new THREE.BufferGeometry(); gridGeometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
   const gridMaterial=new THREE.LineBasicMaterial({transparent:true,opacity:.3});
-  group.add(new THREE.LineSegments(gridGeometry,gridMaterial));
+  const grid=new THREE.LineSegments(gridGeometry,gridMaterial); group.add(grid);
   const raycaster=new THREE.Raycaster();
   let frame=0, disposed=false, visible=true, selected=-1, signature='', days=[], drag=null;
   let rotationY=-.16, rotationX=0, suppressClickUntil=0;
+  let worldWidth=320;
   group.rotation.y=-.16;
+  function layout() {
+    const spread=worldWidth*.78;
+    floor.scale.x=worldWidth/320; grid.scale.x=worldWidth/320;
+    bars.forEach((bar,index)=>{
+      bar.scale.x=Math.min(worldWidth*.078,spread/Math.max(1,days.length)*.7);
+      bar.position.x=(index/Math.max(1,days.length-1)-.5)*spread;
+    });
+  }
   const heightAt=index=>Math.max(1,(days[index]?.minutes || 0)/Math.max(25,...days.map(d=>d.minutes))*86);
   function draw() {
     frame=0;
     if(disposed || document.hidden || !visible || host.closest('[hidden]')) return;
-    const {width,height}=host.getBoundingClientRect();
+    const {width,height}=surface.getBoundingClientRect();
     if(!width || !height) return;
     const ratio=renderer.getPixelRatio();
     if(renderer.domElement.width!==Math.floor(width*ratio) || renderer.domElement.height!==Math.floor(height*ratio)) {
       renderer.setSize(width,height,false); surface.width=renderer.domElement.width; surface.height=renderer.domElement.height;
-      camera.top=160*height/width; camera.bottom=-camera.top; camera.updateProjectionMatrix();
+      // Keep the tallest data bar in frame even in a short, wide module.
+      worldWidth=150*width/height;
+      camera.left=-worldWidth/2; camera.right=worldWidth/2;
+      camera.top=worldWidth*height/width/2; camera.bottom=-camera.top; camera.updateProjectionMatrix();
+      layout();
     }
     let moving=false;
     group.rotation.y+=(rotationY-group.rotation.y)*.2;
@@ -65,7 +78,7 @@ export function createProgressDepth(host, onSelect) {
   }
   function schedule() { if(!frame && !disposed) frame=requestAnimationFrame(draw); }
   function pick(event) {
-    const box=host.getBoundingClientRect();
+    const box=surface.getBoundingClientRect();
     raycaster.setFromCamera(new THREE.Vector2((event.clientX-box.left)/box.width*2-1,1-(event.clientY-box.top)/box.height*2),camera);
     const hit=raycaster.intersectObjects(bars.filter(bar=>bar.visible),false)[0];
     if(hit) onSelect(hit.object.userData.index);
@@ -120,9 +133,8 @@ export function createProgressDepth(host, onSelect) {
         signature=next; days=value;
         bars.forEach((bar,i)=>{
           bar.visible=i<days.length;
-          bar.scale.x=Math.min(25,230/days.length*.7);
-          bar.position.x=(i/Math.max(1,days.length-1)-.5)*252;
         });
+        layout();
       }
       if(selected!==index || changed) {
         selected=index; schedule();

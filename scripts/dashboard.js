@@ -445,7 +445,7 @@
   function renderAgenda() {
     const container = document.querySelector("[data-dashboard-agenda]");
     if (!container) return;
-    const items = readAgenda().filter((item) => isCompletable(item) && !item.done).sort(compareAgenda).slice(0, mobileHome.matches ? MAX_AGENDA_ITEMS : 4);
+    const items = readAgenda().filter((item) => isCompletable(item) && !item.done).sort(compareAgenda).slice(0, workspaceHome || mobileHome.matches ? MAX_AGENDA_ITEMS : 4);
     if (!items.length) {
       container.innerHTML = '<p class="dashboard-agenda__empty">No tenés tareas pendientes.</p>';
       return;

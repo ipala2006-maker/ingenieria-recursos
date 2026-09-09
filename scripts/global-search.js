@@ -183,7 +183,7 @@
   function loadProductInterface() {
     if (document.querySelector('script[src*="scripts/product-ui.js"]')) return;
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/product-ui.js?v=20260908-home`;
+    script.src = `${rootPath}scripts/product-ui.js?v=20260909-console`;
     document.head.appendChild(script);
   }
 
@@ -274,7 +274,7 @@
   function loadDashboardScript() {
     if (document.querySelector('script[src*="scripts/dashboard.js"]')) return;
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/dashboard.js?v=20260909-depth2`;
+    script.src = `${rootPath}scripts/dashboard.js?v=20260909-console`;
     script.defer = true;
     document.head.appendChild(script);
   }

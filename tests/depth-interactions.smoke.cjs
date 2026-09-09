@@ -30,7 +30,7 @@ const output=path.join(__dirname,'../tmp/ui-check');
       if(viewport.width<500) {
         const homeBox=await page.locator('[data-study-home]').boundingBox();
         const progressBox=await page.locator('.study-progress').boundingBox();
-        assert.ok(progressBox.width>homeBox.width-25,'mobile tools must use the available width');
+        assert.ok(progressBox.width>homeBox.width*.45,'mobile tools must fill their allocated bay');
       }
       const saved=await page.evaluate(()=>localStorage.getItem('estudiemos_pomodoro_streak'));
       for(const selector of ['[data-home-dial]','[data-pomodoro-dial]']) {
@@ -106,7 +106,7 @@ const output=path.join(__dirname,'../tmp/ui-check');
       assert.equal(await page.evaluate(()=>localStorage.getItem('estudiemos_pomodoro_streak')),saved,'interactions cannot change study history');
       await page.locator('[data-home-range="week"]').click();
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
-      await page.locator('[data-study-home]').screenshot({path:path.join(output,`depth-home-${viewport.width}.png`)});
+      await page.screenshot({path:path.join(output,`depth-home-${viewport.width}.png`)});
       await page.locator('[data-home-destination="inbox"]').click();
       await page.locator('.dashboard-agenda').waitFor({state:'visible'});
       if(viewport.width<500) await page.locator('[data-home-view="overview"]').click();

@@ -20,6 +20,43 @@ if (home) {
   let period = 0;
   let dialPreview = null;
   let sequenceSignature = '';
+  const session = home.querySelector('[data-home-session]');
+  const sessionSummary = session.querySelector('summary');
+  const sessionDialog = document.createElement('dialog');
+  sessionDialog.className = 'study-session-dialog';
+  sessionDialog.setAttribute('aria-labelledby','sessionDialogTitle');
+  const sessionHead=document.createElement('header');
+  const sessionTitle=document.createElement('h2');
+  sessionTitle.id='sessionDialogTitle'; sessionTitle.textContent='Tu sesión';
+  const sessionClose=document.createElement('button');
+  sessionClose.type='button'; sessionClose.className='study-icon'; sessionClose.dataset.homeSessionClose='';
+  sessionClose.setAttribute('aria-label','Cerrar configuración'); sessionClose.title='Cerrar';
+  sessionHead.append(sessionTitle,sessionClose);
+  const sessionBody=document.createElement('div'); sessionBody.className='study-session';
+  sessionDialog.append(sessionHead,sessionBody);
+  for(const child of Array.from(session.children)) if(child!==sessionSummary) sessionBody.appendChild(child);
+  home.appendChild(sessionDialog);
+  sessionSummary.setAttribute('aria-haspopup','dialog');
+  sessionSummary.addEventListener('click',event=>{
+    event.preventDefault();
+    history.pushState({...history.state,estudiemosUi:'home-session'},'',location.href);
+    sessionDialog.showModal();
+  });
+  const closeSession=()=>{
+    if(history.state?.estudiemosUi==='home-session') history.back();
+    else sessionDialog.close();
+  };
+  sessionDialog.querySelector('[data-home-session-close]').addEventListener('click',closeSession);
+  sessionDialog.addEventListener('cancel',event=>{event.preventDefault();closeSession();});
+  sessionDialog.addEventListener('click',event=>{
+    const box=sessionDialog.getBoundingClientRect();
+    if(event.target===sessionDialog && (event.clientX<box.left || event.clientX>box.right || event.clientY<box.top || event.clientY>box.bottom)) closeSession();
+  });
+  window.addEventListener('popstate',()=>{
+    if(history.state?.estudiemosUi==='home-session' && !sessionDialog.open) sessionDialog.showModal();
+    else if(history.state?.estudiemosUi!=='home-session' && sessionDialog.open) sessionDialog.close();
+  });
+  if(history.state?.estudiemosUi==='home-session') sessionDialog.showModal();
   const dial = attachTimerDial(home.querySelector('[data-home-dial]'), {
     read: () => window.EstudiemosStudy?.snapshot().remaining ?? 1500,
     commit: seconds => window.EstudiemosStudy?.seek(seconds),
@@ -71,7 +108,7 @@ if (home) {
       const module = await import('./study-scene.js?v=20260909-depth2');
       if (request !== generation || reduced.matches || home.hidden) return;
       if(!depth) depth = module.createStudyScene(host);
-      const progress = await import('./progress-depth.js?v=20260909-depth2');
+      const progress = await import('./progress-depth.js?v=20260909-console');
       if(request !== generation || reduced.matches || home.hidden) return;
       progressDepth = progress.createProgressDepth(chart,selectDay);
       home.querySelector('[data-progress-reset]').hidden=false;
@@ -160,6 +197,7 @@ if (home) {
     cloneIcon('[data-pomodoro-config-toggle]', '[data-home-settings-icon]');
     cloneIcon('[data-pomodoro-alarm-preview]', '[data-home-bell]');
     cloneIcon('[data-pomodoro-reset]', '[data-progress-reset]');
+    cloneIcon('[data-pomodoro-close]', '[data-home-session-close]');
     cloneIcon('[data-quick-note-open]', '[data-home-node="inbox"]');
     cloneIcon('[data-agenda-open]', '[data-home-node="calendar"]');
     cloneIcon('[data-workspace-new-folder]', '[data-home-node="space"]');

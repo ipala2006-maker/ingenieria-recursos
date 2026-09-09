@@ -7,7 +7,11 @@
   const inbox = document.querySelector('.dashboard-agenda');
   const overview = document.querySelector('[data-study-home]');
   if (!page || !workspace || !dashboard || !calendar || !inbox) return;
-  const mobile = matchMedia('(max-width:620px)');
+  const mobile = matchMedia('(max-width:700px), (min-width:701px) and (max-width:900px) and (max-height:899px), (max-height:650px)');
+  const topbar = document.querySelector('.topbar');
+  if(topbar) new ResizeObserver(() => {
+    document.documentElement.style.setProperty('--home-topbar-height',`${topbar.getBoundingClientRect().height}px`);
+  }).observe(topbar);
   const nav = document.createElement('nav');
   nav.className = 'product-home-navigation';
   nav.dataset.homeNavigation = '';
@@ -29,6 +33,7 @@
   }
   page.appendChild(nav);
   const render = () => {
+    if(mobile.matches && history.state?.estudiemosUi==='home-session') current='overview';
     nav.hidden = !mobile.matches;
     if (overview) overview.hidden = mobile.matches && current !== 'overview';
     document.querySelector('.home-layout').hidden = mobile.matches && current === 'overview';

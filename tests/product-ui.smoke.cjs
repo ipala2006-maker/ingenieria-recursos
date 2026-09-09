@@ -57,7 +57,8 @@ const output = path.join(__dirname, '../tmp/ui-check');
     await page.locator('[data-home-dial]').focus();
     await page.keyboard.press('ArrowRight');
     assert.equal(await page.locator('[data-home-clock]').innerText(),'26:00');
-    await page.locator('[data-home-adjust="-1"]').click();
+    if(view.width<500) await page.keyboard.press('ArrowLeft');
+    else await page.locator('[data-home-adjust="-1"]').click();
     assert.equal(await page.locator('[data-home-clock]').innerText(),'25:00');
     const dialBounds = await page.locator('[data-home-dial]').boundingBox();
     const dialX = dialBounds.x+dialBounds.width*.95;
@@ -79,11 +80,14 @@ const output = path.join(__dirname, '../tmp/ui-check');
     await page.locator('[data-home-alarm]').selectOption('bell');
     await page.screenshot({path:path.join(output,view.name+'-session.png')});
     await page.locator('[data-home-preset="25,5,4"]').click();
-    await page.locator('[data-home-session] summary').click();
+    await page.locator('[data-home-session-close]').click();
+    await page.locator('.study-session-dialog').waitFor({state:'hidden'});
     await page.locator('[data-home-range="month"]').click();
     assert.equal(await page.locator('[data-home-chart] button:visible').count(),30);
-    await page.locator('[data-home-period-step="-1"]').click();
-    await page.locator('[data-home-period-step="1"]').click();
+    if(view.width>=500) {
+      await page.locator('[data-home-period-step="-1"]').click();
+      await page.locator('[data-home-period-step="1"]').click();
+    }
     assert.equal(await page.locator('[data-home-period-step="1"]').isDisabled(),true);
     await page.locator('[data-home-range="week"]').click();
     await page.locator('[data-home-open="pomodoro"]').click();
@@ -103,7 +107,7 @@ const output = path.join(__dirname, '../tmp/ui-check');
     await page.locator('[data-quick-panel="assistant"] [data-quick-panel-close]').click();
     await page.locator('[data-quick-panel="assistant"]').waitFor({state:'hidden'});
     if(view.width<500) {
-      await page.locator('[data-home-shortcut="calendar"]').click();
+      await page.locator('[data-home-view="calendar"]').click();
       await page.locator('.dashboard-calendar').screenshot({path:path.join(output,view.name+'-calendar.png')});
       await page.locator('[data-dashboard-calendar-view="month"]').click();
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);

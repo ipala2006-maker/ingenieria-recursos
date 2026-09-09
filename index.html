@@ -31,6 +31,7 @@
     <link rel="stylesheet" href="./styles/study-home.css?v=20260909-depth2" />
     <link rel="stylesheet" href="./styles/interaction.css?v=20260909-depth2" />
     <link rel="stylesheet" href="./styles/study-depth.css?v=20260909-depth2" />
+    <link rel="stylesheet" href="./styles/home-console.css?v=20260909-console" />
   </head>
 
   <body class="workspace-home">
@@ -46,7 +47,7 @@
     <main class="workspace-page">
       <section class="study-home" aria-labelledby="studyHomeTitle" data-study-home>
         <header class="study-home__head">
-          <div><p class="workspace-eyebrow" data-home-date>Tu día de estudio</p><h1 id="studyHomeTitle">Un momento para avanzar.</h1></div>
+          <div><p class="workspace-eyebrow" data-home-date>Tu día de estudio</p><h1 id="studyHomeTitle">Tu día, en orden.</h1></div>
           <span class="study-home__presence" data-home-presence>Hoy, a tu ritmo</span>
         </header>
         <div class="study-home__tools">
@@ -106,6 +107,7 @@
               </span>
               <span class="workspace-plan-summary__action">Ver planes</span>
             </button>
+            <button class="workspace-tool-icon workspace-console-add" type="button" data-workspace-add aria-label="Agregar carpeta o archivo" title="Agregar carpeta o archivo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
           </header>
 
           <section class="workspace-browser" aria-label="Archivos y carpetas">
@@ -119,13 +121,13 @@
                 <label class="workspace-search">
                   <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
                   <span class="sr-only">Buscar en mi espacio</span>
-                  <input type="search" placeholder="Buscar en mi espacio" autocomplete="off" data-workspace-search />
+                  <input type="search" placeholder="Buscar" autocomplete="off" data-workspace-search />
                 </label>
 
                 <label class="workspace-sort">
                   <span class="sr-only">Ordenar archivos</span>
                   <select data-workspace-sort aria-label="Ordenar archivos">
-                    <option value="updated">Más recientes</option>
+                    <option value="updated">Recientes</option>
                     <option value="name">Nombre</option>
                     <option value="type">Tipo</option>
                   </select>
@@ -214,12 +216,12 @@
 
     <!-- DATA SIEMPRE PRIMERO -->
     <script src="./data/data.js?v=20260804-quimica-completa"></script>
-    <script src="./scripts/global-search.js?v=20260909-depth2"></script>
+    <script src="./scripts/global-search.js?v=20260909-console"></script>
 
     <script src="./shared/plans.js?v=20260827-real-plans"></script>
     <script src="./scripts/workspace.js?v=20260908-referrals-email"></script>
-    <script src="./scripts/dashboard.js?v=20260909-depth2"></script>
-    <script type="module" src="./scripts/study-home.js?v=20260909-depth2"></script>
+    <script src="./scripts/dashboard.js?v=20260909-console"></script>
+    <script type="module" src="./scripts/study-home.js?v=20260909-console"></script>
 
     <script src="./scripts/page-shell.js?v=20260831-launch-audit"></script>
 
