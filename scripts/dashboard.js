@@ -107,7 +107,38 @@
   }
 
   function bindEvents() {
+    let swipeStart = null;
+    let suppressCalendarClickUntil = 0;
+    const calendar = document.querySelector('[data-dashboard-calendar]');
+    calendar?.addEventListener('pointerdown', event => {
+      if(event.pointerType === 'mouse' || !event.isPrimary) return;
+      swipeStart = {x:event.clientX,y:event.clientY};
+    }, {passive:true});
+    calendar?.addEventListener('pointercancel', () => { swipeStart = null; });
+    calendar?.addEventListener('pointerup', event => {
+      if(!swipeStart) return;
+      const dx = event.clientX-swipeStart.x, dy = event.clientY-swipeStart.y;
+      swipeStart = null;
+      if(Math.abs(dx)>55 && Math.abs(dx)>Math.abs(dy)*1.5) {
+        suppressCalendarClickUntil = Date.now()+400;
+        moveMonth(dx<0 ? 1 : -1);
+      }
+    });
+    calendar?.addEventListener('keydown', event => {
+      const cells = Array.from(calendar.querySelectorAll('[data-dashboard-date]'));
+      const index = cells.indexOf(event.target);
+      const delta = {ArrowRight:1,ArrowLeft:-1,ArrowDown:state.calendarView==='month'?7:1,ArrowUp:state.calendarView==='month'?-7:-1}[event.key];
+      if(index<0 || delta===undefined) return;
+      event.preventDefault();
+      cells[Math.max(0,Math.min(cells.length-1,index+delta))]?.focus();
+    });
     document.addEventListener("click", (event) => {
+      if(event.target.closest('[data-dashboard-today]')) {
+        const now = new Date();
+        state.date = toDateValue(now); state.month=now.getMonth(); state.year=now.getFullYear();
+        renderCalendar();
+        return;
+      }
       if (event.target.closest("[data-quick-note-open]")) {
         openPanel("note");
         return;
@@ -139,6 +170,7 @@
       }
       const day = event.target.closest("[data-dashboard-date]");
       if (day) {
+        if(Date.now()<suppressCalendarClickUntil) return;
         openAgenda({ date: day.dataset.dashboardDate });
         return;
       }
@@ -404,6 +436,10 @@
       cells.push(`<button class="dashboard-calendar__day ${state.calendarView === "month" && date.getMonth() !== state.month ? "is-outside" : ""} ${value === today ? "is-today" : ""} ${dayItems.length ? "has-items" : ""} ${hasStreak ? "has-study-streak" : ""}" type="button" data-dashboard-date="${value}" aria-label="${formatFullDate(value)}${dayItems.length ? `, ${dayItems.length} anotaciones` : ""}${hasStreak ? ", presencia de estudio registrada" : ""}"><span class="dashboard-calendar__number">${date.getDate()}</span>${hasStreak ? flameIcon() : ""}${weekContent}</button>`);
     }
     grid.innerHTML = cells.join("");
+    grid.querySelectorAll('[data-dashboard-date]').forEach(button => {
+      const items = dated.get(button.dataset.dashboardDate) || [];
+      button.title = [formatFullDate(button.dataset.dashboardDate),...items.slice(0,4).map(item=>`${formatCalendarTime(item)} · ${item.title}`)].join('\n');
+    });
   }
 
   function renderAgenda() {
@@ -431,6 +467,7 @@
     state.month = next.getMonth();
     state.date = toDateValue(next);
     renderCalendar();
+    if(!matchMedia('(prefers-reduced-motion: reduce)').matches) document.querySelector('[data-dashboard-calendar]')?.animate([{opacity:.45,transform:`translateX(${direction*12}px)`},{opacity:1,transform:'none'}],{duration:220,easing:'cubic-bezier(.2,.8,.2,1)'});
   }
 
   function startOfWeek(date) {

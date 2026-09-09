@@ -25,6 +25,7 @@
   let nativeSyncTimer = null;
   let workspaceReloadTimer = null;
   let lastWorkspaceMarker = localStorage.getItem(WORKSPACE_CHANGE_KEY) || "0";
+  const renderedWidgets = new WeakMap();
 
   window.EstudiemosDesktopWidgets = {
     available: isDesktopDevice(),
@@ -161,13 +162,19 @@
     });
     const content = doc.getElementById("widgetContent");
     if (!content) return;
-    if (state.view === "workspace") content.innerHTML = workspaceMarkup();
-    else if (state.view === "calendar") content.innerHTML = calendarMarkup();
-    else if (state.view === "pomodoro") content.innerHTML = pomodoroMarkup();
-    else if (state.view === "streak") content.innerHTML = streakMarkup();
-    else content.innerHTML = inboxMarkup();
+    let markup = state.view === "workspace" ? workspaceMarkup()
+      : state.view === "calendar" ? calendarMarkup()
+      : state.view === "pomodoro" ? pomodoroMarkup()
+      : state.view === "streak" ? streakMarkup() : inboxMarkup();
     if (standaloneHost && !window.EstudiemosAccount?.getUser?.()) {
-      content.insertAdjacentHTML("beforeend", '<button class="widget-connect" type="button" data-widget-account>Conectar cuenta</button>');
+      markup += '<button class="widget-connect" type="button" data-widget-account>Conectar cuenta</button>';
+    }
+    if(renderedWidgets.get(content) !== markup) {
+      const focused = content.contains(doc.activeElement) ? doc.activeElement : null;
+      const focusIndex = focused ? Array.from(content.querySelectorAll('button,input,a')).indexOf(focused) : -1;
+      content.innerHTML = markup;
+      renderedWidgets.set(content,markup);
+      if(focusIndex >= 0) content.querySelectorAll('button,input,a')[focusIndex]?.focus({preventScroll:true});
     }
     syncRainmeterReminderState();
   }
@@ -881,6 +888,30 @@
       .rainmeter-widget .account-primary,.rainmeter-widget .account-secondary,.rainmeter-widget .account-link{min-height:34px;padding:7px 10px}
       .desktop-widget-locked .widget-head,.desktop-widget-locked body>footer{display:none}.desktop-widget-locked body{grid-template-rows:minmax(0,1fr)}
       .widget-resize-handle{display:none}
+      .widget-section{background:var(--bg);box-shadow:inset 0 1px color-mix(in srgb,var(--accent) 10%,transparent)}
+      .widget-section *{letter-spacing:0}
+      .widget-section h1{font-weight:600}
+      .task-row,.workspace-widget-row{border:0;border-bottom:1px solid color-mix(in srgb,var(--line) 55%,transparent);border-radius:6px;background:transparent;min-height:44px;transition:background .18s,transform .18s}
+      .task-row:hover,.workspace-widget-row:hover{background:var(--soft);transform:translateX(2px)}
+      .workspace-widget-icon{border-radius:6px;background:var(--soft);box-shadow:inset 1px 1px #ffffff10,2px 3px 6px #0002;transform:perspective(220px) rotateY(-12deg);transition:transform .2s}
+      .workspace-widget-row:hover .workspace-widget-icon{transform:perspective(220px) rotateY(0)}
+      .workspace-widget-icon svg{filter:drop-shadow(1px 2px 1px #0004)}
+      .streak-mark{border-radius:8px;box-shadow:inset 1px 1px #ffffff0a,0 3px 10px #0002}
+      .streak-widget-chart svg{filter:drop-shadow(0 3px 2px #0002)}
+      .widget-calendar[data-view="week"] .calendar-day{border:0;border-radius:5px;background:transparent;box-shadow:inset 0 -1px color-mix(in srgb,var(--line) 50%,transparent)}
+      .widget-calendar[data-view="week"] .calendar-day.is-today{box-shadow:inset 2px 0 var(--accent);background:var(--soft)}
+      .calendar-day:hover{background:var(--soft)}
+      .pomodoro-widget-ring{--dial-size:min(188px,calc(100vw - 72px),calc(100vh - 150px));position:relative;flex:0 0 var(--dial-size);width:var(--dial-size);height:var(--dial-size);min-height:72px;min-width:72px;padding:5px;box-shadow:0 0 0 5px var(--bg),0 0 0 6px var(--line),0 8px 18px #0003,inset 1px 1px #ffffff25;transition:box-shadow .2s}
+      .pomodoro-widget-ring::before{box-shadow:inset 0 5px 12px #0002}
+      .pomodoro-widget-ring strong{font-size:38px;font-weight:600}
+      .pomodoro-widget-ring>div{position:absolute;inset:0;padding:0;min-width:0;aspect-ratio:auto;place-content:center}
+      .pomodoro-widget-actions button,.streak-action{border-radius:8px;box-shadow:inset 0 1px #ffffff18;transition:transform .15s}
+      .pomodoro-widget-actions button:active,.streak-action:active{transform:scale(.97)}
+      .streak-widget-metrics strong{color:var(--accent);font-size:12px}
+      .widget-section :focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+      @media(max-width:340px){.streak-widget-head{grid-template-columns:32px minmax(0,1fr);gap:7px}.streak-mark{width:32px;height:32px}.streak-widget-metrics{grid-column:1/-1;display:flex;gap:16px}.streak-widget-metrics>span{justify-content:start}.streak-widget-head h1{font-size:16px}.pomodoro-widget-ring strong{font-size:30px}.streak-widget-head span{font-size:9px}}
+      @media(max-height:230px){.widget-pomodoro{gap:16px}.pomodoro-widget-head{display:none}.pomodoro-widget-ring{--dial-size:min(138px,calc(100vw - 72px),calc(100vh - 86px))}.pomodoro-widget-ring strong{font-size:28px}.pomodoro-widget-actions button{min-height:34px}.streak-widget-chart svg{height:44px}}
+      @media(prefers-reduced-motion:reduce){.widget-section *, .widget-section *::before{animation:none!important;transition:none!important;transform:none!important}}
       .rainmeter-widget .widget-resize-handle{position:fixed;right:5px;bottom:5px;z-index:45;width:18px;height:18px;display:block;cursor:nwse-resize;opacity:0;touch-action:none;app-region:no-drag;-webkit-app-region:no-drag;transition:opacity .15s ease}
       .rainmeter-widget body:hover .widget-resize-handle{opacity:.7}
       .rainmeter-widget .widget-resize-handle::before,.rainmeter-widget .widget-resize-handle::after{content:"";position:absolute;right:2px;bottom:2px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);border-radius:1px}.rainmeter-widget .widget-resize-handle::before{width:11px;height:11px}.rainmeter-widget .widget-resize-handle::after{width:5px;height:5px}

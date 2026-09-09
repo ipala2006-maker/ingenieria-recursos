@@ -2,10 +2,66 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const vm = require('node:vm');
 const { requireJsonRequest } = require("../api/_lib/request-security");
+const { enforceRateLimit, rejectOversizedBody, isSameOriginRequest } = require('../api/_lib/request-security');
+
+test('rate limit actually rejects repeated requests and sets retry headers', async () => {
+  const headers={}; let status;
+  const response={setHeader:(key,value)=>{headers[key]=value;},status(code){status=code;return this;},json(){}};
+  const request={headers:{},socket:{remoteAddress:'192.0.2.42'}};
+  const options={route:'test-'+Date.now(),limit:2,windowSeconds:60,distributed:false};
+  assert.equal(await enforceRateLimit(request,response,options),true);
+  assert.equal(await enforceRateLimit(request,response,options),true);
+  assert.equal(await enforceRateLimit(request,response,options),false);
+  assert.equal(status,429); assert.ok(Number(headers['Retry-After'])>0);
+});
+
+test('API bodies are limited even when the caller lies about content length', () => {
+  let status;
+  const response={status(code){status=code;return this;},json(){}};
+  assert.equal(rejectOversizedBody({headers:{'content-length':'1'},body:{text:'a'.repeat(3000)}},response,1024),true);
+  assert.equal(status,413);
+  assert.equal(rejectOversizedBody({headers:{},body:{text:'ok'}},response,1024),false);
+});
+
+test('cross-origin and malformed origins are rejected', () => {
+  const req=origin=>({headers:{origin,host:'estudiemos-app.vercel.app'}});
+  assert.equal(isSameOriginRequest(req('https://attacker.invalid')),false);
+  assert.equal(isSameOriginRequest(req('null')),false);
+  assert.equal(isSameOriginRequest(req('https://estudiemos-app.vercel.app.attacker.invalid')),false);
+  assert.equal(isSameOriginRequest(req('https://estudiemos-app.vercel.app')),true);
+});
 
 const root = path.resolve(__dirname, "..");
 const read = (relative) => fs.readFileSync(path.join(root, relative), "utf8");
+
+test('authentication fails closed on timeout and malformed responses, and always clears its timer', async () => {
+  for (const outcome of ['timeout', 'invalid-json', 'unauthorized', 'valid']) {
+    let expire; let cleared = false;
+    const sandbox = {
+      module: {exports:{}}, AbortController,
+      process: {env:{SUPABASE_URL:'https://example.invalid',SUPABASE_PUBLISHABLE_KEY:'test-public-key'}},
+      setTimeout(callback,delay){expire=callback;assert.equal(delay,12000);return 1;},
+      clearTimeout(id){assert.equal(id,1);cleared=true;},
+      fetch: async (_url,options) => {
+        if(outcome === 'timeout') {
+          expire(); assert.equal(options.signal.aborted,true);
+          throw new Error('Aborted');
+        }
+        return {ok:outcome !== 'unauthorized',json:async()=>{
+          assert.equal(cleared,false,'timeout must cover the response body too');
+          if(outcome === 'invalid-json') throw new SyntaxError('Invalid JSON');
+          return {id:'verified-user'};
+        }};
+      }
+    };
+    vm.runInNewContext(read('api/_lib/supabase-admin.js'),sandbox);
+    const user = await sandbox.module.exports.authenticateBearer('Bearer example');
+    assert.equal(user?.id || null,outcome === 'valid' ? 'verified-user' : null);
+    assert.equal(cleared,true);
+  }
+});
 
 test("JSON endpoints reject non-JSON content", () => {
   let status = 0;

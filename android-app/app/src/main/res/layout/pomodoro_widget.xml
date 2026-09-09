@@ -18,7 +18,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="TEMPORIZADOR POMODORO"
+            android:text="POMODORO"
             android:textColor="#94A3B8"
             android:textSize="10sp"
             android:textStyle="bold" />
@@ -46,7 +46,10 @@
         android:text="25:00"
         android:textColor="#F8FAFC"
         android:textSize="45sp"
-        android:textStyle="bold" />
+        android:fontFamily="sans-serif-medium"
+        android:shadowColor="#80000000"
+        android:shadowDy="2"
+        android:shadowRadius="4" />
 
     <TextView
         android:id="@+id/pomodoro_widget_block"

@@ -51,6 +51,8 @@
   let streakReminderTimer = 0;
   let androidNotificationPermission = "unknown";
   let focusDepth = null;
+  let timerDial = null;
+  let timerDialPreview = null;
   let focusDepthRequested = false;
   let focusDepthGeneration = 0;
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
@@ -80,7 +82,7 @@
   if (state.running) requestWakeLock();
 
   // All home controls share the existing timer, persistence and native sync.
-  window.EstudiemosStudy = Object.freeze({ snapshot: homeSnapshot, toggle: toggleTimer });
+  window.EstudiemosStudy = Object.freeze({ snapshot: homeSnapshot, history: studyHistory, toggle: toggleTimer, configure: applyConfigValue, seek: setRemaining, alarm: configureAlarm, previewAlarm });
   window.dispatchEvent(new CustomEvent("estudiemos:study-ready"));
 
   function homeSnapshot() {
@@ -94,6 +96,7 @@
     return {
       ...summary, days, remaining, running: state.running, alarm: alarmActive,
       phase: state.phase, block: state.currentBlock, blocks: state.config.blocks,
+      config: { ...state.config }, autoStart: state.autoStart, alarmMode: state.alarmMode, alarmVolume: state.alarmVolume,
       progress: total > 0 ? Math.min(1, Math.max(0, 1 - remaining / total)) : 0,
       weekMinutes: days.reduce((sum, day) => sum + day.minutes, 0)
     };
@@ -122,6 +125,46 @@
     const agendaButton = nav.querySelector(".agenda-top-btn");
     if (agendaButton) agendaButton.insertAdjacentElement("afterend", button);
     else nav.prepend(button);
+  }
+
+  // Moving the dial changes the deadline, never the credited study duration.
+  function setRemaining(seconds) {
+    if (!Number.isFinite(Number(seconds))) return;
+    reconcileTimer(false);
+    captureStudyProgress();
+    flushStudyCredit();
+    stopAlarm();
+    const remaining = Math.min(MAX_MINUTES * 60, Math.max(60, Math.round(Number(seconds))));
+    const key = state.phase === "break" ? "break" : "study";
+    if (remaining > durationSeconds(state.phase)) state.config[key] = Math.ceil(remaining / 60);
+    state.remaining = remaining;
+    state.endAt = state.running ? safeEndTime(remaining) : 0;
+    state.studyCreditAt = state.running && state.phase === "study" ? Date.now() : 0;
+    saveState();
+    render();
+  }
+
+  function configureAlarm(key, value) {
+    if (key === "mode" && ["digital", "bell", "chime", "pulse"].includes(value)) state.alarmMode = value;
+    else if (key === "volume") state.alarmVolume = Math.max(0.15, volumeNumber(value, state.alarmVolume, 2));
+    else if (key === "auto") state.autoStart = value === true;
+    else return;
+    saveState();
+    render();
+  }
+
+  async function previewAlarm() {
+    await prepareAudio(true);
+    if (!alarmActive) playAlarmPattern();
+  }
+
+  function studyHistory(range = "week", offset = 0) {
+    const count = range === "month" ? 30 : 7;
+    const page = Math.max(-120, Math.min(0, Math.trunc(Number(offset) || 0)));
+    return Array.from({ length: count }, (_, index) => {
+      const date = dateKey(index - count + 1 + page * count);
+      return { date, minutes: Math.max(0, Number(streakState.days[date]) || 0) };
+    });
   }
 
   function openPomodoroFromUrl() {
@@ -250,6 +293,7 @@
         <p class="pomodoro-platform-note" data-pomodoro-platform-note hidden></p>
 
         <div class="pomodoro-timer">
+          <div class="study-dial" data-pomodoro-dial role="slider" tabindex="0" aria-label="Minutos restantes del bloque" aria-valuemin="1" aria-valuemax="59" aria-valuenow="25"><i aria-hidden="true"></i></div>
           <svg class="pomodoro-ring" viewBox="0 0 220 220" aria-hidden="true">
             <circle class="pomodoro-ring__track" cx="110" cy="110" r="96"></circle>
             <circle class="pomodoro-ring__progress" cx="110" cy="110" r="96"></circle>
@@ -301,25 +345,7 @@
             </div>
           </div>
 
-          <button class="pomodoro-sound-toggle" type="button" data-pomodoro-sound-settings aria-expanded="false">
-            ${icon("music")}<span>Sonidos para estudiar</span>${icon("chevronDown")}
-          </button>
-          <section class="pomodoro-sound-panel" data-pomodoro-sound-panel hidden>
-            <div class="pomodoro-sound-row">
-              <label>
-                Ambiente
-                <select data-pomodoro-ambient-mode>
-                  <option value="jazz">Jazz suave</option>
-                  <option value="jazzCafe">Jazz de café</option>
-                  <option value="jazzNight">Jazz nocturno</option>
-                  <option value="rain">Lluvia suave</option>
-                  <option value="brown">Ruido marrón</option>
-                  <option value="spotify">Spotify · Smooth Jazz Beats</option>
-                  <option value="random">Aleatorio</option>
-                </select>
-              </label>
-              <button class="pomodoro-ambient-btn" type="button" data-pomodoro-ambient-toggle>${icon("play")}<span>Reproducir</span></button>
-            </div>
+          <section class="pomodoro-alarm-panel">
             <div class="pomodoro-sound-row">
               <label>
                 Alarma
@@ -331,24 +357,11 @@
                 </select>
               </label>
             </div>
-            <label class="pomodoro-volume" data-pomodoro-ambient-volume-row>
-              <span>Volumen ambiente</span>
-              <input type="range" min="0" max="2" step="0.05" data-pomodoro-ambient-volume />
-            </label>
             <label class="pomodoro-volume">
               <span>Volumen de alarma</span>
               <input type="range" min="0.15" max="2" step="0.05" data-pomodoro-alarm-volume />
             </label>
-            <p class="pomodoro-now-playing" data-pomodoro-now-playing></p>
-            <div class="pomodoro-spotify-player" data-pomodoro-spotify-player hidden>
-              <iframe
-                title="Smooth Jazz Beats en Spotify"
-                data-src="https://open.spotify.com/embed/playlist/37i9dQZF1DX06817kK7cRP?utm_source=generator&theme=0"
-                loading="lazy"
-                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                referrerpolicy="strict-origin-when-cross-origin"
-              ></iframe>
-            </div>
+            <button type="button" class="pomodoro-alarm-preview" data-pomodoro-alarm-preview>${icon("bell")}<span>Probar alarma</span></button>
           </section>
         </section>
       </div>
@@ -370,12 +383,10 @@
     return `
       <div class="pomodoro-number-control">
         <span>${label}</span>
-        <span class="pomodoro-wheel-control" data-pomodoro-wheel="${key}">
-          <button type="button" data-pomodoro-step="1" data-pomodoro-key="${key}" aria-label="Aumentar ${label.toLowerCase()}">${icon("chevronUp")}</button>
-          <small data-pomodoro-preview="next" data-pomodoro-key="${key}"></small>
+        <span class="pomodoro-wheel-control">
+          <button type="button" data-pomodoro-step="-1" data-pomodoro-key="${key}" aria-label="Reducir ${label.toLowerCase()}">${icon("minus")}</button>
           <input type="number" min="${minimum}"${maximum} step="1" inputmode="numeric" data-pomodoro-value="${key}" aria-label="${label}" />
-          <small data-pomodoro-preview="previous" data-pomodoro-key="${key}"></small>
-          <button type="button" data-pomodoro-step="-1" data-pomodoro-key="${key}" aria-label="Reducir ${label.toLowerCase()}">${icon("chevronDown")}</button>
+          <button type="button" data-pomodoro-step="1" data-pomodoro-key="${key}" aria-label="Aumentar ${label.toLowerCase()}">${icon("plus")}</button>
         </span>
         ${suffix ? `<small>${suffix}</small>` : ""}
       </div>
@@ -494,6 +505,12 @@
     menu?.addEventListener("touchstart", handleWheelTouchStart, { passive: true });
     menu?.addEventListener("touchmove", handleWheelTouchMove, { passive: false });
     menu?.addEventListener("touchend", () => { wheelTouch = null; });
+    import(new URL("timer-dial.js?v=20260909-interactive", SCRIPT_URL).href).then(({ attachTimerDial }) => {
+      timerDial = attachTimerDial(menu.querySelector('[data-pomodoro-dial]'), {
+        read: remainingSeconds, commit: setRemaining,
+        preview: seconds => { timerDialPreview = seconds; renderTimerOnly(); }
+      });
+    }).catch(() => {});
   }
 
   function handleDocumentClick(event) {
@@ -573,6 +590,7 @@
     else if (soundSettingsButton) toggleSoundPanel(soundSettingsButton);
     else if (ambientButton) toggleAmbient();
     else if (deviceAlertsButton) requestDeviceAlerts();
+    else if (event.target.closest("[data-pomodoro-alarm-preview]")) previewAlarm();
     else if (isOpen() && !isMobileFloating() && !menu.contains(event.target)) closeMenu();
   }
 
@@ -640,9 +658,7 @@
 
   function changeConfig(key, difference) {
     if (!Object.prototype.hasOwnProperty.call(state.config, key)) return;
-    const next = key === "blocks"
-      ? state.config[key] + difference
-      : wrapMinute(state.config[key] + difference);
+    const next = state.config[key] + difference;
     applyConfigValue(key, next);
     const input = document.querySelector(`[data-pomodoro-value="${key}"]`);
     if (input) input.value = String(state.config[key]);
@@ -661,6 +677,9 @@
 
   function applyConfigValue(key, value) {
     if (!Object.prototype.hasOwnProperty.call(state.config, key)) return;
+    reconcileTimer(false);
+    captureStudyProgress();
+    flushStudyCredit();
     const affectsCurrentPhase = (key === "study" && state.phase === "study") || (key === "break" && state.phase === "break");
     const elapsed = affectsCurrentPhase && state.running
       ? Math.max(0, durationSeconds(state.phase) - remainingSeconds())
@@ -674,6 +693,7 @@
         ? Math.max(1, durationSeconds(state.phase) - elapsed)
         : durationSeconds(state.phase);
       if (state.running) state.endAt = safeEndTime(state.remaining);
+      if (state.running && state.phase === "study") state.studyCreditAt = Date.now();
     }
 
     saveState();
@@ -957,30 +977,15 @@
           </div>
           <div class="floating-summary"><span>Bloques completados hoy</span><strong data-pip-count>0</strong></div>
           <label class="floating-auto"><input type="checkbox" data-pip-auto><span>Continuar automáticamente</span></label>
-          <button class="floating-disclosure" type="button" data-pip-sound-toggle aria-expanded="false">
-            ${icon("music")}<span>Sonidos para estudiar</span>${icon("chevronDown")}
-          </button>
-          <section class="floating-sounds" data-pip-sound-panel hidden>
-            <label>Ambiente
-              <select data-pip-ambient-mode>
-                <option value="jazz">Jazz suave</option><option value="jazzCafe">Jazz de café</option>
-                <option value="jazzNight">Jazz nocturno</option><option value="rain">Lluvia suave</option>
-                <option value="brown">Ruido marrón</option><option value="spotify">Spotify · Smooth Jazz Beats</option>
-                <option value="random">Aleatorio</option>
-              </select>
-            </label>
-            <button class="floating-play" type="button" data-pip-ambient-toggle>${icon("play")}<span>Reproducir</span></button>
+          <section class="floating-sounds">
             <label>Alarma
               <select data-pip-alarm-mode>
                 <option value="digital">Digital</option><option value="bell">Campana</option>
                 <option value="chime">Carrillón</option><option value="pulse">Pulso</option>
               </select>
             </label>
-            <label class="floating-volume" data-pip-ambient-volume-row>Volumen ambiente<input type="range" min="0" max="2" step="0.05" data-pip-ambient-volume></label>
             <label class="floating-volume">Volumen de alarma<input type="range" min="0.15" max="2" step="0.05" data-pip-alarm-volume></label>
-            <div class="floating-spotify" data-pip-spotify hidden>
-              <iframe title="Smooth Jazz Beats en Spotify" data-src="https://open.spotify.com/embed/playlist/37i9dQZF1DX06817kK7cRP?utm_source=generator&theme=0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>
-            </div>
+            <button type="button" class="floating-play" data-pip-alarm-preview>${icon("bell")}<span>Probar alarma</span></button>
           </section>
         </section>
       </main>
@@ -991,6 +996,7 @@
       else if (event.target.closest("[data-pip-reset]")) resetTimer();
       else if (event.target.closest("[data-pip-toggle]")) toggleTimer();
       else if (event.target.closest("[data-pip-skip]")) advancePhase(false);
+      else if (event.target.closest("[data-pip-alarm-preview]")) previewAlarm();
       else if (event.target.closest("[data-pip-step]")) {
         const button = event.target.closest("[data-pip-step]");
         changeConfig(button.dataset.pipKey, Number(button.dataset.pipStep));
@@ -1015,12 +1021,10 @@
     return `
       <div class="floating-number">
         <span>${label}</span>
-        <div data-pip-wheel="${key}">
-          <button type="button" data-pip-step="1" data-pip-key="${key}" aria-label="Aumentar ${label.toLowerCase()}">${icon("chevronUp")}</button>
-          <small data-pip-preview="next" data-pip-key="${key}"></small>
+        <div>
+          <button type="button" data-pip-step="-1" data-pip-key="${key}" aria-label="Reducir ${label.toLowerCase()}">${icon("minus")}</button>
           <input type="number" min="${key === "blocks" ? 1 : 0}" ${key === "blocks" ? "" : `max="${MAX_MINUTES}"`} data-pip-value="${key}" aria-label="${label}">
-          <small data-pip-preview="previous" data-pip-key="${key}"></small>
-          <button type="button" data-pip-step="-1" data-pip-key="${key}" aria-label="Reducir ${label.toLowerCase()}">${icon("chevronDown")}</button>
+          <button type="button" data-pip-step="1" data-pip-key="${key}" aria-label="Aumentar ${label.toLowerCase()}">${icon("plus")}</button>
         </div>
         ${suffix ? `<small>${suffix}</small>` : ""}
       </div>`;
@@ -1110,7 +1114,10 @@
       @media(max-height:560px){.floating-timer{padding:9px}.floating-clock{width:min(154px,54cqw,46cqh);margin:8px auto}.floating-disclosure{margin-top:5px}.settings-open .floating-clock{width:92px}.floating-settings{padding:5px}.floating-sounds{padding:5px}}
       @media(max-width:320px),(max-height:350px){.floating-timer{padding:8px}.floating-timer header,.floating-phase,.floating-disclosure,.floating-settings{display:none!important}.floating-core,.settings-open .floating-core{flex:1;min-height:0;display:grid;grid-template-rows:minmax(0,1fr) auto;align-items:center}.floating-clock,.settings-open .floating-clock,.sound-open .floating-clock{grid-row:1;width:min(172px,64cqw,calc(100cqh - 64px));min-width:82px;margin:auto}.floating-clock strong,.settings-open .floating-clock strong,.sound-open .floating-clock strong{font-size:clamp(27px,15cqw,42px)}.floating-clock span{margin-top:5px;font-size:10px}.floating-controls,.settings-open .floating-controls,.sound-open .floating-controls{grid-row:2;width:min(100%,220px);grid-template-columns:minmax(112px,220px);justify-content:center;gap:0}.floating-controls>button:not(.primary){display:none}.floating-controls .primary{width:100%;height:40px;border-radius:12px;font-size:clamp(13px,5cqw,17px)}}
       @media(max-width:185px){.floating-controls .primary span{display:none}.floating-controls,.settings-open .floating-controls,.sound-open .floating-controls{grid-template-columns:54px}.floating-controls .primary{border-radius:999px}.floating-clock,.settings-open .floating-clock,.sound-open .floating-clock{width:min(118px,72cqw,calc(100cqh - 58px))}.floating-clock strong,.settings-open .floating-clock strong,.sound-open .floating-clock strong{font-size:24px}}
-      @media(max-height:205px){.floating-timer{padding:6px}.floating-clock,.settings-open .floating-clock,.sound-open .floating-clock{width:min(124px,56cqw,calc(100cqh - 48px))}.floating-controls .primary{height:34px}}
+      .floating-number>div{grid-template-columns:26px minmax(0,1fr) 26px;grid-template-rows:40px;border:0;border-radius:6px;box-shadow:inset 0 1px #ffffff0a,inset 0 -2px 4px #0002}.floating-number button{height:40px}.floating-number input{height:40px;border:0;background:transparent;font-size:19px;font-weight:550}.floating-number button svg{fill:none;stroke:currentColor;width:13px;height:13px}.floating-number>span{font-size:11px;margin-bottom:5px}.floating-settings,.floating-sounds,.floating-auto{border:0;border-radius:0;background:transparent;padding-inline:0}.floating-settings{overflow:auto;min-height:0}.floating-sounds{grid-template-columns:1fr;gap:10px}.floating-sounds>label{grid-template-columns:60px 1fr;font-size:11px}.floating-sounds select,.floating-play{min-height:36px;font-size:12px}.floating-disclosure{border:0;border-top:1px solid var(--border);border-radius:0}.floating-clock{filter:drop-shadow(0 4px 5px #0002)}.floating-controls .primary{border-radius:8px;box-shadow:inset 0 1px #ffffff30,0 3px 8px #0002}.floating-clock strong{font-size:36px}.floating-timer *{letter-spacing:0}.floating-phase{border:0;background:transparent}.floating-timer :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+      @media(max-width:320px),(max-height:350px){.floating-clock strong,.settings-open .floating-clock strong{font-size:32px}.floating-controls .primary{font-size:14px}}
+      @media(max-height:205px){.floating-timer{padding:6px}.floating-clock,.settings-open .floating-clock,.sound-open .floating-clock{width:min(124px,56cqw,calc(100cqh - 48px))}.floating-clock strong{font-size:27px}.floating-controls .primary{height:34px}}
+      @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
     `;
   }
 
@@ -1650,7 +1657,8 @@
     const muted = dark ? "#9ba8bd" : "#657387";
     const track = dark ? "#2b364b" : "#d4dce7";
     const phaseColor = state.phase === "study" ? (dark ? "#8ab4f8" : "#1a73e8") : "#fbbc04";
-    const preciseRemaining = state.running ? preciseRemainingSeconds() : state.remaining;
+    const preciseRemaining = timerDialPreview ?? (state.running ? preciseRemainingSeconds() : state.remaining);
+    timerDial?.update();
     const remaining = Math.max(0, Math.ceil(preciseRemaining));
     const timeText = `${String(Math.floor(remaining / 60)).padStart(2, "0")}:${String(remaining % 60).padStart(2, "0")}`;
     const total = durationSeconds(state.phase);
@@ -2737,7 +2745,7 @@
   }
 
   function configInteger(key, value, fallback) {
-    if (key === "blocks") return positiveInteger(value, fallback);
+    if (key === "blocks") return Math.min(12, positiveInteger(value, fallback));
     const number = Math.floor(Number(value));
     return Number.isFinite(number) ? Math.min(MAX_MINUTES, Math.max(0, number)) : fallback;
   }
@@ -2766,6 +2774,7 @@
   }
 
   function icon(name) {
+    if (name === "minus" || name === "plus") return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14${name === "plus" ? "M12 5v14" : ""}"/></svg>`;
     const icons = {
       timer: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2h6v2H9V2Zm3 4a8 8 0 1 1-8 8 8 8 0 0 1 8-8Zm0 2a6 6 0 1 0 6 6 6 6 0 0 0-6-6Zm-1 2h2v4.4l2.8 1.7-1 1.7-3.8-2.3V10Zm6.7-4.1 1.4-1.4 1.4 1.4-1.4 1.4-1.4-1.4Z"/></svg>',
       close: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6.7 5.3 5.3 5.3 5.3-5.3 1.4 1.4-5.3 5.3 5.3 5.3-1.4 1.4-5.3-5.3-5.3 5.3-1.4-1.4 5.3-5.3-5.3-5.3 1.4-1.4Z"/></svg>',

@@ -39,14 +39,19 @@ async function authenticateBearer(authorization) {
   const url = process.env.SUPABASE_URL || "";
   const key = process.env.SUPABASE_PUBLISHABLE_KEY || "";
   if (!url || !key || !String(authorization || "").startsWith("Bearer ")) return null;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), SUPABASE_TIMEOUT_MS);
   try {
     const response = await fetch(`${url.replace(/\/$/, "")}/auth/v1/user`, {
-      headers: { apikey: key, Authorization: authorization }
+      headers: { apikey: key, Authorization: authorization },
+      signal: controller.signal
     });
     if (!response.ok) return null;
-    return response.json();
+    return await response.json();
   } catch (_) {
     return null;
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -55,4 +60,3 @@ function encodeFilter(value) {
 }
 
 module.exports = { adminRequest, authenticateBearer, encodeFilter, isConfigured };
-

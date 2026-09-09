@@ -511,6 +511,59 @@ html.theme-light .install-closing{background:linear-gradient(#edf3f8,#e5edf4)}ht
 
 @keyframes widget-timer-soft{0%,100%{transform:scale(1)}50%{transform:scale(1.02)}}
 
+/* Product-led refinement: quieter surfaces, clearer controls, more readable demos. */
+.install-page{--install-blue:#8bb5ff;--install-cyan:#a8c8ff;--install-line:rgba(175,198,232,.14)}
+.install-header{box-shadow:0 1px 0 var(--install-line);border-bottom:0}
+.install-hero h1{font-size:88px;letter-spacing:0}
+.install-hero__lead{font-size:21px;max-width:570px}
+.install-section-heading h2,.install-widgets__copy h2{font-size:50px;line-height:1.1}
+.install-hero__sync span{background:var(--install-blue);box-shadow:0 0 0 4px rgba(139,181,255,.1)}
+.hero-product{border-radius:8px 8px 0 0;box-shadow:0 20px 80px #0004,inset 0 1px #ffffff12}
+.hero-product::after{background:linear-gradient(180deg,transparent 70%,var(--install-bg) 100%)}
+.demo-space,.demo-side>section{box-shadow:none;border-color:transparent;background:transparent}
+.demo-folder-grid article,.scene-folders article{border-radius:8px;box-shadow:inset 0 1px #ffffff08,0 3px 12px #0001}
+.demo-folder-grid article>i,.scene-folders article>i{filter:drop-shadow(2px 4px 3px #0003)}
+.product-tour__visual{border-radius:8px;box-shadow:0 24px 65px #0003,inset 0 1px #ffffff10}
+.product-tour__tab{border-radius:0;box-shadow:none;border-color:transparent;background:transparent}
+.product-tour__tab.is-active{border-color:transparent;background:transparent;box-shadow:inset 2px 0 var(--install-blue)}
+.product-tour__tab.is-active strong{color:var(--install-blue)}
+.product-tour__status{border-radius:6px;box-shadow:none;background:var(--install-band);border:1px solid var(--install-line)}
+.product-scene[aria-hidden=true]{pointer-events:none}
+.scene-timer{background:conic-gradient(var(--install-blue) var(--demo-progress,0deg),#2c3c56 0);box-shadow:0 0 0 6px #0b1424,0 0 0 7px #2b3a51,0 9px 22px #0004,inset 0 1px #ffffff30}
+.scene-timer>div{box-shadow:inset 0 4px 16px #0003}
+.scene-session button{min-height:42px;min-width:42px;border-radius:6px;font-size:13px;cursor:pointer}
+.scene-session button:active{transform:scale(.96)}
+.widget-gallery__item{border-radius:8px;box-shadow:0 22px 55px #0004,inset 1px 1px #ffffff15;background:#101a2b}
+.widget-preview{border-radius:8px}
+.widget-preview>header>b{box-shadow:inset 1px 1px #ffffff16,2px 4px 10px #0003;border-radius:6px}
+.widget-file-list p,.widget-calendar-list p,.widget-task-list p{border-radius:5px;border-color:transparent;background:transparent;box-shadow:inset 0 -1px var(--install-line)}
+.install-option{border-radius:8px;box-shadow:inset 0 1px #ffffff0d,0 10px 35px #0002;background:rgba(17,27,44,.8);backdrop-filter:none}
+.install-option__glyph{border-radius:8px;margin-top:26px;transform:perspective(300px) rotateY(-12deg);transition:transform .25s}
+.install-option:hover .install-option__glyph{transform:perspective(300px) rotateY(0)}
+.install-option__glyph svg{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round}
+.install-option__button{border-radius:6px;background:var(--install-blue);color:#0a1424;border:0;box-shadow:inset 0 1px #ffffff40,0 4px 12px #0002;font-size:14px;min-height:48px}
+.install-option__button:hover,.install-option__button:focus-visible{background:#b5d0ff;color:#0a1424}
+.install-option__button--secondary{background:transparent;box-shadow:none;border:1px solid var(--install-line-strong);color:var(--install-blue)}
+.install-option>small,.install-option__manual,.install-option__safety{font-size:12px;line-height:1.5}
+.install-option__current{letter-spacing:0!important;font-size:10px}
+.install-option>p{font-size:14px}
+.install-action{border-radius:6px}
+@media(max-width:920px){.install-hero h1{font-size:68px}.install-section-heading h2,.install-widgets__copy h2{font-size:42px}}
+@media(max-width:680px){
+  .install-hero{min-height:760px;padding-top:104px}.install-hero h1{font-size:50px;white-space:normal}.install-hero__lead{font-size:17px;max-width:310px}
+  .hero-product{height:335px;bottom:0}.hero-product::after{background:linear-gradient(180deg,transparent 85%,var(--install-bg))}
+  .install-section-heading h2,.install-widgets__copy h2{font-size:36px}
+  .demo-folder-grid strong,.scene-folders strong{font-size:11px}.demo-folder-grid small,.scene-folders small{font-size:9px}
+  .scene-folders article{min-height:58px}.scene-search{font-size:11px}.product-scene>header span{font-size:9px}
+  .scene-message{font-size:12px;padding:10px 12px}.scene-message--ai>b{font-size:13px}.scene-message--ai>span{font-size:11px;line-height:1.4}
+  .scene-prompt{font-size:11px}.scene-session>small{font-size:10px;line-height:1.5}.scene-session>span{font-size:9px}.scene-session button{font-size:12px;min-height:40px}
+  .scene-metrics article{background:transparent;border:0;padding:5px}.scene-metrics article>span,.scene-metrics small{font-size:9px;line-height:1.4}.scene-metrics strong{font-size:16px}
+  .scene-chart>div:first-child{font-size:10px}.product-tour__tab{min-height:185px;padding:22px 12px}.product-tour__tab small{font-size:13px;line-height:1.5}
+  .product-tour__visual{height:390px;border-radius:8px}.product-scene{padding:18px 16px 50px}.widget-gallery__item{border-radius:8px}
+  .install-option{border-radius:8px}.install-option>small{font-size:12px}.install-option__glyph{margin-top:20px}
+}
+@media(max-width:360px){.install-hero h1{font-size:43px}.scene-focus-body{grid-template-columns:108px minmax(0,1fr);gap:10px}.scene-timer{width:106px}.scene-timer strong{font-size:25px}.scene-metrics strong{font-size:14px}}
+
 @media (prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
   *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}

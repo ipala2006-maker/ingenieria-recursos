@@ -69,6 +69,39 @@
   prepareJourney();
   prepareProductTour();
   prepareWidgetCarousel();
+  prepareFocusDemo();
+
+  function prepareFocusDemo() {
+    const toggle = document.querySelector('[data-demo-toggle]');
+    const clock = document.querySelector('[data-demo-clock]');
+    const scene = document.querySelector('[data-scene="focus"]');
+    if(!toggle || !clock || !scene) return;
+    let remaining = 1500, deadline = 0, interval = 0;
+    function paint() {
+      const seconds = deadline ? Math.max(0,Math.ceil((deadline-Date.now())/1000)) : remaining;
+      clock.textContent = `${String(Math.floor(seconds/60)).padStart(2,'0')}:${String(seconds%60).padStart(2,'0')}`;
+      scene.querySelector('.scene-timer').style.setProperty('--demo-progress',`${(1-seconds/1500)*360}deg`);
+      if(deadline && seconds === 0) pause();
+    }
+    function pause() {
+      if(deadline) remaining = Math.max(0,Math.ceil((deadline-Date.now())/1000));
+      deadline = 0; clearInterval(interval); interval = 0;
+      toggle.textContent = 'Empezar';
+      toggle.setAttribute('aria-pressed','false');
+      paint();
+    }
+    toggle.addEventListener('click', () => {
+      if(deadline) return pause();
+      deadline = Date.now()+(remaining || 1500)*1000;
+      toggle.textContent = 'Pausar';
+      toggle.setAttribute('aria-pressed','true');
+      interval = setInterval(paint,1000); paint();
+    });
+    document.querySelector('[data-demo-reset]').addEventListener('click', () => { pause(); remaining=1500; paint(); });
+    new IntersectionObserver(([entry]) => { if(!entry.isIntersecting) pause(); }).observe(scene);
+    document.addEventListener('visibilitychange', () => { if(document.hidden) pause(); });
+    new MutationObserver(() => { if(scene.getAttribute('aria-hidden')==='true') pause(); }).observe(scene,{attributes:true,attributeFilter:['aria-hidden']});
+  }
 
   if (installButton) {
     if (isInstalled()) showInstalledState();
@@ -116,6 +149,7 @@
       scene.classList.toggle("is-active", index === 0);
       scene.classList.toggle("is-after", index > 0);
       scene.setAttribute("aria-hidden", String(index !== 0));
+      scene.inert = index !== 0;
     });
     tourControls?.style.setProperty("--tour-progress", "0%");
 
@@ -173,6 +207,7 @@
       scene.classList.toggle("is-before", index < activeIndex);
       scene.classList.toggle("is-after", index > activeIndex);
       scene.setAttribute("aria-hidden", String(index !== activeIndex));
+      scene.inert = index !== activeIndex;
     });
     activeTourIndex = activeIndex;
 

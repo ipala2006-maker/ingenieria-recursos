@@ -167,11 +167,17 @@
   }
 
   function loadProductStyle() {
-    if (document.querySelector('link[href*="styles/product-ui.css"]')) return;
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href = `${rootPath}styles/product-ui.css?v=20260908-brand-blue`;
-    document.head.appendChild(link);
+    if (!document.querySelector('link[href*="styles/product-ui.css"]')) {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = `${rootPath}styles/product-ui.css?v=20260908-brand-blue`;
+      document.head.appendChild(link);
+    }
+    if (document.querySelector('link[href*="styles/interaction.css"]')) return;
+    const interaction = document.createElement('link');
+    interaction.rel = 'stylesheet';
+    interaction.href = `${rootPath}styles/interaction.css?v=20260909-interactive`;
+    document.head.appendChild(interaction);
   }
 
   function loadProductInterface() {
@@ -260,7 +266,7 @@
     if (document.querySelector('script[src*="scripts/pomodoro.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/pomodoro.js?v=20260908-home`;
+    script.src = `${rootPath}scripts/pomodoro.js?v=20260909-interactive`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -268,7 +274,7 @@
   function loadDashboardScript() {
     if (document.querySelector('script[src*="scripts/dashboard.js"]')) return;
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/dashboard.js?v=20260908-home`;
+    script.src = `${rootPath}scripts/dashboard.js?v=20260909-interactive`;
     script.defer = true;
     document.head.appendChild(script);
   }

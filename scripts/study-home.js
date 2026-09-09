@@ -1,3 +1,4 @@
+import { attachTimerDial } from './timer-dial.js?v=20260909-interactive';
 const home = document.querySelector('[data-study-home]');
 if (home) {
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
@@ -14,11 +15,21 @@ if (home) {
   let chartSignature = '';
   let days = [];
   let selection = 6;
-  const buttons = Array.from({ length:7 }, () => {
+  let range = 'week';
+  let period = 0;
+  let dialPreview = null;
+  let sequenceSignature = '';
+  const dial = attachTimerDial(home.querySelector('[data-home-dial]'), {
+    read: () => window.EstudiemosStudy?.snapshot().remaining || 1500,
+    commit: seconds => window.EstudiemosStudy?.seek(seconds),
+    preview: seconds => { dialPreview = seconds; update(); }
+  });
+  const buttons = Array.from({ length:30 }, (_, index) => {
     const button = document.createElement('button');
     button.type = 'button';
     button.appendChild(document.createElement('span'));
     chart.appendChild(button);
+    button.hidden = index >= 7;
     return button;
   });
   function selectDay(index) {
@@ -27,7 +38,17 @@ if (home) {
     const day = days[index];
     if (day) write('[data-home-chart-detail]', `${new Date(day.date + 'T12:00:00').toLocaleDateString('es-AR', { weekday:'short', day:'numeric' })} · ${duration(day.minutes)}`);
   }
-  buttons.forEach((button, index) => button.addEventListener('click', () => selectDay(index)));
+  buttons.forEach((button, index) => {
+    button.addEventListener('click', () => selectDay(index));
+    button.addEventListener('focus', () => selectDay(index));
+    button.addEventListener('pointerenter', event => { if(event.pointerType === 'mouse') selectDay(index); });
+    button.addEventListener('keydown', event => {
+      const delta = {ArrowLeft:-1,ArrowRight:1}[event.key];
+      if(delta === undefined) return;
+      event.preventDefault();
+      buttons[Math.max(0,Math.min(days.length-1,index+delta))].focus();
+    });
+  });
   function cloneIcon(source, target) {
     const node = home.querySelector(target);
     const svg = document.querySelector(source)?.querySelector('svg');
@@ -60,7 +81,9 @@ if (home) {
       if (icon) iconHost.replaceChildren(icon.cloneNode(true));
       iconHost.dataset.state = label;
     }
-    write('[data-home-clock]', `${String(Math.floor(state.remaining / 60)).padStart(2,'0')}:${String(state.remaining % 60).padStart(2,'0')}`);
+    const remaining = dialPreview ?? state.remaining;
+    write('[data-home-clock]', `${String(Math.floor(remaining / 60)).padStart(2,'0')}:${String(remaining % 60).padStart(2,'0')}`);
+    dial.update();
     write('[data-home-phase]', state.phase === 'study' ? 'Estudio' : 'Descanso');
     write('[data-home-block]', `Bloque ${state.block} de ${state.blocks}`);
     write('[data-home-timer-state]', state.running ? 'Sesión en curso' : state.alarm ? 'Bloque finalizado' : 'A tu ritmo');
@@ -69,24 +92,58 @@ if (home) {
     write('[data-home-streak]', `${state.currentStreak} ${state.currentStreak === 1 ? 'día' : 'días'} de racha`);
     write('[data-home-presence]', state.todayActive ? 'Objetivo diario completo' : `${Math.floor(state.todayMinutes)} de 25 min hoy`);
     write('[data-home-date]', new Date().toLocaleDateString('es-AR', { weekday:'long', day:'numeric', month:'long' }));
-    const signature = JSON.stringify(state.days);
+    const history = window.EstudiemosStudy.history(range,period);
+    const signature = JSON.stringify(history);
     if (signature !== chartSignature) {
       chartSignature = signature;
-      days = state.days;
+      days = history;
+      chart.dataset.range = range;
+      chart.style.setProperty('--days', days.length);
+      buttons.forEach((button,index) => { button.hidden = index >= days.length; });
       const max = Math.max(25, ...days.map(day => day.minutes));
       days.forEach((day,index) => {
         const date = new Date(day.date + 'T12:00:00');
         buttons[index].style.setProperty('--bar', `${Math.max(2, day.minutes / max * 100)}%`);
-        buttons[index].firstChild.textContent = date.toLocaleDateString('es-AR',{weekday:'narrow'});
+        buttons[index].firstChild.textContent = range === 'week' ? date.toLocaleDateString('es-AR',{weekday:'narrow'}) : (index % 5 === 0 || index === days.length-1 ? date.getDate() : '');
         const label = `${date.toLocaleDateString('es-AR',{weekday:'long',day:'numeric'})}: ${duration(day.minutes)}`;
         buttons[index].title = label;
         buttons[index].setAttribute('aria-label', label);
       });
-      selectDay(selection);
+      selectDay(Math.min(selection, days.length-1));
+      const short = value => new Date(value+'T12:00:00').toLocaleDateString('es-AR',{day:'numeric',month:'short'});
+      write('[data-home-period-label]', `${short(days[0].date)} – ${short(days.at(-1).date)}`);
+    }
+    home.querySelector('[data-home-period-step="1"]').disabled = period === 0;
+    for (const input of home.querySelectorAll('[data-home-config], [data-home-config-range]')) {
+      const key = input.dataset.homeConfig || input.dataset.homeConfigRange;
+      const active = document.activeElement;
+      const editingKey = active?.dataset.homeConfig || active?.dataset.homeConfigRange;
+      if(editingKey !== key) input.value = state.config[key];
+    }
+    home.querySelector('[data-home-auto]').checked = state.autoStart;
+    home.querySelector('[data-home-alarm]').value = state.alarmMode;
+    if(document.activeElement !== home.querySelector('[data-home-volume]')) home.querySelector('[data-home-volume]').value = state.alarmVolume;
+    write('[data-home-session-summary]', `${state.config.blocks} × ${state.config.study} min`);
+    const sequence = JSON.stringify([state.config,state.block,state.phase]);
+    if(sequenceSignature !== sequence) {
+      sequenceSignature = sequence;
+      const timeline = home.querySelector('[data-home-sequence]');
+      timeline.replaceChildren();
+      for(let index=0;index<Math.min(12,state.config.blocks);index++) {
+        const segment = document.createElement('i');
+        segment.classList.toggle('is-current',index+1===state.block);
+        segment.style.flexGrow = Math.max(1,state.config.study);
+        const rest = document.createElement('b');
+        rest.style.flexGrow = Math.max(1,state.config.break);
+        timeline.append(segment,rest);
+      }
+      home.querySelectorAll('[data-home-preset]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.homePreset === [state.config.study,state.config.break,state.config.blocks].join(','))));
     }
     depth?.update(state);
     cloneIcon('[data-streak-open]', '[data-home-flame]');
     cloneIcon('[data-general-ai-open]', '[data-home-ai-icon]');
+    cloneIcon('[data-pomodoro-config-toggle]', '[data-home-settings-icon]');
+    cloneIcon('[data-pomodoro-alarm-preview]', '[data-home-bell]');
   }
   function organizationSummary() {
     let agenda = [];
@@ -103,10 +160,37 @@ if (home) {
     if (open === 'assistant') openAssistant();
     else if (open) document.querySelector(open === 'pomodoro' ? '.topbar [data-pomodoro-open]' : '.topbar [data-streak-open]')?.click();
     if (event.target.closest('[data-home-timer]')) window.EstudiemosStudy?.toggle();
+    const adjust = event.target.closest('[data-home-adjust]');
+    if(adjust) window.EstudiemosStudy?.seek(window.EstudiemosStudy.snapshot().remaining + Number(adjust.dataset.homeAdjust)*60);
+    const preset = event.target.closest('[data-home-preset]');
+    if(preset) ['study','break','blocks'].forEach((key,index) => window.EstudiemosStudy?.configure(key,Number(preset.dataset.homePreset.split(',')[index])));
+    if(event.target.closest('[data-home-preview-alarm]')) window.EstudiemosStudy?.previewAlarm();
+    const rangeButton = event.target.closest('[data-home-range]');
+    if(rangeButton) {
+      range = rangeButton.dataset.homeRange;
+      period = 0; selection = range === 'week' ? 6 : 29;
+      home.querySelectorAll('[data-home-range]').forEach(button => button.setAttribute('aria-pressed',String(button === rangeButton)));
+      update();
+    }
+    const step = event.target.closest('[data-home-period-step]');
+    if(step) { period = Math.max(-120,Math.min(0,period+Number(step.dataset.homePeriodStep))); update(); }
     const prompt = event.target.closest('[data-home-prompt]');
     if (prompt) openAssistant(prompt.dataset.homePrompt);
     const shortcut = event.target.closest('[data-home-shortcut]');
     if (shortcut) window.dispatchEvent(new CustomEvent('estudiemos:home-navigate', { detail:{ view:shortcut.dataset.homeShortcut } }));
+  });
+  home.addEventListener('change', event => {
+    const target = event.target;
+    const key = target.dataset.homeConfig || target.dataset.homeConfigRange;
+    if(key) window.EstudiemosStudy?.configure(key,target.value);
+    if(target.matches('[data-home-alarm]')) window.EstudiemosStudy?.alarm('mode',target.value);
+    if(target.matches('[data-home-auto]')) window.EstudiemosStudy?.alarm('auto',target.checked);
+    if(target.matches('[data-home-volume]')) window.EstudiemosStudy?.alarm('volume',target.value);
+    if(key) { target.value = window.EstudiemosStudy.snapshot().config[key]; update(); }
+  });
+  home.addEventListener('input', event => {
+    const key = event.target.dataset.homeConfigRange;
+    if(key) home.querySelector(`[data-home-config="${key}"]`).value = event.target.value;
   });
   home.querySelector('[data-home-ai-form]').addEventListener('submit', event => {
     event.preventDefault();

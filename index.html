@@ -28,7 +28,8 @@
     <link rel="stylesheet" href="./styles/workspace.css?v=20260906-referrals-2" />
     <link rel="stylesheet" href="./styles/dashboard.css?v=20260831-ai-chat" />
     <link rel="stylesheet" href="./styles/product-ui.css?v=20260908-brand-blue" />
-    <link rel="stylesheet" href="./styles/study-home.css?v=20260908-home" />
+    <link rel="stylesheet" href="./styles/study-home.css?v=20260909-interactive" />
+    <link rel="stylesheet" href="./styles/interaction.css?v=20260909-interactive" />
   </head>
 
   <body class="workspace-home">
@@ -49,18 +50,32 @@
         </header>
         <div class="study-home__tools">
           <section class="study-focus" aria-labelledby="homeFocusTitle">
-            <header class="study-tool-head"><h2 id="homeFocusTitle">Pomodoro</h2><button type="button" class="study-icon" data-home-open="pomodoro" aria-label="Abrir ajustes de Pomodoro" title="Abrir Pomodoro">↗</button></header>
+            <header class="study-tool-head"><h2 id="homeFocusTitle">Pomodoro</h2><button type="button" class="study-icon" data-home-open="pomodoro" aria-label="Abrir temporizador Pomodoro" title="Abrir Pomodoro">↗</button></header>
             <div class="study-focus__body">
               <div class="study-focus__stage" data-home-depth>
                 <div class="study-focus__fallback" aria-hidden="true"></div>
                 <div class="study-focus__clock"><span data-home-phase>Estudio</span><strong data-home-clock>25:00</strong><small data-home-block>Bloque 1 de 4</small></div>
+                <div class="study-dial" data-home-dial role="slider" tabindex="0" aria-label="Minutos restantes de Pomodoro" aria-valuemin="1" aria-valuemax="59" aria-valuenow="25"><i aria-hidden="true"></i></div>
               </div>
-              <div class="study-focus__actions"><button type="button" class="study-start" data-home-timer disabled><span aria-hidden="true" data-home-play>▶</span><span data-home-timer-label>Preparando</span></button><span class="study-focus__state" data-home-timer-state>Tu próxima sesión</span></div>
+              <div class="study-focus__actions"><button type="button" class="study-start" data-home-timer disabled><span aria-hidden="true" data-home-play>▶</span><span data-home-timer-label>Preparando</span></button><div class="study-nudge"><button type="button" data-home-adjust="-1" aria-label="Quitar un minuto" title="Quitar un minuto">−</button><span>min</span><button type="button" data-home-adjust="1" aria-label="Agregar un minuto" title="Agregar un minuto">+</button></div><span class="study-focus__state" data-home-timer-state>Tu próxima sesión</span></div>
             </div>
+            <details class="study-session" data-home-session><summary><span data-home-settings-icon aria-hidden="true"></span>Tu sesión <span data-home-session-summary>4 × 25 min</span></summary>
+              <div class="study-session__presets" role="group" aria-label="Ritmo de estudio"><button type="button" data-home-preset="25,5,4">Clásico</button><button type="button" data-home-preset="50,10,2">Profundo</button><button type="button" data-home-preset="15,3,3">Breve</button></div>
+              <div class="study-session__fields">
+                <label>Estudio <span><input type="number" min="1" max="59" inputmode="numeric" data-home-config="study" aria-label="Minutos de estudio"><small>min</small></span><input type="range" min="1" max="59" data-home-config-range="study" aria-label="Ajustar estudio"></label>
+                <label>Descanso <span><input type="number" min="0" max="59" inputmode="numeric" data-home-config="break" aria-label="Minutos de descanso"><small>min</small></span><input type="range" min="0" max="59" data-home-config-range="break" aria-label="Ajustar descanso"></label>
+                <label>Bloques <span><input type="number" min="1" max="12" inputmode="numeric" data-home-config="blocks" aria-label="Cantidad de bloques"></span><input type="range" min="1" max="12" data-home-config-range="blocks" aria-label="Ajustar bloques"></label>
+              </div>
+              <div class="study-session__timeline" data-home-sequence aria-hidden="true"></div>
+              <label class="study-session__auto"><input type="checkbox" data-home-auto>Continuar automáticamente</label>
+              <div class="study-session__alarm"><label>Alarma<select data-home-alarm><option value="digital">Digital</option><option value="bell">Campana</option><option value="chime">Carrillón</option><option value="pulse">Pulso</option></select></label><button type="button" class="study-icon" data-home-preview-alarm aria-label="Probar alarma" title="Probar alarma"><span data-home-bell aria-hidden="true"></span></button></div>
+              <label class="study-session__volume">Volumen<input type="range" min="0.15" max="2" step="0.05" data-home-volume aria-label="Volumen de alarma"></label>
+            </details>
           </section>
           <section class="study-progress" aria-labelledby="homeProgressTitle">
             <header class="study-tool-head"><h2 id="homeProgressTitle">Tu progreso</h2><button type="button" class="study-icon" data-home-open="streak" aria-label="Abrir estadísticas de la racha" title="Todas las estadísticas">↗</button></header>
             <div class="study-progress__numbers"><div><span>Hoy</span><strong data-home-today>0 h 0 min</strong></div><div><span>Últimos 7 días</span><strong data-home-week>0 h 0 min</strong></div></div>
+            <div class="study-progress__period"><button type="button" data-home-period-step="-1" aria-label="Período de estudio anterior" title="Período anterior">‹</button><span data-home-period-label>Últimos 7 días</span><button type="button" data-home-period-step="1" aria-label="Período de estudio siguiente" title="Período siguiente">›</button><div role="group" aria-label="Período del progreso"><button type="button" data-home-range="week" aria-pressed="true">Semana</button><button type="button" data-home-range="month" aria-pressed="false">Mes</button></div></div>
             <div class="study-progress__chart" data-home-chart role="group" aria-label="Tiempo de estudio por día"></div>
             <div class="study-progress__foot"><span class="study-progress__streak"><span data-home-flame aria-hidden="true"></span><span data-home-streak>0 días de racha</span></span><span data-home-chart-detail role="status">Todavía sin sesiones</span></div>
           </section>
@@ -144,7 +159,8 @@
                   <span class="dashboard-widget__eyebrow">Calendario</span>
                   <h2 data-dashboard-month></h2>
                 </div>
-                <div class="dashboard-calendar__controls">
+              <div class="dashboard-calendar__controls">
+                  <button type="button" class="study-calendar-today" data-dashboard-today>Hoy</button>
                   <div class="dashboard-calendar__views" aria-label="Vista del calendario">
                     <button type="button" data-dashboard-calendar-view="week">Semana</button>
                     <button type="button" data-dashboard-calendar-view="month">Mes</button>
@@ -195,12 +211,12 @@
 
     <!-- DATA SIEMPRE PRIMERO -->
     <script src="./data/data.js?v=20260804-quimica-completa"></script>
-    <script src="./scripts/global-search.js?v=20260908-home"></script>
+    <script src="./scripts/global-search.js?v=20260909-interactive"></script>
 
     <script src="./shared/plans.js?v=20260827-real-plans"></script>
     <script src="./scripts/workspace.js?v=20260908-referrals-email"></script>
-    <script src="./scripts/dashboard.js?v=20260908-home"></script>
-    <script type="module" src="./scripts/study-home.js?v=20260908-home"></script>
+    <script src="./scripts/dashboard.js?v=20260909-interactive"></script>
+    <script type="module" src="./scripts/study-home.js?v=20260909-interactive"></script>
 
     <script src="./scripts/page-shell.js?v=20260831-launch-audit"></script>
 

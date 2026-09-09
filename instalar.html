@@ -25,7 +25,7 @@
     <link rel="preload" href="./assets/fonts/space-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin>
     <title>Estudiemos | Tu estudio, conectado</title>
     <script src="./scripts/theme-init.js?v=20260830-install-experience"></script>
-    <link rel="stylesheet" href="./styles/install.css?v=20260901-ios-motion">
+    <link rel="stylesheet" href="./styles/install.css?v=20260909-interactive">
   </head>
   <body class="install-page">
     <header class="install-header" data-install-header>
@@ -134,8 +134,8 @@
               <section class="product-scene product-scene--focus" data-scene="focus" aria-label="Temporizador Pomodoro">
                 <header><span>MODO ENFOQUE</span><h3>Una cosa a la vez.</h3></header>
                 <div class="scene-focus-body">
-                  <div class="scene-timer"><div><strong>24:36</strong><small>Bloque 1 de 4</small></div></div>
-                  <div class="scene-session"><span>SESIÓN ACTUAL</span><strong>Preparar parcial de Álgebra</strong><small>Las notificaciones quedan en silencio.</small><div><button type="button" tabindex="-1">Pausar</button><button type="button" tabindex="-1">Terminar</button></div></div>
+                  <div class="scene-timer"><div><strong data-demo-clock>25:00</strong><small>Bloque 1 de 4</small></div></div>
+                  <div class="scene-session"><span>SESIÓN DE EJEMPLO</span><strong>Preparar parcial de Álgebra</strong><small>25 min de estudio · 5 min de pausa</small><div><button type="button" data-demo-toggle>Empezar</button><button type="button" data-demo-reset aria-label="Reiniciar demostración">↺</button></div></div>
                 </div>
                 <div class="scene-focus-progress"><i></i><i></i><i></i><i></i></div>
               </section>
@@ -218,7 +218,7 @@
         <div class="install-options" role="group" aria-label="Opciones de instalación">
           <article class="install-option" data-reveal>
             <div class="install-option__meta"><span class="install-option__platform">Android</span><span class="install-option__current">Versión actual</span></div>
-            <div class="install-option__glyph" aria-hidden="true">A</div>
+            <div class="install-option__glyph" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M10 18h4"/></svg></div>
             <h3>Aplicación y widgets</h3>
             <p>Mi espacio, Inbox, calendario semanal, Pomodoro y racha en tu pantalla de inicio.</p>
             <a class="install-option__button" data-install-android href="intent://open#Intent;scheme=estudiemos;package=com.estudiemos.app;S.browser_fallback_url=https%3A%2F%2Fgithub.com%2Fipala2006-maker%2Fingenieria-recursos%2Freleases%2Fdownload%2Fandroid-latest%2FEstudiemos-Android.apk;end">Abrir o descargar <span aria-hidden="true">→</span></a>
@@ -227,7 +227,7 @@
 
           <article class="install-option" data-reveal>
             <div class="install-option__meta"><span class="install-option__platform">iPhone y iPad</span><span class="install-option__current">Siempre actualizada</span></div>
-            <div class="install-option__glyph" aria-hidden="true">i</div>
+            <div class="install-option__glyph" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M10 5h4M10 19h4"/></svg></div>
             <h3>Aplicación web</h3>
             <p>Abrí Estudiemos en Safari, tocá Compartir y elegí Agregar a pantalla de inicio.</p>
             <a class="install-option__button" data-open-estudiemos href="https://estudiemos-app.vercel.app/">Abrir Estudiemos <span aria-hidden="true">↗</span></a>
@@ -236,7 +236,7 @@
 
           <article class="install-option install-option--pc" id="pc" data-reveal>
             <div class="install-option__meta"><span class="install-option__platform">Windows</span><span class="install-option__current">Versión actual</span></div>
-            <div class="install-option__glyph" aria-hidden="true">W</div>
+            <div class="install-option__glyph" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div>
             <h3>Estudiemos para PC</h3>
             <p>Usala como cualquier otro programa, con acceso directo y actualizaciones automáticas.</p>
             <button class="install-option__button" type="button" data-install-pc>Instalar para PC <span aria-hidden="true">→</span></button>
@@ -300,6 +300,6 @@
       </div>
     </footer>
 
-    <script src="./scripts/install-page.js?v=20260907-referral-install"></script>
+    <script src="./scripts/install-page.js?v=20260909-interactive"></script>
   </body>
 </html>
