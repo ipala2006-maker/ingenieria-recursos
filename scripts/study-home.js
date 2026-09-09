@@ -1,4 +1,4 @@
-import { attachTimerDial } from './timer-dial.js?v=20260909-interactive';
+import { attachTimerDial } from './timer-dial.js?v=20260909-depth2';
 const home = document.querySelector('[data-study-home]');
 if (home) {
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
@@ -10,6 +10,7 @@ if (home) {
   };
   const duration = value => `${Math.floor(value / 60)} h ${Math.floor(value % 60)} min`;
   let depth = null;
+  let progressDepth = null;
   let depthPending = false;
   let generation = 0;
   let chartSignature = '';
@@ -20,9 +21,13 @@ if (home) {
   let dialPreview = null;
   let sequenceSignature = '';
   const dial = attachTimerDial(home.querySelector('[data-home-dial]'), {
-    read: () => window.EstudiemosStudy?.snapshot().remaining || 1500,
+    read: () => window.EstudiemosStudy?.snapshot().remaining ?? 1500,
     commit: seconds => window.EstudiemosStudy?.seek(seconds),
-    preview: seconds => { dialPreview = seconds; update(); }
+    preview: seconds => {
+      dialPreview = seconds;
+      if(seconds === null) update();
+      else write('[data-home-clock]', `${String(Math.floor(seconds/60)).padStart(2,'0')}:${String(seconds%60).padStart(2,'0')}`);
+    }
   });
   const buttons = Array.from({ length:30 }, (_, index) => {
     const button = document.createElement('button');
@@ -37,6 +42,10 @@ if (home) {
     buttons.forEach((button, i) => button.setAttribute('aria-pressed', String(i === index)));
     const day = days[index];
     if (day) write('[data-home-chart-detail]', `${new Date(day.date + 'T12:00:00').toLocaleDateString('es-AR', { weekday:'short', day:'numeric' })} · ${duration(day.minutes)}`);
+    const scrubber=home.querySelector('[data-home-day-scrubber]');
+    scrubber.max=Math.max(0,days.length-1); scrubber.value=index;
+    if(day) scrubber.setAttribute('aria-valuetext',buttons[index].getAttribute('aria-label'));
+    progressDepth?.update(days,index);
   }
   buttons.forEach((button, index) => {
     button.addEventListener('click', () => selectDay(index));
@@ -55,13 +64,17 @@ if (home) {
     if (node && svg && !node.querySelector('svg')) node.replaceChildren(svg.cloneNode(true));
   }
   async function prepareDepth() {
-    if (depth || depthPending || reduced.matches || navigator.connection?.saveData || document.hidden || home.hidden) return;
+    if ((depth && progressDepth) || depthPending || reduced.matches || navigator.connection?.saveData || document.hidden || home.hidden) return;
     const request = ++generation;
     depthPending = true;
     try {
-      const module = await import('./study-scene.js?v=20260908-home');
+      const module = await import('./study-scene.js?v=20260909-depth2');
       if (request !== generation || reduced.matches || home.hidden) return;
-      depth = module.createStudyScene(host);
+      if(!depth) depth = module.createStudyScene(host);
+      const progress = await import('./progress-depth.js?v=20260909-depth2');
+      if(request !== generation || reduced.matches || home.hidden) return;
+      progressDepth = progress.createProgressDepth(chart,selectDay);
+      home.querySelector('[data-progress-reset]').hidden=false;
       update();
     } catch (_) {
       // The timer remains fully usable without WebGL.
@@ -101,6 +114,7 @@ if (home) {
       chart.style.setProperty('--days', days.length);
       buttons.forEach((button,index) => { button.hidden = index >= days.length; });
       const max = Math.max(25, ...days.map(day => day.minutes));
+      write('[data-home-chart-scale]', `Máx. ${duration(max)}`);
       days.forEach((day,index) => {
         const date = new Date(day.date + 'T12:00:00');
         buttons[index].style.setProperty('--bar', `${Math.max(2, day.minutes / max * 100)}%`);
@@ -140,10 +154,15 @@ if (home) {
       home.querySelectorAll('[data-home-preset]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.homePreset === [state.config.study,state.config.break,state.config.blocks].join(','))));
     }
     depth?.update(state);
+    progressDepth?.update(days,selection);
     cloneIcon('[data-streak-open]', '[data-home-flame]');
     cloneIcon('[data-general-ai-open]', '[data-home-ai-icon]');
     cloneIcon('[data-pomodoro-config-toggle]', '[data-home-settings-icon]');
     cloneIcon('[data-pomodoro-alarm-preview]', '[data-home-bell]');
+    cloneIcon('[data-pomodoro-reset]', '[data-progress-reset]');
+    cloneIcon('[data-quick-note-open]', '[data-home-node="inbox"]');
+    cloneIcon('[data-agenda-open]', '[data-home-node="calendar"]');
+    cloneIcon('[data-workspace-new-folder]', '[data-home-node="space"]');
   }
   function organizationSummary() {
     let agenda = [];
@@ -165,6 +184,7 @@ if (home) {
     const preset = event.target.closest('[data-home-preset]');
     if(preset) ['study','break','blocks'].forEach((key,index) => window.EstudiemosStudy?.configure(key,Number(preset.dataset.homePreset.split(',')[index])));
     if(event.target.closest('[data-home-preview-alarm]')) window.EstudiemosStudy?.previewAlarm();
+    if(event.target.closest('[data-progress-reset]')) progressDepth?.reset();
     const rangeButton = event.target.closest('[data-home-range]');
     if(rangeButton) {
       range = rangeButton.dataset.homeRange;
@@ -176,8 +196,8 @@ if (home) {
     if(step) { period = Math.max(-120,Math.min(0,period+Number(step.dataset.homePeriodStep))); update(); }
     const prompt = event.target.closest('[data-home-prompt]');
     if (prompt) openAssistant(prompt.dataset.homePrompt);
-    const shortcut = event.target.closest('[data-home-shortcut]');
-    if (shortcut) window.dispatchEvent(new CustomEvent('estudiemos:home-navigate', { detail:{ view:shortcut.dataset.homeShortcut } }));
+    const shortcut = event.target.closest('[data-home-shortcut], [data-home-destination]');
+    if (shortcut) window.dispatchEvent(new CustomEvent('estudiemos:home-navigate', { detail:{ view:shortcut.dataset.homeShortcut || shortcut.dataset.homeDestination } }));
   });
   home.addEventListener('change', event => {
     const target = event.target;
@@ -189,6 +209,7 @@ if (home) {
     if(key) { target.value = window.EstudiemosStudy.snapshot().config[key]; update(); }
   });
   home.addEventListener('input', event => {
+    if(event.target.matches('[data-home-day-scrubber]')) selectDay(Number(event.target.value));
     const key = event.target.dataset.homeConfigRange;
     if(key) home.querySelector(`[data-home-config="${key}"]`).value = event.target.value;
   });
@@ -205,9 +226,11 @@ if (home) {
     depthPending = false;
     depth?.dispose();
     depth = null;
+    progressDepth?.dispose(); progressDepth=null;
+    home.querySelector('[data-progress-reset]').hidden=true;
     prepareDepth();
   });
-  window.addEventListener('pagehide', () => { depth?.dispose(); depth = null; generation++; depthPending = false; });
+  window.addEventListener('pagehide', () => { depth?.dispose(); depth = null; progressDepth?.dispose(); progressDepth=null; generation++; depthPending = false; });
   window.addEventListener('pageshow', () => { prepareDepth(); update(); });
   organizationSummary();
   update();

@@ -505,7 +505,7 @@
     menu?.addEventListener("touchstart", handleWheelTouchStart, { passive: true });
     menu?.addEventListener("touchmove", handleWheelTouchMove, { passive: false });
     menu?.addEventListener("touchend", () => { wheelTouch = null; });
-    import(new URL("timer-dial.js?v=20260909-interactive", SCRIPT_URL).href).then(({ attachTimerDial }) => {
+    import(new URL("timer-dial.js?v=20260909-depth2", SCRIPT_URL).href).then(({ attachTimerDial }) => {
       timerDial = attachTimerDial(menu.querySelector('[data-pomodoro-dial]'), {
         read: remainingSeconds, commit: setRemaining,
         preview: seconds => { timerDialPreview = seconds; renderTimerOnly(); }
@@ -1199,7 +1199,7 @@
     focusDepthRequested = true;
     const generation = ++focusDepthGeneration;
     try {
-      const { createFocusDepth } = await import(new URL("focus-depth.js?v=20260907-depth", SCRIPT_URL).href);
+      const { createFocusDepth } = await import(new URL("focus-depth.js?v=20260909-depth2", SCRIPT_URL).href);
       if (reducedMotion.matches || generation !== focusDepthGeneration) return;
       focusDepth = createFocusDepth(document.querySelector(".pomodoro-timer"));
       renderTimerOnly();

@@ -28,8 +28,9 @@
     <link rel="stylesheet" href="./styles/workspace.css?v=20260906-referrals-2" />
     <link rel="stylesheet" href="./styles/dashboard.css?v=20260831-ai-chat" />
     <link rel="stylesheet" href="./styles/product-ui.css?v=20260908-brand-blue" />
-    <link rel="stylesheet" href="./styles/study-home.css?v=20260909-interactive" />
-    <link rel="stylesheet" href="./styles/interaction.css?v=20260909-interactive" />
+    <link rel="stylesheet" href="./styles/study-home.css?v=20260909-depth2" />
+    <link rel="stylesheet" href="./styles/interaction.css?v=20260909-depth2" />
+    <link rel="stylesheet" href="./styles/study-depth.css?v=20260909-depth2" />
   </head>
 
   <body class="workspace-home">
@@ -76,12 +77,14 @@
             <header class="study-tool-head"><h2 id="homeProgressTitle">Tu progreso</h2><button type="button" class="study-icon" data-home-open="streak" aria-label="Abrir estadísticas de la racha" title="Todas las estadísticas">↗</button></header>
             <div class="study-progress__numbers"><div><span>Hoy</span><strong data-home-today>0 h 0 min</strong></div><div><span>Últimos 7 días</span><strong data-home-week>0 h 0 min</strong></div></div>
             <div class="study-progress__period"><button type="button" data-home-period-step="-1" aria-label="Período de estudio anterior" title="Período anterior">‹</button><span data-home-period-label>Últimos 7 días</span><button type="button" data-home-period-step="1" aria-label="Período de estudio siguiente" title="Período siguiente">›</button><div role="group" aria-label="Período del progreso"><button type="button" data-home-range="week" aria-pressed="true">Semana</button><button type="button" data-home-range="month" aria-pressed="false">Mes</button></div></div>
+            <div class="study-progress__axis"><span data-home-chart-scale>Tiempo de estudio</span><button class="study-icon" type="button" data-progress-reset aria-label="Restablecer vista del gráfico" title="Restablecer vista" hidden></button></div>
             <div class="study-progress__chart" data-home-chart role="group" aria-label="Tiempo de estudio por día"></div>
+            <input class="study-progress__scrubber" type="range" min="0" max="6" step="1" value="6" data-home-day-scrubber aria-label="Seleccionar día de estudio">
             <div class="study-progress__foot"><span class="study-progress__streak"><span data-home-flame aria-hidden="true"></span><span data-home-streak>0 días de racha</span></span><span data-home-chart-detail role="status">Todavía sin sesiones</span></div>
           </section>
           <section class="study-assistant" aria-labelledby="homeAssistantTitle">
             <header class="study-tool-head"><h2 id="homeAssistantTitle">Organizador IA</h2><button type="button" class="study-icon" data-home-open="assistant" aria-label="Abrir chat del organizador" title="Abrir chat">↗</button></header>
-            <div class="study-assistant__route" aria-hidden="true"><span data-home-ai-icon></span><i></i><span>Inbox</span><i></i><span>Calendario</span></div>
+            <div class="study-assistant__route" aria-label="Herramientas conectadas"><span class="study-assistant__hub" data-home-ai-icon aria-hidden="true"></span><div class="study-assistant__destinations"><button type="button" data-home-destination="inbox" title="Abrir Inbox"><span data-home-node="inbox" aria-hidden="true"></span><span>Inbox</span></button><button type="button" data-home-destination="calendar" title="Abrir calendario"><span data-home-node="calendar" aria-hidden="true"></span><span>Calendario</span></button><button type="button" data-home-destination="space" title="Abrir Mi espacio"><span data-home-node="space" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 6.5h6l2 2h10v10H3v-12Z"/></svg></span><span>Mi espacio</span></button></div></div>
             <form data-home-ai-form class="study-assistant__composer"><label for="homeAiPrompt">¿Qué organizamos?</label><textarea id="homeAiPrompt" maxlength="1200" rows="2" placeholder="Anotá un repaso de Física para mañana..."></textarea><button type="submit" class="study-icon" aria-label="Abrir chat con esta indicación" title="Continuar en el chat">↑</button></form>
             <div class="study-assistant__suggestions"><button type="button" data-home-prompt="Ayudame a organizar mi semana.">Mi semana <span aria-hidden="true">↗</span></button><button type="button" data-home-prompt="Ayudame a ordenar mis carpetas y archivos.">Mis archivos <span aria-hidden="true">↗</span></button></div>
           </section>
@@ -211,12 +214,12 @@
 
     <!-- DATA SIEMPRE PRIMERO -->
     <script src="./data/data.js?v=20260804-quimica-completa"></script>
-    <script src="./scripts/global-search.js?v=20260909-interactive"></script>
+    <script src="./scripts/global-search.js?v=20260909-depth2"></script>
 
     <script src="./shared/plans.js?v=20260827-real-plans"></script>
     <script src="./scripts/workspace.js?v=20260908-referrals-email"></script>
-    <script src="./scripts/dashboard.js?v=20260909-interactive"></script>
-    <script type="module" src="./scripts/study-home.js?v=20260909-interactive"></script>
+    <script src="./scripts/dashboard.js?v=20260909-depth2"></script>
+    <script type="module" src="./scripts/study-home.js?v=20260909-depth2"></script>
 
     <script src="./scripts/page-shell.js?v=20260831-launch-audit"></script>
 
