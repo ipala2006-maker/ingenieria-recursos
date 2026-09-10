@@ -77,6 +77,7 @@ const output = path.join(__dirname, '../tmp/ui-check');
     await page.locator('[data-home-preset="50,10,2"]').click();
     assert.equal(await page.locator('[data-home-config="study"]').inputValue(),'50');
     assert.equal(await page.locator('[data-home-config="break"]').inputValue(),'10');
+    await page.locator('.study-session__sound>summary').click();
     await page.locator('[data-home-alarm]').selectOption('bell');
     await page.screenshot({path:path.join(output,view.name+'-session.png')});
     await page.locator('[data-home-preset="25,5,4"]').click();

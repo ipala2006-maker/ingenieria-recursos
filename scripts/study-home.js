@@ -11,6 +11,10 @@ if (home) {
   const duration = value => `${Math.floor(value / 60)} h ${Math.floor(value % 60)} min`;
   let depth = null;
   let progressDepth = null;
+  let organizerDepth = null;
+  let motionEnabled = localStorage.getItem('estudiemos_scene_motion') !== 'off';
+  const modelHost=home.querySelector('.study-assistant__route');
+  const motionButton=home.querySelector('[data-home-motion]');
   let depthPending = false;
   let generation = 0;
   let chartSignature = '';
@@ -41,12 +45,15 @@ if (home) {
     event.preventDefault();
     history.pushState({...history.state,estudiemosUi:'home-session'},'',location.href);
     sessionDialog.showModal();
+    organizerDepth?.setVisible(false);
   });
   const closeSession=()=>{
     if(history.state?.estudiemosUi==='home-session') history.back();
     else sessionDialog.close();
   };
   sessionDialog.querySelector('[data-home-session-close]').addEventListener('click',closeSession);
+  sessionDialog.querySelector('[data-home-session-done]').addEventListener('click',closeSession);
+  sessionDialog.addEventListener('close',()=>{endHold();organizerDepth?.setVisible(!home.hidden);});
   sessionDialog.addEventListener('cancel',event=>{event.preventDefault();closeSession();});
   sessionDialog.addEventListener('click',event=>{
     const box=sessionDialog.getBoundingClientRect();
@@ -55,6 +62,7 @@ if (home) {
   window.addEventListener('popstate',()=>{
     if(history.state?.estudiemosUi==='home-session' && !sessionDialog.open) sessionDialog.showModal();
     else if(history.state?.estudiemosUi!=='home-session' && sessionDialog.open) sessionDialog.close();
+    organizerDepth?.setVisible(!home.hidden&&!sessionDialog.open);
   });
   if(history.state?.estudiemosUi==='home-session') sessionDialog.showModal();
   const dial = attachTimerDial(home.querySelector('[data-home-dial]'), {
@@ -96,12 +104,21 @@ if (home) {
     });
   });
   function cloneIcon(source, target) {
-    const node = home.querySelector(target);
-    const svg = document.querySelector(source)?.querySelector('svg');
-    if (node && svg && !node.querySelector('svg')) node.replaceChildren(svg.cloneNode(true));
+    const origin = document.querySelector(source);
+    const svg = origin?.matches('svg') ? origin : origin?.querySelector('svg');
+    for(const node of home.querySelectorAll(target)) if(svg && !node.querySelector('svg')) node.replaceChildren(svg.cloneNode(true));
+  }
+  function updateMotionButton() {
+    const label=motionEnabled?'Pausar movimiento 3D':'Activar movimiento 3D';
+    motionButton.title=label;motionButton.setAttribute('aria-label',label);motionButton.setAttribute('aria-pressed',String(motionEnabled));
+    if(motionButton.dataset.mode===label)return;
+    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('aria-hidden','true');
+    const path=document.createElementNS(svg.namespaceURI,'path');
+    path.setAttribute('d',motionEnabled?'M7 5h4v14H7V5Zm6 0h4v14h-4V5Z':'M8 5.2v13.6L19 12 8 5.2Z');
+    svg.appendChild(path);motionButton.replaceChildren(svg);motionButton.dataset.mode=label;
   }
   async function prepareDepth() {
-    if ((depth && progressDepth) || depthPending || reduced.matches || navigator.connection?.saveData || document.hidden || home.hidden) return;
+    if ((depth && progressDepth && organizerDepth) || depthPending || reduced.matches || navigator.connection?.saveData || document.hidden || home.hidden) return;
     const request = ++generation;
     depthPending = true;
     try {
@@ -110,9 +127,14 @@ if (home) {
       if(!depth) depth = module.createStudyScene(host);
       const progress = await import('./progress-depth.js?v=20260909-console');
       if(request !== generation || reduced.matches || home.hidden) return;
-      progressDepth = progress.createProgressDepth(chart,selectDay);
+      if(!progressDepth) progressDepth = progress.createProgressDepth(chart,selectDay);
       home.querySelector('[data-progress-reset]').hidden=false;
       update();
+      const organizer=await import('./organizer-depth.js?v=20260910-motion');
+      if(request !== generation || reduced.matches || home.hidden)return;
+      if(!organizerDepth) organizerDepth=organizer.createOrganizerDepth(modelHost,{motion:motionEnabled,onOpen:view=>window.dispatchEvent(new CustomEvent('estudiemos:home-navigate',{detail:{view}}))});
+      organizerDepth.setVisible(!sessionDialog.open);
+      motionButton.hidden=false;updateMotionButton();
     } catch (_) {
       // The timer remains fully usable without WebGL.
     } finally { if (request === generation) depthPending = false; }
@@ -132,11 +154,15 @@ if (home) {
       iconHost.dataset.state = label;
     }
     const remaining = dialPreview ?? state.remaining;
+    write('[data-home-adjust-value]', `${Math.ceil(remaining/60)} min`);
     write('[data-home-clock]', `${String(Math.floor(remaining / 60)).padStart(2,'0')}:${String(remaining % 60).padStart(2,'0')}`);
     dial.update();
     write('[data-home-phase]', state.phase === 'study' ? 'Estudio' : 'Descanso');
     write('[data-home-block]', `Bloque ${state.block} de ${state.blocks}`);
     write('[data-home-timer-state]', state.running ? 'Sesión en curso' : state.alarm ? 'Bloque finalizado' : 'A tu ritmo');
+    home.querySelector('[data-home-timer]').dataset.running=String(state.running);
+    home.querySelector('[data-home-adjust="-1"]').disabled=remaining<=60;
+    home.querySelector('[data-home-adjust="1"]').disabled=remaining>=3540;
     write('[data-home-today]', duration(state.todayMinutes));
     write('[data-home-week]', duration(state.weekMinutes));
     write('[data-home-streak]', `${state.currentStreak} ${state.currentStreak === 1 ? 'día' : 'días'} de racha`);
@@ -173,8 +199,15 @@ if (home) {
     }
     home.querySelector('[data-home-auto]').checked = state.autoStart;
     home.querySelector('[data-home-alarm]').value = state.alarmMode;
+    write('[data-home-alarm-name]',home.querySelector('[data-home-alarm] option:checked')?.textContent || 'Digital');
     if(document.activeElement !== home.querySelector('[data-home-volume]')) home.querySelector('[data-home-volume]').value = state.alarmVolume;
     write('[data-home-session-summary]', `${state.config.blocks} × ${state.config.study} min`);
+    write('[data-home-session-total]', duration(state.config.blocks*state.config.study));
+    for(const button of home.querySelectorAll('[data-home-config-step]')) {
+      const input=home.querySelector(`[data-home-config="${button.dataset.configKey}"]`);
+      const value=state.config[button.dataset.configKey];
+      button.disabled=Number(button.dataset.homeConfigStep)<0 ? value<=Number(input.min) : value>=Number(input.max);
+    }
     const sequence = JSON.stringify([state.config,state.block,state.phase]);
     if(sequenceSignature !== sequence) {
       sequenceSignature = sequence;
@@ -197,7 +230,11 @@ if (home) {
     cloneIcon('[data-pomodoro-config-toggle]', '[data-home-settings-icon]');
     cloneIcon('[data-pomodoro-alarm-preview]', '[data-home-bell]');
     cloneIcon('[data-pomodoro-reset]', '[data-progress-reset]');
+    cloneIcon('[data-pomodoro-reset]', '[data-home-reset]');
     cloneIcon('[data-pomodoro-close]', '[data-home-session-close]');
+    cloneIcon('[data-pomodoro-config-toggle] svg:last-child', '[data-home-alarm-chevron]');
+    cloneIcon('[data-pomodoro-step="-1"]', '[data-home-config-step="-1"],[data-home-adjust="-1"]');
+    cloneIcon('[data-pomodoro-step="1"]', '[data-home-config-step="1"],[data-home-adjust="1"]');
     cloneIcon('[data-quick-note-open]', '[data-home-node="inbox"]');
     cloneIcon('[data-agenda-open]', '[data-home-node="calendar"]');
     cloneIcon('[data-workspace-new-folder]', '[data-home-node="space"]');
@@ -211,14 +248,50 @@ if (home) {
   function openAssistant(instruction = '') {
     window.dispatchEvent(new CustomEvent('estudiemos:open-general-ai', { detail:{ instruction } }));
   }
+  function adjustControl(button) {
+    if(button.disabled)return;
+    if(button.hasAttribute('data-home-adjust')) window.EstudiemosStudy?.seek(window.EstudiemosStudy.snapshot().remaining + Number(button.dataset.homeAdjust)*60);
+    else {
+      const key=button.dataset.configKey,input=home.querySelector(`[data-home-config="${key}"]`);
+      const value=Math.max(Number(input.min),Math.min(Number(input.max),window.EstudiemosStudy.snapshot().config[key]+Number(button.dataset.homeConfigStep)));
+      window.EstudiemosStudy.configure(key,value);
+    }
+  }
+  let hold=null,suppressed=null;
+  function endHold(event) {
+    if(!hold)return;
+    const previous=hold;hold=null;clearTimeout(previous.timer);
+    suppressed=previous.repeated&&event?.type==='pointerup'?previous.button:null;
+    if(previous.button.hasPointerCapture(previous.id))previous.button.releasePointerCapture(previous.id);
+  }
+  home.addEventListener('pointerdown',event=>{
+    const button=event.target.closest('[data-home-config-step],[data-home-adjust]');
+    if(!button || button.disabled || event.button!==0 || !event.isPrimary)return;
+    endHold();suppressed=null;
+    hold={button,id:event.pointerId,repeated:false,timer:0};button.setPointerCapture(event.pointerId);
+    const repeat=()=>{
+      if(!hold || button.disabled || !button.isConnected)return;
+      hold.repeated=true;adjustControl(button);hold.timer=setTimeout(repeat,110);
+    };
+    hold.timer=setTimeout(repeat,400);
+  });
+  for(const name of ['pointerup','pointercancel','lostpointercapture'])home.addEventListener(name,endHold);
+  window.addEventListener('blur',endHold);
   home.addEventListener('click', event => {
+    if(suppressed && event.detail>0 && event.target.closest('button')===suppressed){suppressed=null;event.preventDefault();return;}
+    suppressed=null;
     const open = event.target.closest('[data-home-open]')?.dataset.homeOpen;
     if (open) event.stopPropagation();
     if (open === 'assistant') openAssistant();
     else if (open) document.querySelector(open === 'pomodoro' ? '.topbar [data-pomodoro-open]' : '.topbar [data-streak-open]')?.click();
     if (event.target.closest('[data-home-timer]')) window.EstudiemosStudy?.toggle();
-    const adjust = event.target.closest('[data-home-adjust]');
-    if(adjust) window.EstudiemosStudy?.seek(window.EstudiemosStudy.snapshot().remaining + Number(adjust.dataset.homeAdjust)*60);
+    if(event.target.closest('[data-home-reset]'))document.querySelector('[data-pomodoro-reset]')?.click();
+    const adjust = event.target.closest('[data-home-adjust],[data-home-config-step]');
+    if(adjust)adjustControl(adjust);
+    if(event.target.closest('[data-home-motion]')) {
+      motionEnabled=!motionEnabled;localStorage.setItem('estudiemos_scene_motion',motionEnabled?'on':'off');
+      organizerDepth?.setMotion(motionEnabled);updateMotionButton();
+    }
     const preset = event.target.closest('[data-home-preset]');
     if(preset) ['study','break','blocks'].forEach((key,index) => window.EstudiemosStudy?.configure(key,Number(preset.dataset.homePreset.split(',')[index])));
     if(event.target.closest('[data-home-preview-alarm]')) window.EstudiemosStudy?.previewAlarm();
@@ -240,7 +313,7 @@ if (home) {
   home.addEventListener('change', event => {
     const target = event.target;
     const key = target.dataset.homeConfig || target.dataset.homeConfigRange;
-    if(key) window.EstudiemosStudy?.configure(key,target.value);
+    if(key) window.EstudiemosStudy?.configure(key,Math.max(Number(target.min),Math.min(Number(target.max),Number(target.value)||0)));
     if(target.matches('[data-home-alarm]')) window.EstudiemosStudy?.alarm('mode',target.value);
     if(target.matches('[data-home-auto]')) window.EstudiemosStudy?.alarm('auto',target.checked);
     if(target.matches('[data-home-volume]')) window.EstudiemosStudy?.alarm('volume',target.value);
@@ -257,18 +330,19 @@ if (home) {
   });
   for (const name of ['estudiemos:study-ready','estudiemos:study-update','estudiemos:cloud-restored']) window.addEventListener(name, update);
   for (const name of ['storage','estudiemos:data-change','estudiemos:cloud-restored']) window.addEventListener(name, organizationSummary);
-  window.addEventListener('estudiemos:home-view', () => { prepareDepth(); update(); });
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) { prepareDepth(); update(); } });
+  window.addEventListener('estudiemos:home-view', () => { organizerDepth?.setVisible(!home.hidden&&!sessionDialog.open);prepareDepth(); update(); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) endHold(); else { prepareDepth(); update(); } });
   reduced.addEventListener('change', () => {
     generation++;
     depthPending = false;
     depth?.dispose();
     depth = null;
     progressDepth?.dispose(); progressDepth=null;
+    organizerDepth?.dispose(); organizerDepth=null;motionButton.hidden=true;
     home.querySelector('[data-progress-reset]').hidden=true;
     prepareDepth();
   });
-  window.addEventListener('pagehide', () => { depth?.dispose(); depth = null; progressDepth?.dispose(); progressDepth=null; generation++; depthPending = false; });
+  window.addEventListener('pagehide', () => { endHold();depth?.dispose(); depth = null; progressDepth?.dispose(); progressDepth=null;organizerDepth?.dispose();organizerDepth=null; generation++; depthPending = false; });
   window.addEventListener('pageshow', () => { prepareDepth(); update(); });
   organizationSummary();
   update();

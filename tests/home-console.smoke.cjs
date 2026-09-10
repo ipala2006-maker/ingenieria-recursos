@@ -61,6 +61,7 @@ for(const [width,height] of sizes) {
   await reachable(page,'[data-home-session-close]');
   await page.locator('[data-home-preset="50,10,2"]').click();
   assert.equal(await page.locator('[data-home-config="study"]').inputValue(),'50');
+  await page.locator('.study-session__sound>summary').click();
   await page.locator('[data-home-alarm]').selectOption('bell');
   await page.locator('[data-home-preset="25,5,4"]').click();
   if(width===1440) {
