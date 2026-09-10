@@ -2,6 +2,10 @@ import * as THREE from './vendor/three/three.module.min.js';
 
 // Both timers use the same pixel geometry as the input, never a separately tilted dial.
 export function createTimerDepth(host, {home = false} = {}) {
+  const document=host.ownerDocument, window=document.defaultView;
+  const {ResizeObserver,IntersectionObserver,MutationObserver}=window;
+  const requestAnimationFrame=window.requestAnimationFrame.bind(window), cancelAnimationFrame=window.cancelAnimationFrame.bind(window);
+  const getComputedStyle=window.getComputedStyle.bind(window), devicePixelRatio=window.devicePixelRatio;
   const dial = host.querySelector('.study-dial');
   const renderer = new THREE.WebGLRenderer({alpha:true,antialias:true,powerPreference:'low-power',preserveDrawingBuffer:true});
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1,1.5));
@@ -79,7 +83,7 @@ export function createTimerDepth(host, {home = false} = {}) {
   function input(event) { angle=event.detail.angle; schedule(); }
   const resize=new ResizeObserver(schedule); resize.observe(host); resize.observe(dial);
   const observer=new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;schedule();}); observer.observe(host);
-  const theme=new MutationObserver(schedule); theme.observe(document.documentElement,{attributes:true,attributeFilter:['class']});
+  const theme=new MutationObserver(schedule); theme.observe(document.documentElement,{attributes:true,attributeFilter:['class','data-theme']});
   host.addEventListener('pointermove',move); host.addEventListener('pointerleave',reset);
   host.addEventListener('estudiemos:dial-input',input);
   document.addEventListener('visibilitychange',schedule);

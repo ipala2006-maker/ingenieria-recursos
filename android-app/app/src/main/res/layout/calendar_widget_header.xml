@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/calendar_widget_header"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:orientation="horizontal" android:gravity="center_vertical" android:paddingBottom="8dp">
+    <LinearLayout android:id="@+id/calendar_widget_title"
+        android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="Calendario" android:textColor="#F8FAFC" android:textSize="16sp" android:textStyle="bold" />
+        <TextView android:id="@+id/calendar_widget_month"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:textColor="#B4C5DD" android:textSize="11sp" />
+    </LinearLayout>
+    <TextView android:id="@+id/calendar_widget_view_toggle"
+        android:layout_width="64dp" android:layout_height="44dp" android:layout_marginStart="6dp"
+        android:background="@drawable/widget_chip_background" android:gravity="center"
+        android:text="Mes" android:textColor="#B8D2FF" android:textSize="12sp" android:textStyle="bold" />
+</LinearLayout>

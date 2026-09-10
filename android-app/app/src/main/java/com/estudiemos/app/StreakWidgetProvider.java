@@ -12,6 +12,9 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.os.Bundle;
+import android.util.TypedValue;
+import android.view.View;
 import android.widget.RemoteViews;
 
 import org.json.JSONObject;
@@ -28,6 +31,11 @@ public class StreakWidgetProvider extends AppWidgetProvider {
     public void onUpdate(Context context, AppWidgetManager manager, int[] appWidgetIds) {
         for (int appWidgetId : appWidgetIds) updateWidget(context, manager, appWidgetId);
         WidgetSyncManager.syncNow(context);
+    }
+
+    @Override
+    public void onAppWidgetOptionsChanged(Context context, AppWidgetManager manager, int id, Bundle options) {
+        updateWidget(context, manager, id);
     }
 
     static void storeStreakAndUpdate(Context context, String rawMessage) {
@@ -113,16 +121,20 @@ public class StreakWidgetProvider extends AppWidgetProvider {
     private static void updateWidget(Context context, AppWidgetManager manager, int appWidgetId) {
         StreakSummary summary = readSummary(context);
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.streak_widget);
+        WidgetSize size = new WidgetSize(context, manager, appWidgetId);
+        boolean compact = size.height < 180;
+        views.setViewVisibility(R.id.streak_widget_action, compact ? View.GONE : View.VISIBLE);
+        views.setTextViewTextSize(R.id.streak_widget_title, TypedValue.COMPLEX_UNIT_SP, size.width < 200 ? 14 : 18);
         String daysLabel = summary.currentStreak == 1 ? "día" : "días";
         String title;
         if (summary.currentStreak > 0) title = "Racha: " + summary.currentStreak + " " + daysLabel;
-        else if (summary.activeLast7 > 0) title = "Recuperá el ritmo hoy";
+        else if (summary.activeLast7 > 0) title = "Retomá tu racha";
         else title = "Empezá tu racha";
 
         views.setTextViewText(R.id.streak_widget_title, title);
         views.setTextViewText(
                 R.id.streak_widget_action,
-                summary.activeToday ? "Presencia de hoy registrada" : "Tocá para estudiar 25 min"
+                "Abrir Pomodoro"
         );
         views.setTextViewText(
                 R.id.streak_widget_today,
@@ -130,20 +142,18 @@ public class StreakWidgetProvider extends AppWidgetProvider {
         );
         views.setTextViewText(
                 R.id.streak_widget_week,
-                "Semana: " + formatStudyTime(summary.weekTotalMinutes()) + " · " + summary.activeLast7 + " activos"
+                "Semana: " + formatStudyTime(summary.weekTotalMinutes()) + (!compact && size.width >= 250 ? " · " + summary.activeLast7 + " activos" : "")
         );
-        views.setImageViewBitmap(R.id.streak_widget_chart, buildWeekChart(summary.weekMinutes));
+        views.setImageViewBitmap(R.id.streak_widget_chart, buildWeekChart(summary.weekMinutes, compact ? 160 : 240));
+        views.setContentDescription(R.id.streak_widget_root, title + ". Hoy: " + formatStudyTime(summary.todayMinutes)
+                + ". Semana: " + formatStudyTime(summary.weekTotalMinutes()) + ". " + summary.activeLast7 + " días activos. Abrir Pomodoro.");
         views.setOnClickPendingIntent(R.id.streak_widget_root, openPomodoroIntent(context));
         manager.updateAppWidget(appWidgetId, views);
     }
 
-    private static Bitmap buildWeekChart(int[] minutes) {
+    private static Bitmap buildWeekChart(int[] minutes, int height) {
         int width = 640;
-        int height = 112;
-        float left = 8f;
-        float right = width - 8f;
-        float top = 10f;
-        float bottom = height - 12f;
+        float left = 16f, right = width - 16f, top = 16f, bottom = height - 34f;
         Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
         Paint grid = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -157,23 +167,31 @@ public class StreakWidgetProvider extends AppWidgetProvider {
         for (int value : minutes) maximum = Math.max(maximum, value);
         maximum = Math.max(60, ((maximum + 59) / 60) * 60);
 
-        Path line = new Path();
-        Paint stroke = new Paint(Paint.ANTI_ALIAS_FLAG);
-        stroke.setColor(Color.rgb(139, 181, 255));
-        stroke.setStrokeWidth(6f);
-        stroke.setStyle(Paint.Style.STROKE);
-        stroke.setStrokeCap(Paint.Cap.ROUND);
-        stroke.setStrokeJoin(Paint.Join.ROUND);
         Paint point = new Paint(Paint.ANTI_ALIAS_FLAG);
-        point.setColor(Color.rgb(139, 181, 255));
+        String[] labels = {"L", "M", "X", "J", "V", "S", "D"};
+        int firstDay = LocalDate.now().minusDays(6).getDayOfWeek().getValue() - 1;
         for (int index = 0; index < minutes.length; index += 1) {
-            float x = left + (index / 6f) * (right - left);
+            float x = left + (index + .5f) * (right - left) / 7f;
             float y = bottom - (Math.max(0, minutes[index]) / (float) maximum) * (bottom - top);
-            if (index == 0) line.moveTo(x, y);
-            else line.lineTo(x, y);
-            canvas.drawCircle(x, y, minutes[index] > 0 ? 7f : 4f, point);
+            boolean today = index == 6;
+            if (minutes[index] > 0) {
+                point.setColor(today ? 0xFFFFB04F : 0xFF8BB5FF);
+                canvas.drawRect(x - 21, y, x + 21, bottom, point);
+                Path side = new Path();
+                side.moveTo(x + 21, y); side.lineTo(x + 29, y - 7);
+                side.lineTo(x + 29, bottom - 7); side.lineTo(x + 21, bottom); side.close();
+                point.setColor(today ? 0xFFB6762E : 0xFF4B6C9F); canvas.drawPath(side, point);
+                Path cap = new Path();
+                cap.moveTo(x - 21, y); cap.lineTo(x - 13, y - 7);
+                cap.lineTo(x + 29, y - 7); cap.lineTo(x + 21, y); cap.close();
+                point.setColor(today ? 0xFFFFCF90 : 0xFFD3E3FF); canvas.drawPath(cap, point);
+            } else {
+                point.setColor(0xFF64748B); canvas.drawCircle(x, bottom, 2.5f, point);
+            }
+            point.setColor(today ? 0xFFFFB04F : 0xFFB4C5DD);
+            point.setTextSize(22); point.setTextAlign(Paint.Align.CENTER);
+            canvas.drawText(labels[(firstDay + index) % 7], x, height - 4, point);
         }
-        canvas.drawPath(line, stroke);
         return bitmap;
     }
 

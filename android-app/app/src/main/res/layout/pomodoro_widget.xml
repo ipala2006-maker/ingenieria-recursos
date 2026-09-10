@@ -5,7 +5,7 @@
     android:background="@drawable/widget_background"
     android:gravity="center"
     android:orientation="vertical"
-    android:padding="15dp">
+    android:padding="12dp">
 
     <LinearLayout
         android:id="@+id/pomodoro_widget_header"
@@ -36,20 +36,31 @@
             android:textStyle="bold" />
     </LinearLayout>
 
-    <Chronometer
-        android:id="@+id/pomodoro_widget_time"
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginTop="8dp"
-        android:layout_weight="1"
-        android:gravity="center"
-        android:text="25:00"
-        android:textColor="#F8FAFC"
-        android:textSize="45sp"
-        android:fontFamily="sans-serif-medium"
-        android:shadowColor="#80000000"
-        android:shadowDy="2"
-        android:shadowRadius="4" />
+        android:layout_marginVertical="4dp"
+        android:layout_weight="1">
+        <ImageView
+            android:id="@+id/pomodoro_widget_dial"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:importantForAccessibility="no"
+            android:scaleType="fitCenter"
+            android:src="@drawable/widget_focus_dial" />
+        <Chronometer
+            android:id="@+id/pomodoro_widget_time"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:text="25:00"
+            android:textColor="#F8FAFC"
+            android:textSize="40sp"
+            android:fontFamily="sans-serif-medium"
+            android:shadowColor="#80000000"
+            android:shadowDy="2"
+            android:shadowRadius="4" />
+    </FrameLayout>
 
     <TextView
         android:id="@+id/pomodoro_widget_block"
@@ -66,21 +77,21 @@
         style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="match_parent"
         android:layout_height="4dp"
-        android:layout_marginTop="10dp"
+        android:layout_marginTop="5dp"
         android:progressBackgroundTint="#27364F"
         android:progressTint="#8BB5FF" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="44dp"
-        android:layout_marginTop="10dp"
+        android:layout_marginTop="6dp"
         android:gravity="center"
         android:orientation="horizontal">
 
         <ImageButton
             android:id="@+id/pomodoro_widget_reset"
-            android:layout_width="42dp"
-            android:layout_height="42dp"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
             android:background="@drawable/widget_item_background"
             android:contentDescription="Reiniciar temporizador"
             android:padding="11dp"
@@ -90,7 +101,7 @@
         <LinearLayout
             android:id="@+id/pomodoro_widget_toggle"
             android:layout_width="0dp"
-            android:layout_height="42dp"
+            android:layout_height="44dp"
             android:layout_marginStart="9dp"
             android:layout_weight="1"
             android:background="@drawable/widget_primary_button"

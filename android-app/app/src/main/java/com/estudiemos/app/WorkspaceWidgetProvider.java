@@ -7,6 +7,8 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Bundle;
+import android.view.View;
 import android.widget.RemoteViews;
 
 import org.json.JSONArray;
@@ -41,6 +43,11 @@ public class WorkspaceWidgetProvider extends AppWidgetProvider {
         } catch (Exception ignored) {
             // Keep the last complete list if a web message is interrupted.
         }
+    }
+
+    @Override
+    public void onAppWidgetOptionsChanged(Context context, AppWidgetManager manager, int id, Bundle options) {
+        updateWidget(context, manager, id);
     }
 
     static void storeWorkspaceItems(Context context, JSONArray items) {
@@ -85,6 +92,9 @@ public class WorkspaceWidgetProvider extends AppWidgetProvider {
 
     private static void updateWidget(Context context, AppWidgetManager manager, int appWidgetId) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.workspace_widget);
+        boolean compact = new WidgetSize(context, manager, appWidgetId).height < 160;
+        views.setViewVisibility(R.id.workspace_widget_subtitle, compact ? View.GONE : View.VISIBLE);
+        views.setViewVisibility(R.id.workspace_widget_footer, compact ? View.GONE : View.VISIBLE);
         Intent serviceIntent = new Intent(context, WorkspaceWidgetService.class);
         serviceIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
         serviceIntent.setData(Uri.parse(serviceIntent.toUri(Intent.URI_INTENT_SCHEME)));
@@ -113,7 +123,8 @@ public class WorkspaceWidgetProvider extends AppWidgetProvider {
         views.setOnClickPendingIntent(R.id.workspace_widget_footer, home);
 
         int count = readRootEntries(context).size();
-        views.setTextViewText(R.id.workspace_widget_count, count + (count == 1 ? " elemento" : " elementos"));
+        views.setTextViewText(R.id.workspace_widget_count, String.valueOf(count));
+        views.setContentDescription(R.id.workspace_widget_count, count + (count == 1 ? " elemento" : " elementos"));
         manager.updateAppWidget(appWidgetId, views);
     }
 

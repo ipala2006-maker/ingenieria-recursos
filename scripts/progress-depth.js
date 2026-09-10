@@ -1,6 +1,10 @@
 import * as THREE from './vendor/three/three.module.min.js';
 
 export function createProgressDepth(host, onSelect) {
+  const document=host.ownerDocument, window=document.defaultView;
+  const {ResizeObserver,IntersectionObserver,MutationObserver}=window;
+  const requestAnimationFrame=window.requestAnimationFrame.bind(window), cancelAnimationFrame=window.cancelAnimationFrame.bind(window);
+  const getComputedStyle=window.getComputedStyle.bind(window), devicePixelRatio=window.devicePixelRatio;
   const renderer=new THREE.WebGLRenderer({alpha:true,antialias:true,powerPreference:'low-power',preserveDrawingBuffer:true});
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1,1.5));
   const surface=document.createElement('canvas');
@@ -108,7 +112,7 @@ export function createProgressDepth(host, onSelect) {
   function click(event) { if(Date.now()<suppressClickUntil) { event.preventDefault(); event.stopPropagation(); } }
   const resize=new ResizeObserver(schedule); resize.observe(host);
   const observer=new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;schedule();}); observer.observe(host);
-  const theme=new MutationObserver(schedule); theme.observe(document.documentElement,{attributes:true,attributeFilter:['class']});
+  const theme=new MutationObserver(schedule); theme.observe(document.documentElement,{attributes:true,attributeFilter:['class','data-theme']});
   host.addEventListener('pointerdown',down); host.addEventListener('pointermove',move);
   for(const type of ['pointerup','pointercancel','lostpointercapture']) host.addEventListener(type,finish);
   host.addEventListener('click',click,true); document.addEventListener('visibilitychange',schedule);

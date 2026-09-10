@@ -7,6 +7,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Bundle;
 import android.widget.RemoteViews;
 
 import java.time.LocalDate;
@@ -48,11 +49,17 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         manager.notifyAppWidgetViewDataChanged(ids, R.id.calendar_widget_grid);
     }
 
+    @Override
+    public void onAppWidgetOptionsChanged(Context context, AppWidgetManager manager, int id, Bundle options) {
+        updateWidget(context, manager, id);
+    }
+
     private static void updateWidget(Context context, AppWidgetManager manager, int appWidgetId) {
-        RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.calendar_widget);
         String view = getView(context);
+        RemoteViews views = new RemoteViews(context.getPackageName(), VIEW_WEEK.equals(view) ? R.layout.calendar_widget_week : R.layout.calendar_widget);
         views.setTextViewText(R.id.calendar_widget_month, VIEW_WEEK.equals(view) ? weekLabel(LocalDate.now()) : capitalize(LocalDate.now().format(MONTH_FORMAT)));
-        views.setTextViewText(R.id.calendar_widget_view_toggle, VIEW_WEEK.equals(view) ? "Semana" : "Mes");
+        views.setTextViewText(R.id.calendar_widget_view_toggle, VIEW_WEEK.equals(view) ? "Mes" : "Semana");
+        views.setContentDescription(R.id.calendar_widget_view_toggle, VIEW_WEEK.equals(view) ? "Ver mes" : "Ver semana");
 
         Intent serviceIntent = new Intent(context, CalendarWidgetService.class);
         serviceIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);

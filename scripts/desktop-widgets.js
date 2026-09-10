@@ -1,5 +1,11 @@
 (function () {
   if (window.EstudiemosDesktopWidgets) return;
+  const designUrl=new URL('../styles/widget-console.css?v=20260910-widgets',document.currentScript.src).href;
+  const depthUrl=new URL('./widget-depth.js?v=20260910-widgets',document.currentScript.src).href;
+  let depthModule=null,depthPending=null;
+  function installDesign(doc) {
+    const link=doc.createElement('link');link.rel='stylesheet';link.href=designUrl;doc.head.appendChild(link);
+  }
 
   const AGENDA_KEY = "bandeja_agenda";
   const STREAK_KEY = "estudiemos_pomodoro_streak";
@@ -102,6 +108,7 @@
     head.append(charset, viewport, title, style);
     body.innerHTML = '<main id="widgetContent"></main>';
     doc.documentElement.replaceChildren(head, body);
+    installDesign(doc);
     doc.addEventListener("click", handleWidgetClick);
     doc.addEventListener("change", handleWidgetChange);
     state.hostedWidget = false;
@@ -123,6 +130,7 @@
     style.dataset.desktopWidgetStyle = "true";
     style.textContent = widgetStyles();
     document.head.appendChild(style);
+    installDesign(document);
     document.addEventListener("click", handleWidgetClick);
     document.addEventListener("change", handleWidgetChange);
     document.addEventListener("pointerdown", beginRainmeterResize);
@@ -154,7 +162,8 @@
     const popup = standaloneHost ? window : state.widgetWindow;
     if (!popup || (!standaloneHost && popup.closed)) return cleanup();
     const doc = popup.document;
-    doc.documentElement.dataset.theme = document.documentElement.classList.contains("theme-light") ? "light" : "dark";
+    const theme=document.documentElement.classList.contains("theme-light") ? "light" : "dark";
+    if(doc.documentElement.dataset.theme!==theme) doc.documentElement.dataset.theme=theme;
     doc.querySelectorAll("[data-widget-view]").forEach((button) => {
       const active = button.dataset.widgetView === state.view;
       button.classList.toggle("is-active", active);
@@ -172,10 +181,17 @@
     if(renderedWidgets.get(content) !== markup) {
       const focused = content.contains(doc.activeElement) ? doc.activeElement : null;
       const focusIndex = focused ? Array.from(content.querySelectorAll('button,input,a')).indexOf(focused) : -1;
+      const scrolls=['.task-list','.workspace-widget-list','.calendar-grid'].map(selector=>[selector,content.querySelector(selector)?.scrollTop || 0]);
       content.innerHTML = markup;
+      for(const [selector,top] of scrolls) {const list=content.querySelector(selector);if(list)list.scrollTop=top;}
       renderedWidgets.set(content,markup);
       if(focusIndex >= 0) content.querySelectorAll('button,input,a')[focusIndex]?.focus({preventScroll:true});
     }
+    if(state.view==='pomodoro') updatePomodoroDisplay(content);
+    if(state.view==='pomodoro' || state.view==='streak') {
+      if(!depthPending) depthPending=import(depthUrl).then(module=>depthModule=module).catch(()=>null);
+      depthPending.then(module=>module?.enhanceWidget(content));
+    } else depthModule?.disposeWidget(content);
     syncRainmeterReminderState();
   }
 
@@ -236,6 +252,7 @@
   }
 
   function cleanup() {
+    if(state.widgetWindow && !state.widgetWindow.closed) depthModule?.disposeWidget(state.widgetWindow.document.getElementById('widgetContent'));
     if (state.refreshTimer) window.clearInterval(state.refreshTimer);
     if (state.cloudRefreshTimer) window.clearInterval(state.cloudRefreshTimer);
     state.refreshTimer = null;
@@ -245,6 +262,13 @@
   }
 
   function handleWidgetClick(event) {
+    const studyDay=event.target.closest('[data-widget-study-day]');
+    if(studyDay) {
+      const content=studyDay.closest('#widgetContent');
+      content.querySelectorAll('[data-widget-study-day]').forEach(button=>button.setAttribute('aria-pressed',String(button===studyDay)));
+      content.querySelector('[data-widget-study-detail]').textContent=studyDay.title;
+      return;
+    }
     const tab = event.target.closest("[data-widget-view]");
     if (tab) {
       state.view = tab.dataset.widgetView;
@@ -343,7 +367,7 @@
     const items = readAgenda().filter((item) => item.type.toLowerCase() !== "clase" && !item.done).sort(compareAgenda);
     return `
       <section class="widget-section widget-inbox">
-        <div class="section-head"><div><span>INBOX</span><h1>${items.length} ${items.length === 1 ? "pendiente" : "pendientes"}</h1></div><button data-widget-open-inbox>Abrir</button></div>
+        <div class="section-head"><div><span>INBOX</span><h1>${items.length} ${items.length === 1 ? "pendiente" : "pendientes"}</h1></div><button data-widget-open-inbox aria-label="Abrir Inbox" title="Abrir Inbox">${openIcon()}</button></div>
         <div class="task-list">
           ${items.length ? items.map((item) => `
             <label class="task-row">
@@ -361,7 +385,7 @@
     });
     return `
       <section class="widget-section widget-workspace">
-        <div class="section-head"><div><span>ARCHIVOS PERSONALES</span><h1>Mi espacio</h1></div><button data-widget-open-workspace>Abrir</button></div>
+        <div class="section-head"><div><span>ARCHIVOS PERSONALES</span><h1>Mi espacio</h1></div><button data-widget-open-workspace aria-label="Abrir Mi espacio" title="Abrir Mi espacio">${openIcon()}</button></div>
         <div class="workspace-widget-list">
           ${state.workspaceLoading ? '<p class="empty">Actualizando tu espacio...</p>' : items.length ? items.map((item) => `
             <button class="workspace-widget-row" type="button" data-widget-workspace-item="${escapeHtml(item.id)}">
@@ -440,23 +464,31 @@
   }
 
   function pomodoroMarkup() {
-    const pomodoro = readPomodoro();
-    const total = Math.max(1, Number(pomodoro.config[pomodoro.phase]) * 60 || 1);
-    const progress = Math.min(1, Math.max(0, 1 - pomodoro.remaining / total));
-    const phase = pomodoro.phase === "break" ? "DESCANSO" : "ESTUDIO";
-    const label = pomodoro.phase === "break" ? "Descanso" : `Bloque ${pomodoro.currentBlock} de ${pomodoro.config.blocks}`;
     return `
       <section class="widget-section widget-pomodoro">
-        <header class="pomodoro-widget-head"><div><span>TEMPORIZADOR POMODORO</span><h1>${label}</h1></div><b>${phase}</b></header>
-        <div class="pomodoro-widget-ring" style="--timer-progress:${(progress * 360).toFixed(1)}deg">
-          <div><strong>${formatTimer(pomodoro.remaining)}</strong><small>${pomodoro.running ? "En curso" : "Pausado"}</small></div>
+        <header class="pomodoro-widget-head"><div><span>POMODORO</span><h1 data-widget-block>Tu sesión</h1></div><b data-widget-phase>ESTUDIO</b></header>
+        <div class="widget-timer-stage" data-widget-depth><div class="pomodoro-widget-ring">
+          <div><strong data-widget-clock>25:00</strong><small data-widget-running>Pausado</small></div>
+        </div><div class="study-dial" aria-hidden="true"></div>
         </div>
         <div class="pomodoro-widget-actions">
           <button type="button" data-widget-pomodoro="reset" aria-label="Reiniciar temporizador" title="Reiniciar">${resetIcon()}</button>
-          <button class="is-primary" type="button" data-widget-pomodoro="toggle">${pomodoro.running ? pauseIcon() : playIcon()}<span>${pomodoro.running ? "Pausar" : "Empezar"}</span></button>
+          <button class="is-primary" type="button" data-widget-pomodoro="toggle">${playIcon()}<span>Empezar</span></button>
           <button type="button" data-widget-open-pomodoro aria-label="Abrir temporizador completo" title="Abrir configuración">${openIcon()}</button>
         </div>
       </section>`;
+  }
+
+  function updatePomodoroDisplay(content) {
+    const value=readPomodoro(),total=Math.max(1,Number(value.config[value.phase])*60 || 1);
+    const angle=Math.max(0,Math.min(360,value.remaining/total*360));
+    for(const [selector,text] of [['[data-widget-clock]',formatTimer(value.remaining)],['[data-widget-block]',`Bloque ${value.currentBlock} de ${value.config.blocks}`],['[data-widget-phase]',value.phase==='break'?'DESCANSO':'ESTUDIO'],['[data-widget-running]',value.running?'En curso':'Pausado']]) {
+      const node=content.querySelector(selector);if(node.textContent!==text)node.textContent=text;
+    }
+    const button=content.querySelector('[data-widget-pomodoro="toggle"]');
+    if(button.dataset.running!==String(value.running)) {button.innerHTML=(value.running?pauseIcon():playIcon())+`<span>${value.running?'Pausar':'Empezar'}</span>`;button.dataset.running=String(value.running);}
+    content.querySelector('.study-dial').style.setProperty('--dial-angle',`${angle}deg`);
+    content.querySelector('.pomodoro-widget-ring').style.setProperty('--timer-progress',`${angle}deg`);
   }
 
   function streakMarkup() {
@@ -469,6 +501,7 @@
       date.setDate(date.getDate() - offset);
       const value = dateValue(date);
       days.push({
+        date:value,
         label: new Intl.DateTimeFormat("es-AR", { weekday: "short" }).format(date).slice(0, 1).toUpperCase(),
         minutes: Math.max(0, Number(streak.days[value]) || 0)
       });
@@ -476,31 +509,22 @@
     const totalMinutes = days.reduce((sum, day) => sum + day.minutes, 0);
     const maxMinutes = Math.max(60, ...days.map((day) => day.minutes));
     const ceiling = Math.max(60, Math.ceil(maxMinutes / 60) * 60);
-    const points = days.map((day, index) => ({
-      x: 12 + index * (256 / 6),
-      y: 66 - (day.minutes / ceiling) * 52
-    }));
-    const line = points.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(" ");
-    const area = `M ${points[0].x.toFixed(1)} 66 L ${line.replaceAll(",", " ")} L ${points[points.length - 1].x.toFixed(1)} 66 Z`;
     return `
       <section class="widget-section widget-streak">
         <header class="streak-widget-head">
           <div class="streak-mark">${flameIcon()}</div>
-          <div><span>PRESENCIA DE ESTUDIO</span><h1>Racha: ${streak.current} ${streak.current === 1 ? "día" : "días"}</h1></div>
+          <div><span>TU CONSTANCIA</span><h1>Racha: ${streak.current} ${streak.current === 1 ? "día" : "días"}</h1></div>
+          <button type="button" class="widget-graph-reset" data-widget-graph-reset title="Restablecer gráfico" aria-label="Restablecer gráfico" hidden>${resetIcon()}</button>
           <div class="streak-widget-metrics" aria-label="Tiempo de estudio">
             <span><small>Hoy</small><strong>${formatStudyTime(todayMinutes)}</strong></span>
             <span><small>Semana</small><strong>${formatStudyTime(totalMinutes)}</strong></span>
           </div>
         </header>
         <p>${todayMinutes >= 25 ? "Completaste tu presencia de hoy." : `Hoy llevás ${todayMinutes}/25 minutos.`}</p>
-        <div class="streak-widget-chart" aria-label="${formatStudyTime(totalMinutes)} estudiadas esta semana">
-          <svg viewBox="0 0 280 76" role="img">
-            <line x1="12" y1="14" x2="268" y2="14"></line><line x1="12" y1="40" x2="268" y2="40"></line><line x1="12" y1="66" x2="268" y2="66"></line>
-            <path d="${area}"></path><polyline points="${line}"></polyline>
-            ${points.map((point, index) => `<circle cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="${days[index].minutes ? 2.8 : 1.8}"><title>${days[index].minutes} minutos</title></circle>`).join("")}
-          </svg>
-          <div>${days.map((day) => `<small>${day.label}</small>`).join("")}</div>
+        <div class="streak-widget-chart" data-widget-progress="${escapeHtml(JSON.stringify(days))}" role="group" aria-label="Tiempo de estudio de los últimos siete días">
+          ${days.map((day,index)=>`<button type="button" data-widget-study-day="${index}" aria-pressed="${index===6}" style="--bar:${Math.max(2,day.minutes/ceiling*100)}%" title="${formatShortDate(day.date)} · ${formatStudyTime(day.minutes)}" aria-label="${formatLongDate(day.date)}: ${formatStudyTime(day.minutes)}"><span>${day.label}</span></button>`).join('')}
         </div>
+        <div class="widget-study-detail" data-widget-study-detail role="status">Hoy · ${formatStudyTime(todayMinutes)}</div>
         <button class="streak-action" data-widget-open-pomodoro>${todayMinutes >= 25 ? "Abrir Pomodoro" : "Estudiar 25 minutos"}</button>
       </section>`;
   }

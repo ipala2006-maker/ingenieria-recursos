@@ -9,14 +9,14 @@
     android:paddingHorizontal="10dp"
     android:paddingVertical="8dp">
 
-    <TextView
+    <ImageView
         android:id="@+id/workspace_item_icon"
         android:layout_width="30dp"
         android:layout_height="30dp"
         android:background="@drawable/widget_chip_background"
-        android:gravity="center"
-        android:textColor="#8BB5FF"
-        android:textSize="15sp" />
+        android:padding="6dp"
+        android:importantForAccessibility="no"
+        android:src="@drawable/ic_widget_folder" />
 
     <LinearLayout
         android:layout_width="0dp"
@@ -30,7 +30,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:ellipsize="end"
-            android:maxLines="1"
+            android:maxLines="2"
             android:textColor="#F1F5F9"
             android:textSize="13sp"
             android:textStyle="bold" />

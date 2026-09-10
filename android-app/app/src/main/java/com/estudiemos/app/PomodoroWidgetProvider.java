@@ -8,6 +8,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.SystemClock;
+import android.os.Bundle;
+import android.util.TypedValue;
+import android.view.View;
 import android.widget.RemoteViews;
 
 import org.json.JSONObject;
@@ -23,6 +26,11 @@ public class PomodoroWidgetProvider extends AppWidgetProvider {
     @Override
     public void onUpdate(Context context, AppWidgetManager manager, int[] appWidgetIds) {
         for (int appWidgetId : appWidgetIds) updateWidget(context, manager, appWidgetId);
+    }
+
+    @Override
+    public void onAppWidgetOptionsChanged(Context context, AppWidgetManager manager, int id, Bundle options) {
+        updateWidget(context, manager, id);
     }
 
     @Override
@@ -109,6 +117,10 @@ public class PomodoroWidgetProvider extends AppWidgetProvider {
         long total = Math.max(1, config.optLong(phase, 25) * 60);
 
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.pomodoro_widget);
+        WidgetSize size = new WidgetSize(context, manager, appWidgetId);
+        views.setViewVisibility(R.id.pomodoro_widget_dial, size.height < 210 ? View.GONE : View.VISIBLE);
+        views.setTextViewTextSize(R.id.pomodoro_widget_time, TypedValue.COMPLEX_UNIT_SP,
+                size.height < 220 ? 24 : size.width < 240 ? 30 : 40);
         views.setTextViewText(R.id.pomodoro_widget_phase, "break".equals(phase) ? "DESCANSO" : "ESTUDIO");
         views.setTextViewText(R.id.pomodoro_widget_block, "break".equals(phase) ? "Descanso" : "Bloque " + block + " de " + blocks);
         views.setTextViewText(R.id.pomodoro_widget_toggle_label, running ? "Pausar" : "Empezar");

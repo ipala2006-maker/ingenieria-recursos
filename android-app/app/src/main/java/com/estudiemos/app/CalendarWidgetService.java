@@ -64,15 +64,18 @@ public class CalendarWidgetService extends RemoteViewsService {
             if (position < 0 || position >= days.size()) return null;
             CalendarDay day = days.get(position);
             RemoteViews views = new RemoteViews(context.getPackageName(), weekView ? R.layout.calendar_widget_day_week : R.layout.calendar_widget_day);
-            views.setTextViewText(R.id.calendar_day_number, String.valueOf(day.date.getDayOfMonth()));
-            views.setTextViewText(R.id.calendar_day_events, summarize(day.entries, weekView ? 3 : 2));
-            views.setViewVisibility(R.id.calendar_day_events, day.entries.isEmpty() ? View.INVISIBLE : View.VISIBLE);
+            String[] labels = {"LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"};
+            views.setTextViewText(R.id.calendar_day_number, (weekView ? labels[day.date.getDayOfWeek().getValue() - 1] + "\n" : "") + day.date.getDayOfMonth());
+            String details = weekView ? (day.entries.isEmpty() ? "Sin anotaciones" : summarize(day.entries, 3)) : String.valueOf(day.entries.size());
+            views.setTextViewText(R.id.calendar_day_events, details);
+            views.setViewVisibility(R.id.calendar_day_events, !weekView && day.entries.isEmpty() ? View.INVISIBLE : View.VISIBLE);
+            views.setContentDescription(R.id.calendar_day_root, day.date + ": " + (day.entries.isEmpty() ? "Sin anotaciones" : summarize(day.entries, day.entries.size())));
 
             int background = day.today
                     ? R.drawable.calendar_day_today
                     : (day.currentMonth ? R.drawable.calendar_day_background : R.drawable.calendar_day_outside);
             views.setInt(R.id.calendar_day_root, "setBackgroundResource", background);
-            views.setTextColor(R.id.calendar_day_number, day.currentMonth ? 0xFFF1F5F9 : 0xFF64748B);
+            views.setTextColor(R.id.calendar_day_number, day.today ? 0xFF07111F : day.currentMonth ? 0xFFF1F5F9 : 0xFF94A3B8);
             views.setTextColor(R.id.calendar_day_events, day.today ? 0xFF07111F : 0xFFB8D2FF);
 
             Intent fillIn = new Intent();

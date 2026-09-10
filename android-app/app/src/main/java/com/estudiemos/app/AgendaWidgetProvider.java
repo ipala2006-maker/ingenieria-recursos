@@ -8,6 +8,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
+import android.os.Bundle;
+import android.view.View;
 import android.widget.RemoteViews;
 
 import org.json.JSONArray;
@@ -45,6 +47,11 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
         String itemId = intent.getStringExtra(EXTRA_ITEM_ID);
         if (itemId == null || itemId.trim().isEmpty()) return;
         completeItem(context, itemId.trim());
+    }
+
+    @Override
+    public void onAppWidgetOptionsChanged(Context context, AppWidgetManager manager, int id, Bundle options) {
+        updateWidget(context, manager, id);
     }
 
     static void storeAgendaAndUpdate(Context context, String rawMessage) {
@@ -136,8 +143,11 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
 
     private static void updateWidget(Context context, AppWidgetManager manager, int appWidgetId) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.agenda_widget);
+        boolean compact = new WidgetSize(context, manager, appWidgetId).height < 160;
+        views.setViewVisibility(R.id.widget_subtitle, compact ? View.GONE : View.VISIBLE);
+        views.setViewVisibility(R.id.widget_footer, compact ? View.GONE : View.VISIBLE);
         LocalDate today = LocalDate.now();
-        views.setTextViewText(R.id.widget_date, capitalize(today.format(HEADER_FORMAT)));
+        views.setTextViewText(R.id.widget_date, compact ? today.getDayOfMonth() + "/" + today.getMonthValue() : capitalize(today.format(HEADER_FORMAT)));
 
         Intent serviceIntent = new Intent(context, AgendaWidgetService.class);
         serviceIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);

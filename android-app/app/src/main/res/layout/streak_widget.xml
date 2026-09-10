@@ -1,83 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/streak_widget_root"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="@drawable/widget_background"
-    android:gravity="center_vertical"
-    android:orientation="vertical"
-    android:padding="16dp">
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
-
-        <TextView
-            android:layout_width="28dp"
-            android:layout_height="28dp"
-            android:background="@drawable/widget_item_background"
-            android:gravity="center"
-            android:text="Σ"
-            android:textColor="#8BB5FF"
-            android:textSize="16sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="9dp"
-            android:text="Estudiemos"
-            android:textColor="#94A3B8"
-            android:textSize="11sp"
-            android:textStyle="bold" />
-    </LinearLayout>
-
-    <TextView
-        android:id="@+id/streak_widget_title"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:text="Racha: 4 días"
-        android:textColor="#F8FAFC"
-        android:textSize="20sp"
-        android:textStyle="bold" />
-
-    <TextView
-        android:id="@+id/streak_widget_action"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="3dp"
-        android:text="Tocá para estudiar 25 min"
-        android:textColor="#8BB5FF"
-        android:textSize="13sp"
-        android:textStyle="bold" />
-
-    <TextView
-        android:id="@+id/streak_widget_today"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="7dp"
-        android:text="Hoy: 0 min"
-        android:textColor="#F8FAFC"
-        android:textSize="11sp"
-        android:textStyle="bold" />
-
-    <ImageView
-        android:id="@+id/streak_widget_chart"
-        android:layout_width="match_parent"
-        android:layout_height="46dp"
-        android:layout_marginTop="4dp"
-        android:contentDescription="Actividad de estudio de los últimos siete días"
-        android:scaleType="fitCenter" />
-
-    <TextView
-        android:id="@+id/streak_widget_week"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="3dp"
-        android:text="Semana: 0 min · 0 activos"
-        android:textColor="#94A3B8"
-        android:textSize="11sp" />
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@drawable/widget_background" android:orientation="vertical" android:padding="12dp">
+    <TextView android:id="@+id/streak_widget_title"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:maxLines="1" android:ellipsize="end" android:text="Racha"
+        android:textColor="#F8FAFC" android:textSize="18sp" android:textStyle="bold" />
+    <TextView android:id="@+id/streak_widget_today"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="4dp" android:text="Hoy: 0 min"
+        android:textColor="#F8FAFC" android:textSize="12sp" android:textStyle="bold" />
+    <TextView android:id="@+id/streak_widget_week"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="Semana: 0 min" android:textColor="#B4C5DD" android:textSize="12sp" />
+    <ImageView android:id="@+id/streak_widget_chart"
+        android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
+        android:layout_marginVertical="4dp" android:scaleType="fitCenter"
+        android:contentDescription="Actividad de estudio de los últimos siete días" />
+    <TextView android:id="@+id/streak_widget_action"
+        android:layout_width="match_parent" android:layout_height="36dp"
+        android:background="@drawable/widget_primary_button" android:gravity="center"
+        android:text="Abrir Pomodoro" android:textColor="#07111F" android:textSize="12sp" android:textStyle="bold" />
 </LinearLayout>

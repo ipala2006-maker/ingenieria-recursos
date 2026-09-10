@@ -321,7 +321,7 @@
     if (document.querySelector('script[src*="scripts/desktop-widgets.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/desktop-widgets.js?v=20260826-realtime-sync`;
+    script.src = `${rootPath}scripts/desktop-widgets.js?v=20260910-widgets`;
     script.async = false;
     document.head.appendChild(script);
   }

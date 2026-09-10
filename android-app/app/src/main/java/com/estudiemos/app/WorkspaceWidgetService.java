@@ -39,7 +39,7 @@ public class WorkspaceWidgetService extends RemoteViewsService {
             WorkspaceWidgetProvider.WorkspaceEntry entry = entries.get(position);
             RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.workspace_widget_item);
             boolean folder = "folder".equals(entry.kind);
-            views.setTextViewText(R.id.workspace_item_icon, folder ? "▰" : "▤");
+            views.setImageViewResource(R.id.workspace_item_icon, folder ? R.drawable.ic_widget_folder : R.drawable.ic_widget_file);
             views.setTextViewText(R.id.workspace_item_name, entry.name);
             views.setTextViewText(R.id.workspace_item_meta, folder ? "Carpeta" : WorkspaceWidgetProvider.formatSize(entry.sizeBytes));
 
