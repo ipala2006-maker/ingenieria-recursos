@@ -1,14 +1,14 @@
 /* Shared application surfaces. Native widget layouts keep their own renderer. */
 :root, html.theme-light {
-  --bg:#edf1f5;
+  --bg:#f3f6f9;
   --panel:#ffffff;
-  --panel-2:#e8edf3;
-  --text:#263244;
-  --muted:#526176;
-  --muted-2:#657387;
-  --border:#d2dae5;
-  --accent:#1a73e8;
-  --accent-2:#297cba;
+  --panel-2:#e9eff6;
+  --text:#243247;
+  --muted:#5d6e84;
+  --muted-2:#708097;
+  --border:#d8e1ec;
+  --accent:#3f6fba;
+  --accent-2:#4a7aa8;
   --accent-3:#b86b09;
   --shadow:0 12px 34px #0f172a10;
   --ring:0 0 0 3px #1a73e830;
@@ -41,15 +41,15 @@ html.theme-dark .topbar, html.theme-light .topbar {
 }
 /* app.css has legacy important light-theme tokens; keep this override explicit. */
 html.theme-light {
-  --bg:#edf1f5!important;
+  --bg:#f3f6f9!important;
   --panel:#ffffff!important;
-  --panel-2:#e8edf3!important;
-  --text:#263244!important;
-  --muted:#526176!important;
-  --muted-2:#657387!important;
-  --border:#d2dae5!important;
-  --accent:#1a73e8!important;
-  --accent-2:#297cba!important;
+  --panel-2:#e9eff6!important;
+  --text:#243247!important;
+  --muted:#5d6e84!important;
+  --muted-2:#708097!important;
+  --border:#d8e1ec!important;
+  --accent:#3f6fba!important;
+  --accent-2:#4a7aa8!important;
   --accent-3:#b86b09!important;
   --shadow:0 12px 34px #0f172a10!important;
   --ring:0 0 0 3px #1a73e830!important;

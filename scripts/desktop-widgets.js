@@ -1,6 +1,6 @@
 (function () {
   if (window.EstudiemosDesktopWidgets) return;
-  const designUrl=new URL('../styles/widget-console.css?v=20260910-widgets',document.currentScript.src).href;
+  const designUrl=new URL('../styles/widget-console.css?v=20260911-calendar',document.currentScript.src).href;
   const depthUrl=new URL('./widget-depth.js?v=20260910-widgets',document.currentScript.src).href;
   let depthModule=null,depthPending=null;
   function installDesign(doc) {
@@ -442,7 +442,7 @@
     for (let index = 0; index < cellCount; index += 1) {
       const date = new Date(start.getFullYear(), start.getMonth(), start.getDate() + index);
       const value = dateValue(date);
-      const dayItems = byDate[value] || [];
+      const dayItems = sortCalendarItems(byDate[value] || []);
       const entries = state.calendarView === "week"
         ? `<div class="calendar-day-events">${dayItems.slice(0, 3).map(widgetCalendarEntry).join("")}</div>`
         : "";
@@ -819,8 +819,43 @@
     const start = item.horaInicio || item.startTime || "";
     const end = item.horaFin || item.endTime || "";
     const time = start ? (end ? `${start}-${end}` : start) : "Todo el día";
-    const title = item.subject ? `${item.subject}: ${item.title}` : item.title;
-    return `<em><b>${escapeHtml(time)}</b><i>${escapeHtml(title)}</i></em>`;
+    const title = calendarEntryTitle(item);
+    return `<em class="calendar-entry" title="${escapeHtml(`${time} · ${title}`)}"><b class="calendar-entry__time">${escapeHtml(time)}</b> <i class="calendar-entry__title">${escapeHtml(title)}</i></em>`;
+  }
+
+  function sortCalendarItems(items) {
+    return [...items].sort((a, b) => {
+      const aTime = itemStartMinutes(a);
+      const bTime = itemStartMinutes(b);
+      if (aTime !== bTime) return aTime - bTime;
+      return (Number(a.createdAt) || 0) - (Number(b.createdAt) || 0);
+    });
+  }
+
+  function itemStartMinutes(item) {
+    const value = item.horaInicio || item.startTime || "";
+    const match = String(value).match(/^(\d{1,2}):(\d{2})/);
+    if (!match) return -1;
+    return Number(match[1]) * 60 + Number(match[2]);
+  }
+
+  function calendarEntryTitle(item) {
+    const title = String(item.title || "").trim();
+    const subject = String(item.subject || "").trim();
+    if (!subject) return title;
+    const normalizedTitle = normalizeCalendarText(title);
+    const normalizedSubject = normalizeCalendarText(subject);
+    if (!normalizedSubject || normalizedTitle.includes(normalizedSubject)) return title;
+    return `${title} · ${subject}`;
+  }
+
+  function normalizeCalendarText(value) {
+    return String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .trim();
   }
 
   function formatTimer(seconds) {

@@ -220,6 +220,24 @@
   .workspace-home .study-assistant__composer { margin:auto 0; }
 }
 html.theme-light .workspace-home :is(.study-focus,.study-progress,.study-assistant,.workspace-section,.dashboard-calendar,.dashboard-agenda) {
-  box-shadow:inset 0 1px 0 white,inset 0 -2px 3px #1b365515,0 1px 2px #1b365528;
-  background:linear-gradient(150deg,color-mix(in srgb,var(--bay-tone) 78%,white),var(--bay-tone));
+  border-color:#dce5ef;
+  background:#f8fafc;
+  box-shadow:0 1px 2px rgba(39,54,74,.08);
+}
+html.theme-light .workspace-home :is(.study-focus,.study-progress,.study-assistant) {
+  background:linear-gradient(155deg,#fbfdff,#f3f7fb);
+}
+html.theme-light .workspace-home :is(.workspace-console-add,.study-focus>.study-session>summary,.study-home__shortcuts button,.dashboard-calendar__day,.dashboard-calendar__view,.study-progress__period button,.study-nudge button,.study-assistant__composer,.study-assistant__destinations button,.workspace-view-toggle,.workspace-search,.workspace-sort select) {
+  box-shadow:none!important;
+}
+html.theme-light .workspace-home :is(.dashboard-calendar__day,.dashboard-agenda__item,.workspace-item) {
+  border-color:#dfe7f1;
+  background:#ffffff;
+}
+html.theme-light .workspace-home .dashboard-calendar__day.is-today {
+  background:#eaf2ff;
+  border-color:#9dbff3;
+}
+html.theme-light .workspace-home :is(.study-focus__fallback,.study-focus__stage .study-dial,.study-progress__chart canvas,.study-assistant__route canvas) {
+  filter:saturate(.9) contrast(.96);
 }
