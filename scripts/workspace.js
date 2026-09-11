@@ -6,6 +6,7 @@
   const VIEW_KEY = "estudiemos_workspace_view";
   const WORKSPACE_CHANGE_KEY = "estudiemos_workspace_changed";
   const PLANS = window.EstudiemosPlans;
+  const COMMERCIAL_LAUNCH_ENABLED = false;
   const state = {
     client: null,
     user: null,
@@ -77,9 +78,9 @@
       }
       if (ai) runAuthenticated(openAiModal);
       if (signIn) window.EstudiemosAccount?.open();
-      if (plans) openPlansModal();
-      if (planSelect) selectPlanPreview(planSelect.dataset.workspacePlanSelect);
-      if (referralsOpen) {
+      if (plans && COMMERCIAL_LAUNCH_ENABLED) openPlansModal();
+      if (planSelect && COMMERCIAL_LAUNCH_ENABLED) selectPlanPreview(planSelect.dataset.workspacePlanSelect);
+      if (referralsOpen && COMMERCIAL_LAUNCH_ENABLED) {
         closeModal();
         window.EstudiemosAccount?.open();
       }
@@ -346,6 +347,11 @@
   }
 
   function renderPlanSummary() {
+    const summary = document.querySelector("[data-workspace-plans]");
+    if (!COMMERCIAL_LAUNCH_ENABLED) {
+      if (summary) summary.hidden = true;
+      return;
+    }
     const plan = PLANS.get(state.planStatus.planId);
     const used = workspaceUsedBytes();
     if (elements.planName) elements.planName.textContent = plan.name;
@@ -363,6 +369,7 @@
   }
 
   async function openPlansModal() {
+    if (!COMMERCIAL_LAUNCH_ENABLED) return;
     if (state.user) await loadPlanStatus();
     const selected = state.planStatus.planId;
     const referralReason = state.planStatus.referral?.reason === "three_verified"
@@ -412,6 +419,7 @@
   }
 
   async function selectPlanPreview(planId) {
+    if (!COMMERCIAL_LAUNCH_ENABLED) return;
     if (!PLANS.ids().includes(planId)) return;
     if (!state.user) return window.EstudiemosAccount?.open();
     const accessToken = window.EstudiemosAccount?.getSession()?.access_token || "";
@@ -553,7 +561,7 @@
     const requiredBytes = accepted.reduce((total, file) => total + Math.max(0, Number(file.size) || 0), 0);
     const availableBytes = Math.max(0, state.planStatus.storageBytes - workspaceUsedBytes());
     if (requiredBytes > availableBytes) {
-      setStatus(`No hay espacio suficiente en ${PLANS.get(state.planStatus.planId).name}. Te quedan ${formatSize(availableBytes)} disponibles.`, "error");
+      setStatus(`No hay espacio suficiente. Te quedan ${formatSize(availableBytes)} disponibles.`, "error");
       return;
     }
 

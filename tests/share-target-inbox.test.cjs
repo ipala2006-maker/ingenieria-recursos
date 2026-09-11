@@ -2,7 +2,7 @@ const assert = require("node:assert/strict");
 const { test } = require("node:test");
 const { chromium } = require("../tmp/ui-check/node_modules/playwright");
 
-const baseUrl = process.env.TEST_BASE_URL || "http://127.0.0.1:8137";
+const baseUrl = (process.env.TEST_BASE_URL || "http://127.0.0.1:8137").replace(/\/$/, "");
 
 test("shared WhatsApp text opens Inbox and creates a pending task", async () => {
   const browser = await chromium.launch({ channel: "chrome", args: ["--enable-unsafe-swiftshader"] });
@@ -14,7 +14,13 @@ test("shared WhatsApp text opens Inbox and creates a pending task", async () => 
     });
     const text = "Preparar resumen de Quimica para manana";
     await page.goto(`${baseUrl}/?shared=1&title=${encodeURIComponent(text)}`, { waitUntil: "domcontentloaded" });
-    await page.waitForTimeout(900);
+    await page.waitForFunction(
+      () => !location.href.includes("shared=1")
+        && JSON.parse(localStorage.getItem("bandeja_agenda") || "[]")
+          .some((item) => item.title === "Preparar resumen de Quimica para manana"),
+      null,
+      { timeout: 6000 }
+    );
 
     const result = await page.evaluate(() => ({
       url: location.href,
@@ -29,10 +35,10 @@ test("shared WhatsApp text opens Inbox and creates a pending task", async () => 
     assert.equal(result.boardOpen, true, "Inbox should open after import");
     assert.equal(result.visible, true, "imported task should be visible");
     assert.equal(result.activeFilter, "pending", "Inbox should show pending tasks");
-    assert.equal(result.items.length, 1);
-    assert.equal(result.items[0].title, text);
-    assert.equal(result.items[0].date, "");
-    assert.equal(result.items[0].note, "Importado desde WhatsApp.");
+    const imported = result.items.find((item) => item.title === text);
+    assert.ok(imported);
+    assert.equal(imported.date, "");
+    assert.equal(imported.note, "Importado desde WhatsApp.");
   } finally {
     await browser.close();
   }

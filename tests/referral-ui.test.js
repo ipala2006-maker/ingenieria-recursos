@@ -8,6 +8,7 @@ function refreshHarness(status) {
   const pending = new Map([['pending', 'INVITE123']]);
   const claims = [];
   const context = {
+    COMMERCIAL_LAUNCH_ENABLED: true,
     session: { access_token:'test' }, referralStatusLoaded:false, referralBusy:false,
     PENDING_REFERRAL_KEY:'pending',
     getRootPath: () => '/', setReferralButtonsBusy() {},

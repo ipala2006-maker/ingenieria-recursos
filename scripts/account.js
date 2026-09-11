@@ -24,6 +24,8 @@
   const WINDOWS_WIDGET_PENDING_KEY = "estudiemos_windows_widget_pending";
   const WINDOWS_WIDGET_SETUP_URL = "https://estudiemos-app.vercel.app/instalar.html#pc-widgets";
   const PENDING_REFERRAL_KEY = "estudiemos_pending_referral";
+  const COMMERCIAL_LAUNCH_ENABLED = false;
+  const WHATSAPP_BOT_ENABLED = false;
   const MIN_PASSWORD_LENGTH = 8;
   const INSTANCE_ID = window.crypto?.randomUUID?.() || Math.random().toString(36).slice(2);
 
@@ -57,7 +59,7 @@
 
   addAccountButton();
   addAccountDialog();
-  captureReferralFromUrl();
+  if (COMMERCIAL_LAUNCH_ENABLED) captureReferralFromUrl();
   consumeWindowsWidgetsReadyMarker();
   bindAccountEvents();
   cleanUpdateMarker();
@@ -155,7 +157,7 @@
             <p>${checkIcon()} Archivos y carpetas personales</p>
             <p>${checkIcon()} Tema y preferencias</p>
           </div>
-          <section class="account-referrals" data-account-referrals>
+          <section class="account-referrals" data-account-referrals hidden>
             <header>
               <div><strong>Referidos</strong><small>Quien llega con tu enlace obtiene 35%. Vos obtenés 45% al sumar 3 registros verificados este mes.</small></div>
               <span class="account-referral-discount" data-account-referral-discount>Sin descuento</span>
@@ -338,7 +340,7 @@
         connectRealtime(session.user.id);
         startCloudPolling();
         await synchronize("startup");
-        window.setTimeout(() => refreshReferralStatus(true), 500);
+        if (COMMERCIAL_LAUNCH_ENABLED) window.setTimeout(() => refreshReferralStatus(true), 500);
       }
 
       client.auth.onAuthStateChange((event, nextSession) => {
@@ -360,7 +362,7 @@
           renderAccountState();
           if (session && session.user.id !== previousUser) {
             await synchronize("signin");
-            window.setTimeout(() => refreshReferralStatus(true), 500);
+            if (COMMERCIAL_LAUNCH_ENABLED) window.setTimeout(() => refreshReferralStatus(true), 500);
           } else if (!session && previousUser) {
             clearLocalAccountData();
           }
@@ -438,7 +440,7 @@
     const captcha = getCaptchaOptions();
     if (captcha === null) return;
     const emailRedirect = new URL(getRootPath(), location.href);
-    const pendingReferral = normalizeReferralCode(localStorage.getItem(PENDING_REFERRAL_KEY));
+    const pendingReferral = COMMERCIAL_LAUNCH_ENABLED ? normalizeReferralCode(localStorage.getItem(PENDING_REFERRAL_KEY)) : "";
     if (pendingReferral) emailRedirect.searchParams.set("ref", pendingReferral);
     setBusy(true, "Creando tu cuenta...");
     const result = await client.auth.signUp({
@@ -456,13 +458,14 @@
       renderAccountState();
       await synchronize("signin");
       setStatus("Cuenta creada y datos sincronizados.", "success");
-      window.setTimeout(() => refreshReferralStatus(true), 300);
+      if (COMMERCIAL_LAUNCH_ENABLED) window.setTimeout(() => refreshReferralStatus(true), 300);
       return;
     }
     setStatus("Te enviamos un correo. Abrilo para confirmar tu cuenta y después ingresá.", "success");
   }
 
   function captureReferralFromUrl() {
+    if (!COMMERCIAL_LAUNCH_ENABLED) return;
     const code = normalizeReferralCode(new URL(location.href).searchParams.get("ref"));
     if (code.length >= 8) localStorage.setItem(PENDING_REFERRAL_KEY, code);
     const message = document.querySelector("[data-account-signup-invite]");
@@ -471,6 +474,12 @@
 
 
   async function refreshReferralStatus(force = false) {
+    if (!COMMERCIAL_LAUNCH_ENABLED) {
+      const section = document.querySelector("[data-account-referrals]");
+      if (section) section.hidden = true;
+      referralStatusLoaded = true;
+      return;
+    }
     if (!session?.access_token || (referralStatusLoaded && !force) || referralBusy) return;
     const requestingUser = session.user?.id;
     referralBusy = true;
@@ -501,6 +510,7 @@
 
 
   async function claimReferralCode(explicitCode) {
+    if (!COMMERCIAL_LAUNCH_ENABLED) return;
     if (!session?.access_token || referralBusy) return;
     const code = normalizeReferralCode(explicitCode || localStorage.getItem(PENDING_REFERRAL_KEY));
     if (code.length < 8) return;
@@ -522,6 +532,7 @@
   }
 
   async function referralRequest(body) {
+    if (!COMMERCIAL_LAUNCH_ENABLED) throw new Error("Referidos todavía no está activo.");
     const response = await fetch(`${getRootPath()}api/plan-status`, {
       method: "POST",
       headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
@@ -534,6 +545,10 @@
 
   function renderReferralStatus(status) {
     const section = document.querySelector("[data-account-referrals]");
+    if (!COMMERCIAL_LAUNCH_ENABLED) {
+      if (section) section.hidden = true;
+      return;
+    }
     const share = document.querySelector("[data-account-referral-share]");
     if (section) section.hidden = !session;
     const emailNotice = document.querySelector("[data-account-referral-email]");
@@ -554,6 +569,7 @@
   }
 
   async function copyReferralLink() {
+    if (!COMMERCIAL_LAUNCH_ENABLED) return;
     const code = referralShareCode;
     if (!session || !code) return;
     const link = `https://estudiemos-app.vercel.app/instalar.html?ref=${encodeURIComponent(code)}`;
@@ -1026,13 +1042,13 @@
     if (passwordForm) passwordForm.hidden = !recoveryMode || !session;
     const email = document.querySelector("[data-account-email]");
     if (email) email.textContent = session?.user?.email || "";
-    if (session && !whatsappStatusLoaded) refreshWhatsAppStatus();
-    if (session && !referralStatusLoaded) refreshReferralStatus();
+    if (session && WHATSAPP_BOT_ENABLED && !whatsappStatusLoaded) refreshWhatsAppStatus();
+    if (session && COMMERCIAL_LAUNCH_ENABLED && !referralStatusLoaded) refreshReferralStatus();
     if (!session) {
       whatsappStatusLoaded = false;
       referralStatusLoaded = false;
       referralShareCode = "";
-      renderWhatsAppStatus({ linked: false, configured: true });
+      renderWhatsAppStatus({ linked: false, configured: WHATSAPP_BOT_ENABLED });
     }
     updateAccountIndicator(Boolean(session));
     syncAccountWithAndroid();
@@ -1065,6 +1081,11 @@
   }
 
   async function refreshWhatsAppStatus(force = false) {
+    if (!WHATSAPP_BOT_ENABLED) {
+      renderWhatsAppStatus({ configured: false, linked: false });
+      whatsappStatusLoaded = true;
+      return;
+    }
     if (!session?.access_token || (whatsappStatusLoaded && !force) || whatsappBusy) return;
     whatsappBusy = true;
     setWhatsAppButtonsBusy(true);
@@ -1086,6 +1107,7 @@
   }
 
   async function connectWhatsApp() {
+    if (!WHATSAPP_BOT_ENABLED) return;
     if (!session?.access_token || whatsappBusy) return;
     whatsappBusy = true;
     setWhatsAppButtonsBusy(true);
@@ -1111,6 +1133,7 @@
   }
 
   async function unlinkWhatsApp() {
+    if (!WHATSAPP_BOT_ENABLED) return;
     if (!session?.access_token || whatsappBusy) return;
     if (!window.confirm("¿Querés desvincular este WhatsApp de Estudiemos?")) return;
     whatsappBusy = true;
@@ -1137,7 +1160,7 @@
     const label = document.querySelector("[data-account-whatsapp-label]");
     const connect = document.querySelector("[data-account-whatsapp-connect]");
     const unlink = document.querySelector("[data-account-whatsapp-unlink]");
-    if (section) section.hidden = state.configured === false || !session;
+    if (section) section.hidden = !WHATSAPP_BOT_ENABLED || state.configured === false || !session;
     if (label) {
       label.textContent = state.configured === false
         ? "Falta conectar el número oficial"
@@ -1435,7 +1458,7 @@
     shell.hidden = false;
     shell.setAttribute("aria-hidden", "false");
     document.body.classList.add("account-open");
-    if (session && options.refreshReferrals !== false) refreshReferralStatus(true);
+    if (session && COMMERCIAL_LAUNCH_ENABLED && options.refreshReferrals !== false) refreshReferralStatus(true);
     if (sessionStorage.getItem("estudiemos_app_update_complete") === "true") {
       sessionStorage.removeItem("estudiemos_app_update_complete");
       setStatus("Estudiemos está actualizado.", "success");

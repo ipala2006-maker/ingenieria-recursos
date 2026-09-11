@@ -312,7 +312,7 @@
     if (document.querySelector('script[src*="scripts/account.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/account.js?v=20260908-referrals-email`;
+    script.src = `${rootPath}scripts/account.js?v=20260911-commercial-hidden`;
     script.defer = true;
     document.head.appendChild(script);
   }
