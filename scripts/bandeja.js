@@ -38,6 +38,7 @@
   observeLateCards();
   revealAndroidWidgetSync();
   openAgendaFromUrl();
+  importSharedInboxItemFromUrl();
   restoreAgendaHistoryState();
   syncAgendaWithAndroid(readList(STORAGE_KEYS.agenda));
   window.dispatchEvent(new CustomEvent("estudiemos:bandeja-ready"));
@@ -1822,6 +1823,59 @@
     url.searchParams.delete("agenda");
     url.searchParams.delete("date");
     history.replaceState(history.state, "", `${url.pathname}${url.search}${url.hash}`);
+  }
+
+  function importSharedInboxItemFromUrl() {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("shared") !== "1") return;
+    const sharedText = normalizeSharedText([
+      url.searchParams.get("title"),
+      url.searchParams.get("text"),
+      url.searchParams.get("url")
+    ].filter(Boolean).join("\n"));
+    url.searchParams.delete("shared");
+    url.searchParams.delete("title");
+    url.searchParams.delete("text");
+    url.searchParams.delete("url");
+    history.replaceState(history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    if (!sharedText) return;
+
+    const items = readList(STORAGE_KEYS.agenda);
+    const now = Date.now();
+    const title = summarizeSharedInboxTitle(sharedText);
+    items.unshift({
+      id: `agenda:share:${now}`,
+      title,
+      type: "Tarea",
+      date: "",
+      subject: "",
+      note: sharedText === title ? "Importado desde WhatsApp." : `Importado desde WhatsApp:\n${sharedText}`,
+      horaInicio: "",
+      horaFin: "",
+      done: false,
+      createdAt: now
+    });
+    writeList(STORAGE_KEYS.agenda, items.slice(0, MAX_AGENDA_ITEMS));
+    agendaFilter = "pending";
+    openAgendaBoard({ history: false });
+    renderAgenda();
+    syncAgendaWithAndroid(readList(STORAGE_KEYS.agenda));
+    window.dispatchEvent(new CustomEvent("estudiemos:data-change", { detail: { key: STORAGE_KEYS.agenda } }));
+    setAgendaAssistantStatus("Mensaje agregado a Inbox desde WhatsApp.", "success");
+  }
+
+  function normalizeSharedText(value) {
+    return String(value || "")
+      .replace(/\r/g, "\n")
+      .replace(/[ \t]+\n/g, "\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim()
+      .slice(0, 1200);
+  }
+
+  function summarizeSharedInboxTitle(value) {
+    const firstLine = String(value || "").split("\n").map((line) => line.trim()).find(Boolean) || "Mensaje de WhatsApp";
+    return firstLine.length > 110 ? `${firstLine.slice(0, 107).trim()}...` : firstLine;
   }
 
   function restoreAgendaHistoryState() {

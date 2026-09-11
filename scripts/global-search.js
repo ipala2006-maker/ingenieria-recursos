@@ -257,7 +257,7 @@
     if (document.querySelector('script[src*="scripts/bandeja.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/bandeja.js?v=20260831-ai-chat`;
+    script.src = `${rootPath}scripts/bandeja.js?v=20260911-share-target`;
     script.defer = true;
     document.head.appendChild(script);
   }
