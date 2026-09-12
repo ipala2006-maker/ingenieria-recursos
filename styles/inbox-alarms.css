@@ -1,0 +1,36 @@
+.inbox-alarm-dialog { width:min(420px,calc(100% - 32px)); max-height:90dvh; overflow:auto; border:1px solid var(--border,#334155); border-radius:8px; padding:22px; background:var(--panel,#111c2b); color:var(--text,#e8eef7); box-shadow:0 20px 70px #0005; }
+.inbox-alarm-dialog::backdrop { background:#080f1f80; backdrop-filter:blur(4px); }
+.inbox-alarm-dialog header,.inbox-alarm-dialog footer { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.inbox-alarm-dialog h2 { margin:4px 0; font-size:22px; letter-spacing:0; }
+.inbox-alarm-dialog p { overflow-wrap:anywhere; }
+.inbox-alarm-dialog button { min-height:40px; border:1px solid #8bb5ff55; padding:8px 12px; border-radius:6px; color:inherit; background:transparent; cursor:pointer; }
+.inbox-alarm-dialog button[type=submit] { background:#8bb5ff; color:#10213a; font-weight:700; }
+.inbox-alarm-form { grid-column:1/-1; width:100%; min-width:0; }
+.inbox-alarm-fields { border:0; padding:0; margin:12px 0; min-width:0; font-size:13px; }
+.inbox-alarm-fields svg,.inbox-alarm-button svg,.inbox-alarm-notice svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.7; }
+.inbox-alarm-switch { display:flex; gap:10px; align-items:center; min-height:42px; border-top:1px solid #8b9bb52b; }
+.inbox-alarm-switch input { margin-left:auto; width:18px; height:18px; accent-color:#8bb5ff; }
+.inbox-alarm-fields [hidden],.inbox-alarm-notice[hidden] { display:none!important; }
+.inbox-alarm-fields [data-alarm-options] { display:grid; gap:12px; padding:8px 0; }
+.inbox-alarm-fields label:not(.inbox-alarm-switch) { display:grid; gap:6px; min-width:0; }
+.inbox-alarm-date { display:grid; grid-template-columns:minmax(0,1.4fr) minmax(0,1fr); gap:10px; }
+.inbox-alarm-fields input:not([type=checkbox]),.inbox-alarm-fields select { box-sizing:border-box; width:100%; min-width:0; max-width:100%; min-height:40px; padding:8px; font:inherit; color:inherit; background:var(--bg,#0f1724); border:1px solid #8b9bb54a; border-radius:6px; }
+.inbox-alarm-fields small { font-size:11px; line-height:1.5; opacity:.78; }
+.inbox-alarm-delivery summary { cursor:pointer; font-size:12px; }
+.inbox-alarm-delivery label { display:flex!important; align-items:flex-start; margin:10px 0; }
+.inbox-alarm-delivery input { accent-color:#8bb5ff; }
+.inbox-alarm-delivery a { display:block; margin-top:8px; color:inherit; }
+.inbox-alarm-button { display:inline-flex; align-items:center; justify-content:center; flex:0 0 32px; width:32px; height:32px; padding:0; color:inherit; opacity:.65; background:transparent; border:1px solid transparent; border-radius:6px; cursor:pointer; }
+.inbox-alarm-button.is-set { color:#8bb5ff; opacity:1; }
+.inbox-alarm-button:hover { background:#8bb5ff1c; opacity:1; }
+.inbox-alarm-button:focus-visible { outline:2px solid #8bb5ff; outline-offset:2px; }
+.agenda-item > .inbox-alarm-button { margin-top:6px; }
+.dashboard-agenda__item,.workspace-home .dashboard-agenda__item { grid-template-columns:minmax(0,1fr) 32px; }
+.dashboard-agenda__item > label { display:grid; grid-template-columns:24px minmax(0,1fr) auto; align-items:center; gap:8px; min-width:0; }
+.inbox-alarm-notice { position:fixed; right:20px; bottom:20px; z-index:100000; display:flex; align-items:center; gap:14px; width:min(380px,calc(100% - 40px)); box-sizing:border-box; padding:16px; background:var(--panel,#172336); color:var(--text,#e8eef7); box-shadow:0 12px 40px #0004; border:1px solid #8bb5ff; border-radius:8px; }
+.inbox-alarm-notice p { margin:5px 0 0; font-size:13px; overflow-wrap:anywhere; }
+.inbox-alarm-notice button { margin-left:auto; color:inherit; background:none; border:0; font-size:22px; cursor:pointer; }
+.theme-light .inbox-alarm-dialog,.theme-light .inbox-alarm-notice { background:#fff; color:#243047; }
+.theme-light .inbox-alarm-fields input:not([type=checkbox]),.theme-light .inbox-alarm-fields select { background:#f5f7fb; color:#243047; }
+.theme-light .inbox-alarm-button.is-set { color:#365fa4; }
+@media(max-width:400px) { .inbox-alarm-dialog { padding:16px; }.inbox-alarm-date { grid-template-columns:minmax(0,1fr); } }
