@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Estudiemos Studio | Contenido organico</title>
+  <link rel="icon" href="/logo.png"><link rel="stylesheet" href="/studio.css">
+  <script src="/studio.js" type="module"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><img src="/logo.png" width="36" height="36" alt=""><span>Estudiemos <b>Studio</b></span></a>
+    <span class="mode">Organico · sin pagos</span>
+    <button id="accounts-open" type="button">Cuentas oficiales</button>
+  </header>
+  <main>
+    <aside class="library">
+      <div class="library-heading"><h2>Biblioteca</h2><button id="new-piece" type="button">Nueva pieza</button></div>
+      <div id="jobs" class="job-list"></div>
+      <details class="activity"><summary>Actividad reciente</summary><ol id="logs"></ol></details>
+      <a class="guide-link" href="https://estudiemos-app.vercel.app/instalar.html" target="_blank" rel="noreferrer">Ver Estudiemos</a>
+    </aside>
+    <section class="workspace">
+      <div id="notice" role="status" aria-live="polite" hidden></div>
+      <section id="create-view">
+        <div class="heading"><span class="eyebrow">NUEVA PIEZA</span><h1>Una idea. Tres redes.</h1></div>
+        <form id="create-form">
+          <div class="field"><label for="source">Video base</label><input id="source" name="source" type="file" accept="video/mp4,video/quicktime,.mov" required></div>
+          <div class="form-grid">
+            <div class="field"><label for="title">Nombre de la pieza</label><input id="title" name="title" maxlength="90" required placeholder="Semana de parciales"></div>
+            <div class="field"><label for="topic">Herramienta protagonista</label><select id="topic" name="topic"></select></div>
+          </div>
+          <div class="field"><label for="hook">Gancho inicial</label><div class="input-action"><input id="hook" name="hook" maxlength="78" required><button type="button" id="alternate-hook">Otra apertura</button></div></div>
+          <div class="field"><label for="tip">Idea central</label><textarea id="tip" name="tip" rows="2" maxlength="350" required></textarea></div>
+          <details class="editing" open><summary>Edicion</summary>
+            <div class="form-grid thirds">
+              <div class="field"><label for="start">Desde (segundos)</label><input id="start" name="start" type="number" min="0" step="0.1" value="0"></div>
+              <div class="field"><label for="end">Hasta (opcional)</label><input id="end" name="end" type="number" min="3" step="0.1" placeholder="Final del video"></div>
+              <div class="field"><label for="coverAt">Fotograma de portada</label><input id="coverAt" name="coverAt" type="number" min="0" step="0.1" value="1"></div>
+            </div>
+            <div class="field"><label for="framing">Encuadre vertical</label><select id="framing" name="framing"><option value="fit">Conservar toda la imagen</option><option value="crop">Recortar al centro</option></select></div>
+            <label class="check"><input name="overlay" type="checkbox" checked> Agregar gancho y cierre</label>
+            <div class="field"><label for="subtitles">Subtitulos SRT (opcional, tiempos relativos al recorte)</label><textarea id="subtitles" name="subtitles" rows="3" maxlength="20000" placeholder="1&#10;00:00:00,000 --> 00:00:02,000&#10;Tu frase exacta"></textarea></div>
+          </details>
+          <button class="primary" id="prepare-new" type="submit">Preparar las tres versiones</button>
+          <p id="upload-progress" role="status"></p>
+        </form>
+      </section>
+      <section id="review-view" hidden>
+        <div class="review-heading"><div><span class="eyebrow">REVISION</span><h1 id="piece-title"></h1></div><span id="piece-status" class="status-label"></span></div>
+        <div id="piece-error" class="error" hidden></div>
+        <div class="review-toolbar"><a id="download-all" hidden download>Descargar todo (.zip)</a><button id="retry-prepare" type="button" hidden>Reintentar preparacion</button><button id="save-copy" type="button">Guardar textos</button></div>
+        <div id="platforms" class="platforms"></div>
+        <form id="approval-form" class="approval">
+          <label class="check"><input name="reviewed" type="checkbox" required> Revise los tres videos, textos y portadas.</label>
+          <label class="check"><input name="pilot" type="checkbox" required> No aparecen datos personales ni funciones que aun no estan disponibles.</label>
+          <label class="check"><input name="rights" type="checkbox" required> Tengo derechos para publicar el video y el audio en las tres redes.</label>
+          <div class="approval-actions"><button class="primary" id="approve" type="submit">Aprobar esta version</button><button id="dispatch" type="button" disabled>Continuar con las tres redes</button></div>
+        </form>
+      </section>
+    </section>
+  </main>
+  <dialog id="accounts-dialog">
+    <form id="accounts-form">
+      <div class="dialog-heading"><h2>Cuentas de Estudiemos</h2><button id="accounts-close" type="button" aria-label="Cerrar">Cerrar</button></div>
+      <div class="field"><label for="account-instagram">Instagram oficial</label><input type="url" id="account-instagram" name="instagram" placeholder="https://www.instagram.com/estudiemos.app/"></div>
+      <div class="field"><label for="account-tiktok">TikTok oficial</label><input type="url" id="account-tiktok" name="tiktok" placeholder="https://www.tiktok.com/@estudiemos.app/"></div>
+      <div class="field"><label for="account-youtube">YouTube oficial</label><input type="url" id="account-youtube" name="youtube" placeholder="https://www.youtube.com/@estudiemosapp/"></div>
+      <label class="check"><input type="checkbox" name="confirmedOfficial" required> Estas son las cuentas oficiales de Estudiemos.</label>
+      <p id="accounts-error" class="error" role="alert"></p>
+      <button class="primary" type="submit">Guardar cuentas</button>
+    </form>
+  </dialog>
+  <dialog id="report-dialog"><form id="report-form">
+    <div class="dialog-heading"><h2>Registrar publicacion</h2><button id="report-close" type="button">Cerrar</button></div>
+    <p id="report-account"></p>
+    <div class="field"><label for="post-url">Enlace del video publicado</label><input id="post-url" name="url" type="url" required></div>
+    <label class="check"><input name="officialConfirmed" type="checkbox" required> Comprobe que esta publicado en la cuenta oficial indicada.</label>
+    <p id="report-error" class="error" role="alert"></p><button class="primary" type="submit">Registrar enlace</button>
+  </form></dialog>
+</body>
+</html>

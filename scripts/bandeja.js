@@ -62,8 +62,9 @@
     if (event.key === STORAGE_KEYS.streak) renderAgenda();
   });
   window.addEventListener("estudiemos:data-change", (event) => {
-    if (event.detail?.key === STORAGE_KEYS.streak) renderAgenda();
+    if ([STORAGE_KEYS.streak, STORAGE_KEYS.agenda].includes(event.detail?.key)) renderAgenda();
   });
+  window.addEventListener('estudiemos:alarms-ready', renderAgenda);
 
   function addTray() {
     const shell = document.createElement("aside");
@@ -787,6 +788,7 @@
       horaInicio: "",
       horaFin: "",
       done: false,
+      alarm: window.EstudiemosInboxAlarms?.readForm(document.getElementById('agendaForm')) || null,
       createdAt: Date.now()
     });
 
@@ -794,6 +796,7 @@
     titleInput.value = "";
     if (dateInput) dateInput.value = selectedAgendaDate;
     if (noteInput) noteInput.value = "";
+    document.getElementById('agendaForm')?.reset();
     updateAgendaSubmitState();
     renderAgenda();
   }
@@ -947,6 +950,7 @@
       horaInicio: item.horaInicio || "",
       horaFin: item.horaFin || "",
       done: Boolean(item.done),
+      alarm: item.alarm || null,
       createdAt: Number(item.createdAt) || 0
     }));
   }
@@ -975,10 +979,11 @@
     const retained = current.filter((item) => !deleteSet.has(item.id));
     const availableSlots = Math.max(0, MAX_AGENDA_ITEMS - retained.length);
     const uniqueItems = dedupeAgendaAssistantItems(items, retained, availableSlots);
+    const expiredAlarm = [...uniqueItems, ...updates].some(item => item.alarm && window.EstudiemosAlarmRules && !window.EstudiemosAlarmRules.next(item.alarm));
     return {
       type: "ai",
       summary: String(result.summary || "").trim(),
-      clarification: String(result.clarification || "").trim(),
+      clarification: String(result.clarification || "").trim() || (expiredAlarm ? 'La alarma quedó en el pasado. Indicá una fecha y hora futuras.' : ''),
       deleteIds,
       updates,
       items: uniqueItems,
@@ -1031,6 +1036,7 @@
       horaInicio,
       horaFin,
       done: Boolean(event.done),
+      alarm: window.EstudiemosAlarmRules?.normalize(event.alarm) || null,
       createdAt: Date.now()
     };
   }
@@ -1045,6 +1051,7 @@
     if (typeof update.subject === "string") next.subject = update.subject.trim().slice(0, 80);
     if (typeof update.note === "string") next.note = update.note.trim().slice(0, 240);
     if (typeof update.done === "boolean") next.done = update.done;
+    if (Object.hasOwn(update, 'alarm')) next.alarm = window.EstudiemosAlarmRules?.normalize(update.alarm) || null;
     if (typeof update.horaInicio === "string") next.horaInicio = validAgendaAssistantTime(update.horaInicio);
     if (typeof update.horaFin === "string") next.horaFin = validAgendaAssistantTime(update.horaFin);
     const merged = { ...current, ...next };
@@ -1082,6 +1089,9 @@
     if (singleEventCount > 0) rows.push({ title: "Agregar", detail: summarizeAgendaAssistantAdds(plan), count: singleEventCount });
     if (plan.updates.length) rows.push({ title: "Actualizar", detail: summarizeAgendaAssistantUpdates(plan), count: plan.updates.length });
     if (plan.deleteIds.length) rows.push({ title: "Eliminar", detail: summarizeAgendaAssistantDeletes(plan), count: plan.deleteIds.length });
+    [...plan.items, ...plan.updates].filter(item => Object.hasOwn(item, 'alarm') && (item.alarm || plan.updates.includes(item))).forEach(item => {
+      rows.push({ title: 'Alarma', detail: `${item.title || readList(STORAGE_KEYS.agenda).find(i => i.id === item.id)?.title || 'Tarea'} · ${window.EstudiemosAlarmRules?.describe(item.alarm) || 'Sin alarma'}`, count: 1 });
+    });
     if (preview) {
       preview.innerHTML = `
         <div class="agenda-assistant__summary">
@@ -1175,7 +1185,7 @@
   }
 
   function agendaAssistantItemKey(item) {
-    return [item.type, normalizeAssistantText(item.subject), normalizeAssistantText(item.title), item.date, item.horaInicio, item.horaFin].join("|");
+    return [item.type, normalizeAssistantText(item.subject), normalizeAssistantText(item.title), item.date, item.horaInicio, item.horaFin, JSON.stringify(window.EstudiemosAlarmRules?.normalize(item.alarm) || null)].join("|");
   }
 
   function saveAgendaAssistantItems() {
@@ -1271,8 +1281,10 @@
           ${item.date ? `<span>${escapeHtml(formatAgendaDate(item.date))}</span>` : ""}
           ${formatAgendaTimeRange(item) ? `<span>${escapeHtml(formatAgendaTimeRange(item))}</span>` : ""}
           ${item.subject ? `<span>${escapeHtml(item.subject)}</span>` : ""}
+          ${item.alarm ? `<span>${escapeHtml(window.EstudiemosAlarmRules?.describe(item.alarm) || '')}</span>` : ''}
         </div>
         <button class="bandeja-remove-btn agenda-item__remove" type="button" data-agenda-remove="${escapeAttr(item.id)}" aria-label="Quitar ${escapeAttr(item.title)}">${icon("close")}</button>
+        ${window.EstudiemosInboxAlarms?.button(item) || ''}
       </article>
     `).join("");
   }
@@ -1452,6 +1464,7 @@
       horaInicio: item.horaInicio || item.startTime || "",
       horaFin: item.horaFin || item.endTime || "",
       done: Boolean(item.done),
+      alarm: item.alarm || null,
       createdAt: Number(item.createdAt) || 0
     };
   }

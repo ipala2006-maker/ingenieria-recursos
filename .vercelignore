@@ -1,0 +1,9 @@
+# The social studio runs locally. Never deploy its data or credentials.
+.social-studio/
+marketing/social-studio/
+
+# Local credentials and test artifacts are never public assets.
+**/.env*
+.vercel/
+tmp/
+tests/

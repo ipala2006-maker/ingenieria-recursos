@@ -21,6 +21,7 @@
   addPanels();
   bindEvents();
   renderDashboard();
+  window.addEventListener('estudiemos:alarms-ready', renderAgenda);
   syncPanelsWithHistory();
   restorePendingAssistant();
 
@@ -275,6 +276,7 @@
       horaInicio: "",
       horaFin: "",
       done: false,
+      alarm: window.EstudiemosInboxAlarms?.readForm(form) || null,
       createdAt: Date.now()
     });
     writeAgenda(items.slice(0, MAX_AGENDA_ITEMS));
@@ -451,11 +453,12 @@
       return;
     }
     container.innerHTML = items.map((item) => `
-      <label class="dashboard-agenda__item">
+      <div class="dashboard-agenda__item"><label>
         <input type="checkbox" data-dashboard-agenda-done="${escapeHtml(item.id)}" aria-label="Marcar ${escapeHtml(item.title)} como hecha" />
         <span class="dashboard-agenda__copy"><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.subject || item.type)}</small></span>
-        <span class="dashboard-agenda__date">${item.date ? shortDate(item.date) : "Sin fecha"}</span>
-      </label>`).join("");
+        <span class="dashboard-agenda__date">${item.date ? shortDate(item.date) : "Sin fecha"}</span></label>
+        ${window.EstudiemosInboxAlarms?.button(item) || ''}
+      </div>`).join("");
   }
 
   function moveMonth(direction) {
