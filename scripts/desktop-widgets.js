@@ -1,7 +1,7 @@
 (function () {
   if (window.EstudiemosDesktopWidgets) return;
-  const designUrl=new URL('../styles/widget-console.css?v=20260911-calendar',document.currentScript.src).href;
-  const depthUrl=new URL('./widget-depth.js?v=20260910-widgets',document.currentScript.src).href;
+  const designUrl=new URL('../styles/widget-console.css?v=20260913-phase',document.currentScript.src).href;
+  const depthUrl=new URL('./widget-depth.js?v=20260913-phase',document.currentScript.src).href;
   let depthModule=null,depthPending=null;
   function installDesign(doc) {
     const link=doc.createElement('link');link.rel='stylesheet';link.href=designUrl;doc.head.appendChild(link);
@@ -481,6 +481,7 @@
 
   function updatePomodoroDisplay(content) {
     const value=readPomodoro(),total=Math.max(1,Number(value.config[value.phase])*60 || 1);
+    content.querySelector('[data-widget-depth]').dataset.timerPhase=value.phase;
     const angle=Math.max(0,Math.min(360,value.remaining/total*360));
     for(const [selector,text] of [['[data-widget-clock]',formatTimer(value.remaining)],['[data-widget-block]',`Bloque ${value.currentBlock} de ${value.config.blocks}`],['[data-widget-phase]',value.phase==='break'?'DESCANSO':'ESTUDIO'],['[data-widget-running]',value.running?'En curso':'Pausado']]) {
       const node=content.querySelector(selector);if(node.textContent!==text)node.textContent=text;
@@ -603,7 +604,7 @@
       pomodoro.endAt = Date.now() + pomodoro.remaining * 1000;
       pomodoro.studyCreditAt = pomodoro.phase === "study" ? Date.now() : 0;
     }
-    pomodoro.updatedAt = Date.now();
+    pomodoro.updatedAt = Math.max(Date.now(), Number(pomodoro.updatedAt || 0) + 1);
     localStorage.setItem(POMODORO_KEY, JSON.stringify(pomodoro));
     try {
       window.EstudiemosAndroid?.postMessage?.(JSON.stringify({ type: "pomodoro-sync", state: pomodoro }));
@@ -671,7 +672,7 @@
     value.running = false;
     value.endAt = 0;
     value.studyCreditAt = 0;
-    value.updatedAt = Date.now();
+    value.updatedAt = Math.max(Date.now(), Number(value.updatedAt || 0) + 1);
     localStorage.setItem(POMODORO_KEY, JSON.stringify(value));
     window.dispatchEvent(new CustomEvent("estudiemos:pomodoro-widget-action", { detail: value }));
   }

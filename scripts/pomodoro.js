@@ -130,6 +130,7 @@
   // Moving the dial changes the deadline, never the credited study duration.
   function setRemaining(seconds) {
     if (!Number.isFinite(Number(seconds))) return;
+    adoptTimerState();
     reconcileTimer(false);
     captureStudyProgress();
     flushStudyCredit();
@@ -145,6 +146,7 @@
   }
 
   function configureAlarm(key, value) {
+    adoptTimerState();
     if (key === "mode" && ["digital", "bell", "chime", "pulse"].includes(value)) state.alarmMode = value;
     else if (key === "volume") state.alarmVolume = Math.max(0.15, volumeNumber(value, state.alarmVolume, 2));
     else if (key === "auto") state.autoStart = value === true;
@@ -427,7 +429,12 @@
     window.addEventListener("estudiemos:theme-change", renderPipControls);
     window.addEventListener("storage", (event) => {
       if (event.key !== STORAGE_KEY && event.key !== STREAK_STORAGE_KEY) return;
-      if (event.key === STORAGE_KEY) state = loadState();
+      if (event.key === STORAGE_KEY) {
+        if (event.newValue === null && !readStoredTimer()) {
+          state = loadState(); stopTicker(); render(); syncWakeLock();
+        } else adoptTimerState();
+        return;
+      }
       if (event.key === STREAK_STORAGE_KEY) streakState = loadStreakState();
       reconcileTimer(false);
       render();
@@ -440,27 +447,15 @@
       renderDeviceAlerts();
     });
     window.addEventListener("estudiemos:pomodoro-widget-action", () => {
-      state = loadState();
-      flushStudyCredit();
-      reconcileTimer(false);
-      saveState();
-      render();
-      startTickerIfNeeded();
-      syncWakeLock();
+      adoptTimerState();
     });
     window.addEventListener("estudiemos-android-pomodoro-state", (event) => {
       const incoming = event.detail;
-      if (!incoming || Number(incoming.updatedAt) <= Number(state.updatedAt || 0)) return;
+      if (!incoming || !Number.isFinite(Number(incoming.updatedAt)) || Number(incoming.updatedAt) <= Math.max(Number(state.updatedAt || 0), Number(readStoredTimer()?.updatedAt) || 0)) return;
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(incoming));
       } catch (_) {}
-      state = loadState();
-      flushStudyCredit();
-      reconcileTimer(false);
-      saveState();
-      render();
-      startTickerIfNeeded();
-      syncWakeLock();
+      adoptTimerState(incoming);
     });
     window.addEventListener("estudiemos-android-notification-status", (event) => {
       androidNotificationPermission = event.detail?.permission || "unknown";
@@ -475,6 +470,7 @@
     document.addEventListener("visibilitychange", () => {
       if (videoPip) syncVideoPipPlayback();
       if (document.visibilityState !== "visible") return;
+      adoptTimerState();
       reconcileTimer(true);
       resumeActiveAlarm();
       render();
@@ -483,6 +479,7 @@
       maybeShowStreakReminder();
     });
     window.addEventListener("pagehide", () => {
+      adoptTimerState();
       captureStudyProgress();
       flushStudyCredit();
       saveState();
@@ -676,6 +673,7 @@
   }
 
   function applyConfigValue(key, value) {
+    adoptTimerState();
     if (!Object.prototype.hasOwnProperty.call(state.config, key)) return;
     reconcileTimer(false);
     captureStudyProgress();
@@ -1160,6 +1158,7 @@
   }
 
   function toggleTimer() {
+    adoptTimerState();
     if (alarmActive) {
       stopAlarm();
       syncWakeLock();
@@ -1199,7 +1198,7 @@
     focusDepthRequested = true;
     const generation = ++focusDepthGeneration;
     try {
-      const { createFocusDepth } = await import(new URL("focus-depth.js?v=20260909-depth2", SCRIPT_URL).href);
+      const { createFocusDepth } = await import(new URL("focus-depth.js?v=20260913-phase", SCRIPT_URL).href);
       if (reducedMotion.matches || generation !== focusDepthGeneration) return;
       focusDepth = createFocusDepth(document.querySelector(".pomodoro-timer"));
       renderTimerOnly();
@@ -1209,6 +1208,7 @@
   }
 
   function resetTimer() {
+    adoptTimerState();
     captureStudyProgress();
     flushStudyCredit();
     stopAlarm();
@@ -1271,6 +1271,8 @@
   function startTickerIfNeeded() {
     if (!state.running || timerId) return;
     timerId = window.setInterval(() => {
+      if (adoptTimerState()) return;
+      if (!state.running) { stopTicker(); return; }
       captureStudyProgress();
       if (state.pendingStudySeconds >= 60) {
         flushStudyCredit();
@@ -1335,6 +1337,8 @@
 
     const panel = document.querySelector(".pomodoro-menu__panel");
     if (panel) panel.dataset.phase = state.phase;
+    const timerHost = document.querySelector('.pomodoro-timer');
+    if (timerHost) timerHost.dataset.timerPhase = state.phase;
 
     const cycle = document.querySelector("[data-pomodoro-cycle]");
     const phase = document.querySelector("[data-pomodoro-phase]");
@@ -2682,11 +2686,25 @@
     return limiter;
   }
 
-  function loadState() {
-    let saved = {};
+  function readStoredTimer() {
     try {
-      saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-    } catch (error) {}
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+      return saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : null;
+    } catch (_) { return null; }
+  }
+
+  function adoptTimerState(saved = readStoredTimer()) {
+    if (!saved || !Number.isFinite(Number(saved.updatedAt)) || Number(saved.updatedAt) <= Number(state.updatedAt || 0)) return false;
+    state = loadState(saved);
+    stopTicker();
+    reconcileTimer(false);
+    render();
+    startTickerIfNeeded();
+    syncWakeLock();
+    return true;
+  }
+
+  function loadState(saved = readStoredTimer() || {}) {
 
     const legacyMode = saved.mode ? (saved.mode === "focus" ? "study" : "break") : "study";
     const phase = saved.phase === "study" || saved.phase === "break" ? saved.phase : legacyMode;
@@ -2714,12 +2732,14 @@
       completedToday: nonNegativeInteger(saved.completedToday, 0),
       studyCreditAt: Number(saved.studyCreditAt) || (saved.running && phase === "study" ? Number(saved.updatedAt) || Date.now() : 0),
       pendingStudySeconds: nonNegativeInteger(saved.pendingStudySeconds, 0),
-      updatedAt: Number(saved.updatedAt) || Date.now()
+      updatedAt: Number(saved.updatedAt) || 0
     };
   }
 
   function saveState() {
-    state.updatedAt = Date.now();
+    // A suspended tab must not overwrite a more recent play/pause from another view.
+    if (adoptTimerState()) return;
+    state.updatedAt = Math.max(Date.now(), Number(state.updatedAt || 0) + 1);
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch (error) {}

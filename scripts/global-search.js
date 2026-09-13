@@ -20,6 +20,7 @@
   loadPomodoroScript();
   loadInstallAppScript();
   loadBandejaScript();
+  loadInboxAlarms();
   loadDashboardStyle();
   loadDashboardScript();
   loadProductStyle();
@@ -176,7 +177,7 @@
     if (document.querySelector('link[href*="styles/interaction.css"]')) return;
     const interaction = document.createElement('link');
     interaction.rel = 'stylesheet';
-    interaction.href = `${rootPath}styles/interaction.css?v=20260909-depth2`;
+    interaction.href = `${rootPath}styles/interaction.css?v=20260913-phase`;
     document.head.appendChild(interaction);
   }
 
@@ -257,16 +258,29 @@
     if (document.querySelector('script[src*="scripts/bandeja.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/bandeja.js?v=20260911-share-target`;
+    script.src = `${rootPath}scripts/bandeja.js?v=20260912-alarm-sync`;
     script.defer = true;
     document.head.appendChild(script);
+  }
+
+  function loadInboxAlarms() {
+    if (document.querySelector('script[data-inbox-alarms]')) return;
+    const rules = document.createElement('script');
+    rules.dataset.inboxAlarms = 'true';
+    rules.src = `${rootPath}shared/inbox-alarms.js?v=20260912`;
+    rules.onload = () => {
+      const ui = document.createElement('script');
+      ui.src = `${rootPath}scripts/inbox-alarms.js?v=20260913-fullscreen`;
+      document.head.appendChild(ui);
+    };
+    document.head.appendChild(rules);
   }
 
   function loadPomodoroScript() {
     if (document.querySelector('script[src*="scripts/pomodoro.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/pomodoro.js?v=20260909-depth2`;
+    script.src = `${rootPath}scripts/pomodoro.js?v=20260913-sync`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -274,7 +288,7 @@
   function loadDashboardScript() {
     if (document.querySelector('script[src*="scripts/dashboard.js"]')) return;
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/dashboard.js?v=20260909-console`;
+    script.src = `${rootPath}scripts/dashboard.js?v=20260912-alarm-sync`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -321,7 +335,7 @@
     if (document.querySelector('script[src*="scripts/desktop-widgets.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/desktop-widgets.js?v=20260910-widgets`;
+    script.src = `${rootPath}scripts/desktop-widgets.js?v=20260913-phase`;
     script.async = false;
     document.head.appendChild(script);
   }

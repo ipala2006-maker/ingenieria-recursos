@@ -8,6 +8,13 @@ const MAX_INSTRUCTION_LENGTH = 1200;
 const MAX_RANGE_DAYS = 370;
 const REQUEST_TIMEOUT_MS = 50000;
 const MODEL_RETRY_DELAY_MS = 900;
+const alarmRules = require('../shared/inbox-alarms');
+const ALARM_SCHEMA = {
+  type: 'object', nullable: true,
+  description: 'Alarma opcional e independiente del horario del evento. Null quita la alarma. Solo a pedido explicito.',
+  properties: { date: { type: 'string' }, time: { type: 'string', description: 'HH:MM, hora local.' }, repeat: { type: 'string', enum: alarmRules.repeats } },
+  required: ['date', 'time', 'repeat']
+};
 
 const RESPONSE_SCHEMA = {
   type: "object",
@@ -41,7 +48,7 @@ const RESPONSE_SCHEMA = {
     },
     createEvents: {
       type: "array",
-      description: "Anotaciones unicas, no recurrentes.",
+      description: "Anotaciones unicas. Una tarea puede tener una alarma recurrente sin duplicar la tarea.",
       items: {
         type: "object",
         properties: {
@@ -52,7 +59,8 @@ const RESPONSE_SCHEMA = {
           note: { type: "string" },
           horaInicio: { type: "string", description: "Hora HH:MM solo si el usuario la indico; en otro caso cadena vacia." },
           horaFin: { type: "string", description: "Hora HH:MM solo si el usuario la indico; en otro caso cadena vacia." },
-          done: { type: "boolean" }
+          done: { type: "boolean" },
+          alarm: ALARM_SCHEMA
         },
         required: ["title", "eventType", "date", "subject", "note", "horaInicio", "horaFin", "done"]
       }
@@ -94,7 +102,8 @@ const RESPONSE_SCHEMA = {
           note: { type: "string" },
           horaInicio: { type: "string" },
           horaFin: { type: "string" },
-          done: { type: "boolean" }
+          done: { type: "boolean" },
+          alarm: ALARM_SCHEMA
         },
         required: ["id"]
       }
@@ -246,6 +255,7 @@ function validateInput(body) {
       agenda,
       subjects,
       today: cleanDate(source.today) || new Date().toISOString().slice(0, 10),
+      localTime: cleanTime(source.localTime),
       timezone: "America/Argentina/Buenos_Aires"
     }
   };
@@ -268,6 +278,7 @@ function sanitizeAgendaItem(item) {
     horaInicio: cleanTime(item.horaInicio),
     horaFin: cleanTime(item.horaFin),
     done: Boolean(item.done),
+    alarm: alarmRules.normalize(item.alarm),
     createdAt: Number(item.createdAt) || 0
   };
 }
@@ -289,6 +300,12 @@ Reglas de razonamiento:
 - No uses createSchedules para una tarea o anotacion comun si el usuario no indico dias recurrentes.
 - Si varias materias comparten dias y horario, crea un horario separado para cada materia. Nunca combines dos materias conocidas en un mismo title o subject.
 - Para tareas, recordatorios y anotaciones usa createEvents, tengan fecha o no.
+- Si piden una alarma, avisame, recordame o una notificacion, usa alarm con date YYYY-MM-DD, time HH:MM y repeat none/daily/weekdays/weekly/monthly. Son horas locales de cada dispositivo. Sin pedido de alarma, omite alarm.
+- "Avisame todos los lunes a las 18" crea UNA tarea con alarm semanal, no una tarea por cada semana. Desde una fecha concreta o la proxima ocurrencia a partir de hoy. No uses createSchedules para duplicar alarmas.
+- Una alarma no necesita horaFin. Su hora va en alarm.time; no inventes un rango de estudio.
+- Para "en 10 minutos" calcula fecha y hora desde hoy y horaLocalActual recibidos. Si no hay horaLocalActual, pide una hora concreta. Nunca tomes la hora del servidor como hora del usuario.
+- Si falta la hora exacta de la alarma, pregunta en clarification. Si una recurrencia requiere varios dias no consecutivos o un intervalo no soportado, pide aclaracion; no la cambies silenciosamente.
+- Para quitar una alarma usa updates con alarm:null. Para cambiarla conserva su resto de datos. Una tarea sin alarma sigue siendo valida. La tarea completada no vuelve a sonar.
 - Si el usuario no menciona una fecha, un dia o una expresion temporal concreta, deja date como cadena vacia. No uses hoy ni el rango predeterminado y no pidas una fecha: la anotacion pertenece a Inbox.
 - Solo completa date cuando la instruccion menciona una fecha o un dia concreto, por ejemplo "hoy", "manana", "el viernes" o "23 de agosto".
 - Si el usuario pide expresamente una tarea o anotacion "sin fecha", deja date como cadena vacia.
@@ -304,10 +321,11 @@ Reglas de razonamiento:
   const userContext = {
     instruccion: input.instruction,
     hoy: input.today,
+    horaLocalActual: input.localTime || '',
     zonaHoraria: input.timezone,
     rangoPredeterminado: { desde: input.dateFrom, hasta: input.dateUntil },
     materiasConocidas: input.subjects,
-    agendaActualDatosCampos: ["titulo", "tipo", "materia", "nota", "horaInicio", "horaFin", "hecha"],
+    agendaActualDatosCampos: ["titulo", "tipo", "materia", "nota", "horaInicio", "horaFin", "hecha", "alarma"],
     agendaActualEventoCampos: ["id", "fecha", "creadaEn"],
     agendaActualGrupos: compactAgendaForModel(selectAgendaForModel(input))
   };
@@ -347,7 +365,8 @@ function compactAgendaForModel(agenda) {
       item.note,
       item.horaInicio,
       item.horaFin,
-      item.done ? 1 : 0
+      item.done ? 1 : 0,
+      item.alarm
     ];
     const key = JSON.stringify(data);
     if (!groups.has(key)) groups.set(key, { datos: data, eventos: [] });
@@ -391,9 +410,28 @@ function sanitizePlan(raw, input) {
       .slice(0, 100)
     : [];
 
+  const alarmIntent = alarmRules.hasIntent(input.instruction);
+  const withoutAlarm = /\bsin\s+(?:alarmas?|notificaciones)\b/.test(normalizeText(input.instruction));
+  const relativeAlarmTime = !!input.localTime && /\b(?:en|dentro de)\s+\d{1,3}\s*(?:minutos?|min|horas?)\b/.test(normalizeText(input.instruction));
+  let alarmClarification = '';
+  for (const item of [...createEvents, ...updates]) {
+    if (!Object.hasOwn(item, 'alarm')) continue;
+    if (!alarmIntent) { delete item.alarm; continue; }
+    if (withoutAlarm) { if (item.id) item.alarm = null; else delete item.alarm; continue; }
+    if (item.alarm) {
+      const old = agenda.find(a => a.id === item.id)?.alarm;
+      if (!keepGeneratedTimes && !relativeAlarmTime && !old) alarmClarification = '¿A qué hora querés que suene la alarma?';
+      if (!keepGeneratedTimes && !relativeAlarmTime && old) item.alarm.time = old.time;
+      item.alarm.windows = old?.windows === true;
+    }
+  }
+  if (alarmIntent && !withoutAlarm && !createEvents.some(i => i.alarm) && !updates.some(i => Object.hasOwn(i, 'alarm')) && !source.clarification) {
+    alarmClarification = 'Indicá la tarea, el día, la hora y cómo querés repetir la alarma.';
+  }
+
   return {
     summary: cleanText(source.summary, 300) || "Plan de cambios listo para revisar.",
-    clarification: cleanText(source.clarification, 300),
+    clarification: cleanText(source.clarification, 300) || alarmClarification,
     createSchedules,
     createEvents,
     deleteIds,
@@ -443,6 +481,7 @@ function instructionHasExplicitTime(value) {
     /\b(?:a\s+las?|desde\s+las?|hasta\s+las?)\s+(?:[01]?\d|2[0-3])\b/.test(text) ||
     /\b(?:de|entre)\s+(?:las?\s+)?(?:[01]?\d|2[0-3])\s+(?:a|y)\s+(?:las?\s+)?(?:[01]?\d|2[0-3])\b/.test(text) ||
     /\b(?:[01]?\d|2[0-3])\s*(?:h|hs|am|pm)\b/.test(text) ||
+    /\ba\s+las?\s+(?:una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce)\b/.test(text) ||
     /\b(?:mediodia|medianoche)\b/.test(text)
   );
 }
@@ -571,8 +610,11 @@ function sanitizeCreatedEvent(item) {
   const title = cleanText(item.title, 90);
   const rawDate = String(item.date || "").trim();
   const date = cleanDate(rawDate);
-  const horaInicio = cleanTime(item.horaInicio);
-  const horaFin = cleanTime(item.horaFin);
+  let horaInicio = cleanTime(item.horaInicio);
+  let horaFin = cleanTime(item.horaFin);
+  const alarm = alarmRules.normalize(item.alarm);
+  // A model may repeat the alarm time as a start time. It is not an event range.
+  if (alarm && horaInicio === alarm.time && !horaFin) { horaInicio = ''; horaFin = ''; }
   if (!title || (rawDate && !date)) return null;
   if ((horaInicio || horaFin) && (!horaInicio || !horaFin || horaInicio >= horaFin)) return null;
   return {
@@ -583,7 +625,8 @@ function sanitizeCreatedEvent(item) {
     note: cleanText(item.note, 240),
     horaInicio,
     horaFin,
-    done: Boolean(item.done)
+    done: Boolean(item.done),
+    ...(alarm ? { alarm } : {})
   };
 }
 
@@ -592,6 +635,8 @@ function sanitizeUpdate(item, validIds) {
   const id = cleanText(item.id, 180);
   if (!validIds.has(id)) return null;
   const update = { id };
+  if (item.alarm === null) update.alarm = null;
+  else if (alarmRules.normalize(item.alarm)) update.alarm = alarmRules.normalize(item.alarm);
   if (Object.prototype.hasOwnProperty.call(item, "title")) update.title = cleanText(item.title, 90);
   if (Object.prototype.hasOwnProperty.call(item, "eventType")) update.type = validType(item.eventType);
   if (Object.prototype.hasOwnProperty.call(item, "date")) update.date = cleanDate(item.date);

@@ -1,4 +1,7 @@
 /* Shared controls: tactile depth without another layer of panels. */
+[data-timer-phase="break"] .study-dial i::after { background:#fbbc04; }
+html [data-timer-phase="break"] .pomodoro-ring__progress { stroke:#fbbc04; }
+[data-timer-phase="break"] .study-focus__fallback { border-top-color:#fbbc04; }
 .study-dial { position:absolute; z-index:3; width:144px; height:144px; left:50%; top:50%; transform:translate(-50%,-50%); border-radius:50%; touch-action:none; cursor:grab; --dial-angle:150deg; }
 .study-dial:focus-visible { outline:2px solid var(--accent); outline-offset:7px; }
 .study-dial i { position:absolute; inset:0; border-radius:50%; transform:rotate(var(--dial-angle)); pointer-events:none; transition:none!important; }

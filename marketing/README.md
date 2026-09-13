@@ -3,6 +3,11 @@
 Este directorio concentra el sistema de marketing de Estudiemos. La fuente de
 verdad para tono, mensajes, campañas y medicion vive en `strategy/`.
 
+El flujo local de preparacion, aprobacion y publicacion organica esta en
+[`social-studio/README.md`](social-studio/README.md). Para esta etapa no se activa
+publicidad paga ni se utilizan herramientas con costo. Las recomendaciones
+historicas de promocionar piezas ganadoras no se ejecutan en este sistema.
+
 ## Objetivo inicial
 
 Conseguir instalaciones y usuarios activos entre estudiantes universitarios,
@@ -25,4 +30,3 @@ cuenta piloto y contenido academico ficticio.
 - `strategy/content-calendar.csv`: calendario importable a una planilla.
 - `strategy/measurement.md`: enlaces, eventos y criterio para decidir.
 - `output/`: videos y recursos ya producidos.
-

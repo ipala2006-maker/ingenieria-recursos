@@ -17,3 +17,8 @@ android-app/**/build/
 
 # Windows installer build dependencies
 windows-installer/vendor/
+
+# Local organic publishing studio: media, approvals, account configuration and logs
+.social-studio/
+marketing/social-studio/.env*
+!marketing/social-studio/.env.example
