@@ -14,7 +14,14 @@ function createPreview() {
     fs.stat(file,(err,stat)=>{
       if(err||!stat.isFile()){res.writeHead(404).end();return;}
       res.writeHead(200,{'Content-Type':types[path.extname(file)]+'; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});
-      if(req.method==='HEAD')res.end();else fs.createReadStream(file).on('error',()=>res.destroy()).pipe(res);
+      if(req.method==='HEAD')res.end();
+      else if(name==='index.html') {
+        fs.readFile(file,'utf8',(error,html)=>{
+          if(error){res.destroy();return;}
+          const notice='<aside role="note" style="position:relative;z-index:2;padding:8px 16px;background:#fff3c4;color:#423800;font:12px system-ui;text-align:center">Vista local de prueba. IA y cuentas no conectadas.</aside>';
+          res.end(html.replace(/(<body[^>]*>)/i,'$1'+notice));
+        });
+      } else fs.createReadStream(file).on('error',()=>res.destroy()).pipe(res);
     });
   });
 }

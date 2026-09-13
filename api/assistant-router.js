@@ -81,7 +81,8 @@ module.exports = async function assistantRouter(request, response) {
 function buildModelRequest(instruction) {
   const systemInstruction = `Sos la entrada única del asistente de Estudiemos. Interpretá la intención del usuario y elegí qué herramienta especializada debe continuar.
 
-- Usa destination "agenda" para tareas, anotaciones, parciales, recordatorios, clases, horarios, fechas, calendario o cualquier pedido de organización académica temporal.
+- Usa destination "agenda" para tareas, anotaciones, parciales, recordatorios, alarmas, avisos con sonido, clases, horarios, fechas, calendario o cualquier pedido de organización académica temporal.
+- Pedidos como "poneme una alarma", "avisame manana a las 18" o "recordame estudiar cada lunes" van a agenda, incluso si falta fecha u hora. El organizador especializado pedira ese dato; no rechaces la solicitud ni digas que no puede programar alarmas.
 - Usa destination "workspace" para crear, ordenar, mover o renombrar carpetas y archivos.
 - Usa destination "none" cuando la instrucción mezcla ambos destinos de una forma que exige decidir un orden, cuando no alcanza la información o cuando no corresponde a ninguna herramienta.
 - No inventes una intención. Si hay una ambigüedad relevante, hacé una sola pregunta breve y concreta en clarification.

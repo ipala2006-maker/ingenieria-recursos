@@ -122,7 +122,7 @@ if (home) {
     const request = ++generation;
     depthPending = true;
     try {
-      const module = await import('./study-scene.js?v=20260909-depth2');
+      const module = await import('./study-scene.js?v=20260913-phase');
       if (request !== generation || reduced.matches || home.hidden) return;
       if(!depth) depth = module.createStudyScene(host);
       const progress = await import('./progress-depth.js?v=20260909-console');
@@ -158,6 +158,7 @@ if (home) {
     write('[data-home-clock]', `${String(Math.floor(remaining / 60)).padStart(2,'0')}:${String(remaining % 60).padStart(2,'0')}`);
     dial.update();
     write('[data-home-phase]', state.phase === 'study' ? 'Estudio' : 'Descanso');
+    host.dataset.timerPhase = state.phase;
     write('[data-home-block]', `Bloque ${state.block} de ${state.blocks}`);
     write('[data-home-timer-state]', state.running ? 'Sesión en curso' : state.alarm ? 'Bloque finalizado' : 'A tu ritmo');
     home.querySelector('[data-home-timer]').dataset.running=String(state.running);

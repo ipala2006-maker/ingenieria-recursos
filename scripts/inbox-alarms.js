@@ -7,7 +7,7 @@
   const FIRED_KEY = 'estudiemos_inbox_alarm_delivered';
   let audio, currentId, returnFocus, checking = false, lastNative = '', accountReady = false, waitingForAccount = false;
   const style = document.createElement('link');
-  style.rel = 'stylesheet'; style.href = new URL('styles/inbox-alarms.css?v=20260911', root); document.head.appendChild(style);
+  style.rel = 'stylesheet'; style.href = new URL('styles/inbox-alarms.css?v=20260912', root); document.head.appendChild(style);
   const escape = value => String(value || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   // Reuse the existing icon set's bell geometry (also used by Pomodoro).
   const bell = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>';
@@ -20,7 +20,21 @@
   document.body.appendChild(notice); notice.querySelector('button').onclick = () => { notice.hidden = true; };
   function items() { try { const v = JSON.parse(localStorage.getItem(KEY) || '[]'); return Array.isArray(v) ? v : []; } catch (_) { return []; } }
   function controls() {
-    return `<fieldset class="inbox-alarm-fields"><label class="inbox-alarm-switch">${bell}<span>Alarma</span><input type="checkbox" role="switch" name="inboxAlarmEnabled" aria-label="Activar alarma"></label><div data-alarm-options hidden><div class="inbox-alarm-date"><label>Desde<input type="date" name="inboxAlarmDate" min="2020-01-01" max="2100-12-31"></label><label>Hora<input type="time" name="inboxAlarmTime"></label></div><label>Repetir<select name="inboxAlarmRepeat">${rules.repeats.map(r => `<option value="${r}">${rules.labels[r]}</option>`).join('')}</select></label><small>Hora local de cada dispositivo. Al completar la tarea, deja de sonar.</small><details class="inbox-alarm-delivery"><summary>Avisos en esta PC</summary><label><input type="checkbox" data-alarm-native ${localStorage.getItem(NATIVE_KEY) === 'true' ? 'checked' : ''}> Usar avisos de Windows con la app cerrada</label><small>Requiere el soporte de Windows actualizado y sincronizar con un widget conectado. Sin esta opción, suena mientras la app está abierta.</small><a href="${new URL('instalar.html#pc-widgets', root)}" target="_blank" rel="noopener">Soporte para Windows</a></details></div></fieldset>`;
+    const windows = /Windows/i.test(navigator.userAgent);
+    return `<fieldset class="inbox-alarm-fields">
+      <label class="inbox-alarm-switch">${bell}<span>Programar alarma<small data-alarm-summary>Sin alarma</small></span><input type="checkbox" role="switch" name="inboxAlarmEnabled" aria-label="Activar alarma"></label>
+      <div data-alarm-options hidden>
+        <div class="inbox-alarm-date"><label>Día<input type="date" name="inboxAlarmDate" min="2020-01-01" max="2100-12-31"></label><label>Hora<input type="time" name="inboxAlarmTime"></label></div>
+        <label>Repetir<select name="inboxAlarmRepeat" aria-label="Repetir">${rules.repeats.map(r => `<option value="${r}">${rules.labels[r]}</option>`).join('')}</select></label>
+        <small>Hora local de cada dispositivo. Al completar la tarea, deja de sonar.</small>
+        <small data-alarm-permission-status role="status"></small>
+        <button type="button" data-alarm-permission>Permitir notificaciones</button>
+        <details class="inbox-alarm-delivery" ${windows ? 'open' : 'hidden'}><summary>Con la app cerrada en Windows</summary>
+          <label><input type="checkbox" data-alarm-native ${localStorage.getItem(NATIVE_KEY) === 'true' ? 'checked' : ''}> Enviar también la alarma a Windows</label>
+          <small>Muestra el nombre de la alarma a pantalla completa y reproduce sonido, incluso con la app cerrada. Requiere soporte de Windows 1.4.1, un widget conectado y la sesión iniciada. La PC debe seguir encendida.</small>
+          <a href="${new URL('instalar.html#pc-widgets', root)}" target="_blank" rel="noopener">Preparar avisos en Windows</a>
+        </details>
+      </div></fieldset>`;
   }
   function fill(form, alarm) {
     const a = rules.normalize(alarm);
@@ -34,11 +48,30 @@
   }
   function reveal(form) {
     const enabled = form.elements.inboxAlarmEnabled.checked;
+    const description = rules.describe({date:form.elements.inboxAlarmDate.value,time:form.elements.inboxAlarmTime.value,repeat:form.elements.inboxAlarmRepeat.value});
+    form.querySelector('[data-alarm-summary]').textContent = enabled ? description : 'Sin alarma';
     form.querySelector('[data-alarm-options]').hidden = !enabled;
     for (const name of ['inboxAlarmDate', 'inboxAlarmTime', 'inboxAlarmRepeat']) {
       form.elements[name].disabled = !enabled;
       form.elements[name].required = enabled;
     }
+    renderPermission(form);
+  }
+  function renderPermission(form) {
+    const permission = 'Notification' in window ? Notification.permission : 'unavailable';
+    form.querySelector('[data-alarm-permission]').hidden = permission !== 'default';
+    form.querySelector('[data-alarm-permission-status]').textContent = permission === 'granted'
+      ? 'Notificaciones del navegador permitidas.'
+      : permission === 'denied' ? 'Notificaciones bloqueadas. Podés habilitarlas en los permisos de este sitio. El aviso dentro de la app sigue activo.'
+      : permission === 'default' ? 'Permití las notificaciones para ver el aviso fuera de esta pestaña.'
+      : 'Este navegador no admite notificaciones del sistema.';
+  }
+  async function requestPermission() {
+    enableSound();
+    if ('Notification' in window && Notification.permission === 'default') {
+      try { await Notification.requestPermission(); } catch (_) {}
+    }
+    document.querySelectorAll('form:has(.inbox-alarm-fields)').forEach(renderPermission);
   }
   function readForm(form) {
     if (!form?.elements.inboxAlarmEnabled?.checked) return null;
@@ -94,6 +127,7 @@
     const b = e.target.closest('[data-inbox-alarm-id]'); if (b) { e.preventDefault(); open(b.dataset.inboxAlarmId); }
     if (e.target.closest('[data-alarm-close]')) dialog.close();
     if (e.target.closest('[data-alarm-test]')) enableSound().then(sound);
+    if (e.target.closest('[data-alarm-permission]')) requestPermission();
   });
   dialog.addEventListener('close', () => returnFocus?.focus());
   document.addEventListener('change', e => {
@@ -101,11 +135,14 @@
     if (e.target.name?.startsWith('inboxAlarm')) {
       form.elements.inboxAlarmTime.setCustomValidity(''); reveal(form);
       if (e.target.name === 'inboxAlarmEnabled' && e.target.checked) {
-        enableSound();
-        if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission().catch(() => {});
+        requestPermission();
       }
     }
     if (e.target.matches('[data-alarm-native]')) {
+      if (e.target.checked && localStorage.getItem(NATIVE_KEY) !== 'true') {
+        const allowed = window.confirm('¿Activar alarmas a pantalla completa en Windows? Estudiemos mostrará el nombre de la tarea y reproducirá sonido aunque la app esté cerrada. Siempre podrás cerrarla con “Entendido” o Escape.');
+        if (!allowed) e.target.checked = false;
+      }
       localStorage.setItem(NATIVE_KEY, String(e.target.checked));
     }
   });
@@ -130,9 +167,8 @@
         let delivered = {};
         try { delivered = JSON.parse(localStorage.getItem(FIRED_KEY) || '{}'); } catch (_) {}
         if (!delivered || typeof delivered !== 'object' || Array.isArray(delivered)) delivered = {};
-        const nativeHere = /Windows/i.test(navigator.userAgent) && localStorage.getItem(NATIVE_KEY) === 'true';
-        const active = items().filter(item => !(nativeHere && item.alarm?.windows));
-        const matches = rules.due(active).filter(item => !delivered[item.key]);
+        // An opt-in is not proof of a working native installation. Keep the web fallback.
+        const matches = rules.due(items()).filter(item => !delivered[item.key]);
         if (!matches.length) return;
         for (const item of matches) delivered[item.key] = Date.now();
         delivered = Object.fromEntries(Object.entries(delivered).filter(([, at]) => at > Date.now() - 14 * 86400000));

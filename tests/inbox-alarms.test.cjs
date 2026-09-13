@@ -51,6 +51,32 @@ test('AI cannot invent alarm consent or silently choose an unmentioned time', ()
   assert.match(ai.sanitizePlan(raw(alarm()),input('Poneme una alarma para resolver guia')).clarification,/hora/);
   assert.ok(ai.sanitizePlan(raw({...alarm(),repeat:'every-second'}),input('Alarma a las 18')).clarification);
 });
+
+test('natural alarm phrases route to Inbox and support hours written in words', () => {
+  for(const phrase of ['Poneme una alarma','Recuérdame repasar','Avisame mañana a las seis de la tarde']) assert.equal(rules.hasIntent(phrase),true);
+  assert.equal(rules.hasIntent('Crear carpeta Física'),false);
+  const plan=ai.sanitizePlan(raw(alarm()),input('Recuérdame resolver guía a las seis de la tarde'));
+  assert.equal(plan.clarification,'');
+  assert.equal(plan.createEvents[0].alarm.time,'18:00');
+  const without=ai.sanitizePlan(raw(alarm()),input('Anota resolver guia sin alarma'));
+  assert.equal(without.clarification,'');
+  assert.equal(Object.hasOwn(without.createEvents[0],'alarm'),false);
+});
+
+test('a model repeating the alarm hour as the start of an event does not discard the task', () => {
+  const response=raw(alarm());response.createEvents[0].horaInicio='18:00';
+  const plan=ai.sanitizePlan(response,input('Alarma para resolver guia a las 18'));
+  assert.equal(plan.createEvents.length,1);
+  assert.equal(plan.createEvents[0].horaInicio,'');
+  assert.equal(plan.createEvents[0].alarm.time,'18:00');
+});
+
+test('relative alarm instructions need the device local time, not the server clock',()=>{
+  const plan=ai.sanitizePlan(raw(alarm('none','2026-09-12','00:05')),{...input('Avisame en 10 minutos de resolver guia'),localTime:'23:55'});
+  assert.equal(plan.clarification,'');
+  assert.ok(ai.sanitizePlan(raw(alarm()),input('Avisame en 10 minutos de resolver guia')).clarification);
+  assert.match(JSON.stringify(ai.buildModelRequest({...input('Avisame en 10 minutos'),localTime:'23:55'})),/horaLocalActual/);
+});
 test('AI edits and removes existing alarms but cannot edit foreign IDs; unrelated edits retain alarm', () => {
   const item = ai.sanitizeAgendaItem({id:'a',title:'Guia',alarm:alarm(),date:''});
   assert.deepEqual(plain(item.alarm),alarm());
@@ -73,6 +99,20 @@ test('normalizing Inbox and completing a task retains optional alarm fields', ()
   vm.runInNewContext(exportable,context);
   assert.deepEqual(plain(context.window.testAlarm.normalizeAgendaItem({id:'a',title:'Guia',alarm:alarm(),done:true}).alarm),alarm());
 });
+
+test('AI alarms reuse Windows delivery only after the user opted in', () => {
+  const source=fs.readFileSync(path.join(root,'scripts/bandeja.js'),'utf8');
+  const fn=source.slice(source.indexOf('  function normalizeAssistantAlarm('),source.indexOf('  function normalizeAgendaAssistantUpdate('));
+  let consent=false;
+  const context={window:{EstudiemosAlarmRules:rules},localStorage:{getItem:()=>String(consent)}};
+  vm.runInNewContext(fn,context);
+  const proposed={...alarm(),windows:false};
+  assert.equal(context.normalizeAssistantAlarm(proposed).windows,false);
+  consent=true;
+  assert.equal(context.normalizeAssistantAlarm(proposed).windows,true);
+  assert.equal(proposed.windows,false,'does not mutate the model response');
+  assert.equal(context.normalizeAssistantAlarm(null),null);
+});
 test('Windows scheduler evaluates the same snapshot without showing notices or changing system tasks', {skip:process.platform!=='win32'}, t => {
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'estudiemos-alarm-test-'));
   t.after(()=>{assert.equal(path.dirname(path.resolve(dir)),path.resolve(os.tmpdir()));assert.match(path.basename(dir),/^estudiemos-alarm-test-/);fs.rmSync(dir,{recursive:true,force:true});});
@@ -87,4 +127,25 @@ test('Windows scheduler evaluates the same snapshot without showing notices or c
   assert.equal(run('2026-09-12T18:01:00').length,0);
   assert.equal(run('2026-09-14T18:01:00').length,1);
   assert.equal(fs.existsSync(path.join(dir,'delivered.json')),false);
+});
+
+test('Windows alarm task uses headless console mode and stays hidden between checks', () => {
+  const installer=fs.readFileSync(path.join(root,'windows-installer/InstallInboxAlarm.ps1'),'utf8');
+  const packageSource=fs.readFileSync(path.join(root,'windows-installer/Estudiemos-Windows.iss'),'utf8');
+  assert.match(installer,/Settings\.Hidden\s*=\s*\$true/);
+  assert.match(installer,/System32\\conhost\.exe/);
+  assert.match(installer,/--headless/);
+  assert.doesNotMatch(installer,/action\.Path[^\r\n]+powershell/i);
+  assert.doesNotMatch(packageSource,/InboxAlarmLauncher\.vbs/);
+});
+
+test('due Windows alarms show their names in a dismissible full-screen alert with looping sound', () => {
+  const source=fs.readFileSync(path.join(root,'windows-installer/InboxAlarm.ps1'),'utf8');
+  assert.match(source,/FormBorderStyle\]::None/);
+  assert.match(source,/PrimaryScreen\]::PrimaryScreen\.Bounds|Screen\]::PrimaryScreen\.Bounds/);
+  assert.match(source,/\.TopMost\s*=\s*\$true/);
+  assert.match(source,/\$alarmName\.Text\s*=\s*\(\$titles -join/);
+  assert.match(source,/PlayLooping\(\)/);
+  assert.match(source,/\$dismissButton\.Text\s*=\s*'Entendido'/);
+  assert.match(source,/Keys\]::Escape/);
 });

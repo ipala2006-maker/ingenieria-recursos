@@ -198,9 +198,11 @@ node --test marketing/social-studio/test/media.test.mjs
 Las APIs se prueban con respuestas simuladas, sin publicar ni consumir cuotas.
 La prueba opcional de medios convierte un video diagnostico real con FFmpeg.
 La comprobacion en cuentas reales queda pendiente de permisos y auditorias.
-Se prepararon tres variantes con el video piloto local de Estudiemos. La
-revision visual final del panel sigue pendiente de permiso para reabrirlo;
-no se presenta como una prueba de publicacion real.
+Se prepararon tres variantes con el video piloto local de Estudiemos y el
+13/09/2026 se reprodujeron completas, se revisaron en el panel y se aprobo su
+paquete descargable. La prueba uso datos piloto y no publico contenido, no
+contacto APIs reales ni activo gastos. No se presenta como una prueba de
+publicacion real.
 
 Los cambios se presentan en un Pull Request; no se integran ni despliegan
 automaticamente en la web publica.

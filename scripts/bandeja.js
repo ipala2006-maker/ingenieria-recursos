@@ -877,10 +877,12 @@
     setAgendaAssistantStatus("La IA está revisando tu Inbox y calendario...", "info");
 
     try {
+      await window.EstudiemosAccount?.whenReady?.();
       const accessToken = window.EstudiemosAccount?.getSession()?.access_token || "";
       if (!accessToken) {
+        setAgendaAssistantStatus("Ingresá a tu cuenta para usar el asistente. Podés programar una alarma desde la campana sin usar IA.", "error");
         window.EstudiemosAccount?.open();
-        throw new Error("Ingresá a tu cuenta para usar el asistente.");
+        return;
       }
       const response = await fetch(`${getRootPath()}api/agenda-ai`, {
         method: "POST",
@@ -890,6 +892,7 @@
           dateFrom: fromValue,
           dateUntil: untilValue,
           today: toDateValue(new Date()),
+          localTime: `${String(new Date().getHours()).padStart(2, '0')}:${String(new Date().getMinutes()).padStart(2, '0')}`,
           subjects: getSubjects().map((subject) => subject.title),
           agenda: getAgendaAssistantContext()
         })
@@ -1036,9 +1039,16 @@
       horaInicio,
       horaFin,
       done: Boolean(event.done),
-      alarm: window.EstudiemosAlarmRules?.normalize(event.alarm) || null,
+      alarm: normalizeAssistantAlarm(event.alarm),
       createdAt: Date.now()
     };
+  }
+
+  function normalizeAssistantAlarm(value) {
+    const alarm = window.EstudiemosAlarmRules?.normalize(value);
+    if (!alarm) return null;
+    // Native delivery uses the user's existing opt-in, never the model's decision.
+    return { ...alarm, windows: alarm.windows || localStorage.getItem('estudiemos_inbox_alarm_windows') === 'true' };
   }
 
   function normalizeAgendaAssistantUpdate(update, currentById) {
@@ -1051,7 +1061,7 @@
     if (typeof update.subject === "string") next.subject = update.subject.trim().slice(0, 80);
     if (typeof update.note === "string") next.note = update.note.trim().slice(0, 240);
     if (typeof update.done === "boolean") next.done = update.done;
-    if (Object.hasOwn(update, 'alarm')) next.alarm = window.EstudiemosAlarmRules?.normalize(update.alarm) || null;
+    if (Object.hasOwn(update, 'alarm')) next.alarm = normalizeAssistantAlarm(update.alarm);
     if (typeof update.horaInicio === "string") next.horaInicio = validAgendaAssistantTime(update.horaInicio);
     if (typeof update.horaFin === "string") next.horaFin = validAgendaAssistantTime(update.horaFin);
     const merged = { ...current, ...next };

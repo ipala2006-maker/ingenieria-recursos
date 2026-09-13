@@ -102,6 +102,7 @@ html body { font-family:WidgetGrotesk,'Segoe UI',sans-serif; }
 .pomodoro-widget-head h1 { font-size:15px; }
 .pomodoro-widget-head>b { font-size:10px;border-radius:4px; }
 .widget-timer-stage { min-width:0;min-height:0;position:relative;container-type:size;isolation:isolate; }
+.widget-timer-stage[data-timer-phase="break"] .pomodoro-widget-ring { background:conic-gradient(#fbbc04 var(--timer-progress),var(--line) 0); }
 .widget-timer-stage .pomodoro-widget-ring { --dial-size:min(244px,calc(100cqw - 22px),calc(100cqh - 16px));width:var(--dial-size);height:var(--dial-size);min-width:0;min-height:0;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);margin:0; }
 .pomodoro-widget-ring strong { font-size:40px; }
 .pomodoro-widget-ring small { font-size:11px;font-weight:400; }

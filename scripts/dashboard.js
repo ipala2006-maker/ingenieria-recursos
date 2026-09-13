@@ -292,6 +292,11 @@
     const button = form.querySelector('[type="submit"]');
     if (!instruction || button.disabled) return;
     showGeneralAssistantUserMessage(instruction);
+    if (window.EstudiemosAlarmRules?.hasIntent(instruction)) {
+      closeActivePanel();
+      handOffToAssistant('agenda', instruction);
+      return;
+    }
     setAssistantStatus("Estoy entendiendo qué querés organizar...", "loading");
     button.disabled = true;
 

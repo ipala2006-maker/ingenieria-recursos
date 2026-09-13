@@ -5,6 +5,10 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   const repeats = ['none', 'daily', 'weekdays', 'weekly', 'monthly'];
   const labels = { none: 'Una vez', daily: 'Todos los días', weekdays: 'Lunes a viernes', weekly: 'Cada semana', monthly: 'Cada mes' };
+  function hasIntent(value) {
+    const text = String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    return /\b(?:alarmas?|avisame|avisarme|avisar|recuerdame|recordame|recordarme|recordatorios?|notifica\w*)\b/.test(text);
+  }
   function dateKey(d) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
@@ -55,5 +59,5 @@
     const [y, m, d] = a.date.split('-');
     return `${d}/${m}/${y} · ${a.time} · ${labels[a.repeat]}`;
   }
-  return { normalize, next, due, occurrence, dateKey, describe, repeats, labels };
+  return { normalize, next, due, occurrence, dateKey, describe, repeats, labels, hasIntent };
 });

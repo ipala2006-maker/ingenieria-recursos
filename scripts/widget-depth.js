@@ -1,4 +1,4 @@
-import {createTimerDepth} from './timer-depth.js?v=20260910-widgets';
+import {createTimerDepth} from './timer-depth.js?v=20260913-phase';
 import {createProgressDepth} from './progress-depth.js?v=20260910-widgets';
 
 const instances=new WeakMap();

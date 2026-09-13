@@ -13,7 +13,7 @@ function snapshot(overrides = {}) {
     streakState:{days:{'day0':35,'day-1':60,'day-2':25}}, alarmActive:false,
     streakSummary:()=>({todayMinutes:35,currentStreak:3}),
     preciseRemainingSeconds:()=>1220.5, durationSeconds:()=>1500,
-    dateKey:offset=>'day'+offset, ...overrides
+    dateKey:offset=>'day'+offset, adoptTimerState:()=>false, ...overrides
   };
   vm.createContext(context);
   vm.runInContext(snapshotCode,context);
@@ -62,7 +62,7 @@ function adjustableTimer() {
   const context = {
     MAX_MINUTES:59, Date:{now:()=>700000},
     state:{remaining:1500,running:true,phase:'study',currentBlock:1,config:{blocks:4,study:25,break:5},studyCreditAt:100000,endAt:1600000,pendingStudySeconds:0,completedToday:0},
-    reconcileTimer:()=>{}, stopAlarm:()=>{}, saveState:()=>{}, render:()=>{},
+    reconcileTimer:()=>{}, stopAlarm:()=>{}, saveState:()=>{}, render:()=>{}, adoptTimerState:()=>false,
     durationSeconds:()=>context.state.config[context.state.phase]*60,
     safeEndTime:seconds=>700000+seconds*1000,
     recordStudyPresenceSeconds:seconds=>{ credited+=seconds; }

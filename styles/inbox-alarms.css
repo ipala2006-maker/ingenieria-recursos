@@ -8,18 +8,26 @@
 .inbox-alarm-form { grid-column:1/-1; width:100%; min-width:0; }
 .inbox-alarm-fields { border:0; padding:0; margin:12px 0; min-width:0; font-size:13px; }
 .inbox-alarm-fields svg,.inbox-alarm-button svg,.inbox-alarm-notice svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.7; }
-.inbox-alarm-switch { display:flex; gap:10px; align-items:center; min-height:42px; border-top:1px solid #8b9bb52b; }
-.inbox-alarm-switch input { margin-left:auto; width:18px; height:18px; accent-color:#8bb5ff; }
+.inbox-alarm-switch { display:flex; gap:10px; align-items:center; min-height:60px; border-top:1px solid #8b9bb52b; cursor:pointer; }
+.inbox-alarm-switch>span { flex:1; min-width:0; }
+.inbox-alarm-switch small { display:block; margin-top:3px; }
+.inbox-alarm-switch input { appearance:none; position:relative; flex:0 0 42px; margin:0 0 0 auto; width:42px; height:26px; border:1px solid #8b9bb577; border-radius:20px; background:var(--bg,#172336); cursor:pointer; }
+.inbox-alarm-switch input::after { content:''; position:absolute; left:3px; top:3px; width:18px; height:18px; border-radius:50%; background:#8b9bb5; transition:transform .15s; }
+.inbox-alarm-switch input:checked { background:#8bb5ff; border-color:#8bb5ff; }
+.inbox-alarm-switch input:checked::after { background:#10213a; transform:translateX(16px); }
+.inbox-alarm-fields :focus-visible { outline:2px solid #8bb5ff; outline-offset:3px; }
 .inbox-alarm-fields [hidden],.inbox-alarm-notice[hidden] { display:none!important; }
 .inbox-alarm-fields [data-alarm-options] { display:grid; gap:12px; padding:8px 0; }
 .inbox-alarm-fields label:not(.inbox-alarm-switch) { display:grid; gap:6px; min-width:0; }
 .inbox-alarm-date { display:grid; grid-template-columns:minmax(0,1.4fr) minmax(0,1fr); gap:10px; }
 .inbox-alarm-fields input:not([type=checkbox]),.inbox-alarm-fields select { box-sizing:border-box; width:100%; min-width:0; max-width:100%; min-height:40px; padding:8px; font:inherit; color:inherit; background:var(--bg,#0f1724); border:1px solid #8b9bb54a; border-radius:6px; }
+.inbox-alarm-fields input[type=date],.inbox-alarm-fields input[type=time],.inbox-alarm-fields select { min-height:44px; cursor:pointer; }
 .inbox-alarm-fields small { font-size:11px; line-height:1.5; opacity:.78; }
 .inbox-alarm-delivery summary { cursor:pointer; font-size:12px; }
 .inbox-alarm-delivery label { display:flex!important; align-items:flex-start; margin:10px 0; }
 .inbox-alarm-delivery input { accent-color:#8bb5ff; }
 .inbox-alarm-delivery a { display:block; margin-top:8px; color:inherit; }
+.inbox-alarm-fields [data-alarm-permission] { min-height:44px; padding:8px 12px; border:1px solid var(--border,#8b9bb54a); border-radius:6px; background:var(--panel,#172336); color:inherit; cursor:pointer; }
 .inbox-alarm-button { display:inline-flex; align-items:center; justify-content:center; flex:0 0 32px; width:32px; height:32px; padding:0; color:inherit; opacity:.65; background:transparent; border:1px solid transparent; border-radius:6px; cursor:pointer; }
 .inbox-alarm-button.is-set { color:#8bb5ff; opacity:1; }
 .inbox-alarm-button:hover { background:#8bb5ff1c; opacity:1; }
@@ -34,3 +42,4 @@
 .theme-light .inbox-alarm-fields input:not([type=checkbox]),.theme-light .inbox-alarm-fields select { background:#f5f7fb; color:#243047; }
 .theme-light .inbox-alarm-button.is-set { color:#365fa4; }
 @media(max-width:400px) { .inbox-alarm-dialog { padding:16px; }.inbox-alarm-date { grid-template-columns:minmax(0,1fr); } }
+@media(prefers-reduced-motion:reduce) { .inbox-alarm-switch input::after { transition:none; } }

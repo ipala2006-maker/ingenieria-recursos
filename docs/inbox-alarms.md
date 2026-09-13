@@ -2,7 +2,7 @@
 
 ## Uso
 
-- Al crear una tarea, activa **Alarma**, elige fecha, hora y repeticion.
+- Al crear una tarea, activa **Programar alarma**, elige dia, hora y repeticion.
 - La campana junto a una tarea permite cambiar o quitar su alarma.
 - Opciones: una vez, todos los dias, lunes a viernes, semanal o mensual.
 - La fecha de la alarma es independiente de la fecha de entrega. Una tarea
@@ -21,28 +21,38 @@ existente y sus limites existentes.
 
 ## PC Con La App Cerrada
 
-1. Actualiza el soporte de widgets de Windows a 1.4.0 (recompilar los paquetes
+1. Actualiza el soporte de widgets de Windows a 1.4.1 (recompilar los paquetes
    antes de publicar esta rama). No es necesario reinstalar la PWA.
 2. Mantene un widget conectado a la misma cuenta para recibir los cambios.
-3. En la alarma, abre **Avisos en esta PC** y activa **Usar avisos de Windows
-   con la app cerrada**. Guarda y espera que la cuenta termine de sincronizar.
+3. En la alarma, activa **Enviar tambien la alarma a Windows** en **Con la app
+   cerrada en Windows** y acepta el aviso que explica el comportamiento a
+   pantalla completa. Guarda y espera que la cuenta termine de sincronizar.
+   Las alarmas posteriores de IA reutilizan esta eleccion, no la decide el modelo.
 
 El instalador agrega una tarea del Programador de tareas para el usuario
 actual. No pide su contrasena, no eleva privilegios, no usa servicios pagos
-ni desactiva antivirus. Comprueba los avisos una vez por minuto: puede sonar
-hasta un minuto despues del horario. Tras sincronizar, funciona sin tener
+ni desactiva antivirus. La tarea y su lanzador permanecen ocultos cuando no
+hay avisos; no abren una consola cada minuto. Comprueba los avisos una vez por
+minuto: puede sonar hasta un minuto despues del horario. Tras sincronizar, funciona sin tener
 abierta la PWA, incluso sin conexion. Los cambios hechos en otro dispositivo
 requieren que un widget conectado los reciba.
+
+Cuando hay una alarma, Windows muestra una vista en la pantalla principal con
+el nombre de la tarea y repite el sonido hasta elegir **Entendido**, abrir
+Inbox, pulsar Escape o alcanzar el limite de seguridad de cinco minutos. La
+alerta conserva una salida visible y no bloquea los controles del sistema.
 
 La PC debe estar encendida, con la sesion iniciada y el volumen activo. No
 enciende la PC ni la despierta. Recupera avisos de los ultimos diez minutos;
 los anteriores no suenan todos juntos al regresar. Windows puede ocultar el
-aviso por No molestar. El sonido respeta volumen/salida del sistema.
+globo de respaldo por No molestar, pero no la vista principal. El sonido
+respeta volumen/salida del sistema.
 
-La opcion Windows evita duplicar el aviso en el navegador donde la activaste.
-Otra PC no silencia su aviso web solo por recibir una alarma sincronizada. Si no
-actualizaste el soporte, dejala desactivada para recibir el aviso con la app
-abierta. No se declara instalado un componente que no se pudo comprobar.
+El aviso web se mantiene como respaldo: marcar la opcion Windows no demuestra
+que el soporte este instalado. Con ambos activos y la app abierta pueden llegar
+dos avisos. No se declara instalado un componente que no se pudo comprobar.
+La app solicita el permiso web al activar la alarma; si fue denegado, muestra
+el estado bloqueado y conserva el aviso interno. No modifica permisos del SO.
 
 ## Otros Dispositivos
 
@@ -61,9 +71,12 @@ temporizador web en segundo plano.
 - `api/agenda-ai.js`: esquema validado del asistente. No activa el componente
   nativo por iniciativa del modelo, y no inventa alarmas para tareas comunes.
 - `windows-installer/InboxAlarm.ps1`: lee fragmentos base64 limitados, muestra
-  aviso y sonido. Solo guarda IDs/fechas de avisos emitidos por 14 dias.
+  la alarma a pantalla completa y reproduce sonido. Solo guarda IDs/fechas de
+  avisos emitidos por 14 dias.
 - `windows-installer/InstallInboxAlarm.ps1`: instala la tarea de Windows y
-  guarda la ruta real de los recursos (incluida la instalacion portable).
+  guarda la ruta real de los recursos (incluida la instalacion portable). La
+  tarea queda marcada como oculta y usa el modo `headless` nativo de la consola
+  de Windows, sin depender de Windows Script Host.
 
 El archivo `InboxAlarms.inc` contiene titulos y horarios locales en texto
 codificado, no cifrado. Tiene la misma privacidad local que los widgets y solo
@@ -72,7 +85,7 @@ en el widget limpia su programacion cuando recibe ese cambio. No puede
 borrar remotamente un archivo en una PC desconectada.
 
 Desactivar todas las alarmas Windows y sincronizar deja el archivo vacio.
-Para quitar el proceso opcional, elimina la tarea `Estudiemos Inbox <SID>` en
+Para quitar el proceso opcional, elimina la tarea `Estudiemos Inbox <usuario>` en
 el Programador de tareas de Windows; no afecta las demas tareas del sistema.
 
 ## Verificacion
@@ -80,8 +93,13 @@ el Programador de tareas de Windows; no afecta las demas tareas del sistema.
 `node --test tests/inbox-alarms.test.cjs` prueba fechas, repeticiones,
 cancelacion, contexto/validacion de IA y evaluacion real del script Windows
 en modo de prueba, sin instalar tareas del sistema ni mostrar notificaciones.
-La comprobacion del sonido fisico y la instalacion real deben realizarse al
-probar el paquete actualizado. No se realizaron con una cuenta de usuario real.
+El 13/09/2026 se actualizo el componente de alarmas en la PC de Ian y se
+verifico su tarea activa cada minuto, oculta y ejecutada con
+`conhost.exe --headless` sin consola. Una prueba nativa con datos piloto termino
+y registro la emision del
+aviso y la llamada al sonido. No se confirmo de oido la salida fisica de audio
+ni se forzo una alerta a pantalla completa durante la revision. La web publica
+sigue pendiente de publicar esta rama.
 
 Referencias: [Programador de tareas](https://learn.microsoft.com/en-us/windows/win32/taskschd/repeating-a-task),
 [sesion interactiva sin contrasena](https://learn.microsoft.com/en-us/windows/win32/taskschd/principal-logontype),

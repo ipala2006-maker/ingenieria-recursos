@@ -255,6 +255,7 @@ function validateInput(body) {
       agenda,
       subjects,
       today: cleanDate(source.today) || new Date().toISOString().slice(0, 10),
+      localTime: cleanTime(source.localTime),
       timezone: "America/Argentina/Buenos_Aires"
     }
   };
@@ -302,6 +303,7 @@ Reglas de razonamiento:
 - Si piden una alarma, avisame, recordame o una notificacion, usa alarm con date YYYY-MM-DD, time HH:MM y repeat none/daily/weekdays/weekly/monthly. Son horas locales de cada dispositivo. Sin pedido de alarma, omite alarm.
 - "Avisame todos los lunes a las 18" crea UNA tarea con alarm semanal, no una tarea por cada semana. Desde una fecha concreta o la proxima ocurrencia a partir de hoy. No uses createSchedules para duplicar alarmas.
 - Una alarma no necesita horaFin. Su hora va en alarm.time; no inventes un rango de estudio.
+- Para "en 10 minutos" calcula fecha y hora desde hoy y horaLocalActual recibidos. Si no hay horaLocalActual, pide una hora concreta. Nunca tomes la hora del servidor como hora del usuario.
 - Si falta la hora exacta de la alarma, pregunta en clarification. Si una recurrencia requiere varios dias no consecutivos o un intervalo no soportado, pide aclaracion; no la cambies silenciosamente.
 - Para quitar una alarma usa updates con alarm:null. Para cambiarla conserva su resto de datos. Una tarea sin alarma sigue siendo valida. La tarea completada no vuelve a sonar.
 - Si el usuario no menciona una fecha, un dia o una expresion temporal concreta, deja date como cadena vacia. No uses hoy ni el rango predeterminado y no pidas una fecha: la anotacion pertenece a Inbox.
@@ -319,6 +321,7 @@ Reglas de razonamiento:
   const userContext = {
     instruccion: input.instruction,
     hoy: input.today,
+    horaLocalActual: input.localTime || '',
     zonaHoraria: input.timezone,
     rangoPredeterminado: { desde: input.dateFrom, hasta: input.dateUntil },
     materiasConocidas: input.subjects,
@@ -407,19 +410,22 @@ function sanitizePlan(raw, input) {
       .slice(0, 100)
     : [];
 
-  const alarmIntent = /\b(?:alarma|alarmas|avisame|avisarme|recordame|recordarme|notifica\w*)\b/.test(normalizeText(input.instruction));
+  const alarmIntent = alarmRules.hasIntent(input.instruction);
+  const withoutAlarm = /\bsin\s+(?:alarmas?|notificaciones)\b/.test(normalizeText(input.instruction));
+  const relativeAlarmTime = !!input.localTime && /\b(?:en|dentro de)\s+\d{1,3}\s*(?:minutos?|min|horas?)\b/.test(normalizeText(input.instruction));
   let alarmClarification = '';
   for (const item of [...createEvents, ...updates]) {
     if (!Object.hasOwn(item, 'alarm')) continue;
     if (!alarmIntent) { delete item.alarm; continue; }
+    if (withoutAlarm) { if (item.id) item.alarm = null; else delete item.alarm; continue; }
     if (item.alarm) {
       const old = agenda.find(a => a.id === item.id)?.alarm;
-      if (!keepGeneratedTimes && !old) alarmClarification = '¿A qué hora querés que suene la alarma?';
-      if (!keepGeneratedTimes && old) item.alarm.time = old.time;
+      if (!keepGeneratedTimes && !relativeAlarmTime && !old) alarmClarification = '¿A qué hora querés que suene la alarma?';
+      if (!keepGeneratedTimes && !relativeAlarmTime && old) item.alarm.time = old.time;
       item.alarm.windows = old?.windows === true;
     }
   }
-  if (alarmIntent && !createEvents.some(i => i.alarm) && !updates.some(i => Object.hasOwn(i, 'alarm')) && !source.clarification) {
+  if (alarmIntent && !withoutAlarm && !createEvents.some(i => i.alarm) && !updates.some(i => Object.hasOwn(i, 'alarm')) && !source.clarification) {
     alarmClarification = 'Indicá la tarea, el día, la hora y cómo querés repetir la alarma.';
   }
 
@@ -475,6 +481,7 @@ function instructionHasExplicitTime(value) {
     /\b(?:a\s+las?|desde\s+las?|hasta\s+las?)\s+(?:[01]?\d|2[0-3])\b/.test(text) ||
     /\b(?:de|entre)\s+(?:las?\s+)?(?:[01]?\d|2[0-3])\s+(?:a|y)\s+(?:las?\s+)?(?:[01]?\d|2[0-3])\b/.test(text) ||
     /\b(?:[01]?\d|2[0-3])\s*(?:h|hs|am|pm)\b/.test(text) ||
+    /\ba\s+las?\s+(?:una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce)\b/.test(text) ||
     /\b(?:mediodia|medianoche)\b/.test(text)
   );
 }
@@ -603,8 +610,11 @@ function sanitizeCreatedEvent(item) {
   const title = cleanText(item.title, 90);
   const rawDate = String(item.date || "").trim();
   const date = cleanDate(rawDate);
-  const horaInicio = cleanTime(item.horaInicio);
-  const horaFin = cleanTime(item.horaFin);
+  let horaInicio = cleanTime(item.horaInicio);
+  let horaFin = cleanTime(item.horaFin);
+  const alarm = alarmRules.normalize(item.alarm);
+  // A model may repeat the alarm time as a start time. It is not an event range.
+  if (alarm && horaInicio === alarm.time && !horaFin) { horaInicio = ''; horaFin = ''; }
   if (!title || (rawDate && !date)) return null;
   if ((horaInicio || horaFin) && (!horaInicio || !horaFin || horaInicio >= horaFin)) return null;
   return {
@@ -616,7 +626,7 @@ function sanitizeCreatedEvent(item) {
     horaInicio,
     horaFin,
     done: Boolean(item.done),
-    ...(item.alarm && alarmRules.normalize(item.alarm) ? { alarm: alarmRules.normalize(item.alarm) } : {})
+    ...(alarm ? { alarm } : {})
   };
 }
 

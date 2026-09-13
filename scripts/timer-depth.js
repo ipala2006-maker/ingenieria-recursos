@@ -32,7 +32,7 @@ export function createTimerDepth(host, {home = false} = {}) {
   const tickGeometry = new THREE.BoxGeometry(1,4,2);
   for(let i=0;i<60;i++) ticks.add(new THREE.Mesh(tickGeometry,i%5===0 ? fillMaterial : trackMaterial));
   scene.add(back,track,fill,ticks);
-  let frame=0, disposed=false, visible=true, radius=0, arc=-1, angle=150;
+  let frame=0, disposed=false, visible=true, radius=0, arc=-1, angle=150, phase='study';
   function draw() {
     frame=0;
     if(disposed || document.hidden || !visible || host.closest('[hidden]') || (!home && host.closest('[aria-hidden="true"]'))) return;
@@ -65,7 +65,7 @@ export function createTimerDepth(host, {home = false} = {}) {
     }
     const colors=getComputedStyle(host);
     trackMaterial.color.set(colors.getPropertyValue('--border').trim());
-    fillMaterial.color.set(colors.getPropertyValue('--accent').trim());
+    fillMaterial.color.set(host.dataset.timerPhase === 'break' ? '#fbbc04' : colors.getPropertyValue('--accent').trim());
     baseMaterial.color.set(colors.getPropertyValue('--panel').trim());
     renderer.render(scene,camera);
     context.clearRect(0,0,surface.width,surface.height); context.drawImage(renderer.domElement,0,0);
@@ -99,5 +99,5 @@ export function createTimerDepth(host, {home = false} = {}) {
   }
   renderer.domElement.addEventListener('webglcontextlost',dispose,{once:true});
   schedule();
-  return {update(){const next=parseFloat(dial.style.getPropertyValue('--dial-angle')) || 0;if(next!==angle){angle=next;schedule();}},dispose};
+  return {update(){const next=parseFloat(dial.style.getPropertyValue('--dial-angle')) || 0;const nextPhase=host.dataset.timerPhase || 'study';if(next!==angle || nextPhase!==phase){angle=next;phase=nextPhase;schedule();}},dispose};
 }
