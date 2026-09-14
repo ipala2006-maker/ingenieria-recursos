@@ -86,6 +86,10 @@ If Not IsRainmeterRunning() Then
 End If
 
 command = Chr(34) & rainmeterPath & Chr(34) & " !ActivateConfig " & _
+  Chr(34) & "Estudiemos\AlarmBridge" & Chr(34) & " " & Chr(34) & "AlarmBridge.ini" & Chr(34)
+shell.Run command, 0, False
+
+command = Chr(34) & rainmeterPath & Chr(34) & " !ActivateConfig " & _
   Chr(34) & "Estudiemos\" & configName & Chr(34) & " " & Chr(34) & iniName & Chr(34)
 shell.Run command, 0, False
 WScript.Sleep 900
@@ -130,6 +134,12 @@ If IsSafeLinkToken(linkToken) Then
     Chr(34) & "WebView" & Chr(34) & " " & _
     Chr(34) & "Navigate https://estudiemos-app.vercel.app/api/widget-link?token=" & linkToken & Chr(34) & " " & _
     Chr(34) & "Estudiemos\" & configName & Chr(34)
+  shell.Run command, 0, False
+  WScript.Sleep 1800
+  command = Chr(34) & rainmeterPath & Chr(34) & " !CommandMeasure " & _
+    Chr(34) & "AlarmWeb" & Chr(34) & " " & _
+    Chr(34) & "Navigate https://estudiemos-app.vercel.app/api/widget-link?token=" & linkToken & Chr(34) & " " & _
+    Chr(34) & "Estudiemos\AlarmBridge" & Chr(34)
   shell.Run command, 0, False
 End If
 

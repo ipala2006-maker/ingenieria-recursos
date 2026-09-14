@@ -12,9 +12,10 @@
     "estudiemos_pomodoro_streak",
     "estudiemos_workspace_changed",
     "estudiemos_android_devices",
-    "estudiemos_theme"
+    "estudiemos_theme",
+    "estudiemos_home_layout"
   ];
-  const LIST_KEYS = new Set(SYNC_KEYS.filter((key) => !["estudiemos_theme", "estudiemos_pomodoro_streak", "estudiemos_workspace_changed"].includes(key)));
+  const LIST_KEYS = new Set(SYNC_KEYS.filter((key) => !["estudiemos_theme", "estudiemos_pomodoro_streak", "estudiemos_workspace_changed", "estudiemos_home_layout"].includes(key)));
   const PRIVATE_SYNC_KEYS = SYNC_KEYS.filter((key) => key !== "estudiemos_theme");
   const LINKED_USER_KEY = "estudiemos_cloud_user";
   const LOCAL_CHANGED_KEY = "estudiemos_cloud_local_changed";
