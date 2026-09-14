@@ -184,7 +184,7 @@
   function loadProductInterface() {
     if (document.querySelector('script[src*="scripts/product-ui.js"]')) return;
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/product-ui.js?v=20260909-console`;
+    script.src = `${rootPath}scripts/product-ui.js?v=20260914-custom`;
     document.head.appendChild(script);
   }
 
@@ -258,7 +258,7 @@
     if (document.querySelector('script[src*="scripts/bandeja.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/bandeja.js?v=20260912-alarm-sync`;
+    script.src = `${rootPath}scripts/bandeja.js?v=20260914-ai-alarms`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -270,7 +270,7 @@
     rules.src = `${rootPath}shared/inbox-alarms.js?v=20260912`;
     rules.onload = () => {
       const ui = document.createElement('script');
-      ui.src = `${rootPath}scripts/inbox-alarms.js?v=20260913-fullscreen`;
+      ui.src = `${rootPath}scripts/inbox-alarms.js?v=20260914-fullscreen`;
       document.head.appendChild(ui);
     };
     document.head.appendChild(rules);
@@ -326,7 +326,7 @@
     if (document.querySelector('script[src*="scripts/account.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/account.js?v=20260911-commercial-hidden`;
+    script.src = `${rootPath}scripts/account.js?v=20260914-custom`;
     script.defer = true;
     document.head.appendChild(script);
   }

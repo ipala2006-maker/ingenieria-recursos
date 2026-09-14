@@ -35,7 +35,7 @@ test('completed, removed, old and future alarms cannot trigger; midnight catchup
 });
 const file = path.join(root, 'api/agenda-ai.js');
 const sandbox = { require:createRequire(file), module:{exports:{}}, process:{env:{}}, Date, URL, setTimeout, clearTimeout };
-vm.runInNewContext(fs.readFileSync(file,'utf8') + '\nmodule.exports.test = {sanitizePlan, sanitizeAgendaItem, buildModelRequest};', sandbox);
+vm.runInNewContext(fs.readFileSync(file,'utf8') + '\nmodule.exports.test = {sanitizePlan, sanitizeAgendaItem, buildModelRequest, createSimpleAlarmPlan};', sandbox);
 const ai = sandbox.module.exports.test;
 function input(instruction, agenda=[]) { return {instruction, agenda, subjects:[], today:'2026-09-11', dateFrom:'2026-09-11', dateUntil:'2026-10-11',timezone:'America/Argentina/Buenos_Aires'}; }
 function raw(alarmValue) { return {createEvents:[{title:'Resolver guia',eventType:'Tarea',date:'',horaInicio:'',horaFin:'',alarm:alarmValue}]}; }
@@ -49,7 +49,40 @@ test('AI cannot invent alarm consent or silently choose an unmentioned time', ()
   const ordinary = ai.sanitizePlan(raw(alarm()),input('Anota resolver guia'));
   assert.equal(Object.hasOwn(ordinary.createEvents[0],'alarm'),false);
   assert.match(ai.sanitizePlan(raw(alarm()),input('Poneme una alarma para resolver guia')).clarification,/hora/);
-  assert.ok(ai.sanitizePlan(raw({...alarm(),repeat:'every-second'}),input('Alarma a las 18')).clarification);
+  const repaired=ai.sanitizePlan(raw({...alarm(),repeat:'every-second'}),{...input('Alarma a las 18'),localTime:'12:00'});
+  assert.equal(repaired.clarification,'');
+  assert.equal(repaired.createEvents[0].alarm.time,'18:00');
+  assert.equal(repaired.createEvents[0].alarm.repeat,'none');
+});
+
+test('clear natural alarms survive an empty or malformed model plan', () => {
+  const tomorrow=ai.sanitizePlan({clarification:'¿Qué día y hora querés?'},{...input('Recordame entregar el informe mañana a las 18:30'),localTime:'10:15'});
+  assert.equal(tomorrow.clarification,'');
+  assert.equal(tomorrow.createEvents.length,1);
+  assert.equal(tomorrow.createEvents[0].title,'entregar el informe');
+  assert.equal(tomorrow.createEvents[0].alarm.date,'2026-09-12');
+  assert.equal(tomorrow.createEvents[0].alarm.time,'18:30');
+  const relative=ai.sanitizePlan({}, {...input('Avisame en 20 minutos de repasar cálculo'),localTime:'23:50'});
+  assert.equal(relative.createEvents[0].alarm.date,'2026-09-12');
+  assert.equal(relative.createEvents[0].alarm.time,'00:10');
+});
+
+test('clear alarm commands bypass the model and understand compact am/pm times', () => {
+  const tomorrow=ai.createSimpleAlarmPlan({...input('Avisame mañana a las 18 de entregar el trabajo'),localTime:'10:15'});
+  assert.equal(tomorrow.clarification,'');
+  assert.equal(tomorrow.createEvents[0].title,'entregar el trabajo');
+  assert.equal(tomorrow.createEvents[0].alarm.date,'2026-09-12');
+  assert.equal(tomorrow.createEvents[0].alarm.time,'18:00');
+  const evening=ai.createSimpleAlarmPlan({...input('Recordame repasar hoy 8pm'),localTime:'10:15'});
+  assert.equal(evening.createEvents[0].alarm.date,'2026-09-11');
+  assert.equal(evening.createEvents[0].alarm.time,'20:00');
+});
+
+test('a partial event time never rejects the task', () => {
+  const plan=ai.sanitizePlan({createEvents:[{title:'Preparar parcial',eventType:'Tarea',date:'',horaInicio:'18:00',horaFin:''}]},input('Anota preparar parcial'));
+  assert.equal(plan.createEvents.length,1);
+  assert.equal(plan.createEvents[0].horaInicio,'');
+  assert.equal(plan.createEvents[0].horaFin,'');
 });
 
 test('natural alarm phrases route to Inbox and support hours written in words', () => {
@@ -139,6 +172,18 @@ test('Windows alarm task uses headless console mode and stays hidden between che
   assert.doesNotMatch(packageSource,/InboxAlarmLauncher\.vbs/);
 });
 
+test('Windows keeps a hidden alarm bridge active without visible widgets', () => {
+  const bridge=fs.readFileSync(path.join(root,'windows-rainmeter/Skins/Estudiemos/AlarmBridge/AlarmBridge.ini'),'utf8');
+  const packageSource=fs.readFileSync(path.join(root,'windows-installer/Estudiemos-Windows.iss'),'utf8');
+  const launcher=fs.readFileSync(path.join(root,'windows-installer/WidgetLauncher.vbs'),'utf8');
+  assert.match(bridge,/WindowX=-10000/);
+  assert.match(bridge,/ClickThrough=1/);
+  assert.match(bridge,/refreshFromCloud/);
+  assert.match(packageSource,/ActivateConfig \"Estudiemos\\AlarmBridge\"/);
+  assert.match(launcher,/Estudiemos\\AlarmBridge/);
+  assert.match(packageSource,/#define AppVersion \"1\.5\.0\"/);
+});
+
 test('due Windows alarms show their names in a dismissible full-screen alert with looping sound', () => {
   const source=fs.readFileSync(path.join(root,'windows-installer/InboxAlarm.ps1'),'utf8');
   assert.match(source,/FormBorderStyle\]::None/);
@@ -146,6 +191,7 @@ test('due Windows alarms show their names in a dismissible full-screen alert wit
   assert.match(source,/\.TopMost\s*=\s*\$true/);
   assert.match(source,/\$alarmName\.Text\s*=\s*\(\$titles -join/);
   assert.match(source,/PlayLooping\(\)/);
+  assert.match(source,/Media\\Ring05\.wav/);
   assert.match(source,/\$dismissButton\.Text\s*=\s*'Entendido'/);
   assert.match(source,/Keys\]::Escape/);
 });

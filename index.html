@@ -31,7 +31,7 @@
     <link rel="stylesheet" href="./styles/study-home.css?v=20260910-motion" />
     <link rel="stylesheet" href="./styles/interaction.css?v=20260913-phase" />
     <link rel="stylesheet" href="./styles/study-depth.css?v=20260909-depth2" />
-    <link rel="stylesheet" href="./styles/home-console.css?v=20260911-light" />
+    <link rel="stylesheet" href="./styles/home-console.css?v=20260914-custom-2" />
   </head>
 
   <body class="workspace-home">
@@ -48,10 +48,15 @@
       <section class="study-home" aria-labelledby="studyHomeTitle" data-study-home>
         <header class="study-home__head">
           <div><p class="workspace-eyebrow" data-home-date>Tu día de estudio</p><h1 id="studyHomeTitle">Tu día, en orden.</h1></div>
-          <span class="study-home__presence" data-home-presence>Hoy, a tu ritmo</span>
+          <div class="study-home__head-actions">
+            <span class="study-home__presence" data-home-presence>Hoy, a tu ritmo</span>
+            <button class="study-home__customize" type="button" data-home-customize aria-label="Personalizar pantalla de inicio" title="Personalizar inicio">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10M14 4v6M7 14v6"/></svg>
+            </button>
+          </div>
         </header>
         <div class="study-home__tools">
-          <section class="study-focus" aria-labelledby="homeFocusTitle">
+          <section class="study-focus" aria-labelledby="homeFocusTitle" data-home-space="focus">
             <header class="study-tool-head"><h2 id="homeFocusTitle">Pomodoro</h2><button type="button" class="study-icon" data-home-open="pomodoro" aria-label="Abrir temporizador Pomodoro" title="Abrir Pomodoro">↗</button></header>
             <div class="study-focus__body">
               <div class="study-focus__stage" data-home-depth>
@@ -82,7 +87,7 @@
               <button type="button" class="study-session__done" data-home-session-done>Listo</button>
             </details>
           </section>
-          <section class="study-progress" aria-labelledby="homeProgressTitle">
+          <section class="study-progress" aria-labelledby="homeProgressTitle" data-home-space="progress">
             <header class="study-tool-head"><h2 id="homeProgressTitle">Tu progreso</h2><button type="button" class="study-icon" data-home-open="streak" aria-label="Abrir estadísticas de la racha" title="Todas las estadísticas">↗</button></header>
             <div class="study-progress__numbers"><div><span>Hoy</span><strong data-home-today>0 h 0 min</strong></div><div><span>Últimos 7 días</span><strong data-home-week>0 h 0 min</strong></div></div>
             <div class="study-progress__period"><button type="button" data-home-period-step="-1" aria-label="Período de estudio anterior" title="Período anterior">‹</button><span data-home-period-label>Últimos 7 días</span><button type="button" data-home-period-step="1" aria-label="Período de estudio siguiente" title="Período siguiente">›</button><div role="group" aria-label="Período del progreso"><button type="button" data-home-range="week" aria-pressed="true">Semana</button><button type="button" data-home-range="month" aria-pressed="false">Mes</button></div></div>
@@ -91,17 +96,26 @@
             <input class="study-progress__scrubber" type="range" min="0" max="6" step="1" value="6" data-home-day-scrubber aria-label="Seleccionar día de estudio">
             <div class="study-progress__foot"><span class="study-progress__streak"><span data-home-flame aria-hidden="true"></span><span data-home-streak>0 días de racha</span></span><span data-home-chart-detail role="status">Todavía sin sesiones</span></div>
           </section>
-          <section class="study-assistant" aria-labelledby="homeAssistantTitle">
+          <section class="study-assistant" aria-labelledby="homeAssistantTitle" data-home-space="assistant">
             <header class="study-tool-head"><h2 id="homeAssistantTitle">Organizador IA</h2><div class="study-model-controls"><button type="button" class="study-icon" data-home-motion aria-label="Pausar movimiento 3D" title="Pausar movimiento 3D" aria-pressed="true" hidden></button><button type="button" class="study-icon" data-home-open="assistant" aria-label="Abrir chat del organizador" title="Abrir chat">↗</button></div></header>
             <div class="study-assistant__route" aria-label="Herramientas conectadas"><span class="study-assistant__hub" data-home-ai-icon aria-hidden="true"></span><div class="study-assistant__destinations"><button type="button" data-home-destination="inbox" title="Abrir Inbox"><span data-home-node="inbox" aria-hidden="true"></span><span>Inbox</span></button><button type="button" data-home-destination="calendar" title="Abrir calendario"><span data-home-node="calendar" aria-hidden="true"></span><span>Calendario</span></button><button type="button" data-home-destination="space" title="Abrir Mi espacio"><span data-home-node="space" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 6.5h6l2 2h10v10H3v-12Z"/></svg></span><span>Mi espacio</span></button></div></div>
             <form data-home-ai-form class="study-assistant__composer"><label for="homeAiPrompt">¿Qué organizamos?</label><textarea id="homeAiPrompt" maxlength="1200" rows="2" placeholder="Anotá un repaso de Física para mañana..."></textarea><button type="submit" class="study-icon" aria-label="Abrir chat con esta indicación" title="Continuar en el chat">↑</button></form>
             <div class="study-assistant__suggestions"><button type="button" data-home-prompt="Ayudame a organizar mi semana.">Mi semana <span aria-hidden="true">↗</span></button><button type="button" data-home-prompt="Ayudame a ordenar mis carpetas y archivos.">Mis archivos <span aria-hidden="true">↗</span></button></div>
           </section>
         </div>
-        <nav class="study-home__shortcuts" aria-label="Tu organización"><button type="button" data-home-shortcut="space"><span>Mi espacio</span><small>Carpetas y archivos</small><b aria-hidden="true">↗</b></button><button type="button" data-home-shortcut="calendar"><span>Calendario</span><small data-home-next>Tu semana</small><b aria-hidden="true">↗</b></button><button type="button" data-home-shortcut="inbox"><span>Inbox</span><small data-home-pending>Sin pendientes</small><b aria-hidden="true">↗</b></button></nav>
+        <nav class="study-home__shortcuts" aria-label="Tu organización" data-home-space="shortcuts"><button type="button" data-home-shortcut="space"><span>Mi espacio</span><small>Carpetas y archivos</small><b aria-hidden="true">↗</b></button><button type="button" data-home-shortcut="calendar"><span>Calendario</span><small data-home-next>Tu semana</small><b aria-hidden="true">↗</b></button><button type="button" data-home-shortcut="inbox"><span>Inbox</span><small data-home-pending>Sin pendientes</small><b aria-hidden="true">↗</b></button></nav>
       </section>
+      <dialog class="home-customizer" data-home-customizer aria-labelledby="homeCustomizerTitle">
+        <form method="dialog">
+          <header><div><span>Inicio</span><h2 id="homeCustomizerTitle">Tu pantalla, a tu manera</h2></div><button type="submit" class="home-customizer__close" aria-label="Cerrar personalización" title="Cerrar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header>
+          <p>Elegí qué herramientas querés tener a la vista.</p>
+          <fieldset><legend>Espacios visibles</legend><div class="home-customizer__spaces" data-home-customizer-spaces></div></fieldset>
+          <fieldset><legend>Tamaño de la interfaz</legend><div class="home-customizer__density" role="radiogroup" aria-label="Tamaño de la interfaz"><label><input type="radio" name="homeDensity" value="comfortable"><span>Cómodo<small>Más aire y detalle</small></span></label><label><input type="radio" name="homeDensity" value="compact"><span>Compacto<small>Más contenido visible</small></span></label></div></fieldset>
+          <footer><button type="button" data-home-customizer-reset>Restablecer</button><button type="submit" class="home-customizer__done">Listo</button></footer>
+        </form>
+      </dialog>
       <div class="home-layout">
-        <section class="workspace-section" id="mi-espacio" aria-labelledby="workspaceSectionTitle">
+        <section class="workspace-section" id="mi-espacio" aria-labelledby="workspaceSectionTitle" data-home-space="workspace">
           <header class="workspace-section__head">
             <div class="workspace-section__intro">
               <p class="workspace-eyebrow">Archivos personales</p>
@@ -166,7 +180,7 @@
 
         <section class="home-dashboard" aria-label="Calendario e Inbox">
           <div class="home-dashboard__grid">
-            <section class="dashboard-widget dashboard-calendar" aria-label="Calendario académico" data-dashboard-calendar-widget>
+            <section class="dashboard-widget dashboard-calendar" aria-label="Calendario académico" data-dashboard-calendar-widget data-home-space="calendar">
               <header class="dashboard-widget__head">
                 <div>
                   <span class="dashboard-widget__eyebrow">Calendario</span>
@@ -192,7 +206,7 @@
               <div class="dashboard-calendar__grid" data-dashboard-calendar></div>
             </section>
 
-            <section class="dashboard-widget dashboard-agenda" aria-labelledby="dashboardAgendaTitle">
+            <section class="dashboard-widget dashboard-agenda" aria-labelledby="dashboardAgendaTitle" data-home-space="inbox">
               <header class="dashboard-widget__head">
                 <div>
                   <span class="dashboard-widget__eyebrow">Pendientes</span>
@@ -224,12 +238,13 @@
 
     <!-- DATA SIEMPRE PRIMERO -->
     <script src="./data/data.js?v=20260804-quimica-completa"></script>
-    <script src="./scripts/global-search.js?v=20260913-alarm-sync"></script>
+    <script src="./scripts/global-search.js?v=20260914-custom-alarms"></script>
 
     <script src="./shared/plans.js?v=20260827-real-plans"></script>
     <script src="./scripts/workspace.js?v=20260911-commercial-hidden"></script>
     <script src="./scripts/dashboard.js?v=20260912-alarm-sync"></script>
     <script type="module" src="./scripts/study-home.js?v=20260913-phase"></script>
+    <script src="./scripts/home-customizer.js?v=20260914"></script>
 
     <script src="./scripts/page-shell.js?v=20260831-launch-audit"></script>
 

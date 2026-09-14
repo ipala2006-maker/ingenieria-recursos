@@ -20,6 +20,14 @@
   const views = [...(overview ? [['overview','Inicio',overview]] : []), ['space','Mi espacio',workspace],['calendar','Calendario',calendar],['inbox','Inbox',inbox]];
   const panelLabels = new Map(views.map(([, , panel]) => [panel, panel.getAttribute('aria-labelledby')]));
   let current = views.some(([key]) => key === history.state?.homeView) ? history.state.homeView : views[0][0];
+  const isVisible = key => {
+    if (key === 'overview') return true;
+    const mapped = key === 'space' ? 'workspace' : key;
+    try {
+      const value = JSON.parse(localStorage.getItem('estudiemos_home_layout') || '{}');
+      return value.visible?.[mapped] !== false;
+    } catch (_) { return true; }
+  };
   for (const [key,label,panel] of views) {
     const button = document.createElement('button');
     button.type = 'button';
@@ -33,6 +41,7 @@
   }
   page.appendChild(nav);
   const render = () => {
+    if (!isVisible(current)) current = 'overview';
     if(mobile.matches && history.state?.estudiemosUi==='home-session') current='overview';
     nav.hidden = !mobile.matches;
     if (overview) overview.hidden = mobile.matches && current !== 'overview';
@@ -43,6 +52,7 @@
     inbox.hidden = mobile.matches && current !== 'inbox';
     for (const [key,,panel] of views) {
       const button = nav.querySelector(`[data-home-view="${key}"]`);
+      button.hidden = !isVisible(key);
       button.setAttribute('aria-selected', String(key === current));
       button.tabIndex = key === current ? 0 : -1;
       panel.inert = mobile.matches && key !== current;
@@ -81,6 +91,8 @@
     nav.querySelector(`[data-home-view="${current}"]`).focus();
   });
   mobile.addEventListener('change', render);
+  window.addEventListener('estudiemos:home-customized', render);
+  window.addEventListener('estudiemos:cloud-restored', render);
   window.addEventListener('popstate', event => {
     current = views.some(([key]) => key === event.state?.homeView) ? event.state.homeView : views[0][0];
     render();

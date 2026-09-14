@@ -174,6 +174,8 @@ module.exports = async function agendaAi(request, response) {
 };
 
 async function createAgendaPlan(input) {
+  const deterministic = createSimpleAlarmPlan(input);
+  if (deterministic) return deterministic;
   const { modelResponse, payload } = await requestModel(buildModelRequest(input));
   if (!modelResponse.ok) {
     const error = new Error("Agenda AI request failed");
@@ -183,6 +185,22 @@ async function createAgendaPlan(input) {
   }
   const text = payload?.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("") || "";
   return sanitizePlan(JSON.parse(text), input);
+}
+
+function createSimpleAlarmPlan(input) {
+  const text = normalizeText(input.instruction);
+  const beginsAsAlarm = /^(?:poneme|programame|programa|creame|crea|agregame|agrega|recordame|avisame|alarma|recordatorio)\b/.test(text);
+  const editsExisting = /\b(?:cambia|modifica|quita|elimina|borra|mueve)\b/.test(text);
+  const inferred = inferAlarmFromInstruction(input);
+  if (!beginsAsAlarm || editsExisting || !inferred) return null;
+  const title = fallbackAlarmTitle(input.instruction);
+  return sanitizePlan({
+    summary: `Alarma para ${title}`,
+    clarification: '',
+    createSchedules: [],
+    createEvents: [{ title, eventType: 'Recordatorio', date: '', subject: '', note: '', horaInicio: '', horaFin: '', done: false, alarm: inferred }],
+    deleteIds: [], deleteRules: [], updates: []
+  }, input);
 }
 
 async function requestModel(body) {
@@ -413,6 +431,7 @@ function sanitizePlan(raw, input) {
   const alarmIntent = alarmRules.hasIntent(input.instruction);
   const withoutAlarm = /\bsin\s+(?:alarmas?|notificaciones)\b/.test(normalizeText(input.instruction));
   const relativeAlarmTime = !!input.localTime && /\b(?:en|dentro de)\s+\d{1,3}\s*(?:minutos?|min|horas?)\b/.test(normalizeText(input.instruction));
+  const inferredAlarm = inferAlarmFromInstruction(input);
   let alarmClarification = '';
   for (const item of [...createEvents, ...updates]) {
     if (!Object.hasOwn(item, 'alarm')) continue;
@@ -425,13 +444,33 @@ function sanitizePlan(raw, input) {
       item.alarm.windows = old?.windows === true;
     }
   }
+  if (alarmIntent && !withoutAlarm && inferredAlarm) {
+    let target = createEvents[0];
+    if (!target) target = updates.find(item => item.id);
+    if (!target && !createSchedules.length && !deleteIds.length) {
+      target = sanitizeCreatedEvent({
+        title: fallbackAlarmTitle(input.instruction),
+        eventType: 'Recordatorio',
+        date: '', subject: '', note: '', horaInicio: '', horaFin: '', done: false
+      });
+      if (target) createEvents.push(target);
+    }
+    if (target) {
+      const old = agenda.find(item => item.id === target.id)?.alarm;
+      target.alarm = { ...inferredAlarm, windows: old?.windows === true };
+      alarmClarification = '';
+    }
+  }
   if (alarmIntent && !withoutAlarm && !createEvents.some(i => i.alarm) && !updates.some(i => Object.hasOwn(i, 'alarm')) && !source.clarification) {
     alarmClarification = 'Indicá la tarea, el día, la hora y cómo querés repetir la alarma.';
   }
 
+  let modelClarification = cleanText(source.clarification, 300);
+  if (inferredAlarm && /\b(?:alarma|hora|dia|fecha|cuando)\b/.test(normalizeText(modelClarification))) modelClarification = '';
+
   return {
     summary: cleanText(source.summary, 300) || "Plan de cambios listo para revisar.",
-    clarification: cleanText(source.clarification, 300) || alarmClarification,
+    clarification: modelClarification || alarmClarification,
     createSchedules,
     createEvents,
     deleteIds,
@@ -616,7 +655,10 @@ function sanitizeCreatedEvent(item) {
   // A model may repeat the alarm time as a start time. It is not an event range.
   if (alarm && horaInicio === alarm.time && !horaFin) { horaInicio = ''; horaFin = ''; }
   if (!title || (rawDate && !date)) return null;
-  if ((horaInicio || horaFin) && (!horaInicio || !horaFin || horaInicio >= horaFin)) return null;
+  if ((horaInicio || horaFin) && (!horaInicio || !horaFin || horaInicio >= horaFin)) {
+    horaInicio = '';
+    horaFin = '';
+  }
   return {
     title,
     type: validType(item.eventType) || "Tarea",
@@ -628,6 +670,106 @@ function sanitizeCreatedEvent(item) {
     done: Boolean(item.done),
     ...(alarm ? { alarm } : {})
   };
+}
+
+function inferAlarmFromInstruction(input) {
+  const original = String(input.instruction || '').toLowerCase();
+  const text = normalizeText(original);
+  if (!alarmRules.hasIntent(text) || /\bsin\s+(?:alarmas?|notificaciones)\b/.test(text)) return null;
+
+  const relative = text.match(/\b(?:en|dentro de)\s+(\d{1,3})\s*(minutos?|min|horas?)\b/);
+  if (relative && input.localTime) {
+    const start = parseLocalParts(input.today, input.localTime);
+    if (start) {
+      const amount = Number(relative[1]) * (/hora/.test(relative[2]) ? 60 : 1);
+      const at = new Date(start.getTime() + amount * 60000);
+      return { date: utcDateKey(at), time: utcTimeKey(at), repeat: 'none', windows: false };
+    }
+  }
+
+  const time = extractInstructionTime(original, text);
+  if (!time) return null;
+  const repeat = /\b(?:todos los dias|cada dia|diariamente)\b/.test(text)
+    ? 'daily'
+    : /\b(?:lunes a viernes|dias habiles|entre semana)\b/.test(text)
+      ? 'weekdays'
+      : /\b(?:todos los meses|cada mes|mensualmente)\b/.test(text)
+        ? 'monthly'
+        : /\b(?:cada|todos los)\s+(?:lunes|martes|miercoles|jueves|viernes|sabado|domingo)\b/.test(text)
+          ? 'weekly'
+          : 'none';
+  const date = extractInstructionDate(original, text, input.today, input.localTime, time);
+  return date ? { date, time, repeat, windows: false } : null;
+}
+
+function extractInstructionTime(original, text) {
+  if (/\bmedianoche\b/.test(text)) return '00:00';
+  if (/\bmediodia\b/.test(text)) return '12:00';
+  let match = original.match(/\b(?:a|para)\s+las?\s+([0-2]?\d)(?::([0-5]\d))?\s*(am|pm|h|hs)?\b/i)
+    || original.match(/\b([01]?\d|2[0-3]):([0-5]\d)\s*(am|pm)?\b/i);
+  if (match) {
+    let hour = Number(match[1]);
+    const minute = Number(match[2] || 0);
+    const suffix = String(match[3] || '').toLowerCase();
+    if (suffix === 'pm' && hour < 12) hour += 12;
+    if (suffix === 'am' && hour === 12) hour = 0;
+    if (hour <= 23) return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  }
+  const directAmPm = original.match(/\b(1[0-2]|0?[1-9])\s*(am|pm)\b/i);
+  if (directAmPm) {
+    let hour = Number(directAmPm[1]);
+    const suffix = directAmPm[2].toLowerCase();
+    if (suffix === 'pm' && hour < 12) hour += 12;
+    if (suffix === 'am' && hour === 12) hour = 0;
+    return `${String(hour).padStart(2, '0')}:00`;
+  }
+  const words = { una:1, dos:2, tres:3, cuatro:4, cinco:5, seis:6, siete:7, ocho:8, nueve:9, diez:10, once:11, doce:12 };
+  match = text.match(/\b(?:a|para)\s+las?\s+(una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce)(?:\s+y\s+(media|cuarto))?(?:\s+de\s+la\s+(manana|tarde|noche))?/);
+  if (!match) return '';
+  let hour = words[match[1]], minute = match[2] === 'media' ? 30 : match[2] === 'cuarto' ? 15 : 0;
+  if (['tarde', 'noche'].includes(match[3]) && hour < 12) hour += 12;
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
+function extractInstructionDate(original, text, today, localTime, alarmTime) {
+  const exact = original.match(/\b(20\d{2}-\d{2}-\d{2})\b/);
+  if (exact && cleanDate(exact[1])) return exact[1];
+  const base = parseLocalParts(today, localTime || '00:00');
+  if (!base) return '';
+  if (/\bpasado manana\b/.test(text)) return utcDateKey(new Date(base.getTime() + 2 * 86400000));
+  if (/\bmanana\b/.test(text)) return utcDateKey(new Date(base.getTime() + 86400000));
+  if (/\bhoy\b/.test(text)) return today;
+  const names = { domingo:0, lunes:1, martes:2, miercoles:3, jueves:4, viernes:5, sabado:6 };
+  const weekday = Object.keys(names).find(name => new RegExp(`\\b${name}\\b`).test(text));
+  if (weekday) {
+    let days = (names[weekday] - base.getUTCDay() + 7) % 7;
+    if (!days && localTime && alarmTime <= localTime) days = 7;
+    return utcDateKey(new Date(base.getTime() + days * 86400000));
+  }
+  if (localTime && alarmTime > localTime) return today;
+  return utcDateKey(new Date(base.getTime() + 86400000));
+}
+
+function parseLocalParts(date, time) {
+  if (!cleanDate(date) || !cleanTime(time)) return null;
+  const [year, month, day] = date.split('-').map(Number);
+  const [hour, minute] = time.split(':').map(Number);
+  return new Date(Date.UTC(year, month - 1, day, hour, minute));
+}
+
+function utcDateKey(date) { return date.toISOString().slice(0, 10); }
+function utcTimeKey(date) { return date.toISOString().slice(11, 16); }
+
+function fallbackAlarmTitle(value) {
+  const cleaned = String(value || '')
+    .replace(/^\s*(?:poneme|programa(?:me)?|crea(?:me)?|agrega(?:me)?|quiero)\s+(?:una\s+)?(?:alarma|notificacion|recordatorio)\s*(?:para|de|que)?\s*/i, '')
+    .replace(/^\s*(?:recordame|recuérdame|avisame|avísame)\s*/i, '')
+    .replace(/^\s*(?:en|dentro de)\s+\d{1,3}\s*(?:minutos?|min|horas?)\s*(?:de|para)?\s*/i, '')
+    .replace(/^\s*(?:(?:hoy|mañana|pasado mañana|el\s+(?:lunes|martes|miércoles|jueves|viernes|sábado|domingo))\s*)?(?:(?:a|para)\s+las?\s+)(?:[0-2]?\d(?::[0-5]\d)?|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce)(?:\s+y\s+(?:media|cuarto))?(?:\s+de\s+la\s+(?:mañana|tarde|noche))?\s*(?:am|pm|h|hs)?\s*(?:de|para)?\s*/i, '')
+    .replace(/\s+(?:hoy|mañana|pasado mañana|el\s+(?:lunes|martes|miércoles|jueves|viernes|sábado|domingo))\b.*$/i, '')
+    .replace(/\s+(?:a|para)\s+las?\s+.*$/i, '')
+    .trim();
+  return cleanText(cleaned, 90) || 'Recordatorio';
 }
 
 function sanitizeUpdate(item, validIds) {

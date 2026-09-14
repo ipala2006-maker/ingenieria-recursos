@@ -1026,9 +1026,13 @@
     const title = String(event.title || "").trim().slice(0, 90);
     const dateValue = String(event.date || "").trim();
     const date = dateValue ? parseDateValue(dateValue) : null;
-    const horaInicio = validAgendaAssistantTime(event.horaInicio);
-    const horaFin = validAgendaAssistantTime(event.horaFin);
-    if (!title || (dateValue && !date) || ((horaInicio || horaFin) && (!horaInicio || !horaFin || horaInicio >= horaFin))) return null;
+    let horaInicio = validAgendaAssistantTime(event.horaInicio);
+    let horaFin = validAgendaAssistantTime(event.horaFin);
+    if (!title || (dateValue && !date)) return null;
+    if ((horaInicio || horaFin) && (!horaInicio || !horaFin || horaInicio >= horaFin)) {
+      horaInicio = "";
+      horaFin = "";
+    }
     return {
       id: `agenda:${Date.now()}:ai:${cryptoRandomId()}`,
       title,

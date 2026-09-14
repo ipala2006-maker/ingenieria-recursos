@@ -107,7 +107,7 @@ function Show-FullScreenInboxAlarm {
   $form.AcceptButton = $dismissButton
   $form.Add_KeyDown({ param($sender, $eventArgs); if ($eventArgs.KeyCode -eq [Windows.Forms.Keys]::Escape) { $form.Close() } })
 
-  $soundFile = Join-Path $env:WINDIR 'Media\Alarm01.wav'
+  $soundFile = Join-Path $env:WINDIR 'Media\Ring05.wav'
   $player = $null
   if (Test-Path -LiteralPath $soundFile) {
     $player = New-Object System.Media.SoundPlayer($soundFile)

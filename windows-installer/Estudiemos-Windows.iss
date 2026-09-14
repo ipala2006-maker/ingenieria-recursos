@@ -1,4 +1,4 @@
-#define AppVersion "1.4.1"
+#define AppVersion "1.5.0"
 #define RainmeterInstaller "Rainmeter-4.5.26.exe"
 #ifndef OutputBaseName
   #define OutputBaseName "Estudiemos-Widgets-para-Windows"
@@ -185,6 +185,9 @@ begin
     Sleep(1800);
     ExecAsOriginalUser(RainmeterExe, '!RefreshApp', GetRainmeterDirectory(''), SW_HIDE,
       ewWaitUntilTerminated, ResultCode);
+    ExecAsOriginalUser(RainmeterExe,
+      '!ActivateConfig "Estudiemos\AlarmBridge" "AlarmBridge.ini"',
+      GetRainmeterDirectory(''), SW_HIDE, ewWaitUntilTerminated, ResultCode);
     ReminderScript := ExpandConstant('{app}\StreakReminder.ps1');
     Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
       '-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + ExpandConstant('{app}\InstallInboxAlarm.ps1') + '" -ResourceDirectory "' + GetSkinDirectory('') + '\Estudiemos\@Resources"',
