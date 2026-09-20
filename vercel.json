@@ -29,6 +29,14 @@
       ]
     },
     {
+      "source": "/downloads/Activar-Alarmas-Estudiemos.exe",
+      "headers": [
+        { "key": "Content-Type", "value": "application/octet-stream" },
+        { "key": "Content-Disposition", "value": "attachment; filename=\"Activar-Alarmas-Estudiemos.exe\"" },
+        { "key": "Cache-Control", "value": "no-cache, max-age=0" }
+      ]
+    },
+    {
       "source": "/downloads/Estudiemos-Widgets-para-Windows.exe",
       "headers": [
         { "key": "Content-Type", "value": "application/octet-stream" },

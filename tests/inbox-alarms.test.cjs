@@ -235,7 +235,7 @@ test('Windows keeps a hidden alarm bridge active without visible widgets', () =>
   assert.match(bridge,/refreshFromCloud/);
   assert.match(packageSource,/ActivateConfig \"Estudiemos\\AlarmBridge\"/);
   assert.match(launcher,/Estudiemos\\AlarmBridge/);
-  assert.match(packageSource,/#define AppVersion \"1\.6\.0\"/);
+  assert.match(packageSource,/#define AppVersion \"1\.6\.1\"/);
 });
 
 test('due Windows alarms show their names in a dismissible full-screen alert with looping sound', () => {
@@ -248,4 +248,20 @@ test('due Windows alarms show their names in a dismissible full-screen alert wit
   assert.match(source,/Media\\Ring05\.wav/);
   assert.match(source,/\$dismissButton\.Text\s*=\s*'Entendido'/);
   assert.match(source,/Keys\]::Escape/);
+});
+
+test('independent alarm installer has no widgets and the launcher accepts only scoped actions', () => {
+  const source=fs.readFileSync(path.join(root,'windows-installer/Estudiemos-Alarms.iss'),'utf8');
+  const launcher=fs.readFileSync(path.join(root,'windows-installer/AlarmLauncher.vbs'),'utf8');
+  assert.doesNotMatch(source,/rainmeter|\.rmskin|vendor\\/i);
+  assert.match(source,/PrivilegesRequired=lowest/);
+  assert.match(source,/estudiemos-alarms/);
+  assert.match(launcher,/-TestAlert/);
+  assert.match(launcher,/A-Za-z0-9_/);
+  assert.match(launcher,/2048/);
+});
+
+test('native test mode can be verified without changing tasks or displaying an alert', {skip:process.platform!=='win32'},()=>{
+  const p=spawnSync('powershell.exe',['-NoProfile','-NonInteractive','-File',path.join(root,'windows-installer/InboxAlarm.ps1'),'-TestAlert','-DryRun'],{encoding:'utf8',windowsHide:true});
+  assert.equal(p.status,0,p.stderr);assert.match(p.stdout,/Native full-screen test/);
 });

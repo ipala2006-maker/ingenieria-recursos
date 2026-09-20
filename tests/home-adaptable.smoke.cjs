@@ -2,12 +2,18 @@ const {chromium,webkit}=require('../tmp/ui-check/node_modules/playwright');
 const assert=require('node:assert/strict');
 const path=require('node:path');
 const base=process.env.TEST_BASE_URL||'http://127.0.0.1:8149/';
-const sizes=[[1440,900],[1366,768],[1024,768],[390,844],[320,568],[844,390]];
+const sizes=[[1440,900],[1366,768],[1280,600],[1024,768],[390,844],[320,568],[844,390]];
 async function noOverflow(page){
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'no horizontal page overflow');
   const boxes=await page.locator('[data-home-space]:visible').evaluateAll(nodes=>nodes.filter(n=>n.dataset.homeSpace!=='shortcuts').map(n=>{
     const r=n.getBoundingClientRect();return {name:n.dataset.homeSpace,x:r.x,y:r.y,right:r.right,bottom:r.bottom};}));
   boxes.forEach((a,i)=>boxes.slice(i+1).forEach(b=>assert.ok(a.right<=b.x+1||b.right<=a.x+1||a.bottom<=b.y+1||b.bottom<=a.y+1,`${a.name} overlaps ${b.name}`)));
+  if(await page.locator('body').evaluate(n=>n.classList.contains('home-board'))){
+    const height=await page.evaluate(()=>innerHeight);
+    for(const box of boxes)assert.ok(box.y>=0&&box.bottom<=height+1,`${box.name} outside desktop screen`);
+    assert.ok(await page.locator('.workspace-page').evaluate(n=>n.scrollHeight<=n.clientHeight+1),'desktop board cannot scroll vertically');
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollHeight<=innerHeight+1),'desktop page cannot scroll vertically');
+  }
 }
 async function contained(page,child,parent){
   await page.locator(child).scrollIntoViewIfNeeded();
@@ -42,7 +48,6 @@ async function contained(page,child,parent){
     }
     await page.locator('.study-chart-modes [data-chart-mode=line]').click();
     await page.locator('[data-home-customize]').click();
-    await page.locator('[data-home-customizer-edit]').click();
     const handle=page.locator('[data-home-resize=focus]');await handle.scrollIntoViewIfNeeded();
     const before=await page.locator('.study-focus').boundingBox();
     const r=await handle.boundingBox();await page.mouse.move(r.x+r.width/2,r.y+r.height/2);await page.mouse.down();
@@ -52,7 +57,7 @@ async function contained(page,child,parent){
     await page.locator('.home-layout-done').click();
     await page.reload({waitUntil:'networkidle'});
     assert.ok((await page.locator('.study-focus').boundingBox()).height>=after.height-2,'size persists');
-    await page.locator('[data-home-customize]').click();await page.locator('[data-home-customizer-reset]').click();await page.locator('.home-customizer__done').click();
+    await page.locator('[data-home-customize]').click();await page.locator('.home-layout-manage').click();await page.locator('[data-home-customizer-reset]').click();await page.locator('.home-customizer__done').click();await page.locator('.home-layout-done').click();
     const compact=await page.locator('[data-home-navigation]').isVisible();
     if(compact){
       for(const view of ['inbox','calendar','space','overview']){await page.locator(`[data-home-view=${view}]`).click();await noOverflow(page);}

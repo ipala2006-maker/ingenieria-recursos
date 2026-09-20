@@ -184,7 +184,7 @@
   function loadProductInterface() {
     if (document.querySelector('script[src*="scripts/product-ui.js"]')) return;
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/product-ui.js?v=20260919-layout`;
+    script.src = `${rootPath}scripts/product-ui.js?v=20260920-fluid`;
     document.head.appendChild(script);
   }
 
@@ -270,7 +270,7 @@
     rules.src = `${rootPath}shared/inbox-alarms.js?v=20260912`;
     rules.onload = () => {
       const ui = document.createElement('script');
-      ui.src = `${rootPath}scripts/inbox-alarms.js?v=20260914-native-feed`;
+      ui.src = `${rootPath}scripts/inbox-alarms.js?v=20260920-setup`;
       document.head.appendChild(ui);
     };
     document.head.appendChild(rules);

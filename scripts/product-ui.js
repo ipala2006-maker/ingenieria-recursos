@@ -7,7 +7,7 @@
   const inbox = document.querySelector('.dashboard-agenda');
   const overview = document.querySelector('[data-study-home]');
   if (!page || !workspace || !dashboard || !calendar || !inbox) return;
-  const mobile = matchMedia('(max-width:700px), (min-width:701px) and (max-width:900px) and (max-height:899px), (max-height:650px)');
+  const mobile = matchMedia('(max-width:700px), (min-width:701px) and (max-width:900px) and (max-height:899px)');
   const topbar = document.querySelector('.topbar');
   let topbarFrame=0;
   if(topbar) new ResizeObserver(() => {

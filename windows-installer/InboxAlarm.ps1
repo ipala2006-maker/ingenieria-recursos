@@ -2,7 +2,8 @@ param(
   [string]$InputPath,
   [string]$StateDirectory = (Join-Path $env:LOCALAPPDATA 'Estudiemos\Windows\InboxAlarms'),
   [datetime]$Now = (Get-Date),
-  [switch]$DryRun
+  [switch]$DryRun,
+  [switch]$TestAlert
 )
 $ErrorActionPreference = 'Stop'
 $culture = [Globalization.CultureInfo]::InvariantCulture
@@ -129,6 +130,13 @@ function Show-FullScreenInboxAlarm {
   }
 }
 
+if ($TestAlert) {
+  if ($DryRun) { Write-Output 'Native full-screen test'; exit 0 }
+  Add-Type -AssemblyName System.Windows.Forms
+  Add-Type -AssemblyName System.Drawing
+  Show-FullScreenInboxAlarm -DueItems @(@{title='Tu alarma aparece en toda la pantalla'})
+  exit 0
+}
 $snapshot = $null
 $feedPath = Join-Path $StateDirectory 'feed.dpapi'
 if (!$InputPath -and (Test-Path -LiteralPath $feedPath)) {
@@ -140,7 +148,7 @@ if (!$InputPath -and (Test-Path -LiteralPath $feedPath)) {
     $snapshot = Invoke-RestMethod -Uri 'https://estudiemos-app.vercel.app/api/widget-link?alarmFeed=1' -Headers @{Authorization=('Bearer ' + $credential.GetNetworkCredential().Password)} -TimeoutSec 12
     if ($snapshot.version -ne 1 -or @($snapshot.items).Count -gt 500) { throw 'Invalid alarm feed.' }
     $snapshot | ConvertTo-Json -Depth 8 -Compress | Set-Content -LiteralPath $cachePath -Encoding UTF8
-    @{status='connected';lastSync=(Get-Date).ToString('o');version='1.6.0'} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $StateDirectory 'connection.json') -Encoding UTF8
+    @{status='connected';lastSync=(Get-Date).ToString('o');version='1.6.1'} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $StateDirectory 'connection.json') -Encoding UTF8
   } catch {
     $status = if ($_.Exception.Response -and [int]$_.Exception.Response.StatusCode -in @(401,403)) { 'reconnect' } else { 'offline' }
     @{status=$status;checkedAt=(Get-Date).ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $StateDirectory 'connection.json') -Encoding UTF8
@@ -150,7 +158,9 @@ if (!$InputPath -and (Test-Path -LiteralPath $feedPath)) {
 }
 if (!$snapshot) {
 if (!$InputPath) {
+  if (!(Test-Path -LiteralPath (Join-Path $PSScriptRoot 'InboxAlarmConfig.json'))) { exit 0 }
   $config = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'InboxAlarmConfig.json') -Raw | ConvertFrom-Json
+  if (!$config.resourceDirectory) { exit 0 }
   $InputPath = Join-Path $config.resourceDirectory 'InboxAlarms.inc'
 }
 if (!(Test-Path -LiteralPath $InputPath)) { exit 0 }

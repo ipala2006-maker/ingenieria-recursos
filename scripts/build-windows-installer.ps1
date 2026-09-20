@@ -71,4 +71,7 @@ if ([IO.Path]::GetFullPath($OutputPath) -ne [IO.Path]::GetFullPath($defaultOutpu
 
 Copy-Item -LiteralPath $defaultOutput -Destination $legacyOutput -Force
 
+& $innoCompiler "/Qp" (Join-Path $installerRoot 'Estudiemos-Alarms.iss')
+if ($LASTEXITCODE -ne 0) { throw 'No se pudo crear el instalador de alarmas.' }
+
 Get-Item -LiteralPath $OutputPath

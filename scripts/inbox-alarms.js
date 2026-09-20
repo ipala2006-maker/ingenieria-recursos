@@ -6,10 +6,10 @@
   const NATIVE_KEY = 'estudiemos_inbox_alarm_windows';
   const FIRED_KEY = 'estudiemos_inbox_alarm_delivered';
   const CONNECTION_KEY = 'estudiemos_windows_alarm_connection';
-  let nativeConnecting = false, nativeMessage = '', confirmingNative = false;
+  let nativeConnecting = false, nativeMessage = '', confirmingNative = false, setupAfterSignIn = false;
   let audio, soundTimer, currentId, returnFocus, checking = false, lastNative = '', accountReady = false, waitingForAccount = false;
   const style = document.createElement('link');
-  style.rel = 'stylesheet'; style.href = new URL('styles/inbox-alarms.css?v=20260914-fullscreen', root); document.head.appendChild(style);
+  style.rel = 'stylesheet'; style.href = new URL('styles/inbox-alarms.css?v=20260920-setup', root); document.head.appendChild(style);
   const escape = value => String(value || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   // Reuse the existing icon set's bell geometry (also used by Pomodoro).
   const bell = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>';
@@ -17,6 +17,19 @@
   dialog.className = 'inbox-alarm-dialog'; dialog.setAttribute('aria-labelledby', 'inboxAlarmTitle');
   dialog.innerHTML = '<form method="dialog" data-alarm-editor><header><div><small>Inbox</small><h2 id="inboxAlarmTitle">Alarma</h2></div><button type="button" data-alarm-close aria-label="Cerrar">×</button></header><p data-alarm-task></p><div data-alarm-slot></div><p data-alarm-error role="status"></p><footer><button type="button" data-alarm-test>Probar sonido</button><button type="submit">Guardar</button></footer></form>';
   document.body.appendChild(dialog);
+  const setup = document.createElement('dialog');setup.className='inbox-alarm-dialog alarm-setup';setup.setAttribute('aria-labelledby','alarmSetupTitle');
+  setup.innerHTML=`<header><h2 id="alarmSetupTitle">Alarma en toda la pantalla</h2><button type="button" data-alarm-setup-close aria-label="Cerrar">×</button></header>
+    <p>Windows mostrará el nombre de tu tarea sobre las otras aplicaciones y repetirá el sonido, incluso con Estudiemos cerrado.</p>
+    <ol class="alarm-setup-steps">
+      <li><strong>Instalar una vez</strong><p>Descargá y abrí el archivo. No instala widgets ni Rainmeter. Al terminar vuelve a esta pantalla.</p><a class="alarm-setup-download" href="${new URL('downloads/Activar-Alarmas-Estudiemos.exe',root)}" download>Instalar alarmas para Windows</a></li>
+      <li><strong>Activar en esta PC</strong><p>Después de instalar, tocá el botón y aceptá «Abrir» en el aviso del navegador.</p><button type="button" data-alarm-activate>Ya instalé: activar alarmas</button></li>
+      <li><strong>Comprobar la pantalla completa</strong><button type="button" data-alarm-native-test disabled>Probar alarma de Windows</button><p>El aviso de prueba suena y se cierra con Entendido o Escape.</p></li>
+    </ol><p data-alarm-native-status role="status"></p><small>La PC debe estar encendida, con la sesión iniciada y el volumen activo. Puede demorarse hasta un minuto. No se cambian el antivirus ni los permisos del navegador.</small>`;
+  document.body.appendChild(setup);
+  function nativeReady(){let saved={};try{saved=JSON.parse(localStorage.getItem(CONNECTION_KEY)||'{}');}catch(_){}return saved.userId===window.EstudiemosAccount?.getUser?.()?.id&&saved.expiresAt*1000>Date.now()&&saved.version==='1.6.1';}
+  function showSetup(){renderNativeStatus();if(!setup.open)setup.showModal();}
+  function signInForSetup(){setup.close();setupAfterSignIn=true;window.EstudiemosAccount?.open?.();}
+  function launchNative(url){const link=document.createElement('a');link.href=url;document.body.appendChild(link);link.click();link.remove();}
   const notice = document.createElement('aside'); notice.className = 'inbox-alarm-notice'; notice.hidden = true; notice.setAttribute('role', 'alertdialog'); notice.setAttribute('aria-modal', 'true'); notice.setAttribute('aria-labelledby', 'inboxAlarmNoticeTitle');
   notice.innerHTML = `<div class="inbox-alarm-notice__surface"><span class="inbox-alarm-notice__icon">${bell}</span><small>ESTUDIEMOS · ALARMA DE INBOX</small><time data-alarm-notice-clock></time><h2 id="inboxAlarmNoticeTitle">Es hora</h2><p></p><div class="inbox-alarm-notice__actions"><button type="button" data-alarm-notice-open>Abrir Inbox</button><button type="button" data-alarm-notice-dismiss>Entendido</button></div></div>`;
   document.body.appendChild(notice);
@@ -41,14 +54,13 @@
         <div class="inbox-alarm-date"><label>Día<input type="date" name="inboxAlarmDate" min="2020-01-01" max="2100-12-31"></label><label>Hora<input type="time" name="inboxAlarmTime"></label></div>
         <label>Repetir<select name="inboxAlarmRepeat" aria-label="Repetir">${rules.repeats.map(r => `<option value="${r}">${rules.labels[r]}</option>`).join('')}</select></label>
         <small>Hora local de cada dispositivo. Al completar la tarea, deja de sonar.</small>
-        <small data-alarm-permission-status role="status"></small>
-        <button type="button" data-alarm-permission>Permitir notificaciones</button>
-        <details class="inbox-alarm-delivery" ${windows ? 'open' : 'hidden'}><summary>Con la app cerrada en Windows</summary>
-          <label><input type="checkbox" data-alarm-native ${localStorage.getItem(NATIVE_KEY) === 'true' ? 'checked' : ''}> Enviar también la alarma a Windows</label>
-          <small>El aviso ocupa la pantalla y suena aunque estés en otra aplicación. La PC debe estar encendida, con tu sesión de Windows iniciada.</small>
+        <small data-alarm-permission-status role="status" ${windows?'hidden':''}></small>
+        <button type="button" data-alarm-permission ${windows?'hidden':''}>Permitir notificaciones</button>
+        <details class="inbox-alarm-delivery" ${windows ? 'open' : 'hidden'}><summary>Pantalla completa en Windows</summary>
+          <label><input type="checkbox" data-alarm-native ${localStorage.getItem(NATIVE_KEY) === 'true' ? 'checked' : ''}> Mostrar esta alarma con la app cerrada</label>
+          <small>El nombre de tu tarea ocupa toda la pantalla y suena hasta que cierres el aviso.</small>
           <small data-alarm-native-status role="status"></small>
-          <button type="button" data-alarm-native-connect>Conectar alarmas con esta PC</button>
-          <a href="${new URL('downloads/Estudiemos-Widgets-para-Windows.exe', root)}">Instalar o actualizar soporte de Windows 1.6.0</a>
+          <button type="button" data-alarm-native-connect>Activar pantalla completa en esta PC</button>
         </details>
       </div></fieldset>`;
   }
@@ -76,7 +88,7 @@
   function renderPermission(form) {
     renderNativeStatus();
     const permission = 'Notification' in window ? Notification.permission : 'unavailable';
-    form.querySelector('[data-alarm-permission]').hidden = permission !== 'default';
+    form.querySelector('[data-alarm-permission]').hidden = /Windows/i.test(navigator.userAgent) || permission !== 'default';
     form.querySelector('[data-alarm-permission-status]').textContent = permission === 'granted'
       ? 'Notificaciones del navegador permitidas.'
       : permission === 'denied' ? 'Notificaciones bloqueadas. Podés habilitarlas en los permisos de este sitio. El aviso dentro de la app sigue activo.'
@@ -85,23 +97,24 @@
   }
   function renderNativeStatus(message) {
     if(typeof message==='string')nativeMessage=message;
-    let connection={};try{connection=JSON.parse(localStorage.getItem(CONNECTION_KEY)||'{}');}catch(_){}
-    const user=window.EstudiemosAccount?.getUser?.();
-    const ready=connection.userId===user?.id && connection.expiresAt*1000>Date.now();
-    document.querySelectorAll('[data-alarm-native-status]').forEach(node=>node.textContent=nativeMessage || (ready?'Esta PC quedó conectada. Las alarmas se comprueban cada minuto, incluso con la app cerrada.':'Falta conectar esta PC. Hasta entonces el aviso depende de la app abierta.'));
-    document.querySelectorAll('[data-alarm-native-connect]').forEach(button=>{button.disabled=nativeConnecting;button.textContent=nativeConnecting?'Esperando a Windows…':ready?'Volver a conectar esta PC':'Conectar alarmas con esta PC';});
+    const ready=nativeReady();setup.dataset.ready=String(ready);
+    document.querySelectorAll('[data-alarm-native-status]').forEach(node=>node.textContent=nativeMessage || (ready?'Activado en esta PC. Guardá tu alarma con «Mostrar esta alarma con la app cerrada» marcado.':'Todavía no está activado fuera de la app. Completá la activación una sola vez.'));
+    document.querySelectorAll('[data-alarm-native-connect]').forEach(button=>{button.textContent=ready?'Comprobar alarma de pantalla completa':'Activar pantalla completa en esta PC';});
+    setup.querySelector('[data-alarm-activate]').disabled=nativeConnecting;
+    setup.querySelector('[data-alarm-activate]').textContent=nativeConnecting?'Esperando a Windows…':ready?'Volver a conectar':'Ya instalé: activar alarmas';
+    setup.querySelector('[data-alarm-native-test]').disabled=!ready;
   }
   async function connectWindows() {
     if(nativeConnecting)return;
     const session=window.EstudiemosAccount?.getSession?.();
-    if(!session?.access_token){window.EstudiemosAccount?.open?.();return;}
+    if(!session?.access_token){signInForSetup();return;}
     if(!window.confirm('¿Permitir que Windows reciba tus alarmas y muestre el aviso a pantalla completa con sonido aunque Estudiemos esté cerrado? Podés detener cada alarma con Entendido o Escape.'))return;
     nativeConnecting=true;renderNativeStatus('Preparando conexión con Windows…');
     try{
       const response=await fetch(new URL('api/widget-link',root),{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${session.access_token}`},body:JSON.stringify({action:'alarms-connect',consent:true})});
       const result=await response.json();if(!response.ok||!result.token)throw new Error(result.error||'No pudimos iniciar la conexión.');
-      const link=document.createElement('a');link.href=`estudiemos-widgets://alarms?link=${encodeURIComponent(result.token)}`;document.body.appendChild(link);link.click();link.remove();
-      renderNativeStatus('Permití abrir Estudiemos en el aviso del navegador. Windows confirmará cuando la conexión esté lista. Si no aparece, instalá el soporte 1.6.0 de abajo y volvé a conectar.');
+      launchNative(`estudiemos-alarms://connect?link=${encodeURIComponent(result.token)}`);
+      renderNativeStatus('Aceptá «Abrir» en el aviso del navegador. Si no aparece nada, falta abrir el archivo del paso 1. Todavía no confirmamos la activación.');
     }catch(error){renderNativeStatus(error.message);}
     finally{nativeConnecting=false;renderNativeStatus();}
   }
@@ -110,13 +123,14 @@
     if(confirmingNative||!window.EstudiemosAccount?.whenReady)return;
     confirmingNative=true;
     try { await window.EstudiemosAccount.whenReady(); } catch(_) { confirmingNative=false;return; }
-    const session=window.EstudiemosAccount?.getSession?.();if(!session?.access_token){confirmingNative=false;window.EstudiemosAccount?.open?.();return;}
+    const session=window.EstudiemosAccount?.getSession?.();if(!session?.access_token){confirmingNative=false;signInForSetup();return;}
     try{
       const response=await fetch(new URL('api/widget-link',root),{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${session.access_token}`},body:JSON.stringify({action:'alarms-confirm',proof})});
       const result=await response.json();
       if(!response.ok||!result.connected){renderNativeStatus(result.error||'La conexión venció. Volvé a conectar esta PC.');return;}
       url.searchParams.delete('windows-alarms-ready');history.replaceState(history.state,'',url.pathname+url.search+url.hash);
       localStorage.setItem(CONNECTION_KEY,JSON.stringify(result));localStorage.setItem(NATIVE_KEY,'true');renderNativeStatus('');
+      showSetup();
       window.dispatchEvent(new CustomEvent('estudiemos:home-navigate',{detail:{view:'inbox'}}));
       window.EstudiemosAccount?.sync?.();
     }catch(_){renderNativeStatus('No pudimos confirmar la conexión. Volvé a intentarlo.');}
@@ -196,7 +210,10 @@
     if (e.target.closest('[data-alarm-close]')) dialog.close();
     if (e.target.closest('[data-alarm-test]')) enableSound().then(sound);
     if (e.target.closest('[data-alarm-permission]')) requestPermission();
-    if (e.target.closest('[data-alarm-native-connect]')) connectWindows();
+    if (e.target.closest('[data-alarm-native-connect]')) showSetup();
+    if (e.target.closest('[data-alarm-activate]')) connectWindows();
+    if (e.target.closest('[data-alarm-setup-close]')) setup.close();
+    if (e.target.closest('[data-alarm-native-test]')&&nativeReady()) launchNative('estudiemos-alarms://test');
   });
   dialog.addEventListener('close', () => returnFocus?.focus());
   document.addEventListener('change', e => {
@@ -204,19 +221,15 @@
     if (e.target.name?.startsWith('inboxAlarm')) {
       form.elements.inboxAlarmTime.setCustomValidity(''); reveal(form);
       if (e.target.name === 'inboxAlarmEnabled' && e.target.checked) {
-        requestPermission();
+        if(!/Windows/i.test(navigator.userAgent))requestPermission();else enableSound();
         const native = form.querySelector('[data-alarm-native]');
         if (native && !native.checked && /Windows/i.test(navigator.userAgent)) {
-          native.checked = window.confirm('¿Querés que esta alarma aparezca a pantalla completa aunque Estudiemos esté cerrado? Windows mantendrá un comprobador oculto y podrás cerrar el aviso con “Entendido” o Escape.');
-          localStorage.setItem(NATIVE_KEY, String(native.checked));
+          native.checked = nativeReady();
         }
       }
     }
     if (e.target.matches('[data-alarm-native]')) {
-      if (e.target.checked && localStorage.getItem(NATIVE_KEY) !== 'true') {
-        const allowed = window.confirm('¿Activar alarmas a pantalla completa en Windows? Estudiemos mostrará el nombre de la tarea y reproducirá sonido aunque la app esté cerrada. Siempre podrás cerrarla con “Entendido” o Escape.');
-        if (!allowed) e.target.checked = false;
-      }
+      if (e.target.checked && !nativeReady()) showSetup();
       localStorage.setItem(NATIVE_KEY, String(e.target.checked));
     }
   });
@@ -279,10 +292,14 @@
     window.RainmeterAPI.Bang(`[!WriteKeyValue Alarms Count ${chunks.length} "#@#InboxAlarms.inc"]`);
     lastNative = text;
   }
-  window.EstudiemosInboxAlarms = { readForm, button, open, check };
+  window.EstudiemosInboxAlarms = { readForm, button, open, check, showSetup };
+  const entry=new URL(location.href);
+  if(entry.searchParams.get('alarms-setup')==='1'){entry.searchParams.delete('alarms-setup');history.replaceState(history.state,'',entry.pathname+entry.search+entry.hash);showSetup();}
+  window.addEventListener('storage',e=>{if(e.key===CONNECTION_KEY){nativeMessage='';renderNativeStatus();}});
   confirmWindowsConnection();
   for(const name of ['estudiemos:account-ready','estudiemos:account-change'])window.addEventListener(name,()=>{
     confirmingNative=false;nativeMessage='';confirmWindowsConnection();renderNativeStatus();
+    if(setupAfterSignIn&&window.EstudiemosAccount?.getSession?.()?.access_token){setupAfterSignIn=false;showSetup();}
   });
   mount(); new MutationObserver(mount).observe(document.body, { childList: true, subtree: true });
   for (const name of ['storage', 'estudiemos:data-change', 'estudiemos:cloud-restored', 'estudiemos:account-change']) window.addEventListener(name, check);

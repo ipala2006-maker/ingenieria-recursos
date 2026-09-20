@@ -22,18 +22,21 @@ modelo. Genera solicitudes al alojamiento y a la base de datos.
 
 ## PC Con La App Cerrada
 
-1. Actualiza el soporte de Windows a 1.6.0 desde la pagina de instalacion.
-   No es necesario reinstalar la PWA.
-2. En el editor de alarma, toca **Conectar alarmas con esta PC**. Acepta el
-   comportamiento a pantalla completa y abrir Estudiemos en el navegador.
-   Espera la confirmacion de Windows. Si no aparece, el enlace para actualizar
-   el soporte esta en el mismo editor. No hace falta mantener widgets abiertos.
-3. En la alarma, activa **Enviar tambien la alarma a Windows** en **Con la app
-   cerrada en Windows** y acepta el aviso que explica el comportamiento a
-   pantalla completa. Guarda y espera que la cuenta termine de sincronizar.
-   Las alarmas posteriores de IA reutilizan esta eleccion, no la decide el modelo.
+1. En la campana de una tarea, toca **Activar pantalla completa en esta PC**.
+   Tambien podes abrir https://estudiemos-app.vercel.app/?alarms-setup=1.
+2. Toca **Instalar alarmas para Windows** y abri el archivo descargado. Es un
+   instalador independiente (1.6.1): no requiere Rainmeter, widgets ni reinstalar
+   la app. Al terminar abre nuevamente la pantalla de activacion.
+3. Toca **Ya instale: activar alarmas**, acepta el aviso de pantalla completa
+   y **Abrir** en el navegador. No se marca como listo hasta recibir una
+   confirmacion autentificada despues de registrar la tarea de Windows.
+4. Toca **Probar alarma de Windows**. La prueba ejecuta el mismo aviso nativo,
+   con sonido y el boton **Entendido**, no una notificacion de navegador.
+5. Volve a tu tarea, marca **Mostrar esta alarma con la app cerrada** y guarda.
+   Espera la sincronizacion de la cuenta antes de cerrar la app. Las alarmas
+   posteriores de IA reutilizan esta eleccion, no la decide el modelo.
 
-El instalador agrega una tarea del Programador de tareas para el usuario
+La activacion agrega una tarea del Programador de tareas para el usuario
 actual. No pide su contrasena, no eleva privilegios, no usa servicios pagos
 ni desactiva antivirus. La tarea y su lanzador permanecen ocultos cuando no
 hay avisos; no abren una consola cada minuto. Comprueba los avisos una vez por
@@ -48,15 +51,17 @@ alerta conserva una salida visible y no bloquea los controles del sistema.
 
 La PC debe estar encendida, con la sesion iniciada y el volumen activo. No
 enciende la PC ni la despierta. Recupera avisos de los ultimos diez minutos;
-los anteriores no suenan todos juntos al regresar. Windows puede ocultar el
-globo de respaldo por No molestar, pero no la vista principal. El sonido
-respeta volumen/salida del sistema.
+los anteriores no suenan todos juntos al regresar. La vista nativa no depende
+del permiso de notificaciones web. No puede cubrir la pantalla de bloqueo,
+el escritorio seguro de Windows ni garantizar prioridad sobre aplicaciones
+en pantalla completa exclusiva. El sonido respeta volumen/salida del sistema.
 
 El aviso web se mantiene como respaldo: marcar la opcion Windows no demuestra
 que el soporte este instalado. Con ambos activos y la app abierta pueden llegar
 dos avisos. No se declara instalado un componente que no se pudo comprobar.
-La app solicita el permiso web al activar la alarma; si fue denegado, muestra
-el estado bloqueado y conserva el aviso interno. No modifica permisos del SO.
+En Windows se ofrece la activacion nativa sin pedir un permiso web que no la
+resolveria. En otras plataformas se solicita el permiso web. No modifica
+permisos del SO ni elimina advertencias de seguridad del instalador.
 
 ## Otros Dispositivos
 
@@ -87,6 +92,10 @@ temporizador web en segundo plano.
   guarda la ruta real de los recursos (incluida la instalacion portable). La
   tarea queda marcada como oculta y usa el modo `headless` nativo de la consola
   de Windows, sin depender de Windows Script Host.
+- `windows-installer/Estudiemos-Alarms.iss`: instalador independiente, sin
+  dependencias de widgets. Registra `estudiemos-alarms://` para conectar/probar.
+- `windows-installer/AlarmLauncher.vbs`: valida esas dos acciones y el formato
+  del token antes de lanzar el componente oculto. No recibe comandos libres.
 
 `cloud.json` contiene titulos y horarios en texto local; `feed.dpapi` contiene
 la credencial cifrada para ese usuario de Windows. El archivo legado
@@ -113,7 +122,16 @@ ni se forzo una alerta a pantalla completa durante la revision.
 La revision del 19/09 agrega pruebas del feed con DPAPI, cache sin Internet y
 cancelacion al recibir una lista vacia, sin abrir ventanas ni tocar tareas
 reales. La prueba fisica de sonido y el flujo completo de conexion en otra PC
-siguen requiriendo comprobacion despues de instalar 1.6.0.
+siguen requiriendo comprobacion despues de instalar 1.6.1.
+
+El 20/09/2026 se verifico el formulario nativo real con
+`tests/helpers/native-alarm-window.ps1`: pantalla principal completa, TopMost,
+titulo y boton para cerrar visibles. La prueba captura solo ese formulario y
+lo cierra automaticamente; no instala tareas ni modifica la cuenta. Invoca el
+sonido, pero no comprueba la salida fisica del parlante. El recorrido web de
+instalacion/consentimiento/confirmacion se probo con respuestas y protocolo
+simulados en `tests/alarm-setup.smoke.cjs`; la prueba final desde una cuenta
+conectada y el Programador de tareas sigue disponible en el boton de la app.
 
 Referencias: [Programador de tareas](https://learn.microsoft.com/en-us/windows/win32/taskschd/repeating-a-task),
 [sesion interactiva sin contrasena](https://learn.microsoft.com/en-us/windows/win32/taskschd/principal-logontype),
