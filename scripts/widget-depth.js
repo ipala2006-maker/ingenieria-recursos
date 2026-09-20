@@ -1,5 +1,5 @@
 import {createTimerDepth} from './timer-depth.js?v=20260913-phase';
-import {createProgressDepth} from './progress-depth.js?v=20260910-widgets';
+import {createStudyChart} from './study-chart.js?v=20260914-chart';
 
 const instances=new WeakMap();
 export function enhanceWidget(content) {
@@ -8,7 +8,7 @@ export function enhanceWidget(content) {
   const host=content.querySelector('[data-widget-depth],[data-widget-progress]');
   let instance=instances.get(content);
   const reduced=win.matchMedia('(prefers-reduced-motion:reduce)');
-  const allowed=host && !reduced.matches && !win.navigator.connection?.saveData;
+  const allowed=host && (host.hasAttribute('data-widget-progress') || (!reduced.matches && !win.navigator.connection?.saveData));
   if(instance && (instance.host!==host || !allowed)) {instance.dispose();instances.delete(content);instance=null;}
   if(!allowed) return;
   if(!instance) {
@@ -25,7 +25,7 @@ export function enhanceWidget(content) {
           content.querySelector('[data-widget-study-detail]').textContent=buttons[index].title;
           scene?.update(days,index);
         };
-        scene=createProgressDepth(host,select);
+        scene=createStudyChart(host,select);
         const click=event=>{const button=event.target.closest('[data-widget-study-day]');if(button)select(Number(button.dataset.widgetStudyDay));};
         const key=event=>{
           if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
@@ -36,7 +36,7 @@ export function enhanceWidget(content) {
         host.addEventListener('click',click);host.addEventListener('keydown',key);
         cleanups.push(()=>{host.removeEventListener('click',click);host.removeEventListener('keydown',key);});
         const reset=content.querySelector('[data-widget-graph-reset]');
-        reset.hidden=false;reset.addEventListener('click',scene.reset);
+        reset.addEventListener('click',scene.reset);
         cleanups.push(()=>{reset.removeEventListener('click',scene.reset);reset.hidden=true;});
         scene.update(days,selected);
       }

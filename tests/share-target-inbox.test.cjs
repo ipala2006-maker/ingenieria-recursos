@@ -8,9 +8,11 @@ test("shared WhatsApp text opens Inbox and creates a pending task", async () => 
   const browser = await chromium.launch({ channel: "chrome", args: ["--enable-unsafe-swiftshader"] });
   try {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    await page.route('**/api/**', route => route.fulfill({json:{enabled:false}}));
     await page.addInitScript(() => {
       localStorage.setItem("estudiemos_theme", "dark");
       localStorage.setItem("bandeja_agenda", "[]");
+      window.EstudiemosAccount = {whenReady:async()=>{},getClient:()=>null,getUser:()=>null,getSession:()=>null,open:()=>{}};
     });
     const text = "Preparar resumen de Quimica para manana";
     await page.goto(`${baseUrl}/?shared=1&title=${encodeURIComponent(text)}`, { waitUntil: "domcontentloaded" });

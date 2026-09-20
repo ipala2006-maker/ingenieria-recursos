@@ -1,10 +1,12 @@
 (function () {
   if (window.EstudiemosDesktopWidgets) return;
   const designUrl=new URL('../styles/widget-console.css?v=20260913-phase',document.currentScript.src).href;
-  const depthUrl=new URL('./widget-depth.js?v=20260913-phase',document.currentScript.src).href;
+  const depthUrl=new URL('./widget-depth.js?v=20260914-chart',document.currentScript.src).href;
+  const chartStyleUrl=new URL('../styles/study-chart.css?v=20260914-chart',document.currentScript.src).href;
   let depthModule=null,depthPending=null;
   function installDesign(doc) {
     const link=doc.createElement('link');link.rel='stylesheet';link.href=designUrl;doc.head.appendChild(link);
+    const chartLink=doc.createElement('link');chartLink.rel='stylesheet';chartLink.href=chartStyleUrl;doc.head.appendChild(chartLink);
   }
 
   const AGENDA_KEY = "bandeja_agenda";

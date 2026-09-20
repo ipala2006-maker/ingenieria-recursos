@@ -129,6 +129,26 @@ function Show-FullScreenInboxAlarm {
   }
 }
 
+$snapshot = $null
+$feedPath = Join-Path $StateDirectory 'feed.dpapi'
+if (!$InputPath -and (Test-Path -LiteralPath $feedPath)) {
+  $cachePath = Join-Path $StateDirectory 'cloud.json'
+  try {
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    $secure = Get-Content -LiteralPath $feedPath -Raw | ConvertTo-SecureString
+    $credential = New-Object System.Management.Automation.PSCredential('alarm-feed', $secure)
+    $snapshot = Invoke-RestMethod -Uri 'https://estudiemos-app.vercel.app/api/widget-link?alarmFeed=1' -Headers @{Authorization=('Bearer ' + $credential.GetNetworkCredential().Password)} -TimeoutSec 12
+    if ($snapshot.version -ne 1 -or @($snapshot.items).Count -gt 500) { throw 'Invalid alarm feed.' }
+    $snapshot | ConvertTo-Json -Depth 8 -Compress | Set-Content -LiteralPath $cachePath -Encoding UTF8
+    @{status='connected';lastSync=(Get-Date).ToString('o');version='1.6.0'} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $StateDirectory 'connection.json') -Encoding UTF8
+  } catch {
+    $status = if ($_.Exception.Response -and [int]$_.Exception.Response.StatusCode -in @(401,403)) { 'reconnect' } else { 'offline' }
+    @{status=$status;checkedAt=(Get-Date).ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $StateDirectory 'connection.json') -Encoding UTF8
+    if ($status -eq 'reconnect') { exit 0 }
+    if (Test-Path -LiteralPath $cachePath) { $snapshot = Get-Content -LiteralPath $cachePath -Raw | ConvertFrom-Json }
+  } finally { $credential = $null; $secure = $null }
+}
+if (!$snapshot) {
 if (!$InputPath) {
   $config = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'InboxAlarmConfig.json') -Raw | ConvertFrom-Json
   $InputPath = Join-Path $config.resourceDirectory 'InboxAlarms.inc'
@@ -150,6 +170,7 @@ for ($i = 0; $i -lt $count; $i++) {
 }
 if ($content -ne (Get-Content -LiteralPath $InputPath -Raw)) { exit 0 }
 $snapshot = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($encoded)) | ConvertFrom-Json
+}
 if ($snapshot.version -ne 1 -or @($snapshot.items).Count -gt 500) { throw 'Invalid alarm snapshot.' }
 New-Item -ItemType Directory -Path $StateDirectory -Force | Out-Null
 $mutex = New-Object Threading.Mutex($false, ('Local\EstudiemosInboxAlarm-' + [Security.Principal.WindowsIdentity]::GetCurrent().User.Value))

@@ -163,7 +163,7 @@
 
     const link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = `${rootPath}styles/professional.css?v=20260824-study-metrics`;
+    link.href = `${rootPath}styles/professional.css?v=20260919-contrast`;
     document.head.appendChild(link);
   }
 
@@ -184,7 +184,7 @@
   function loadProductInterface() {
     if (document.querySelector('script[src*="scripts/product-ui.js"]')) return;
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/product-ui.js?v=20260914-custom`;
+    script.src = `${rootPath}scripts/product-ui.js?v=20260919-layout`;
     document.head.appendChild(script);
   }
 
@@ -258,7 +258,7 @@
     if (document.querySelector('script[src*="scripts/bandeja.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/bandeja.js?v=20260914-ai-alarms`;
+    script.src = `${rootPath}scripts/bandeja.js?v=20260914-conversation`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -270,7 +270,7 @@
     rules.src = `${rootPath}shared/inbox-alarms.js?v=20260912`;
     rules.onload = () => {
       const ui = document.createElement('script');
-      ui.src = `${rootPath}scripts/inbox-alarms.js?v=20260914-fullscreen`;
+      ui.src = `${rootPath}scripts/inbox-alarms.js?v=20260914-native-feed`;
       document.head.appendChild(ui);
     };
     document.head.appendChild(rules);
@@ -335,7 +335,7 @@
     if (document.querySelector('script[src*="scripts/desktop-widgets.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/desktop-widgets.js?v=20260913-phase`;
+    script.src = `${rootPath}scripts/desktop-widgets.js?v=20260914-chart`;
     script.async = false;
     document.head.appendChild(script);
   }
