@@ -1,12 +1,17 @@
-param([Parameter(Mandatory=$true)][string]$ResourceDirectory)
+param([string]$ResourceDirectory = '')
 $ErrorActionPreference = 'Stop'
-$resource = [IO.Path]::GetFullPath($ResourceDirectory)
-if (!(Test-Path -LiteralPath $resource -PathType Container)) { throw 'Widget resource directory not found.' }
+$resource = ''
+if ($ResourceDirectory) {
+  $resource = [IO.Path]::GetFullPath($ResourceDirectory)
+  if (!(Test-Path -LiteralPath $resource -PathType Container)) { throw 'Widget resource directory not found.' }
+}
 $alarmScript = Join-Path $PSScriptRoot 'InboxAlarm.ps1'
 if (!(Test-Path -LiteralPath $alarmScript -PathType Leaf)) {
   throw 'Inbox alarm support files not found.'
 }
-@{resourceDirectory=$resource} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $PSScriptRoot 'InboxAlarmConfig.json') -Encoding UTF8
+if ($resource -or !(Test-Path -LiteralPath (Join-Path $PSScriptRoot 'InboxAlarmConfig.json'))) {
+  @{resourceDirectory=$resource} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $PSScriptRoot 'InboxAlarmConfig.json') -Encoding UTF8
+}
 $service = New-Object -ComObject 'Schedule.Service'
 $service.Connect()
 $folder = $service.GetFolder('\')

@@ -1,5 +1,17 @@
 .inbox-alarm-dialog { width:min(420px,calc(100% - 32px)); max-height:90dvh; overflow:auto; border:1px solid var(--border,#334155); border-radius:8px; padding:22px; background:var(--panel,#111c2b); color:var(--text,#e8eef7); box-shadow:0 20px 70px #0005; }
 .inbox-alarm-dialog::backdrop { background:#080f1f80; backdrop-filter:blur(4px); }
+.alarm-setup { width:min(500px,calc(100% - 24px)); }
+.alarm-setup h2 { font-size:20px; }
+.alarm-setup>p { font-size:14px;line-height:1.5; }
+.alarm-setup-steps { margin:20px 0;padding-left:25px; }
+.alarm-setup-steps li { padding:0 0 18px 7px; }
+.alarm-setup-steps li::marker { color:var(--accent);font-weight:700; }
+.alarm-setup-steps p { font-size:13px;color:var(--muted);line-height:1.5;margin:6px 0 10px; }
+.alarm-setup .alarm-setup-download { display:inline-flex;min-height:42px;align-items:center;padding:8px 12px;border:1px solid var(--border);border-radius:6px;color:var(--text);text-decoration:none;font-size:13px; }
+.alarm-setup [data-alarm-activate],.alarm-setup [data-alarm-native-test]:enabled { background:var(--accent);color:var(--bg);border-color:var(--accent); }
+.alarm-setup button:disabled { opacity:.45;cursor:not-allowed; }
+.alarm-setup[data-ready=true] .alarm-setup-steps li:nth-child(-n+2) { display:none; }
+.alarm-setup>small { display:block;color:var(--muted);font-size:12px;line-height:1.5; }
 .inbox-alarm-dialog header,.inbox-alarm-dialog footer { display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .inbox-alarm-dialog h2 { margin:4px 0; font-size:22px; letter-spacing:0; }
 .inbox-alarm-dialog p { overflow-wrap:anywhere; }

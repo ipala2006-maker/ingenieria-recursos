@@ -48,6 +48,16 @@ test('alarm credentials are scoped, expiring and tamper-evident',()=>{
   assert.equal(api.verify(token,'alarm-receipt'),null);
   assert.equal(api.verify('x'.repeat(3000),'alarm-feed'),null);
 });
+
+test('receipts distinguish the legacy helper from the independent installer',async()=>{
+  const {call}=setup(),headers={authorization:'Bearer session'};
+  for(const [clientVersion,expected] of [[undefined,'1.6.0'],['1.6.1','1.6.1'],['unknown','1.6.0']]){
+    const started=await call('POST',{action:'alarms-connect',consent:true},{},headers);
+    const installed=await call('GET',{}, {alarmSetup:started.body.token,clientVersion});
+    const confirmed=await call('POST',{action:'alarms-confirm',proof:installed.body.confirmation},{},headers);
+    assert.equal(confirmed.body.version,expected);
+  }
+});
 test('feed queries only its owner and emits only enabled alarm fields, including empty snapshots',async()=>{
   const {api,call,calls,setRows}=setup();
   const alarm={date:'2026-09-15',time:'18:00',repeat:'daily',windows:true};
