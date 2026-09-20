@@ -10,6 +10,10 @@
 .alarm-setup .alarm-setup-download { display:inline-flex;min-height:42px;align-items:center;padding:8px 12px;border:1px solid var(--border);border-radius:6px;color:var(--text);text-decoration:none;font-size:13px; }
 .alarm-setup [data-alarm-activate],.alarm-setup [data-alarm-native-test]:enabled { background:var(--accent);color:var(--bg);border-color:var(--accent); }
 .alarm-setup button:disabled { opacity:.45;cursor:not-allowed; }
+.alarm-setup-consent { display:flex;align-items:flex-start;gap:9px;font-size:13px;line-height:1.5;margin:10px 0; }
+.alarm-setup-consent input { flex:none;margin-top:3px;accent-color:var(--accent); }
+.alarm-setup [data-alarm-retry] { display:block;margin-top:12px;color:var(--accent);cursor:pointer; }
+.alarm-setup [data-alarm-retry][hidden] { display:none; }
 .alarm-setup[data-ready=true] .alarm-setup-steps li:nth-child(-n+2) { display:none; }
 .alarm-setup>small { display:block;color:var(--muted);font-size:12px;line-height:1.5; }
 .inbox-alarm-dialog header,.inbox-alarm-dialog footer { display:flex; align-items:center; justify-content:space-between; gap:12px; }
@@ -48,6 +52,8 @@
 .dashboard-agenda__item,.workspace-home .dashboard-agenda__item { grid-template-columns:minmax(0,1fr) 32px; }
 .dashboard-agenda__item > label { display:grid; grid-template-columns:24px minmax(0,1fr) auto; align-items:center; gap:8px; min-width:0; }
 .inbox-alarm-notice { position:fixed; inset:0; z-index:100000; box-sizing:border-box; display:grid; place-items:center; min-height:100dvh; padding:max(24px,env(safe-area-inset-top)) max(24px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(24px,env(safe-area-inset-left)); color:#f7fbff; background:radial-gradient(circle at 50% 38%,#172b4e 0,#0b1427 44%,#060a13 100%); }
+.inbox-alarm-notice { margin:0;border:0;width:100%;height:100dvh;max-width:none;max-height:none;overflow:auto; }
+.inbox-alarm-notice:not([open]) { display:none; }
 .inbox-alarm-notice__surface { width:min(760px,100%); display:flex; align-items:center; flex-direction:column; text-align:center; }
 .inbox-alarm-notice__icon { width:82px; height:82px; display:grid; place-items:center; margin-bottom:24px; border:1px solid #8bb5ff99; border-radius:50%; color:#8bb5ff; background:#8bb5ff18; box-shadow:0 0 0 12px #8bb5ff0a,0 20px 70px #0008; animation:inbox-alarm-pulse 1.2s ease-in-out infinite; }
 .inbox-alarm-notice__icon svg { width:38px; height:38px; }

@@ -235,7 +235,7 @@ test('Windows keeps a hidden alarm bridge active without visible widgets', () =>
   assert.match(bridge,/refreshFromCloud/);
   assert.match(packageSource,/ActivateConfig \"Estudiemos\\AlarmBridge\"/);
   assert.match(launcher,/Estudiemos\\AlarmBridge/);
-  assert.match(packageSource,/#define AppVersion \"1\.6\.1\"/);
+  assert.match(packageSource,/#define AppVersion \"1\.6\.2\"/);
 });
 
 test('due Windows alarms show their names in a dismissible full-screen alert with looping sound', () => {
@@ -255,6 +255,8 @@ test('independent alarm installer has no widgets and the launcher accepts only s
   const launcher=fs.readFileSync(path.join(root,'windows-installer/AlarmLauncher.vbs'),'utf8');
   assert.doesNotMatch(source,/rainmeter|\.rmskin|vendor\\/i);
   assert.match(source,/PrivilegesRequired=lowest/);
+  assert.match(source,/Windows\\AlarmService/);
+  assert.match(source,/GetSHA256OfFile/);
   assert.match(source,/estudiemos-alarms/);
   assert.match(launcher,/-TestAlert/);
   assert.match(launcher,/A-Za-z0-9_/);

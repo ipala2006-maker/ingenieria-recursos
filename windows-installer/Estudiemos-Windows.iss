@@ -1,4 +1,4 @@
-#define AppVersion "1.6.1"
+#define AppVersion "1.6.2"
 #define RainmeterInstaller "Rainmeter-4.5.26.exe"
 #ifndef OutputBaseName
   #define OutputBaseName "Estudiemos-Widgets-para-Windows"
@@ -46,6 +46,10 @@ Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
 Source: "vendor\{#RainmeterInstaller}"; Flags: dontcopy
 Source: "WidgetLauncher.vbs"; DestDir: "{app}"; Flags: ignoreversion
 Source: "AlarmLauncher.vbs"; DestDir: "{app}"; Flags: ignoreversion
+Source: "AlarmLauncher.vbs"; DestDir: "{app}\AlarmService"; Flags: ignoreversion
+Source: "InboxAlarm.ps1"; DestDir: "{app}\AlarmService"; Flags: ignoreversion
+Source: "InstallInboxAlarm.ps1"; DestDir: "{app}\AlarmService"; Flags: ignoreversion
+Source: "ConnectInboxAlarms.ps1"; DestDir: "{app}\AlarmService"; Flags: ignoreversion
 Source: "StreakReminder.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "InboxAlarm.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "InstallInboxAlarm.ps1"; DestDir: "{app}"; Flags: ignoreversion
@@ -59,7 +63,7 @@ Name: "{userstartup}\Rainmeter"; Filename: "{code:GetRainmeterExecutable}"; Work
 [Registry]
 Root: HKCU; Subkey: "Software\Classes\estudiemos-alarms"; ValueType: string; ValueData: "URL:Estudiemos Alarmas"
 Root: HKCU; Subkey: "Software\Classes\estudiemos-alarms"; ValueName: "URL Protocol"; ValueType: string; ValueData: ""
-Root: HKCU; Subkey: "Software\Classes\estudiemos-alarms\shell\open\command"; ValueType: string; ValueData: "{sys}\wscript.exe ""{app}\AlarmLauncher.vbs"" ""%1"""
+Root: HKCU; Subkey: "Software\Classes\estudiemos-alarms\shell\open\command"; ValueType: string; ValueData: "{sys}\wscript.exe ""{app}\AlarmService\AlarmLauncher.vbs"" ""%1"""
 Root: HKCU; Subkey: "Software\Classes\estudiemos-widgets"; ValueType: string; ValueData: "URL:Estudiemos Widgets"; Flags: uninsdeletekey
 Root: HKCU; Subkey: "Software\Classes\estudiemos-widgets"; ValueName: "URL Protocol"; ValueType: string; ValueData: ""
 Root: HKCU; Subkey: "Software\Classes\estudiemos-widgets\DefaultIcon"; ValueType: string; ValueData: "{app}\WidgetLauncher.vbs"

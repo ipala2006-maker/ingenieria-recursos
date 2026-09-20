@@ -36,4 +36,16 @@ $action.Path = Join-Path $env:WINDIR 'System32\conhost.exe'
 $action.Arguments = '--headless "' + $powershell + '" -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + $alarmScript + '"'
 $action.WorkingDirectory = $PSScriptRoot
 $name = 'Estudiemos Inbox ' + $task.Principal.UserId
+# Reuse the earlier task only when it belongs to this user and runs our alarm.
+try {
+  $legacyName = 'Estudiemos Inbox ' + $env:USERNAME
+  $legacy = $folder.GetTask($legacyName).Definition
+  $legacyAction = $legacy.Actions.Item(1)
+  $knownScript = Join-Path $env:LOCALAPPDATA 'Estudiemos\Windows\InboxAlarm.ps1'
+  $knownService = Join-Path $env:LOCALAPPDATA 'Estudiemos\Windows\AlarmService\InboxAlarm.ps1'
+  $ownUser = @($task.Principal.UserId, $env:USERNAME, ($env:USERDOMAIN + '\' + $env:USERNAME)) -contains $legacy.Principal.UserId
+  if ($ownUser -and ($legacyAction.Arguments.Contains('"' + $knownScript + '"') -or $legacyAction.Arguments.Contains('"' + $knownService + '"'))) { $name = $legacyName }
+} catch { }
 $folder.RegisterTaskDefinition($name, $task, 6, $task.Principal.UserId, $null, 3) | Out-Null
+$registered = $folder.GetTask($name)
+if (!$registered.Enabled -or $registered.Definition.Actions.Item(1).Arguments -ne $action.Arguments) { throw 'Alarm task verification failed.' }

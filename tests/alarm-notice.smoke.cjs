@@ -29,6 +29,15 @@ const base = process.env.TEST_BASE_URL || 'http://127.0.0.1:8149/';
       await page.screenshot({ path: path.join(__dirname, `../tmp/alarm-fullscreen-${viewport.width}.png`) });
       await page.locator('[data-alarm-notice-dismiss]').click();
       assert.equal(await notice.isVisible(), false);
+      await page.evaluate(()=>{
+        const other=document.createElement('dialog');other.id='pilot-dialog';other.textContent='Editor piloto';document.body.appendChild(other);other.showModal();
+        localStorage.removeItem('estudiemos_inbox_alarm_delivered');
+        return window.EstudiemosInboxAlarms.check();
+      });
+      assert.ok(await notice.evaluate(n=>n.open),'alarm uses the top layer above other dialogs');
+      assert.ok(await page.locator('[data-alarm-notice-dismiss]').evaluate(n=>{const r=n.getBoundingClientRect();return document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)===n;}),'alarm is visually above the open editor');
+      await page.locator('[data-alarm-notice-dismiss]').click();
+      assert.ok(await page.locator('#pilot-dialog').evaluate(n=>n.open),'alarm dismissal does not discard the editor');
       await context.close();
     }
   } finally {
