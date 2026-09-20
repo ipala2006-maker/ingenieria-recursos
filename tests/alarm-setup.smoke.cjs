@@ -15,18 +15,22 @@ const base=process.env.TEST_BASE_URL||'http://127.0.0.1:8149/';
     await page.route('**/api/**',route=>{
       const req=route.request(),body=req.postDataJSON();
       if(body?.action==='alarms-connect'){calls.push(body);return route.fulfill({json:{token:'pilot.signature'}});}
-      if(body?.action==='alarms-confirm'){calls.push(body);return route.fulfill({json:{connected:true,userId:'pilot',version:'1.6.1',expiresAt:Math.floor(Date.now()/1000)+3600}});}
+      if(body?.action==='alarms-confirm'){calls.push(body);return route.fulfill({json:{connected:true,userId:'pilot',version:'1.6.2',expiresAt:Math.floor(Date.now()/1000)+3600}});}
       return route.fulfill({json:{enabled:false}});
     });
     await page.goto(new URL('?alarms-setup=1',base).href,{waitUntil:'networkidle'});
     const dialog=page.locator('.alarm-setup');assert.ok(await dialog.isVisible());
     assert.match(await dialog.locator('a[download]').getAttribute('href'),/downloads\/Activar-Alarmas-Estudiemos\.exe$/);
-    assert.ok(await dialog.locator('[data-alarm-native-test]').isDisabled());
+    assert.ok(await dialog.locator('[data-alarm-activate]').isDisabled(),'requires explicit consent');
+    assert.ok(await dialog.locator('[data-alarm-native-test]').isEnabled(),'test installation independently of account connection');
+    await dialog.locator('[data-alarm-consent]').check();
     await dialog.locator('[data-alarm-activate]').click();
     await page.waitForFunction(()=>window.nativeLinks.length===1);
     assert.deepEqual(await page.evaluate(()=>nativeLinks),['estudiemos-alarms://connect?link=pilot.signature']);
-    assert.ok(await dialog.locator('[data-alarm-native-test]').isDisabled(),'opening a protocol is not installation proof');
-    assert.match(await dialog.locator('[data-alarm-native-status]').textContent(),/Todavía no confirmamos/);
+    assert.equal(await dialog.getAttribute('data-ready'),'false','opening a protocol is not installation proof');
+    assert.match(await dialog.locator('[data-alarm-native-status]').textContent(),/todavía está pendiente/);
+    const retry=dialog.locator('[data-alarm-retry]');assert.ok(await retry.isVisible());
+    await retry.click();assert.equal(await page.evaluate(()=>nativeLinks.length),2,'fresh gesture retries without another download');
     assert.equal(await page.evaluate(()=>localStorage.getItem('estudiemos_windows_alarm_connection')),null);
     await page.goto(new URL('?windows-alarms-ready=receipt',base).href,{waitUntil:'networkidle'});
     assert.equal(await dialog.getAttribute('data-ready'),'true');
@@ -42,6 +46,7 @@ const base=process.env.TEST_BASE_URL||'http://127.0.0.1:8149/';
       localStorage.removeItem('estudiemos_windows_alarm_connection');
       window.EstudiemosInboxAlarms.showSetup();
     });
+    await dialog.locator('[data-alarm-consent]').check();
     await dialog.locator('[data-alarm-activate]').click();
     assert.equal(await dialog.isVisible(),false,'setup must not block the sign-in interface');
     assert.ok(await page.evaluate(()=>window.signInOpened));

@@ -25,13 +25,15 @@ modelo. Genera solicitudes al alojamiento y a la base de datos.
 1. En la campana de una tarea, toca **Activar pantalla completa en esta PC**.
    Tambien podes abrir https://estudiemos-app.vercel.app/?alarms-setup=1.
 2. Toca **Instalar alarmas para Windows** y abri el archivo descargado. Es un
-   instalador independiente (1.6.1): no requiere Rainmeter, widgets ni reinstalar
+   instalador independiente (1.6.2): no requiere Rainmeter, widgets ni reinstalar
    la app. Al terminar abre nuevamente la pantalla de activacion.
-3. Toca **Ya instale: activar alarmas**, acepta el aviso de pantalla completa
-   y **Abrir** en el navegador. No se marca como listo hasta recibir una
+3. Marca el consentimiento y toca **Conectar con Windows**. Acepta **Abrir**
+   en el navegador. Si no aparece, usa **Abrir activacion de Windows**, sin
+   descargar otra vez. No se marca listo hasta recibir una
    confirmacion autentificada despues de registrar la tarea de Windows.
-4. Toca **Probar alarma de Windows**. La prueba ejecuta el mismo aviso nativo,
-   con sonido y el boton **Entendido**, no una notificacion de navegador.
+4. Toca **Probar alarma de Windows**. Esta prueba ya esta disponible despues
+   de instalar y es independiente de conectar la cuenta. Ejecuta el mismo aviso
+   nativo, con sonido y **Entendido**. No demuestra que la cuenta este vinculada.
 5. Volve a tu tarea, marca **Mostrar esta alarma con la app cerrada** y guarda.
    Espera la sincronizacion de la cuenta antes de cerrar la app. Las alarmas
    posteriores de IA reutilizan esta eleccion, no la decide el modelo.
@@ -93,7 +95,9 @@ temporizador web en segundo plano.
   tarea queda marcada como oculta y usa el modo `headless` nativo de la consola
   de Windows, sin depender de Windows Script Host.
 - `windows-installer/Estudiemos-Alarms.iss`: instalador independiente, sin
-  dependencias de widgets. Registra `estudiemos-alarms://` para conectar/probar.
+  dependencias de widgets. Usa la carpeta `Windows/AlarmService`, separada de
+  scripts antiguos, y verifica los cuatro archivos por SHA-256 despues de instalar.
+  Registra `estudiemos-alarms://` para conectar/probar.
 - `windows-installer/AlarmLauncher.vbs`: valida esas dos acciones y el formato
   del token antes de lanzar el componente oculto. No recibe comandos libres.
 
@@ -103,6 +107,8 @@ la credencial cifrada para ese usuario de Windows. El archivo legado
 compartido para informacion privada. Cerrar el navegador o cerrar sesion no
 revoca esta conexion independiente. Al vencer los 90 dias hay que reconectar;
 una respuesta 401/403 detiene los avisos, sin recurrir a datos anteriores.
+`activation-status.json` registra solo etapa, codigo HTTP y fecha de un fallo;
+no incluye tokens, titulos de tareas ni datos de la cuenta.
 
 Desactivar todas las alarmas Windows y sincronizar deja la programacion vacia.
 Para quitar el proceso opcional, elimina la tarea `Estudiemos Inbox <usuario>` en

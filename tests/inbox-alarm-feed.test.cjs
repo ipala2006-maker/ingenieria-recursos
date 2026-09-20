@@ -51,7 +51,7 @@ test('alarm credentials are scoped, expiring and tamper-evident',()=>{
 
 test('receipts distinguish the legacy helper from the independent installer',async()=>{
   const {call}=setup(),headers={authorization:'Bearer session'};
-  for(const [clientVersion,expected] of [[undefined,'1.6.0'],['1.6.1','1.6.1'],['unknown','1.6.0']]){
+  for(const [clientVersion,expected] of [[undefined,'1.6.0'],['1.6.1','1.6.1'],['1.6.2','1.6.2'],['unknown','1.6.0']]){
     const started=await call('POST',{action:'alarms-connect',consent:true},{},headers);
     const installed=await call('GET',{}, {alarmSetup:started.body.token,clientVersion});
     const confirmed=await call('POST',{action:'alarms-confirm',proof:installed.body.confirmation},{},headers);
