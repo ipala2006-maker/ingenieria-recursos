@@ -34,7 +34,7 @@ test('completed, removed, old and future alarms cannot trigger; midnight catchup
   assert.equal(rules.due([base], new Date('2026-09-11T23:58:00')).length,0);
 });
 const file = path.join(root, 'api/agenda-ai.js');
-const sandbox = { require:createRequire(file), module:{exports:{}}, process:{env:{}}, Date, URL, setTimeout, clearTimeout };
+const sandbox = { require:createRequire(file), module:{exports:{}}, process:{env:{}}, Date, URL, AbortController, setTimeout, clearTimeout };
 vm.runInNewContext(fs.readFileSync(file,'utf8') + '\nmodule.exports.test = {sanitizePlan, sanitizeAgendaItem, buildModelRequest, createSimpleAlarmPlan};', sandbox);
 const ai = sandbox.module.exports.test;
 function input(instruction, agenda=[]) { return {instruction, agenda, subjects:[], today:'2026-09-11', dateFrom:'2026-09-11', dateUntil:'2026-10-11',timezone:'America/Argentina/Buenos_Aires'}; }
@@ -55,8 +55,12 @@ test('AI cannot invent alarm consent or silently choose an unmentioned time', ()
   assert.equal(repaired.createEvents[0].alarm.repeat,'none');
 });
 
-test('clear natural alarms survive an empty or malformed model plan', () => {
-  const tomorrow=ai.sanitizePlan({clarification:'¿Qué día y hora querés?'},{...input('Recordame entregar el informe mañana a las 18:30'),localTime:'10:15'});
+test('clear natural alarms survive an empty plan but never overwrite a model clarification', () => {
+  const request={...input('Recordame entregar el informe mañana a las 18:30'),localTime:'10:15'};
+  const question=ai.sanitizePlan({clarification:'¿Qué día y hora querés?'},request);
+  assert.equal(question.clarification,'¿Qué día y hora querés?');
+  assert.equal(question.createEvents.length,0);
+  const tomorrow=ai.sanitizePlan({},request);
   assert.equal(tomorrow.clarification,'');
   assert.equal(tomorrow.createEvents.length,1);
   assert.equal(tomorrow.createEvents[0].title,'entregar el informe');
@@ -67,7 +71,7 @@ test('clear natural alarms survive an empty or malformed model plan', () => {
   assert.equal(relative.createEvents[0].alarm.time,'00:10');
 });
 
-test('clear alarm commands bypass the model and understand compact am/pm times', () => {
+test('offline fallback understands single alarm commands and compact am/pm times', () => {
   const tomorrow=ai.createSimpleAlarmPlan({...input('Avisame mañana a las 18 de entregar el trabajo'),localTime:'10:15'});
   assert.equal(tomorrow.clarification,'');
   assert.equal(tomorrow.createEvents[0].title,'entregar el trabajo');
@@ -83,6 +87,41 @@ test('a partial event time never rejects the task', () => {
   assert.equal(plan.createEvents.length,1);
   assert.equal(plan.createEvents[0].horaInicio,'');
   assert.equal(plan.createEvents[0].horaFin,'');
+});
+
+test('complex model plans keep separate dates and times; simple fallback declines exceptions', () => {
+  const request={...input('Avisame mañana a las 9 de estudiar y el lunes a las 18 de entregar'),localTime:'10:00'};
+  const model={createEvents:[raw(alarm('none','2026-09-12','09:00')).createEvents[0],{...raw(alarm('none','2026-09-14','18:00')).createEvents[0],title:'Entregar'}]};
+  const plan=ai.sanitizePlan(model,request);
+  assert.deepEqual(plain(plan.createEvents.map(e=>[e.alarm.date,e.alarm.time])),[['2026-09-12','09:00'],['2026-09-14','18:00']]);
+  for(const instruction of [request.instruction,'Avisame lunes y miércoles a las 18','Avisame cada 2 horas','Avisame el 23 de septiembre a las 18','Avisame a las 18 excepto el lunes']) {
+    assert.equal(ai.createSimpleAlarmPlan({...request,instruction}),null,instruction);
+  }
+  const afternoon=ai.createSimpleAlarmPlan({...input('Recordame repasar a las 6 de la tarde'),localTime:'10:00'});
+  assert.equal(afternoon.createEvents[0].alarm.time,'18:00');
+  const morning=ai.createSimpleAlarmPlan({...input('Recordame repasar a las 11 de la mañana'),localTime:'10:00'});
+  assert.equal(morning.createEvents[0].alarm.date,'2026-09-11');
+});
+
+test('answering a clarification retains the original alarm intent', () => {
+  const request={...input('A las 18'),conversation:[{role:'user',text:'Recordame entregar la guía mañana'},{role:'assistant',text:'¿A qué hora?'}]};
+  const plan=ai.sanitizePlan(raw(alarm('none','2026-09-12','18:00')),request);
+  assert.equal(plan.clarification,'');
+  assert.equal(plan.createEvents[0].alarm.date,'2026-09-12');
+  assert.equal(ai.createSimpleAlarmPlan(request),null);
+});
+
+test('the model has priority and an unavailable provider can use only a safe single-alarm fallback', async () => {
+  const requests=[];
+  sandbox.fetch=async(url,options)=>{requests.push(JSON.parse(options.body));return {ok:true,status:200,json:async()=>({candidates:[{content:{parts:[{thought:true,text:'internal text'},{text:JSON.stringify(raw(alarm('none','2026-10-20','18:00')))}]}}]})};};
+  const request={...input('Recordame entregar el informe el 20 de octubre a las 18'),localTime:'10:00'};
+  const result=await sandbox.module.exports.createAgendaPlan(request);
+  assert.equal(requests.length,1);
+  assert.equal(result.createEvents[0].alarm.date,'2026-10-20');
+  sandbox.fetch=async()=>{throw new Error('offline');};
+  const fallback=await sandbox.module.exports.createAgendaPlan({...input('Avisame en 20 minutos de repasar'),localTime:'10:00'});
+  assert.equal(fallback.createEvents[0].alarm.time,'10:20');
+  await assert.rejects(sandbox.module.exports.createAgendaPlan(request),/offline/);
 });
 
 test('natural alarm phrases route to Inbox and support hours written in words', () => {
@@ -172,6 +211,21 @@ test('Windows alarm task uses headless console mode and stays hidden between che
   assert.doesNotMatch(packageSource,/InboxAlarmLauncher\.vbs/);
 });
 
+test('Windows reads its protected cloud feed without Rainmeter and retains an offline cache', {skip:process.platform!=='win32'}, t => {
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'estudiemos-alarm-test-'));
+  t.after(()=>{assert.equal(path.dirname(path.resolve(dir)),path.resolve(os.tmpdir()));assert.match(path.basename(dir),/^estudiemos-alarm-test-/);fs.rmSync(dir,{recursive:true,force:true});});
+  const snapshot={version:1,items:[{id:'cloud',title:'Alarma piloto',alarm:alarm()}]};
+  for(const scenario of ['online','offline','empty']){
+    fs.writeFileSync(path.join(dir,'cloud.json'),JSON.stringify(snapshot));
+    const p=spawnSync('powershell.exe',['-NoProfile','-NonInteractive','-File',path.join(root,'tests/helpers/native-alarm-feed.ps1'),'-StateDirectory',dir,'-Scenario',scenario],{encoding:'utf8',windowsHide:true,env:{...process.env,PSModulePath:path.join(process.env.WINDIR,'System32/WindowsPowerShell/v1.0/Modules')}});
+    assert.equal(p.status,0,p.stderr);
+    assert.equal(JSON.parse(p.stdout).length,scenario==='empty'?0:1,scenario);
+    const status=JSON.parse(fs.readFileSync(path.join(dir,'connection.json'),'utf8').replace(/^\uFEFF/,''));
+    assert.equal(status.status,scenario==='offline'?'offline':'connected');
+    assert.equal(fs.existsSync(path.join(dir,'delivered.json')),false,'dry run never delivers alerts');
+  }
+});
+
 test('Windows keeps a hidden alarm bridge active without visible widgets', () => {
   const bridge=fs.readFileSync(path.join(root,'windows-rainmeter/Skins/Estudiemos/AlarmBridge/AlarmBridge.ini'),'utf8');
   const packageSource=fs.readFileSync(path.join(root,'windows-installer/Estudiemos-Windows.iss'),'utf8');
@@ -181,7 +235,7 @@ test('Windows keeps a hidden alarm bridge active without visible widgets', () =>
   assert.match(bridge,/refreshFromCloud/);
   assert.match(packageSource,/ActivateConfig \"Estudiemos\\AlarmBridge\"/);
   assert.match(launcher,/Estudiemos\\AlarmBridge/);
-  assert.match(packageSource,/#define AppVersion \"1\.5\.0\"/);
+  assert.match(packageSource,/#define AppVersion \"1\.6\.0\"/);
 });
 
 test('due Windows alarms show their names in a dismissible full-screen alert with looping sound', () => {

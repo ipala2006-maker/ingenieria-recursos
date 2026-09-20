@@ -26,6 +26,31 @@ public class StreakWidgetProvider extends AppWidgetProvider {
     static final String KEY_DAYS = "pomodoro_streak_days";
     static final String KEY_THRESHOLD = "pomodoro_streak_threshold";
     static final int DEFAULT_THRESHOLD = 25;
+    private static final String ACTION_CHART = "com.estudiemos.app.STREAK_CHART";
+
+    @Override
+    public void onReceive(Context context, Intent intent) {
+        if (ACTION_CHART.equals(intent.getAction())) {
+            int id = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID);
+            AppWidgetManager manager = AppWidgetManager.getInstance(context);
+            for (int ownId : manager.getAppWidgetIds(new ComponentName(context, StreakWidgetProvider.class))) {
+                if (ownId != id) continue;
+                SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+                prefs.edit().putBoolean("chart_bars_" + id, !prefs.getBoolean("chart_bars_" + id, false)).apply();
+                updateWidget(context, manager, id);
+                break;
+            }
+            return;
+        }
+        super.onReceive(context, intent);
+    }
+
+    @Override
+    public void onDeleted(Context context, int[] ids) {
+        SharedPreferences.Editor editor = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit();
+        for (int id : ids) editor.remove("chart_bars_" + id);
+        editor.apply();
+    }
 
     @Override
     public void onUpdate(Context context, AppWidgetManager manager, int[] appWidgetIds) {
@@ -144,16 +169,23 @@ public class StreakWidgetProvider extends AppWidgetProvider {
                 R.id.streak_widget_week,
                 "Semana: " + formatStudyTime(summary.weekTotalMinutes()) + (!compact && size.width >= 250 ? " · " + summary.activeLast7 + " activos" : "")
         );
-        views.setImageViewBitmap(R.id.streak_widget_chart, buildWeekChart(summary.weekMinutes, compact ? 160 : 240));
+        boolean bars = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("chart_bars_" + appWidgetId, false);
+        views.setImageViewBitmap(R.id.streak_widget_chart, buildWeekChart(summary.weekMinutes, compact ? 160 : 240, bars));
+        views.setTextViewText(R.id.streak_widget_mode, bars ? "Barras" : "Línea");
+        views.setContentDescription(R.id.streak_widget_mode, bars ? "Cambiar a gráfico de línea" : "Cambiar a gráfico de barras");
+        Intent chartIntent = new Intent(context, StreakWidgetProvider.class).setAction(ACTION_CHART)
+                .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
+        views.setOnClickPendingIntent(R.id.streak_widget_mode, PendingIntent.getBroadcast(context, appWidgetId, chartIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
         views.setContentDescription(R.id.streak_widget_root, title + ". Hoy: " + formatStudyTime(summary.todayMinutes)
                 + ". Semana: " + formatStudyTime(summary.weekTotalMinutes()) + ". " + summary.activeLast7 + " días activos. Abrir Pomodoro.");
         views.setOnClickPendingIntent(R.id.streak_widget_root, openPomodoroIntent(context));
         manager.updateAppWidget(appWidgetId, views);
     }
 
-    private static Bitmap buildWeekChart(int[] minutes, int height) {
+    private static Bitmap buildWeekChart(int[] minutes, int height, boolean bars) {
         int width = 640;
-        float left = 16f, right = width - 16f, top = 16f, bottom = height - 34f;
+        float left = 68f, right = width - 16f, top = 20f, bottom = height - 34f;
         Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
         Paint grid = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -167,6 +199,24 @@ public class StreakWidgetProvider extends AppWidgetProvider {
         for (int value : minutes) maximum = Math.max(maximum, value);
         maximum = Math.max(60, ((maximum + 59) / 60) * 60);
 
+        grid.setColor(0xFFB4C5DD); grid.setTextSize(20); grid.setTextAlign(Paint.Align.RIGHT);
+        for (int tick = 0; tick <= 2; tick++) {
+            float value = maximum * tick / 2f;
+            String hours = String.format(java.util.Locale.forLanguageTag("es-AR"), "%.1f h", value / 60f);
+            canvas.drawText(hours, left - 8, bottom - (bottom - top) * tick / 2f + 6, grid);
+        }
+        if (!bars) {
+            Path line = new Path();
+            for (int index = 0; index < minutes.length; index++) {
+                float x = left + (index + .5f) * (right - left) / 7f;
+                float y = bottom - Math.max(0, minutes[index]) * (bottom - top) / maximum;
+                if (index == 0) line.moveTo(x, y); else line.lineTo(x, y);
+            }
+            Paint stroke = new Paint(Paint.ANTI_ALIAS_FLAG);
+            stroke.setColor(0xFF8BB5FF); stroke.setStyle(Paint.Style.STROKE); stroke.setStrokeWidth(4);
+            stroke.setStrokeJoin(Paint.Join.ROUND); canvas.drawPath(line, stroke);
+        }
+
         Paint point = new Paint(Paint.ANTI_ALIAS_FLAG);
         String[] labels = {"L", "M", "X", "J", "V", "S", "D"};
         int firstDay = LocalDate.now().minusDays(6).getDayOfWeek().getValue() - 1;
@@ -174,7 +224,10 @@ public class StreakWidgetProvider extends AppWidgetProvider {
             float x = left + (index + .5f) * (right - left) / 7f;
             float y = bottom - (Math.max(0, minutes[index]) / (float) maximum) * (bottom - top);
             boolean today = index == 6;
-            if (minutes[index] > 0) {
+            if (!bars) {
+                point.setColor(today ? 0xFFFFB04F : 0xFF8BB5FF);
+                canvas.drawCircle(x, y, today ? 6 : 4, point);
+            } else if (minutes[index] > 0) {
                 point.setColor(today ? 0xFFFFB04F : 0xFF8BB5FF);
                 canvas.drawRect(x - 21, y, x + 21, bottom, point);
                 Path side = new Path();

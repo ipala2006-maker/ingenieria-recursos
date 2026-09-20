@@ -1,4 +1,4 @@
-#define AppVersion "1.5.0"
+#define AppVersion "1.6.0"
 #define RainmeterInstaller "Rainmeter-4.5.26.exe"
 #ifndef OutputBaseName
   #define OutputBaseName "Estudiemos-Widgets-para-Windows"
@@ -48,6 +48,7 @@ Source: "WidgetLauncher.vbs"; DestDir: "{app}"; Flags: ignoreversion
 Source: "StreakReminder.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "InboxAlarm.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "InstallInboxAlarm.ps1"; DestDir: "{app}"; Flags: ignoreversion
+Source: "ConnectInboxAlarms.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\windows-rainmeter\Skins\Estudiemos\*"; DestDir: "{code:GetSkinDirectory}\Estudiemos"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\windows-rainmeter\Plugins\64bit\WebView2.dll"; DestDir: "{code:GetRainmeterPluginDirectory}"; Flags: ignoreversion restartreplace
 

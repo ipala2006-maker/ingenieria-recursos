@@ -134,7 +134,8 @@ export function createOrganizerDepth(host, {onOpen, motion = true} = {}) {
   const focus=()=>{focused=true;schedule();},blur=()=>{focused=false;schedule();};
   const theme=()=>{dirty=true;schedule();};
   const visibility=()=>{last=0;schedule();};
-  const resizer=new win.ResizeObserver(resize);resizer.observe(surface);
+  let resizeFrame=0;
+  const resizer=new win.ResizeObserver(()=>{win.cancelAnimationFrame(resizeFrame);resizeFrame=win.requestAnimationFrame(resize);});resizer.observe(surface);
   const observer=new win.IntersectionObserver(entries=>{visible=entries[0].isIntersecting;visibility();});observer.observe(surface);
   const colors=new win.MutationObserver(theme);colors.observe(doc.documentElement,{attributes:true,attributeFilter:['class','data-theme']});
   surface.addEventListener('pointerdown',down);surface.addEventListener('pointermove',move);
@@ -143,7 +144,7 @@ export function createOrganizerDepth(host, {onOpen, motion = true} = {}) {
   surface.addEventListener('pointerenter',enter);surface.addEventListener('pointerleave',leave);surface.addEventListener('focus',focus);surface.addEventListener('blur',blur);surface.addEventListener('keydown',key);
   doc.addEventListener('visibilitychange',visibility);
   function dispose(){
-    if(disposed)return;disposed=true;win.cancelAnimationFrame(frame);
+    if(disposed)return;disposed=true;win.cancelAnimationFrame(frame);win.cancelAnimationFrame(resizeFrame);
     if(drag&&surface.hasPointerCapture(drag.id))surface.releasePointerCapture(drag.id);drag=null;
     resizer.disconnect();observer.disconnect();colors.disconnect();doc.removeEventListener('visibilitychange',visibility);
     images.forEach(image=>{image.onload=null;});

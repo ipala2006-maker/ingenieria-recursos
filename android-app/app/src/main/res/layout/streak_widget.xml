@@ -3,10 +3,16 @@
     android:id="@+id/streak_widget_root"
     android:layout_width="match_parent" android:layout_height="match_parent"
     android:background="@drawable/widget_background" android:orientation="vertical" android:padding="12dp">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
     <TextView android:id="@+id/streak_widget_title"
-        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
         android:maxLines="1" android:ellipsize="end" android:text="Racha"
         android:textColor="#F8FAFC" android:textSize="18sp" android:textStyle="bold" />
+    <TextView android:id="@+id/streak_widget_mode"
+        android:layout_width="wrap_content" android:layout_height="40dp" android:minWidth="52dp"
+        android:gravity="center" android:paddingHorizontal="6dp" android:text="Línea"
+        android:textColor="#8BB5FF" android:textSize="12sp" />
+    </LinearLayout>
     <TextView android:id="@+id/streak_widget_today"
         android:layout_width="match_parent" android:layout_height="wrap_content"
         android:layout_marginTop="4dp" android:text="Hoy: 0 min"

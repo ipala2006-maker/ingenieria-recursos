@@ -9,6 +9,16 @@ If WScript.Arguments.Count = 0 Then WScript.Quit 1
 rawRequest = WScript.Arguments(0)
 request = LCase(rawRequest)
 linkToken = GetQueryValue(rawRequest, "link")
+If InStr(request, "estudiemos-widgets://alarms?") = 1 Then
+  If Not IsSafeLinkToken(linkToken) Then WScript.Quit 4
+  Dim alarmConnector, alarmPowerShell
+  alarmConnector = fileSystem.BuildPath(fileSystem.GetParentFolderName(WScript.ScriptFullName), "ConnectInboxAlarms.ps1")
+  If Not fileSystem.FileExists(alarmConnector) Then WScript.Quit 5
+  alarmPowerShell = shell.ExpandEnvironmentStrings("%SystemRoot%") & "\System32\WindowsPowerShell\v1.0\powershell.exe"
+  command = Chr(34) & alarmPowerShell & Chr(34) & " -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File " & Chr(34) & alarmConnector & Chr(34) & " -Token " & Chr(34) & linkToken & Chr(34)
+  shell.Run command, 0, False
+  WScript.Quit 0
+End If
 rainmeterPath = fileSystem.BuildPath(fileSystem.GetParentFolderName(WScript.ScriptFullName), "Rainmeter\Rainmeter.exe")
 If Not fileSystem.FileExists(rainmeterPath) Then
   rainmeterPath = shell.ExpandEnvironmentStrings("%ProgramFiles%") & "\Rainmeter\Rainmeter.exe"

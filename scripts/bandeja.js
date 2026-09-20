@@ -28,6 +28,7 @@
   let selectedAgendaDate = toDateValue(new Date());
   let agendaAssistantPreview = [];
   let agendaAssistantAction = null;
+  let agendaAssistantConversation = [];
 
   addAgendaPanel();
   addAgendaButton();
@@ -889,6 +890,7 @@
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${accessToken}` },
         body: JSON.stringify({
           instruction: prompt,
+          conversation: agendaAssistantConversation,
           dateFrom: fromValue,
           dateUntil: untilValue,
           today: toDateValue(new Date()),
@@ -908,6 +910,10 @@
 
       const plan = prepareAgendaAssistantPlan(result);
       if (plan.clarification) {
+        agendaAssistantConversation.push({role:'user',text:prompt},{role:'assistant',text:plan.clarification});
+        agendaAssistantConversation = agendaAssistantConversation.slice(-6);
+        const composer = document.getElementById('agendaAssistantPrompt');
+        if (composer) { composer.value = ''; composer.placeholder = plan.clarification; composer.focus(); }
         setAgendaAssistantStatus(plan.clarification, "info");
         return;
       }
@@ -917,6 +923,7 @@
       }
 
       agendaAssistantPreview = plan.items;
+      agendaAssistantConversation = [];
       agendaAssistantAction = plan;
       renderAgendaAssistantPlan(plan, preview, confirm, status);
     } catch (_) {

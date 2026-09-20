@@ -9,8 +9,10 @@
   if (!page || !workspace || !dashboard || !calendar || !inbox) return;
   const mobile = matchMedia('(max-width:700px), (min-width:701px) and (max-width:900px) and (max-height:899px), (max-height:650px)');
   const topbar = document.querySelector('.topbar');
+  let topbarFrame=0;
   if(topbar) new ResizeObserver(() => {
-    document.documentElement.style.setProperty('--home-topbar-height',`${topbar.getBoundingClientRect().height}px`);
+    cancelAnimationFrame(topbarFrame);
+    topbarFrame=requestAnimationFrame(()=>document.documentElement.style.setProperty('--home-topbar-height',`${topbar.getBoundingClientRect().height}px`));
   }).observe(topbar);
   const nav = document.createElement('nav');
   nav.className = 'product-home-navigation';

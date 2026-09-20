@@ -174,25 +174,37 @@ module.exports = async function agendaAi(request, response) {
 };
 
 async function createAgendaPlan(input) {
-  const deterministic = createSimpleAlarmPlan(input);
-  if (deterministic) return deterministic;
-  const { modelResponse, payload } = await requestModel(buildModelRequest(input));
+  let result;
+  try { result = await requestModel(buildModelRequest(input)); }
+  catch (error) {
+    const fallback = createSimpleAlarmPlan(input);
+    if (fallback) return fallback;
+    throw error;
+  }
+  const { modelResponse, payload } = result;
   if (!modelResponse.ok) {
+    const fallback = createSimpleAlarmPlan(input);
+    if (fallback) return fallback;
     const error = new Error("Agenda AI request failed");
     error.code = modelResponse.status === 429 || modelResponse.status >= 500 ? "AI_BUSY" : "AI_REQUEST_FAILED";
     error.details = cleanText(payload?.error?.message, 300);
     throw error;
   }
-  const text = payload?.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("") || "";
-  return sanitizePlan(JSON.parse(text), input);
+  const text = payload?.candidates?.[0]?.content?.parts?.filter(part => !part.thought).map(part => part.text || '').join('') || '';
+  try { return sanitizePlan(JSON.parse(text.replace(/^\s*```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '')), input); }
+  catch (cause) {
+    const fallback = createSimpleAlarmPlan(input);
+    if (fallback) return fallback;
+    const error = new Error('Invalid structured response'); error.code = 'AI_REQUEST_FAILED'; throw error;
+  }
 }
 
 function createSimpleAlarmPlan(input) {
   const text = normalizeText(input.instruction);
   const beginsAsAlarm = /^(?:poneme|programame|programa|creame|crea|agregame|agrega|recordame|avisame|alarma|recordatorio)\b/.test(text);
-  const editsExisting = /\b(?:cambia|modifica|quita|elimina|borra|mueve)\b/.test(text);
+  const editsExisting = /\b(?:cambia|cambiale|modifica|quita|elimina|borra|mueve|ponele|ponle)\b/.test(text);
   const inferred = inferAlarmFromInstruction(input);
-  if (!beginsAsAlarm || editsExisting || !inferred) return null;
+  if (!beginsAsAlarm || editsExisting || !inferred || !isSingleAlarmInstruction(input.instruction) || input.conversation?.length) return null;
   const title = fallbackAlarmTitle(input.instruction);
   return sanitizePlan({
     summary: `Alarma para ${title}`,
@@ -248,6 +260,10 @@ function validateInput(body) {
   if (JSON.stringify(source).length > 200000) return { ok: false, error: "Los datos de Inbox y calendario son demasiado grandes." };
   const instruction = cleanText(source.instruction, MAX_INSTRUCTION_LENGTH);
   if (instruction.length < 3) return { ok: false, error: "Escribi una instruccion mas completa." };
+  const conversation = Array.isArray(source.conversation) ? source.conversation.slice(-6)
+    .filter(item => item && ['user', 'assistant'].includes(item.role))
+    .map(item => ({ role:item.role, text:cleanText(item.text, MAX_INSTRUCTION_LENGTH) }))
+    .filter(item => item.text) : [];
 
   const dateFrom = cleanDate(source.dateFrom);
   const dateUntil = cleanDate(source.dateUntil);
@@ -268,6 +284,7 @@ function validateInput(body) {
     ok: true,
     value: {
       instruction,
+      conversation,
       dateFrom,
       dateUntil,
       agenda,
@@ -338,6 +355,8 @@ Reglas de razonamiento:
 
   const userContext = {
     instruccion: input.instruction,
+    conversacionPendiente: input.conversation || [],
+    contextoConversacion: 'La ultima instruccion puede responder a una aclaracion anterior. Integra esos datos. Si inicia un pedido diferente, usa solo el nuevo pedido. No vuelvas a aplicar acciones anteriores.',
     hoy: input.today,
     horaLocalActual: input.localTime || '',
     zonaHoraria: input.timezone,
@@ -404,8 +423,9 @@ function sanitizePlan(raw, input) {
     .slice(0, MAX_AGENDA_ITEMS);
   const deleted = new Set(deleteIds);
 
-  const keepGeneratedTimes = instructionHasExplicitTime(input.instruction);
-  const keepGeneratedDates = instructionHasExplicitDate(input.instruction);
+  const instructionContext = [...(input.conversation || []).filter(turn => turn.role === 'user').map(turn => turn.text), input.instruction].join('\n');
+  const keepGeneratedTimes = instructionHasExplicitTime(instructionContext);
+  const keepGeneratedDates = instructionHasExplicitDate(instructionContext);
   const sanitizedSchedules = Array.isArray(source.createSchedules)
     ? source.createSchedules.map(sanitizeSchedule).filter(Boolean).slice(0, 50)
     : [];
@@ -428,10 +448,10 @@ function sanitizePlan(raw, input) {
       .slice(0, 100)
     : [];
 
-  const alarmIntent = alarmRules.hasIntent(input.instruction);
-  const withoutAlarm = /\bsin\s+(?:alarmas?|notificaciones)\b/.test(normalizeText(input.instruction));
-  const relativeAlarmTime = !!input.localTime && /\b(?:en|dentro de)\s+\d{1,3}\s*(?:minutos?|min|horas?)\b/.test(normalizeText(input.instruction));
-  const inferredAlarm = inferAlarmFromInstruction(input);
+  const alarmIntent = alarmRules.hasIntent(instructionContext);
+  const withoutAlarm = isSingleAlarmInstruction(input.instruction) && /\bsin\s+(?:alarmas?|notificaciones)\b/.test(normalizeText(input.instruction));
+  const relativeAlarmTime = !!input.localTime && /\b(?:en|dentro de)\s+\d{1,3}\s*(?:minutos?|min|horas?)\b/.test(normalizeText(instructionContext));
+  const inferredAlarm = isSingleAlarmInstruction(input.instruction) && !input.conversation?.length ? inferAlarmFromInstruction(input) : null;
   let alarmClarification = '';
   for (const item of [...createEvents, ...updates]) {
     if (!Object.hasOwn(item, 'alarm')) continue;
@@ -444,10 +464,9 @@ function sanitizePlan(raw, input) {
       item.alarm.windows = old?.windows === true;
     }
   }
-  if (alarmIntent && !withoutAlarm && inferredAlarm) {
-    let target = createEvents[0];
-    if (!target) target = updates.find(item => item.id);
-    if (!target && !createSchedules.length && !deleteIds.length) {
+  if (alarmIntent && !withoutAlarm && inferredAlarm && !source.clarification && createEvents.length + updates.length <= 1) {
+    let target = createEvents[0] || updates[0];
+    if (!target && !createSchedules.length && !deleteIds.length && createSimpleAlarmPlanEligible(input)) {
       target = sanitizeCreatedEvent({
         title: fallbackAlarmTitle(input.instruction),
         eventType: 'Recordatorio',
@@ -455,7 +474,7 @@ function sanitizePlan(raw, input) {
       });
       if (target) createEvents.push(target);
     }
-    if (target) {
+    if (target && !Object.hasOwn(target, 'alarm')) {
       const old = agenda.find(item => item.id === target.id)?.alarm;
       target.alarm = { ...inferredAlarm, windows: old?.windows === true };
       alarmClarification = '';
@@ -465,8 +484,7 @@ function sanitizePlan(raw, input) {
     alarmClarification = 'Indicá la tarea, el día, la hora y cómo querés repetir la alarma.';
   }
 
-  let modelClarification = cleanText(source.clarification, 300);
-  if (inferredAlarm && /\b(?:alarma|hora|dia|fecha|cuando)\b/.test(normalizeText(modelClarification))) modelClarification = '';
+  const modelClarification = cleanText(source.clarification, 300);
 
   return {
     summary: cleanText(source.summary, 300) || "Plan de cambios listo para revisar.",
@@ -676,6 +694,7 @@ function inferAlarmFromInstruction(input) {
   const original = String(input.instruction || '').toLowerCase();
   const text = normalizeText(original);
   if (!alarmRules.hasIntent(text) || /\bsin\s+(?:alarmas?|notificaciones)\b/.test(text)) return null;
+  if (!isSingleAlarmInstruction(original)) return null;
 
   const relative = text.match(/\b(?:en|dentro de)\s+(\d{1,3})\s*(minutos?|min|horas?)\b/);
   if (relative && input.localTime) {
@@ -713,6 +732,7 @@ function extractInstructionTime(original, text) {
     const suffix = String(match[3] || '').toLowerCase();
     if (suffix === 'pm' && hour < 12) hour += 12;
     if (suffix === 'am' && hour === 12) hour = 0;
+    if (!suffix && /\bde la (?:tarde|noche)\b/.test(text) && hour < 12) hour += 12;
     if (hour <= 23) return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
   }
   const directAmPm = original.match(/\b(1[0-2]|0?[1-9])\s*(am|pm)\b/i);
@@ -737,7 +757,7 @@ function extractInstructionDate(original, text, today, localTime, alarmTime) {
   const base = parseLocalParts(today, localTime || '00:00');
   if (!base) return '';
   if (/\bpasado manana\b/.test(text)) return utcDateKey(new Date(base.getTime() + 2 * 86400000));
-  if (/\bmanana\b/.test(text)) return utcDateKey(new Date(base.getTime() + 86400000));
+  if (/\bmanana\b/.test(text.replace(/\bde la manana\b/g, ''))) return utcDateKey(new Date(base.getTime() + 86400000));
   if (/\bhoy\b/.test(text)) return today;
   const names = { domingo:0, lunes:1, martes:2, miercoles:3, jueves:4, viernes:5, sabado:6 };
   const weekday = Object.keys(names).find(name => new RegExp(`\\b${name}\\b`).test(text));
@@ -746,8 +766,21 @@ function extractInstructionDate(original, text, today, localTime, alarmTime) {
     if (!days && localTime && alarmTime <= localTime) days = 7;
     return utcDateKey(new Date(base.getTime() + days * 86400000));
   }
+  if (/\b\d{1,2}[\/\-]\d{1,2}\b/.test(original) || /\b(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre|proximo|proxima|siguiente)\b/.test(text)) return '';
   if (localTime && alarmTime > localTime) return today;
   return utcDateKey(new Date(base.getTime() + 86400000));
+}
+
+function isSingleAlarmInstruction(value) {
+  const text = normalizeText(value);
+  const weekdays = text.match(/\b(?:lunes|martes|miercoles|jueves|viernes|sabado|domingo)\b/g) || [];
+  if (weekdays.length > 1 && !/\blunes a viernes\b/.test(text)) return false;
+  return !/[;\n]/.test(String(value)) && !/\b(?:ademas|tambien|excepto|menos|y (?:otra|otro|despues|luego|anota|agrega|recorda|avisa|a las|el|la))\b/.test(text)
+    && (text.match(/\b(?:a|para) las?\b/g) || []).length <= 1;
+}
+function createSimpleAlarmPlanEligible(input) {
+  return /^(?:poneme|programame|programa|creame|crea|agregame|agrega|recordame|avisame|alarma|recordatorio)\b/.test(normalizeText(input.instruction))
+    && !/\b(?:cambia|modifica|quita|elimina|borra|mueve|cambiale|ponele|ponle)\b/.test(normalizeText(input.instruction));
 }
 
 function parseLocalParts(date, time) {

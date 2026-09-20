@@ -32,6 +32,8 @@
     <link rel="stylesheet" href="./styles/interaction.css?v=20260913-phase" />
     <link rel="stylesheet" href="./styles/study-depth.css?v=20260909-depth2" />
     <link rel="stylesheet" href="./styles/home-console.css?v=20260914-custom-2" />
+    <link rel="stylesheet" href="./styles/home-layout.css?v=20260914-resize" />
+    <link rel="stylesheet" href="./styles/study-chart.css?v=20260914-chart" />
   </head>
 
   <body class="workspace-home">
@@ -88,10 +90,10 @@
             </details>
           </section>
           <section class="study-progress" aria-labelledby="homeProgressTitle" data-home-space="progress">
-            <header class="study-tool-head"><h2 id="homeProgressTitle">Tu progreso</h2><button type="button" class="study-icon" data-home-open="streak" aria-label="Abrir estadísticas de la racha" title="Todas las estadísticas">↗</button></header>
+            <header class="study-tool-head"><h2 id="homeProgressTitle">Tu progreso</h2><div class="study-model-controls"><button class="study-icon" type="button" data-progress-reset aria-label="Restablecer vista del gráfico" title="Restablecer vista" hidden></button><button type="button" class="study-icon" data-home-open="streak" aria-label="Abrir estadísticas de la racha" title="Todas las estadísticas">↗</button></div></header>
             <div class="study-progress__numbers"><div><span>Hoy</span><strong data-home-today>0 h 0 min</strong></div><div><span>Últimos 7 días</span><strong data-home-week>0 h 0 min</strong></div></div>
             <div class="study-progress__period"><button type="button" data-home-period-step="-1" aria-label="Período de estudio anterior" title="Período anterior">‹</button><span data-home-period-label>Últimos 7 días</span><button type="button" data-home-period-step="1" aria-label="Período de estudio siguiente" title="Período siguiente">›</button><div role="group" aria-label="Período del progreso"><button type="button" data-home-range="week" aria-pressed="true">Semana</button><button type="button" data-home-range="month" aria-pressed="false">Mes</button></div></div>
-            <div class="study-progress__axis"><span data-home-chart-scale>Tiempo de estudio</span><button class="study-icon" type="button" data-progress-reset aria-label="Restablecer vista del gráfico" title="Restablecer vista" hidden></button></div>
+            <div class="study-progress__axis"><span data-home-chart-scale>Tiempo de estudio</span></div>
             <div class="study-progress__chart" data-home-chart role="group" aria-label="Tiempo de estudio por día"></div>
             <input class="study-progress__scrubber" type="range" min="0" max="6" step="1" value="6" data-home-day-scrubber aria-label="Seleccionar día de estudio">
             <div class="study-progress__foot"><span class="study-progress__streak"><span data-home-flame aria-hidden="true"></span><span data-home-streak>0 días de racha</span></span><span data-home-chart-detail role="status">Todavía sin sesiones</span></div>
@@ -108,10 +110,9 @@
       <dialog class="home-customizer" data-home-customizer aria-labelledby="homeCustomizerTitle">
         <form method="dialog">
           <header><div><span>Inicio</span><h2 id="homeCustomizerTitle">Tu pantalla, a tu manera</h2></div><button type="submit" class="home-customizer__close" aria-label="Cerrar personalización" title="Cerrar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header>
-          <p>Elegí qué herramientas querés tener a la vista.</p>
           <fieldset><legend>Espacios visibles</legend><div class="home-customizer__spaces" data-home-customizer-spaces></div></fieldset>
           <fieldset><legend>Tamaño de la interfaz</legend><div class="home-customizer__density" role="radiogroup" aria-label="Tamaño de la interfaz"><label><input type="radio" name="homeDensity" value="comfortable"><span>Cómodo<small>Más aire y detalle</small></span></label><label><input type="radio" name="homeDensity" value="compact"><span>Compacto<small>Más contenido visible</small></span></label></div></fieldset>
-          <footer><button type="button" data-home-customizer-reset>Restablecer</button><button type="submit" class="home-customizer__done">Listo</button></footer>
+          <footer><button type="button" data-home-customizer-reset>Restablecer</button><button type="button" data-home-customizer-edit>Ajustar tamaños</button><button type="submit" class="home-customizer__done">Listo</button></footer>
         </form>
       </dialog>
       <div class="home-layout">
@@ -238,13 +239,13 @@
 
     <!-- DATA SIEMPRE PRIMERO -->
     <script src="./data/data.js?v=20260804-quimica-completa"></script>
-    <script src="./scripts/global-search.js?v=20260914-custom-alarms"></script>
+    <script src="./scripts/global-search.js?v=20260914-adaptable"></script>
 
     <script src="./shared/plans.js?v=20260827-real-plans"></script>
     <script src="./scripts/workspace.js?v=20260911-commercial-hidden"></script>
     <script src="./scripts/dashboard.js?v=20260912-alarm-sync"></script>
-    <script type="module" src="./scripts/study-home.js?v=20260913-phase"></script>
-    <script src="./scripts/home-customizer.js?v=20260914"></script>
+    <script type="module" src="./scripts/study-home.js?v=20260914-chart"></script>
+    <script src="./scripts/home-customizer.js?v=20260914-resize"></script>
 
     <script src="./scripts/page-shell.js?v=20260831-launch-audit"></script>
 

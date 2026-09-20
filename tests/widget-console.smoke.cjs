@@ -43,6 +43,11 @@ async function pixels(page,selector){
         await page.locator('[data-widget-pomodoro=toggle]').click();
         await page.locator('[data-widget-pomodoro=reset]').click();assert.equal(await page.locator('[data-widget-clock]').innerText(),'25:00');
       }else if(view==='streak'){
+        await page.locator('.study-chart-plot').waitFor({state:'attached'});
+        assert.equal(await page.locator('.has-study-chart').getAttribute('data-chart-mode'),'line');
+        await page.locator('.study-chart-modes [data-chart-mode=bars]').click();
+        assert.equal(await page.locator('.study-chart-plot rect').count(),7);
+        await page.locator('.study-chart-modes [data-chart-mode=depth]').click();
         await page.waitForSelector('.has-progress-depth canvas');assert.ok(await pixels(page,'canvas')>100);
         const days=page.locator('[data-widget-study-day]');await days.nth(2).click();
         assert.match(await page.locator('[data-widget-study-detail]').innerText(),/45 min/);
@@ -51,7 +56,9 @@ async function pixels(page,selector){
         await page.mouse.move(canvas.x+canvas.width*.4,canvas.y+canvas.height*.45);await page.mouse.down();await page.mouse.move(canvas.x+canvas.width*.7,canvas.y+canvas.height*.6,{steps:8});await page.mouse.up();
         assert.ok(await pixels(page,'canvas')>100);
         await page.locator('[data-widget-graph-reset]').click();
-        const cta=await page.locator('.streak-action').boundingBox();assert.ok(cta.y+cta.height<=viewport.height);
+        const cta=await page.locator('.streak-action').boundingBox();
+        await page.screenshot({path:path.join(__dirname,`../tmp/ui-check/streak-check-${viewport.width}-${viewport.height}.png`)});
+        assert.ok(cta.y+cta.height<=viewport.height,`CTA clipped: ${JSON.stringify({viewport,cta})}`);
       }else if(view==='calendar'){
         await page.locator('[data-widget-calendar-view=month]').click();
         assert.equal(await page.locator('.calendar-day').count(),42);

@@ -39,7 +39,7 @@ html.theme-light{
 }
 
 *{
-  transition:background-color .18s ease,border-color .18s ease,color .18s ease,box-shadow .18s ease;
+  transition:background-color .18s ease,border-color .18s ease,box-shadow .18s ease;
 }
 
 body{

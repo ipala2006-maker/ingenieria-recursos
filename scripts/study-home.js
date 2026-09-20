@@ -1,4 +1,5 @@
 import { attachTimerDial } from './timer-dial.js?v=20260909-depth2';
+import { createStudyChart } from './study-chart.js?v=20260914-chart';
 const home = document.querySelector('[data-study-home]');
 if (home) {
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
@@ -103,6 +104,7 @@ if (home) {
       buttons[Math.max(0,Math.min(days.length-1,index+delta))].focus();
     });
   });
+  progressDepth = createStudyChart(chart, selectDay);
   function cloneIcon(source, target) {
     const origin = document.querySelector(source);
     const svg = origin?.matches('svg') ? origin : origin?.querySelector('svg');
@@ -125,12 +127,8 @@ if (home) {
       const module = await import('./study-scene.js?v=20260913-phase');
       if (request !== generation || reduced.matches || home.hidden) return;
       if(!depth) depth = module.createStudyScene(host);
-      const progress = await import('./progress-depth.js?v=20260909-console');
-      if(request !== generation || reduced.matches || home.hidden) return;
-      if(!progressDepth) progressDepth = progress.createProgressDepth(chart,selectDay);
-      home.querySelector('[data-progress-reset]').hidden=false;
       update();
-      const organizer=await import('./organizer-depth.js?v=20260910-motion');
+      const organizer=await import('./organizer-depth.js?v=20260919-layout');
       if(request !== generation || reduced.matches || home.hidden)return;
       if(!organizerDepth) organizerDepth=organizer.createOrganizerDepth(modelHost,{motion:motionEnabled,onOpen:view=>window.dispatchEvent(new CustomEvent('estudiemos:home-navigate',{detail:{view}}))});
       organizerDepth.setVisible(!sessionDialog.open);
@@ -140,6 +138,7 @@ if (home) {
     } finally { if (request === generation) depthPending = false; }
   }
   function update() {
+    if (!progressDepth) progressDepth = createStudyChart(chart, selectDay);
     const state = window.EstudiemosStudy?.snapshot();
     if (!state) return;
     const toggle = home.querySelector('[data-home-timer]');
@@ -338,7 +337,6 @@ if (home) {
     depthPending = false;
     depth?.dispose();
     depth = null;
-    progressDepth?.dispose(); progressDepth=null;
     organizerDepth?.dispose(); organizerDepth=null;motionButton.hidden=true;
     home.querySelector('[data-progress-reset]').hidden=true;
     prepareDepth();
