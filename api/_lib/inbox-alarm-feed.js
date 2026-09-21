@@ -21,9 +21,10 @@ function verify(token,scope) {
   }catch(_){return null;}
 }
 async function snapshot(userId) {
-  const rows=await adminRequest(`/rest/v1/user_states?user_id=eq.${encodeURIComponent(userId)}&select=state,updated_at&limit=1`);
-  let items=rows?.[0]?.state?.values?.bandeja_agenda || [];
-  if(typeof items==='string'){try{items=JSON.parse(items);}catch(_){items=[];}}
+  const rows=await adminRequest('/rest/v1/rpc/get_windows_alarm_snapshot', {
+    method:'POST', body:JSON.stringify({p_user_id:userId})
+  });
+  const items=rows?.[0]?.alarm_items || [];
   return {version:1,updatedAt:rows?.[0]?.updated_at || null,items:(Array.isArray(items)?items:[]).slice(0,500).flatMap(item=>{
     const alarm=rules.normalize(item?.alarm);
     if(!alarm?.windows||item.done||typeof item.id!=='string')return [];

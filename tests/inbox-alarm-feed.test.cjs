@@ -10,7 +10,7 @@ const other='00000000-0000-4000-8000-000000000002';
 function setup(){
   let rows=[],user={id};const calls=[];const localRequire=createRequire(file);
   const sandbox={module:{exports:{}},Buffer,Date,process:{env:{SUPABASE_SECRET_KEY:'test-secret-not-a-live-key'}},require(name){
-    if(name==='./supabase-admin')return {authenticateBearer:async token=>token==='Bearer session'?user:null,adminRequest:async url=>{calls.push(url);return rows;}};
+    if(name==='./supabase-admin')return {authenticateBearer:async token=>token==='Bearer session'?user:null,adminRequest:async (url,options)=>{calls.push({url,...options});return rows;}};
     if(name==='./request-security')return {isSameOriginRequest:req=>req.headers.origin!=='https://foreign.example',requireJsonRequest:()=>true};
     return localRequire(name);
   }};
@@ -61,13 +61,25 @@ test('receipts distinguish the legacy helper from the independent installer',asy
 test('feed queries only its owner and emits only enabled alarm fields, including empty snapshots',async()=>{
   const {api,call,calls,setRows}=setup();
   const alarm={date:'2026-09-15',time:'18:00',repeat:'daily',windows:true};
-  setRows([{updated_at:'2026-09-14',state:{secret:'private',values:{bandeja_agenda:JSON.stringify([
+  setRows([{updated_at:'2026-09-14',alarm_items:[
     {id:'a',title:'Pilot',note:'private note',alarm},{id:'b',title:'done',done:true,alarm},
-    {id:'c',alarm:{...alarm,windows:false}},{id:'d',title:'No alarm'}])}}}]);
+    {id:'c',alarm:{...alarm,windows:false}},{id:'d',title:'No alarm'}]}]);
   const feed=await call('GET',{}, {alarmFeed:'1'},{authorization:`Bearer ${api.sign(id,'alarm-feed',60)}`});
   assert.equal(feed.status,200);assert.equal(feed.body.items.length,1);
   assert.deepEqual(Object.keys(feed.body.items[0]).sort(),['alarm','id','title']);
-  assert.match(calls[0],new RegExp(`user_id=eq.${id}`));
+  assert.equal(calls[0].url,'/rest/v1/rpc/get_windows_alarm_snapshot');
+  assert.equal(calls[0].method,'POST');
+  assert.deepEqual(JSON.parse(calls[0].body),{p_user_id:id});
   assert.equal(feed.headers['Cache-Control'],'no-store');
   setRows([]);assert.equal((await api.snapshot(id)).items.length,0);
+});
+
+test('alarm RPC is server-only, owner-filtered and never grants table reads',()=>{
+  const sql=fs.readFileSync(path.resolve(__dirname,'../supabase/windows-alarms.sql'),'utf8');
+  assert.match(sql,/security definer\s+set search_path = ''/i);
+  assert.match(sql,/where s\.user_id = p_user_id/i);
+  assert.match(sql,/revoke all on function public\.get_windows_alarm_snapshot\(uuid\) from public, anon, authenticated/i);
+  assert.match(sql,/grant execute on function public\.get_windows_alarm_snapshot\(uuid\) to service_role/i);
+  assert.doesNotMatch(sql,/grant\s+select|disable\s+row\s+level\s+security/i);
+  assert.match(sql,/entry\.position <= 500/);
 });

@@ -81,6 +81,12 @@ temporizador web en segundo plano.
 
 ## Implementacion Y Privacidad
 
+Aplicar `supabase/windows-alarms.sql` antes de desplegar el feed. La funcion
+`get_windows_alarm_snapshot` solo puede ejecutarla `service_role`; devuelve
+ID, titulo y horario de alarmas Windows no completadas, filtradas por el
+propietario del token firmado. No otorga SELECT sobre `user_states` ni altera
+RLS. Una instalacion sin esta migracion no puede completar la conexion.
+
 - `shared/inbox-alarms.js`: validacion y recurrencias locales compartidas.
 - `scripts/inbox-alarms.js`: editor, permisos, aviso web y conexion nativa.
 - `api/_lib/inbox-alarm-feed.js`: consulta solo las alarmas habilitadas de la
