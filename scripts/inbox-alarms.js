@@ -7,6 +7,7 @@
   const FIRED_KEY = 'estudiemos_inbox_alarm_delivered';
   const CONNECTION_KEY = 'estudiemos_windows_alarm_connection';
   let nativeConnecting = false, nativeMessage = '', confirmingNative = false, setupAfterSignIn = false;
+  let nativeAccountId = window.EstudiemosAccount?.getUser?.()?.id || null;
   let audio, soundTimer, currentId, returnFocus, checking = false, lastNative = '', accountReady = false, waitingForAccount = false;
   const style = document.createElement('link');
   style.rel = 'stylesheet'; style.href = new URL('styles/inbox-alarms.css?v=20260920-repair', root); document.head.appendChild(style);
@@ -110,10 +111,13 @@
     const session=window.EstudiemosAccount?.getSession?.();
     if(!session?.access_token){signInForSetup();return;}
     if(!setup.querySelector('[data-alarm-consent]').checked)return;
+    const connectingUserId=window.EstudiemosAccount?.getUser?.()?.id;
+    nativeAccountId=connectingUserId||null;
     nativeConnecting=true;renderNativeStatus('Preparando conexión con Windows…');
     try{
       const response=await fetch(new URL('api/widget-link',root),{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${session.access_token}`},body:JSON.stringify({action:'alarms-connect',consent:true})});
       const result=await response.json();if(!response.ok||!result.token)throw new Error(result.error||result.message||'No pudimos iniciar la conexión.');
+      if(connectingUserId!==window.EstudiemosAccount?.getUser?.()?.id)return;
       const retry=setup.querySelector('[data-alarm-retry]');retry.href=`estudiemos-alarms://connect?link=${encodeURIComponent(result.token)}`;retry.dataset.expires=String(Date.now()+110000);retry.hidden=false;
       retry.click();
       renderNativeStatus('Aceptá «Abrir» en el navegador. Si no apareció el aviso, tocá «Abrir activación de Windows». No hace falta descargar otra vez. La conexión todavía está pendiente.');
@@ -307,7 +311,13 @@
   window.addEventListener('storage',e=>{if(e.key===CONNECTION_KEY){nativeMessage='';renderNativeStatus();}});
   confirmWindowsConnection();
   for(const name of ['estudiemos:account-ready','estudiemos:account-change'])window.addEventListener(name,()=>{
-    confirmingNative=false;nativeMessage='';confirmWindowsConnection();renderNativeStatus();
+    const userId=window.EstudiemosAccount?.getUser?.()?.id||null;
+    if(userId!==nativeAccountId){
+      nativeAccountId=userId;nativeMessage='';
+      const retry=setup.querySelector('[data-alarm-retry]');retry.hidden=true;retry.removeAttribute('href');
+      setup.querySelector('[data-alarm-consent]').checked=false;
+    }
+    confirmingNative=false;confirmWindowsConnection();renderNativeStatus();
     if(setupAfterSignIn&&window.EstudiemosAccount?.getSession?.()?.access_token){setupAfterSignIn=false;showSetup();}
   });
   mount(); new MutationObserver(mount).observe(document.body, { childList: true, subtree: true });
