@@ -25,12 +25,17 @@ modelo. Genera solicitudes al alojamiento y a la base de datos.
 1. En la campana de una tarea, toca **Activar pantalla completa en esta PC**.
    Tambien podes abrir https://estudiemos-app.vercel.app/?alarms-setup=1.
 2. Toca **Instalar alarmas para Windows** y abri el archivo descargado. Es un
-   instalador independiente (1.6.2): no requiere Rainmeter, widgets ni reinstalar
+   instalador independiente (1.6.3): no requiere Rainmeter, widgets ni reinstalar
    la app. Al terminar abre nuevamente la pantalla de activacion.
 3. Marca el consentimiento y toca **Conectar con Windows**. Acepta **Abrir**
    en el navegador. Si no aparece, usa **Abrir activacion de Windows**, sin
    descargar otra vez. No se marca listo hasta recibir una
    confirmacion autentificada despues de registrar la tarea de Windows.
+   Si Chrome no abre el componente, usa **Conectar sin el aviso del navegador**:
+   **Generar archivo de conexion**, luego abre el archivo `.estudiemos-alarmas`
+   desde Descargas antes de dos minutos. No es otro instalador ni un script:
+   contiene un enlace temporal personal que solo interpreta el componente ya
+   instalado. No lo compartas. Si vence, genera otro; no reinstales la app.
 4. Toca **Probar alarma de Windows**. Esta prueba ya esta disponible despues
    de instalar y es independiente de conectar la cuenta. Ejecuta el mismo aviso
    nativo, con sonido y **Entendido**. No demuestra que la cuenta este vinculada.
@@ -96,8 +101,12 @@ temporizador web en segundo plano.
   de Windows, sin depender de Windows Script Host.
 - `windows-installer/Estudiemos-Alarms.iss`: instalador independiente, sin
   dependencias de widgets. Usa la carpeta `Windows/AlarmService`, separada de
-  scripts antiguos, y verifica los cuatro archivos por SHA-256 despues de instalar.
-  Registra `estudiemos-alarms://` para conectar/probar.
+  scripts antiguos, y verifica los cinco archivos por SHA-256 despues de instalar.
+  Registra `estudiemos-alarms://` para conectar/probar y `.estudiemos-alarmas`
+  como archivo de vinculacion. El lector solo acepta JSON pequeno con una
+  version y un token firmado; no ejecuta instrucciones ni direcciones del archivo.
+- `launcher-status.json`: registra exclusivamente etapa y codigo de error de
+  apertura. Nunca guarda el enlace, credenciales, titulos ni horarios.
 - `windows-installer/AlarmLauncher.vbs`: valida esas dos acciones y el formato
   del token antes de lanzar el componente oculto. No recibe comandos libres.
 

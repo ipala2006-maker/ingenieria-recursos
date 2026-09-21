@@ -1,4 +1,4 @@
-#define AppVersion "1.6.2"
+#define AppVersion "1.6.3"
 #define RainmeterInstaller "Rainmeter-4.5.26.exe"
 #ifndef OutputBaseName
   #define OutputBaseName "Estudiemos-Widgets-para-Windows"
@@ -11,6 +11,7 @@
 AppId={{A75D2076-BCB9-4C41-A079-FE92871549C4}
 AppName=Widgets de Estudiemos
 AppVersion={#AppVersion}
+ChangesAssociations=yes
 AppPublisher=Estudiemos
 AppPublisherURL=https://estudiemos-app.vercel.app/
 AppSupportURL=https://estudiemos-app.vercel.app/
@@ -50,10 +51,12 @@ Source: "AlarmLauncher.vbs"; DestDir: "{app}\AlarmService"; Flags: ignoreversion
 Source: "InboxAlarm.ps1"; DestDir: "{app}\AlarmService"; Flags: ignoreversion
 Source: "InstallInboxAlarm.ps1"; DestDir: "{app}\AlarmService"; Flags: ignoreversion
 Source: "ConnectInboxAlarms.ps1"; DestDir: "{app}\AlarmService"; Flags: ignoreversion
+Source: "ReadAlarmConnection.ps1"; DestDir: "{app}\AlarmService"; Flags: ignoreversion
 Source: "StreakReminder.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "InboxAlarm.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "InstallInboxAlarm.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "ConnectInboxAlarms.ps1"; DestDir: "{app}"; Flags: ignoreversion
+Source: "ReadAlarmConnection.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\windows-rainmeter\Skins\Estudiemos\*"; DestDir: "{code:GetSkinDirectory}\Estudiemos"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\windows-rainmeter\Plugins\64bit\WebView2.dll"; DestDir: "{code:GetRainmeterPluginDirectory}"; Flags: ignoreversion restartreplace
 
@@ -64,6 +67,9 @@ Name: "{userstartup}\Rainmeter"; Filename: "{code:GetRainmeterExecutable}"; Work
 Root: HKCU; Subkey: "Software\Classes\estudiemos-alarms"; ValueType: string; ValueData: "URL:Estudiemos Alarmas"
 Root: HKCU; Subkey: "Software\Classes\estudiemos-alarms"; ValueName: "URL Protocol"; ValueType: string; ValueData: ""
 Root: HKCU; Subkey: "Software\Classes\estudiemos-alarms\shell\open\command"; ValueType: string; ValueData: "{sys}\wscript.exe ""{app}\AlarmService\AlarmLauncher.vbs"" ""%1"""
+Root: HKCU; Subkey: "Software\Classes\.estudiemos-alarmas"; ValueType: string; ValueData: "Estudiemos.AlarmConnection"
+Root: HKCU; Subkey: "Software\Classes\Estudiemos.AlarmConnection"; ValueType: string; ValueData: "Conexion de alarmas de Estudiemos"
+Root: HKCU; Subkey: "Software\Classes\Estudiemos.AlarmConnection\shell\open\command"; ValueType: string; ValueData: "{sys}\wscript.exe ""{app}\AlarmService\AlarmLauncher.vbs"" ""%1"""
 Root: HKCU; Subkey: "Software\Classes\estudiemos-widgets"; ValueType: string; ValueData: "URL:Estudiemos Widgets"; Flags: uninsdeletekey
 Root: HKCU; Subkey: "Software\Classes\estudiemos-widgets"; ValueName: "URL Protocol"; ValueType: string; ValueData: ""
 Root: HKCU; Subkey: "Software\Classes\estudiemos-widgets\DefaultIcon"; ValueType: string; ValueData: "{app}\WidgetLauncher.vbs"

@@ -270,7 +270,7 @@
     rules.src = `${rootPath}shared/inbox-alarms.js?v=20260912`;
     rules.onload = () => {
       const ui = document.createElement('script');
-      ui.src = `${rootPath}scripts/inbox-alarms.js?v=20260920-status`;
+      ui.src = `${rootPath}scripts/inbox-alarms.js?v=20260921-connection`;
       document.head.appendChild(ui);
     };
     document.head.appendChild(rules);
