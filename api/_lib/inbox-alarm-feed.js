@@ -53,7 +53,7 @@ module.exports = async function alarmFeed(request,response) {
     const setup=verify(request.query.alarmSetup,'alarm-setup');
     if(!setup)return response.status(401).json({error:'El enlace venció. Conectá las alarmas de nuevo desde Estudiemos.'});
     const feedExpiresAt=seconds()+90*86400;
-    const version=['1.6.1','1.6.2'].includes(request.query.clientVersion)?request.query.clientVersion:'1.6.0';
+    const version=['1.6.1','1.6.2','1.6.3'].includes(request.query.clientVersion)?request.query.clientVersion:'1.6.0';
     return response.status(200).json({feedToken:sign(setup.sub,'alarm-feed',90*86400),snapshot:await snapshot(setup.sub),
       confirmation:sign(setup.sub,'alarm-receipt',600,{version,feedExpiresAt})});
   }

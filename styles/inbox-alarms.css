@@ -14,6 +14,10 @@
 .alarm-setup-consent input { flex:none;margin-top:3px;accent-color:var(--accent); }
 .alarm-setup [data-alarm-retry] { display:block;margin-top:12px;color:var(--accent);cursor:pointer; }
 .alarm-setup [data-alarm-retry][hidden] { display:none; }
+.alarm-setup-file { margin:12px 0 0;border-top:1px solid var(--border);padding-top:8px;font-size:13px; }
+.alarm-setup-file summary { min-height:44px;display:list-item;align-content:center;cursor:pointer; }
+.alarm-setup-file button { min-height:44px; }
+.alarm-setup-file a:not([hidden]) { display:block;margin-top:10px;color:var(--accent);overflow-wrap:anywhere; }
 .alarm-setup[data-ready=true] .alarm-setup-steps li:nth-child(-n+2) { display:none; }
 .alarm-setup>small { display:block;color:var(--muted);font-size:12px;line-height:1.5; }
 .inbox-alarm-dialog header,.inbox-alarm-dialog footer { display:flex; align-items:center; justify-content:space-between; gap:12px; }

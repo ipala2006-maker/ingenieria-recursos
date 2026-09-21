@@ -1,7 +1,8 @@
 [Setup]
 AppId={{10257322-F14A-47E1-9C71-03CB33D39726}
 AppName=Alarmas de Estudiemos
-AppVersion=1.6.2
+AppVersion=1.6.3
+ChangesAssociations=yes
 AppPublisher=Estudiemos
 DefaultDirName={localappdata}\Estudiemos\Windows\AlarmService
 PrivilegesRequired=lowest
@@ -18,7 +19,7 @@ Compression=lzma2
 OutputDir=..\downloads
 OutputBaseFilename=Activar-Alarmas-Estudiemos
 SetupIconFile=..\assets\estudiemos.ico
-VersionInfoVersion=1.6.2
+VersionInfoVersion=1.6.3
 VersionInfoDescription=Alarmas a pantalla completa de Estudiemos
 [Languages]
 Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
@@ -27,14 +28,20 @@ Source: "AlarmLauncher.vbs"; DestDir: "{app}"; Flags: ignoreversion
 Source: "InboxAlarm.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "InstallInboxAlarm.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "ConnectInboxAlarms.ps1"; DestDir: "{app}"; Flags: ignoreversion
+Source: "ReadAlarmConnection.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "AlarmLauncher.vbs"; Flags: dontcopy
 Source: "InboxAlarm.ps1"; Flags: dontcopy
 Source: "InstallInboxAlarm.ps1"; Flags: dontcopy
 Source: "ConnectInboxAlarms.ps1"; Flags: dontcopy
+Source: "ReadAlarmConnection.ps1"; Flags: dontcopy
 [Registry]
 Root: HKCU; Subkey: "Software\Classes\estudiemos-alarms"; ValueType: string; ValueData: "URL:Estudiemos Alarmas"
 Root: HKCU; Subkey: "Software\Classes\estudiemos-alarms"; ValueName: "URL Protocol"; ValueType: string; ValueData: ""
 Root: HKCU; Subkey: "Software\Classes\estudiemos-alarms\shell\open\command"; ValueType: string; ValueData: "{sys}\wscript.exe ""{app}\AlarmLauncher.vbs"" ""%1"""
+Root: HKCU; Subkey: "Software\Classes\.estudiemos-alarmas"; ValueType: string; ValueData: "Estudiemos.AlarmConnection"
+Root: HKCU; Subkey: "Software\Classes\Estudiemos.AlarmConnection"; ValueType: string; ValueData: "Conexion de alarmas de Estudiemos"
+Root: HKCU; Subkey: "Software\Classes\Estudiemos.AlarmConnection\DefaultIcon"; ValueType: string; ValueData: "{sys}\shell32.dll,110"
+Root: HKCU; Subkey: "Software\Classes\Estudiemos.AlarmConnection\shell\open\command"; ValueType: string; ValueData: "{sys}\wscript.exe ""{app}\AlarmLauncher.vbs"" ""%1"""
 [Run]
 Filename: "https://estudiemos-app.vercel.app/?alarms-setup=1"; Flags: shellexec nowait skipifsilent
 
@@ -54,5 +61,6 @@ begin
     CheckAlarmFile('InboxAlarm.ps1');
     CheckAlarmFile('InstallInboxAlarm.ps1');
     CheckAlarmFile('ConnectInboxAlarms.ps1');
+    CheckAlarmFile('ReadAlarmConnection.ps1');
   end;
 end;
