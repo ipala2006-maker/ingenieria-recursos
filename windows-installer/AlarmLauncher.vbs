@@ -16,8 +16,9 @@ If expression.Test(request) And LCase(files.GetExtensionName(request)) = "estudi
 ElseIf LCase(request) = "estudiemos-alarms://test" Or LCase(request) = "estudiemos-alarms://test/" Then
   script = "InboxAlarm.ps1"
   argument = " -TestAlert"
-ElseIf InStr(request, "estudiemos-alarms://connect?link=") = 1 Then
-  token = Mid(request, Len("estudiemos-alarms://connect?link=") + 1)
+ElseIf InStr(LCase(request), "estudiemos-alarms://connect?link=") = 1 Or InStr(LCase(request), "estudiemos-alarms://connect/?link=") = 1 Then
+  ' Windows may canonicalize the empty URI path to a slash before the query.
+  token = Mid(request, InStr(request, "=") + 1)
   Set expression = New RegExp
   expression.Pattern = "^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$"
   If Len(token) > 2048 Or Not expression.Test(token) Then

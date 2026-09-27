@@ -25,7 +25,7 @@ modelo. Genera solicitudes al alojamiento y a la base de datos.
 1. En la campana de una tarea, toca **Activar pantalla completa en esta PC**.
    Tambien podes abrir https://estudiemos-app.vercel.app/?alarms-setup=1.
 2. Toca **Instalar alarmas para Windows** y abri el archivo descargado. Es un
-   instalador independiente (1.6.3): no requiere Rainmeter, widgets ni reinstalar
+   instalador independiente (1.6.3.1): no requiere Rainmeter, widgets ni reinstalar
    la app. Al terminar abre nuevamente la pantalla de activacion.
 3. Marca el consentimiento y toca **Conectar con Windows**. Acepta **Abrir**
    en el navegador. Si no aparece, usa **Abrir activacion de Windows**, sin
@@ -81,6 +81,12 @@ temporizador web en segundo plano.
 
 ## Implementacion Y Privacidad
 
+El parche de instalador 1.6.3.1 acepta tambien la ruta vacia normalizada por
+Windows (`connect/?link=...`). Conserva el protocolo de conexion 1.6.3 y su
+validacion estricta del token; no permite otros caminos ni parametros extra.
+La escritura y lectura DPAPI cargan el modulo oficial de seguridad desde
+`PSHOME`, sin depender de rutas de modulos heredadas por el navegador o lanzador.
+
 Aplicar `supabase/windows-alarms.sql` antes de desplegar el feed. La funcion
 `get_windows_alarm_snapshot` solo puede ejecutarla `service_role`; devuelve
 ID, titulo y horario de alarmas Windows no completadas, filtradas por el
@@ -122,8 +128,12 @@ la credencial cifrada para ese usuario de Windows. El archivo legado
 compartido para informacion privada. Cerrar el navegador o cerrar sesion no
 revoca esta conexion independiente. Al vencer los 90 dias hay que reconectar;
 una respuesta 401/403 detiene los avisos, sin recurrir a datos anteriores.
-`activation-status.json` registra solo etapa, codigo HTTP y fecha de un fallo;
-no incluye tokens, titulos de tareas ni datos de la cuenta.
+`activation-status.json` y `sync-status.json` registran estados, fechas y,
+si hay errores, su tipo, codigo HTTP, HResult o linea del script. No registran
+mensajes completos de excepciones, tokens, titulos ni datos de la cuenta.
+`display-status.json` se actualiza desde el evento Shown del formulario:
+confirma si ocupa la pantalla principal y es TopMost. No basta con encontrar
+un registro en `delivered.json` para afirmar que la ventana se mostro.
 
 Desactivar todas las alarmas Windows y sincronizar deja la programacion vacia.
 Para quitar el proceso opcional, elimina la tarea `Estudiemos Inbox <usuario>` en
@@ -157,3 +167,16 @@ conectada y el Programador de tareas sigue disponible en el boton de la app.
 Referencias: [Programador de tareas](https://learn.microsoft.com/en-us/windows/win32/taskschd/repeating-a-task),
 [sesion interactiva sin contrasena](https://learn.microsoft.com/en-us/windows/win32/taskschd/principal-logontype),
 [permisos de notificaciones web](https://developer.mozilla.org/en-US/docs/Web/API/Notifications_API/Using_the_Notifications_API).
+
+### Verificacion Real 27/09/2026
+
+Instalador 1.6.3.1 instalado y conectado en la sesion interactiva real de Windows.
+Se programo una tarea piloto para las 11:54 y se retiro la pagina de Estudiemos
+del navegador de prueba antes del vencimiento. El Programador, sin invocacion
+manual de la alarma, consulto el feed a las 11:54:48 y el evento Shown registro
+`fullScreen=true` y `topMost=true` a las 11:54:49 (Argentina). La tarea piloto
+quedo registrada como entregada. Se verificaron las huellas de los archivos
+desde el mismo contexto que ejecuta el Programador, no solo desde la consola
+de desarrollo. No se midio el audio fisico ni se verificaron otras pantallas
+o aplicaciones con modo exclusivo. No se cambiaron protecciones de Windows.
+Pasaron 34 pruebas automatizadas de alarmas y `scripts/security-check.js`.
