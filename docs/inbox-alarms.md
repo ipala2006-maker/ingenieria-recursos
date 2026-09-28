@@ -25,7 +25,7 @@ modelo. Genera solicitudes al alojamiento y a la base de datos.
 1. En la campana de una tarea, toca **Activar pantalla completa en esta PC**.
    Tambien podes abrir https://estudiemos-app.vercel.app/?alarms-setup=1.
 2. Toca **Instalar alarmas para Windows** y abri el archivo descargado. Es un
-   instalador independiente (1.6.3.1): no requiere Rainmeter, widgets ni reinstalar
+   instalador independiente (1.6.3.2): no requiere Rainmeter, widgets ni reinstalar
    la app. Al terminar abre nuevamente la pantalla de activacion.
 3. Marca el consentimiento y toca **Conectar con Windows**. Acepta **Abrir**
    en el navegador. Si no aparece, usa **Abrir activacion de Windows**, sin
@@ -51,7 +51,7 @@ minuto: puede sonar hasta un minuto despues del horario. Tras sincronizar, funci
 abierta la PWA. Recibe los cambios de otros dispositivos desde la cuenta. Sin
 conexion usa la ultima copia recibida; no puede recibir ediciones nuevas.
 
-Cuando hay una alarma, Windows muestra una vista en la pantalla principal con
+Cuando hay una alarma, Windows intenta mostrar una vista en la pantalla activa con
 el nombre de la tarea y repite el sonido hasta elegir **Entendido**, abrir
 Inbox, pulsar Escape o alcanzar el limite de seguridad de cinco minutos. La
 alerta conserva una salida visible y no bloquea los controles del sistema.
@@ -81,7 +81,7 @@ temporizador web en segundo plano.
 
 ## Implementacion Y Privacidad
 
-El parche de instalador 1.6.3.1 acepta tambien la ruta vacia normalizada por
+El parche de instalador 1.6.3.2 acepta tambien la ruta vacia normalizada por
 Windows (`connect/?link=...`). Conserva el protocolo de conexion 1.6.3 y su
 validacion estricta del token; no permite otros caminos ni parametros extra.
 La escritura y lectura DPAPI cargan el modulo oficial de seguridad desde
@@ -131,9 +131,13 @@ una respuesta 401/403 detiene los avisos, sin recurrir a datos anteriores.
 `activation-status.json` y `sync-status.json` registran estados, fechas y,
 si hay errores, su tipo, codigo HTTP, HResult o linea del script. No registran
 mensajes completos de excepciones, tokens, titulos ni datos de la cuenta.
-`display-status.json` se actualiza desde el evento Shown del formulario:
-confirma si ocupa la pantalla principal y es TopMost. No basta con encontrar
-un registro en `delivered.json` para afirmar que la ventana se mostro.
+`display-status.json` se actualiza despues de restaurar explicitamente la
+ventana y solicitar el primer plano con las APIs de Windows. Verifica
+visibilidad real, ventana activa, limites de pantalla y sesion de proceso/consola.
+Comprueba ademas que el escritorio reciba entrada (`inputDesktop=1`) y que
+Windows no haya ocultado la ventana (`cloaked=0`).
+No basta con un evento Shown, TopMost o `delivered.json` para afirmar que el
+usuario fue interrumpido. No se alteran las restricciones de foco de Windows.
 
 Desactivar todas las alarmas Windows y sincronizar deja la programacion vacia.
 Para quitar el proceso opcional, elimina la tarea `Estudiemos Inbox <usuario>` en
@@ -180,3 +184,29 @@ desde el mismo contexto que ejecuta el Programador, no solo desde la consola
 de desarrollo. No se midio el audio fisico ni se verificaron otras pantallas
 o aplicaciones con modo exclusivo. No se cambiaron protecciones de Windows.
 Pasaron 34 pruebas automatizadas de alarmas y `scripts/security-check.js`.
+Actualizacion posterior: el usuario indico que solo vio el aviso web. Por eso
+esa comprobacion NO demuestra interrupcion del escritorio; queda invalidada
+como prueba visual de extremo a extremo. 1.6.3.2 agrega restauracion y solicitud
+explicita de primer plano, con comprobacion posterior de visibilidad/sesion.
+
+### Confirmacion Del Usuario 28/09/2026
+
+Con 1.6.3.2 se creo desde la app una alarma piloto para el 27/09 a las 17:18.
+El componente la recibio antes del vencimiento y se retiro la pagina de
+Estudiemos del navegador. La ejecucion programada registro la entrega a las
+17:18:40, sin invocar manualmente el aviso: pantalla completa, TopMost,
+visible, escritorio interactivo (`inputDesktop=1`) y no oculta (`cloaked=0`).
+El usuario confirmo posteriormente que esa prueba interrumpio el escritorio
+como esperaba, incluso con Estudiemos cerrado.
+
+El muestreo de foco marco `foreground=false`: ese dato indica quien tenia
+el foco del teclado en ese instante, no demuestra que una ventana TopMost
+estuviera tapada. Se conserva el diagnostico prudente `foreground-unconfirmed`
+y se registra por separado la confirmacion visual del usuario. No se declara
+exito visual solo a partir de indicadores del sistema.
+
+Pasaron 35 pruebas aisladas de alarmas y el verificador de seguridad. Los ocho
+instaladores incluyen 1.6.3.2. Esta comprobacion corresponde a una sesion
+Windows iniciada y desbloqueada; no garantiza interrupcion de una pantalla
+segura/UAC, una PC suspendida/apagada o una aplicacion en modo exclusivo.
+No se modificaron protecciones ni restricciones de foco de Windows.

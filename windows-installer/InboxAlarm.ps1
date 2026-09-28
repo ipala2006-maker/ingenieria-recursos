@@ -20,13 +20,43 @@ $culture = [Globalization.CultureInfo]::InvariantCulture
 function Show-FullScreenInboxAlarm {
   param([Parameter(Mandatory=$true)][array]$DueItems)
 
+  if (!('Estudiemos.AlarmWindow' -as [type])) {
+    Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+namespace Estudiemos {
+  public static class AlarmWindow {
+    [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr window);
+    [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr window);
+    [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr window);
+    [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr window, int command);
+    [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr window, IntPtr after, int x, int y, int width, int height, uint flags);
+    [DllImport("kernel32.dll")] public static extern uint WTSGetActiveConsoleSessionId();
+    [DllImport("kernel32.dll")] private static extern uint GetCurrentThreadId();
+    [DllImport("user32.dll")] private static extern IntPtr GetThreadDesktop(uint thread);
+    [DllImport("user32.dll", EntryPoint="GetUserObjectInformationW")] private static extern bool GetUserObjectInformation(IntPtr handle, int index, out int value, uint length, out uint needed);
+    [DllImport("dwmapi.dll")] private static extern int DwmGetWindowAttribute(IntPtr window, int attribute, out int value, int size);
+    public static int InputDesktopStatus() {
+      int value; uint needed;
+      return GetUserObjectInformation(GetThreadDesktop(GetCurrentThreadId()), 6, out value, 4, out needed) ? value : -1;
+    }
+    public static int CloakedStatus(IntPtr window) {
+      int value;
+      return DwmGetWindowAttribute(window, 14, out value, 4) == 0 ? value : -1;
+    }
+  }
+}
+'@
+  }
   [Windows.Forms.Application]::EnableVisualStyles()
+  $targetScreen = [Windows.Forms.Screen]::FromHandle([Estudiemos.AlarmWindow]::GetForegroundWindow())
   $form = New-Object Windows.Forms.Form
   $form.Text = 'Alarma de Inbox - Estudiemos'
   $form.AccessibleName = 'Alarma de Inbox de Estudiemos'
   $form.FormBorderStyle = [Windows.Forms.FormBorderStyle]::None
   $form.StartPosition = [Windows.Forms.FormStartPosition]::Manual
-  $form.Bounds = [Windows.Forms.Screen]::PrimaryScreen.Bounds
+  $form.Bounds = $targetScreen.Bounds
   $form.BackColor = [Drawing.ColorTranslator]::FromHtml('#0B1020')
   $form.ForeColor = [Drawing.Color]::White
   $form.TopMost = $true
@@ -116,13 +146,35 @@ function Show-FullScreenInboxAlarm {
   $form.Controls.Add($layout)
   $form.AcceptButton = $dismissButton
   $form.Add_KeyDown({ param($sender, $eventArgs); if ($eventArgs.KeyCode -eq [Windows.Forms.Keys]::Escape) { $form.Close() } })
-  # A delivery marker alone cannot prove that Windows actually displayed the window.
-  $form.Add_Shown({
+  $presentationTimer = New-Object Windows.Forms.Timer
+  $presentationTimer.Interval = 200
+  $presentationTimer.Add_Tick({
+    $presentationTimer.Stop()
+    # Restore explicitly after the hidden launch; respect Windows foreground restrictions.
+    [void][Estudiemos.AlarmWindow]::ShowWindow($form.Handle, 9)
+    [void][Estudiemos.AlarmWindow]::SetWindowPos($form.Handle, [IntPtr](-1), 0, 0, 0, 0, 0x0043)
+    $form.BringToFront()
+    $form.Activate()
+    [void][Estudiemos.AlarmWindow]::SetForegroundWindow($form.Handle)
+    $visibilityTimer.Start()
+  })
+  $visibilityTimer = New-Object Windows.Forms.Timer
+  $visibilityTimer.Interval = 500
+  $visibilityTimer.Add_Tick({
+    $visibilityTimer.Stop()
     try {
       New-Item -ItemType Directory -Path $StateDirectory -Force | Out-Null
-      @{status='shown';fullScreen=$form.Bounds.Equals([Windows.Forms.Screen]::PrimaryScreen.Bounds);topMost=$form.TopMost;checkedAt=(Get-Date).ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $StateDirectory 'display-status.json') -Encoding UTF8
+      $visible = [Estudiemos.AlarmWindow]::IsWindowVisible($form.Handle) -and ![Estudiemos.AlarmWindow]::IsIconic($form.Handle)
+      $foreground = [Estudiemos.AlarmWindow]::GetForegroundWindow() -eq $form.Handle
+      $session = [Diagnostics.Process]::GetCurrentProcess().SessionId
+      $console = [Estudiemos.AlarmWindow]::WTSGetActiveConsoleSessionId()
+      $inputDesktop = [Estudiemos.AlarmWindow]::InputDesktopStatus()
+      $cloaked = [Estudiemos.AlarmWindow]::CloakedStatus($form.Handle)
+      $status = if ($visible -and $foreground -and $inputDesktop -eq 1 -and $cloaked -eq 0) { 'foreground' } else { 'foreground-unconfirmed' }
+      @{status=$status;fullScreen=$form.Bounds.Equals($targetScreen.Bounds);topMost=$form.TopMost;visible=$visible;foreground=$foreground;processSession=$session;consoleSession=$console;inputDesktop=$inputDesktop;cloaked=$cloaked;checkedAt=(Get-Date).ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $StateDirectory 'display-status.json') -Encoding UTF8
     } catch { }
   })
+  $form.Add_Shown({ $presentationTimer.Start() })
 
   $soundFile = Join-Path $env:WINDIR 'Media\Ring05.wav'
   $player = $null
@@ -139,6 +191,10 @@ function Show-FullScreenInboxAlarm {
   $autoClose.Start()
   try { [void]$form.ShowDialog() }
   finally {
+    $presentationTimer.Stop()
+    $presentationTimer.Dispose()
+    $visibilityTimer.Stop()
+    $visibilityTimer.Dispose()
     $autoClose.Stop()
     $autoClose.Dispose()
     if ($player) { $player.Stop(); $player.Dispose() }

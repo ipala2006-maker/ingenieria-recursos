@@ -6,6 +6,22 @@ const path=require('node:path');
 const {spawnSync}=require('node:child_process');
 const root=path.resolve(__dirname,'..');
 
+test('native window interop compiles without opening a window', {skip:process.platform!=='win32'},()=>{
+  const result=spawnSync('powershell.exe',['-NoProfile','-NonInteractive','-Command',String.raw`
+    $ErrorActionPreference='Stop'
+    $tokens=$null; $errors=$null
+    $ast=[Management.Automation.Language.Parser]::ParseFile($env:ALARM_TEST_SCRIPT,[ref]$tokens,[ref]$errors)
+    if($errors.Count){throw 'Invalid script syntax'}
+    $definitions=@($ast.FindAll({param($node) $node -is [Management.Automation.Language.StringConstantExpressionAst] -and $node.Value.StartsWith('using System;')},$true))
+    if($definitions.Count -ne 1){throw 'Expected one native type definition'}
+    Add-Type -TypeDefinition $definitions[0].Value
+    if(!('Estudiemos.AlarmWindow' -as [type])){throw 'Interop type missing'}
+    Write-Output 'native-interop-compiled'
+  `],{windowsHide:true,encoding:'utf8',timeout:30000,env:{...process.env,ALARM_TEST_SCRIPT:path.join(root,'windows-installer/InboxAlarm.ps1')}});
+  assert.equal(result.status,0,result.stderr);
+  assert.match(result.stdout,/native-interop-compiled/);
+});
+
 test('connection and background refresh encrypt/decrypt with a restricted module search path', {skip:process.platform!=='win32'},()=>{
   const directory=fs.mkdtempSync(path.join(os.tmpdir(),'estudiemos-alarm-dpapi-'));
   for(const name of ['ConnectInboxAlarms.ps1','InboxAlarm.ps1']){
@@ -47,10 +63,17 @@ test('connection and background refresh encrypt/decrypt with a restricted module
   }finally{assert.equal(path.dirname(path.resolve(directory)),path.resolve(os.tmpdir()));fs.rmSync(directory,{recursive:true,force:true});}
 });
 
-test('fullscreen diagnostics record the shown event without task contents or credentials',()=>{
+test('fullscreen diagnostics verify foreground visibility without task contents or credentials',()=>{
   const source=fs.readFileSync(path.join(root,'windows-installer/InboxAlarm.ps1'),'utf8');
-  const shown=source.slice(source.indexOf('$form.Add_Shown('),source.indexOf("$soundFile ="));
-  assert.match(shown,/status='shown'/);
+  const shown=source.slice(source.indexOf('$presentationTimer ='),source.indexOf("$soundFile ="));
+  assert.match(shown,/IsWindowVisible\(\$form.Handle\)/);
+  assert.match(shown,/GetForegroundWindow\(\) -eq \$form.Handle/);
+  assert.match(shown,/ShowWindow\(\$form.Handle, 9\)/);
+  assert.match(shown,/foreground-unconfirmed/);
+  assert.match(shown,/\$inputDesktop -eq 1 -and \$cloaked -eq 0/);
+  assert.match(shown,/InputDesktopStatus\(\)/);
+  assert.match(shown,/CloakedStatus\(\$form.Handle\)/);
+  assert.doesNotMatch(shown,/AttachThreadInput|SendKeys|SystemParametersInfo/);
   assert.match(shown,/fullScreen=\$form\.Bounds\.Equals/);
   assert.match(shown,/topMost=\$form\.TopMost/);
   assert.doesNotMatch(shown,/title|feedToken|credential|DueItems|Exception\.Message/);
