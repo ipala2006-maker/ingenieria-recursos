@@ -35,5 +35,48 @@
   function setRatio(tree,path,ratio){let n=tree;for(const part of path)n=n[part];if(n&&typeof n==='object')n.ratio=clamp(ratio,.01,.99);}
   function swap(tree,a,b){if(typeof tree==='string')return tree===a?b:tree===b?a:tree;return {...tree,a:swap(tree.a,a,b),b:swap(tree.b,a,b)};}
   function boundary(splits,key,axis){return [...splits].reverse().find(s=>s.axis===axis&&(s.first.includes(key)||s.second.includes(key)));}
-  return {keys,defaults,sanitize,layout,setRatio,swap,boundary};
+  const overlaps=(a,b)=>a.x<b.x+b.w-.01&&a.x+a.w>b.x+.01&&a.y<b.y+b.h-.01&&a.y+a.h>b.y+.01;
+  function fits(box,boxes,key,width,height){
+    return ['x','y','w','h'].every(k=>Number.isFinite(box[k]))&&box.x>=0&&box.y>=0&&box.w>0&&box.h>0&&box.x+box.w<=width+.01&&box.y+box.h<=height+.01&&Object.entries(boxes).every(([k,r])=>k===key||!overlaps(box,r));
+  }
+  function firstSpace(box,boxes,key,width,height){
+    const xs=[box.x,0],ys=[box.y,0];
+    for(const [k,r] of Object.entries(boxes))if(k!==key){xs.push(r.x+r.w+8,r.x-box.w-8);ys.push(r.y+r.h+8,r.y-box.h-8);}
+    const candidates=[];for(const x of xs)for(const y of ys){const r={...box,x,y};if(fits(r,boxes,key,width,height))candidates.push(r);}
+    return candidates.sort((a,b)=>Math.hypot(a.x-box.x,a.y-box.y)-Math.hypot(b.x-box.x,b.y-box.y))[0]||null;
+  }
+  function freeLayout(placement,tree,width,height,visible={}){
+    const fallback=()=>({...layout(tree,width,height,visible),width,height});
+    if(!placement||!Number.isFinite(placement.width)||!Number.isFinite(placement.height)||placement.width<=0||placement.height<=0)return fallback();
+    const boxes={},stored={};
+    for(const key of keys){
+      const r=placement.boxes?.[key];
+      if(!r||!['x','y','w','h'].every(k=>Number.isFinite(r[k]))||r.x<0||r.y<0||r.w<=0||r.h<=0||r.x+r.w>placement.width+.01||r.y+r.h>placement.height+.01)return fallback();
+      stored[key]={x:r.x*width/placement.width,y:r.y*height/placement.height,w:r.w*width/placement.width,h:r.h*height/placement.height};
+      if(visible[key]!==false)boxes[key]=stored[key];
+    }
+    // Reject corrupt overlapping preferences instead of obscuring another tool.
+    if(Object.entries(boxes).some(([key,r])=>!fits(r,boxes,key,width,height)))return fallback();
+    return {boxes,stored,splits:[],width,height};
+  }
+  function remember(current,previous,tree){
+    const {width,height}=current;
+    const all=layout(tree,width,height).boxes;
+    if(previous?.width>0&&previous?.height>0)for(const key of keys){const r=previous.boxes?.[key];if(r)all[key]={x:r.x*width/previous.width,y:r.y*height/previous.height,w:r.w*width/previous.width,h:r.h*height/previous.height};}
+    return {width,height,boxes:{...all,...current.boxes}};
+  }
+  function proposal(box,delta,kind,boxes,key,width,height,snap=true){
+    let r={...box};
+    if(kind==='move'){r.x=clamp(box.x+delta.x,0,width-box.w);r.y=clamp(box.y+delta.y,0,height-box.h);}
+    else {r.w=clamp(box.w+delta.x,Math.min(240,box.w),width-box.x);r.h=clamp(box.h+delta.y,Math.min(key==='progress'?228:200,box.h),height-box.y);}
+    const guides=[];
+    if(snap)for(const axis of ['x','y']){
+      const size=axis==='x'?'w':'h',limit=axis==='x'?width:height;
+      const targets=[0,limit];for(const [k,b] of Object.entries(boxes))if(k!==key)targets.push(b[axis],b[axis]+b[size],b[axis]-8,b[axis]+b[size]+8);
+      let best=null;for(const t of targets)for(const edge of kind==='move'?[r[axis],r[axis]+r[size]]:[r[axis]+r[size]]){const d=t-edge;if(Math.abs(d)<=5&&(!best||Math.abs(d)<Math.abs(best.d)))best={d,t};}
+      if(best){const before={...r};if(kind==='move')r[axis]=clamp(r[axis]+best.d,0,limit-r[size]);else r[size]=clamp(r[size]+best.d,Math.min(size==='w'?240:key==='progress'?228:200,box[size]),limit-r[axis]);if(r[axis]!==before[axis]||r[size]!==before[size])guides.push({axis,position:best.t});}
+    }
+    return {box:r,valid:fits(r,boxes,key,width,height),guides};
+  }
+  return {keys,defaults,sanitize,layout,setRatio,swap,boundary,overlaps,fits,firstSpace,freeLayout,remember,proposal};
 });

@@ -1,24 +1,35 @@
 # Inicio adaptable
 
-En escritorio, el inicio reparte una sola pantalla entre las herramientas
-visibles. No agrega altura a la pagina cuando se agranda una herramienta:
-sus vecinas ceden espacio. Las listas largas conservan su desplazamiento
+En escritorio, cada herramienta tiene posicion y tamano independientes dentro
+de una sola pantalla. Los espacios vacios se conservan: ocultar o achicar un
+apartado no agranda sus vecinos. Las listas largas conservan su desplazamiento
 interno para no ocultar tareas o archivos.
 
 - El icono de personalizacion activa la edicion directamente.
-- Arrastrar una separacion o esquina cambia el reparto sin saltos de celdas.
-- El agarre superior mueve la herramienta al lugar de otra; ambas intercambian
-  posiciones. Escape cancela el movimiento actual.
+- La esquina inferior derecha cambia solo el tamano de esa herramienta.
+- El agarre superior mueve la herramienta libremente. Las guias alinean bordes
+  cercanos; Alt desactiva esa ayuda. Las herramientas no se superponen: una
+  posicion ocupada se marca con borde discontinuo y se cancela al soltar.
+- Tambien se puede seleccionar el agarre y tocar un espacio vacio para mover
+  la herramienta alli, sin mantener presionado el puntero.
+- Escape cancela el movimiento actual. Deshacer recupera el ultimo ajuste.
 - Herramientas permite mostrar u ocultar apartados; Listo termina la edicion.
-- Los agarres y separadores admiten flechas de teclado.
+- Los agarres admiten flechas de teclado (8 px; Shift, 1 px). Herramientas
+  permite editar posicion y dimensiones numericamente, sin arrastrar.
 - En pantallas angostas se mantiene navegacion movil y ajuste de alto.
 
-`shared/home-board.js` calcula limites y posiciones con un arbol de divisiones.
-`scripts/home-customizer.js` aplica esos limites en cada frame del arrastre.
-La preferencia version 3 se guarda en `estudiemos_home_layout`, manteniendo las
-herramientas ocultas y la densidad de versiones anteriores. Los tamanos rigidos
-anteriores se reemplazan por el reparto inicial adaptable. Se respeta la
-preferencia del sistema para reducir animaciones.
+`shared/home-board.js` conserva el arbol anterior para migracion y restablecer;
+calcula tambien posiciones libres, limites, colisiones y alineacion.
+`scripts/home-customizer.js` aplica los cambios en cada frame del arrastre.
+La preferencia version 4 se guarda en `estudiemos_home_layout`, con `placement`
+(ancho y alto de referencia, rectangulos de todas las herramientas). Se escala
+proporcionalmente en otras pantallas sin compactar los huecos. La sincronizacion
+existente de preferencias conserva ese objeto. No se cambia la base de datos.
+Las preferencias v3 mantienen su aspecto hasta el primer ajuste. Ocultar guarda
+la posicion; volver a mostrar busca el hueco libre mas cercano. Si no cabe, no
+se alteran las otras herramientas y se indica que falta espacio.
+En movil se conserva la navegacion apilada y el alto independiente, sin borrar
+la distribucion de escritorio. Se respeta el movimiento reducido del sistema.
 
-Pruebas: `node --test tests/home-board.test.cjs`,
+Pruebas: `node --test tests/home-board.test.cjs tests/home-free-layout.test.cjs`,
 `node tests/home-board.smoke.cjs`, `node tests/home-adaptable.smoke.cjs`.
