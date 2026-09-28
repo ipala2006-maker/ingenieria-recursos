@@ -42,6 +42,7 @@ const RESPONSE_SCHEMA = {
 module.exports = async function workspaceAi(request, response) {
   setSecurityHeaders(response);
   response.setHeader("Content-Type", "application/json; charset=utf-8");
+  if (!require('../shared/release').enabled('workspace') || !require('../shared/release').enabled('ai')) return response.status(503).json({ code: 'FEATURE_COMING_SOON', message: 'Mi espacio y la IA: próximamente.' });
 
   if (request.method !== "POST") {
     response.setHeader("Allow", "POST");

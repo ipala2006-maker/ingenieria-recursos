@@ -50,7 +50,12 @@
     }
   }
 
-  const requestedWidget = new URLSearchParams(location.search).get("widget");
+  const incomingWidget = new URLSearchParams(location.search).get("widget");
+  const requestedWidget = incomingWidget === 'workspace' ? null : incomingWidget;
+  if (incomingWidget === 'workspace' && requestedWidgetMessage) {
+    requestedWidgetMessage.hidden = false;
+    requestedWidgetMessage.textContent = 'Mi espacio estará disponible próximamente. Los demás widgets ya están disponibles.';
+  }
   const widgetLabel = {
     workspace: "Mi espacio",
     inbox: "Inbox",

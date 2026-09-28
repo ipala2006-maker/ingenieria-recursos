@@ -35,6 +35,7 @@ async function createHandoff(request, response) {
 
   const widget = normalizeWidget(request.body?.widget);
   if (!widget) return response.status(400).json({ message: "Widget no válido." });
+  if (widget === 'workspace' && !require('../shared/release').enabled('workspace')) return response.status(503).json({ code: 'FEATURE_COMING_SOON', message: 'Mi espacio: próximamente.' });
 
   const expiresAt = Math.floor(Date.now() / 1000) + LINK_LIFETIME_SECONDS;
   const payload = {
@@ -55,6 +56,7 @@ async function redeemHandoff(request, response) {
 
   const widget = normalizeWidget(payload.widget);
   if (!widget) return response.status(400).send("Widget no válido.");
+  if (widget === 'workspace' && !require('../shared/release').enabled('workspace')) return response.status(503).send('Mi espacio: próximamente.');
 
   const user = await adminRequest(`/auth/v1/admin/users/${encodeURIComponent(payload.sub)}`);
   if (!user?.email) return response.status(404).send("No encontramos la cuenta.");

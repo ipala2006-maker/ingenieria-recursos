@@ -2,6 +2,19 @@ import { attachTimerDial } from './timer-dial.js?v=20260909-depth2';
 import { createStudyChart } from './study-chart.js?v=20260914-chart';
 const home = document.querySelector('[data-study-home]');
 if (home) {
+  if (!window.EstudiemosRelease?.enabled('ai')) {
+    home.querySelector('#homeAssistantTitle').textContent = 'Trabajar con la IA';
+    const form = home.querySelector('[data-home-ai-form]');
+    form.classList.add('release-pending');
+    form.querySelectorAll('input,textarea,button,label').forEach(element => { element.hidden = true; element.disabled = true; });
+    const badge = document.createElement('span');
+    badge.className = 'release-badge'; badge.textContent = 'Próximamente';
+    const description = document.createElement('p');
+    description.textContent = 'Tu organización inteligente, en una próxima etapa.';
+    form.append(badge, description);
+    home.querySelectorAll('[data-home-prompt]').forEach(button => { button.hidden = true; });
+  }
+  if (!window.EstudiemosRelease?.enabled('workspace')) home.querySelector('[data-home-shortcut="space"] small').textContent = 'Próximamente';
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const host = home.querySelector('[data-home-depth]');
   const chart = home.querySelector('[data-home-chart]');

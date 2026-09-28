@@ -177,7 +177,10 @@
       : state.view === "calendar" ? calendarMarkup()
       : state.view === "pomodoro" ? pomodoroMarkup()
       : state.view === "streak" ? streakMarkup() : inboxMarkup();
-    if (standaloneHost && !window.EstudiemosAccount?.getUser?.()) {
+    const workspacePaused = state.view === 'workspace' && !window.EstudiemosRelease?.enabled('workspace');
+    const footer = doc.querySelector('body > footer');
+    if (footer) footer.hidden = workspacePaused;
+    if (!workspacePaused && standaloneHost && !window.EstudiemosAccount?.getUser?.()) {
       markup += '<button class="widget-connect" type="button" data-widget-account>Conectar cuenta</button>';
     }
     if(renderedWidgets.get(content) !== markup) {
@@ -381,6 +384,7 @@
   }
 
   function workspaceMarkup() {
+    if (!window.EstudiemosRelease?.enabled('workspace')) return '<section class="widget-section widget-workspace"><div class="section-head"><h1>Mi espacio</h1></div><p class="empty">Próximamente</p></section>';
     const items = state.workspaceItems.filter((item) => !item.parent_id).sort((a, b) => {
       if (a.kind !== b.kind) return a.kind === "folder" ? -1 : 1;
       return String(a.name).localeCompare(String(b.name), "es", { sensitivity: "base" });
@@ -400,6 +404,7 @@
   }
 
   async function loadWorkspaceItems() {
+    if (!window.EstudiemosRelease?.enabled('workspace')) { state.workspaceItems = []; state.workspaceLoading = false; refresh(); return; }
     const account = window.EstudiemosAccount;
     const client = account?.getClient?.();
     const user = account?.getUser?.();

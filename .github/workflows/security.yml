@@ -27,7 +27,7 @@ jobs:
           node-version: "22"
 
       - name: Run application tests
-        run: node --test tests/*.test.js
+        run: node --test tests/*.test.js tests/free-release.test.cjs tests/commercial-launch-hidden.test.cjs
 
       - name: Check tracked files and dependencies
         run: node scripts/security-check.js

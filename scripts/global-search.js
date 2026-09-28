@@ -5,6 +5,18 @@
   if (!topbar || document.querySelector(".global-search")) return;
 
   const rootPath = getRootPath();
+  if (!document.querySelector('script[data-release-ui]')) {
+    const releaseUi = document.createElement('script');
+    releaseUi.dataset.releaseUi = '';
+    releaseUi.src = rootPath + 'scripts/release-ui.js?v=20260928';
+    document.head.appendChild(releaseUi);
+  }
+  if (!window.EstudiemosRelease && !document.querySelector('script[data-release-config]')) {
+    const releaseConfig = document.createElement('script');
+    releaseConfig.dataset.releaseConfig = '';
+    releaseConfig.src = rootPath + 'shared/release.js?v=20260928';
+    document.head.appendChild(releaseConfig);
+  }
   const workspaceHome = document.body.classList.contains("workspace-home") || document.body.classList.contains("productivity-page");
   let resources = null;
 

@@ -1,5 +1,10 @@
 (function () {
   if (!document.body.classList.contains("workspace-home")) return;
+  if (!window.EstudiemosRelease?.enabled('workspace')) {
+    const section = document.querySelector('.workspace-section');
+    if (section) section.innerHTML = '<div class="release-placeholder"><span class="release-badge">Próximamente</span><h2 id="workspaceSectionTitle">Mi espacio</h2><p>Tus carpetas y archivos, en un solo lugar. Disponible en una próxima etapa.</p></div>';
+    return;
+  }
 
   const BUCKET = "workspace-files";
   const MAX_FILE_SIZE = 50 * 1024 * 1024;
