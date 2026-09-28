@@ -6,18 +6,57 @@ param(
   [switch]$TestAlert
 )
 $ErrorActionPreference = 'Stop'
+trap {
+  if (!$DryRun -and !$InputPath) {
+    try {
+      New-Item -ItemType Directory -Path $StateDirectory -Force | Out-Null
+      @{status='runtime-error';errorType=$_.Exception.GetType().FullName;line=$_.InvocationInfo.ScriptLineNumber;checkedAt=(Get-Date).ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $StateDirectory 'sync-status.json') -Encoding UTF8
+    } catch { }
+  }
+  exit 1
+}
 $culture = [Globalization.CultureInfo]::InvariantCulture
 
 function Show-FullScreenInboxAlarm {
   param([Parameter(Mandatory=$true)][array]$DueItems)
 
+  if (!('Estudiemos.AlarmWindow' -as [type])) {
+    Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+namespace Estudiemos {
+  public static class AlarmWindow {
+    [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr window);
+    [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr window);
+    [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr window);
+    [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr window, int command);
+    [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr window, IntPtr after, int x, int y, int width, int height, uint flags);
+    [DllImport("kernel32.dll")] public static extern uint WTSGetActiveConsoleSessionId();
+    [DllImport("kernel32.dll")] private static extern uint GetCurrentThreadId();
+    [DllImport("user32.dll")] private static extern IntPtr GetThreadDesktop(uint thread);
+    [DllImport("user32.dll", EntryPoint="GetUserObjectInformationW")] private static extern bool GetUserObjectInformation(IntPtr handle, int index, out int value, uint length, out uint needed);
+    [DllImport("dwmapi.dll")] private static extern int DwmGetWindowAttribute(IntPtr window, int attribute, out int value, int size);
+    public static int InputDesktopStatus() {
+      int value; uint needed;
+      return GetUserObjectInformation(GetThreadDesktop(GetCurrentThreadId()), 6, out value, 4, out needed) ? value : -1;
+    }
+    public static int CloakedStatus(IntPtr window) {
+      int value;
+      return DwmGetWindowAttribute(window, 14, out value, 4) == 0 ? value : -1;
+    }
+  }
+}
+'@
+  }
   [Windows.Forms.Application]::EnableVisualStyles()
+  $targetScreen = [Windows.Forms.Screen]::FromHandle([Estudiemos.AlarmWindow]::GetForegroundWindow())
   $form = New-Object Windows.Forms.Form
   $form.Text = 'Alarma de Inbox - Estudiemos'
   $form.AccessibleName = 'Alarma de Inbox de Estudiemos'
   $form.FormBorderStyle = [Windows.Forms.FormBorderStyle]::None
   $form.StartPosition = [Windows.Forms.FormStartPosition]::Manual
-  $form.Bounds = [Windows.Forms.Screen]::PrimaryScreen.Bounds
+  $form.Bounds = $targetScreen.Bounds
   $form.BackColor = [Drawing.ColorTranslator]::FromHtml('#0B1020')
   $form.ForeColor = [Drawing.Color]::White
   $form.TopMost = $true
@@ -107,6 +146,35 @@ function Show-FullScreenInboxAlarm {
   $form.Controls.Add($layout)
   $form.AcceptButton = $dismissButton
   $form.Add_KeyDown({ param($sender, $eventArgs); if ($eventArgs.KeyCode -eq [Windows.Forms.Keys]::Escape) { $form.Close() } })
+  $presentationTimer = New-Object Windows.Forms.Timer
+  $presentationTimer.Interval = 200
+  $presentationTimer.Add_Tick({
+    $presentationTimer.Stop()
+    # Restore explicitly after the hidden launch; respect Windows foreground restrictions.
+    [void][Estudiemos.AlarmWindow]::ShowWindow($form.Handle, 9)
+    [void][Estudiemos.AlarmWindow]::SetWindowPos($form.Handle, [IntPtr](-1), 0, 0, 0, 0, 0x0043)
+    $form.BringToFront()
+    $form.Activate()
+    [void][Estudiemos.AlarmWindow]::SetForegroundWindow($form.Handle)
+    $visibilityTimer.Start()
+  })
+  $visibilityTimer = New-Object Windows.Forms.Timer
+  $visibilityTimer.Interval = 500
+  $visibilityTimer.Add_Tick({
+    $visibilityTimer.Stop()
+    try {
+      New-Item -ItemType Directory -Path $StateDirectory -Force | Out-Null
+      $visible = [Estudiemos.AlarmWindow]::IsWindowVisible($form.Handle) -and ![Estudiemos.AlarmWindow]::IsIconic($form.Handle)
+      $foreground = [Estudiemos.AlarmWindow]::GetForegroundWindow() -eq $form.Handle
+      $session = [Diagnostics.Process]::GetCurrentProcess().SessionId
+      $console = [Estudiemos.AlarmWindow]::WTSGetActiveConsoleSessionId()
+      $inputDesktop = [Estudiemos.AlarmWindow]::InputDesktopStatus()
+      $cloaked = [Estudiemos.AlarmWindow]::CloakedStatus($form.Handle)
+      $status = if ($visible -and $foreground -and $inputDesktop -eq 1 -and $cloaked -eq 0) { 'foreground' } else { 'foreground-unconfirmed' }
+      @{status=$status;fullScreen=$form.Bounds.Equals($targetScreen.Bounds);topMost=$form.TopMost;visible=$visible;foreground=$foreground;processSession=$session;consoleSession=$console;inputDesktop=$inputDesktop;cloaked=$cloaked;checkedAt=(Get-Date).ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $StateDirectory 'display-status.json') -Encoding UTF8
+    } catch { }
+  })
+  $form.Add_Shown({ $presentationTimer.Start() })
 
   $soundFile = Join-Path $env:WINDIR 'Media\Ring05.wav'
   $player = $null
@@ -123,6 +191,10 @@ function Show-FullScreenInboxAlarm {
   $autoClose.Start()
   try { [void]$form.ShowDialog() }
   finally {
+    $presentationTimer.Stop()
+    $presentationTimer.Dispose()
+    $visibilityTimer.Stop()
+    $visibilityTimer.Dispose()
     $autoClose.Stop()
     $autoClose.Dispose()
     if ($player) { $player.Stop(); $player.Dispose() }
@@ -139,18 +211,26 @@ if ($TestAlert) {
 }
 $snapshot = $null
 $feedPath = Join-Path $StateDirectory 'feed.dpapi'
+if (!$DryRun -and !$InputPath) {
+  New-Item -ItemType Directory -Path $StateDirectory -Force | Out-Null
+  @{status='checking';hasConnection=(Test-Path -LiteralPath $feedPath);checkedAt=(Get-Date).ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $StateDirectory 'sync-status.json') -Encoding UTF8
+}
 if (!$InputPath -and (Test-Path -LiteralPath $feedPath)) {
   $cachePath = Join-Path $StateDirectory 'cloud.json'
   try {
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    Import-Module (Join-Path $PSHOME 'Modules\Microsoft.PowerShell.Security\Microsoft.PowerShell.Security.psd1') -ErrorAction Stop
     $secure = Get-Content -LiteralPath $feedPath -Raw | ConvertTo-SecureString
     $credential = New-Object System.Management.Automation.PSCredential('alarm-feed', $secure)
     $snapshot = Invoke-RestMethod -Uri 'https://estudiemos-app.vercel.app/api/widget-link?alarmFeed=1' -Headers @{Authorization=('Bearer ' + $credential.GetNetworkCredential().Password)} -TimeoutSec 12
     if ($snapshot.version -ne 1 -or @($snapshot.items).Count -gt 500) { throw 'Invalid alarm feed.' }
     $snapshot | ConvertTo-Json -Depth 8 -Compress | Set-Content -LiteralPath $cachePath -Encoding UTF8
+    @{status='connected';checkedAt=(Get-Date).ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $StateDirectory 'sync-status.json') -Encoding UTF8
     @{status='connected';lastSync=(Get-Date).ToString('o');version='1.6.3'} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $StateDirectory 'connection.json') -Encoding UTF8
   } catch {
     $status = if ($_.Exception.Response -and [int]$_.Exception.Response.StatusCode -in @(401,403)) { 'reconnect' } else { 'offline' }
+    $httpStatus = if ($_.Exception.Response) { [int]$_.Exception.Response.StatusCode } else { 0 }
+    @{status=$status;httpStatus=$httpStatus;errorType=$_.Exception.GetType().FullName;errorCode=$_.Exception.HResult;line=$_.InvocationInfo.ScriptLineNumber;checkedAt=(Get-Date).ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $StateDirectory 'sync-status.json') -Encoding UTF8
     @{status=$status;checkedAt=(Get-Date).ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $StateDirectory 'connection.json') -Encoding UTF8
     if ($status -eq 'reconnect') { exit 0 }
     if (Test-Path -LiteralPath $cachePath) { $snapshot = Get-Content -LiteralPath $cachePath -Raw | ConvertFrom-Json }

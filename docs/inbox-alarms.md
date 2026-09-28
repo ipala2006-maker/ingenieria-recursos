@@ -25,7 +25,7 @@ modelo. Genera solicitudes al alojamiento y a la base de datos.
 1. En la campana de una tarea, toca **Activar pantalla completa en esta PC**.
    Tambien podes abrir https://estudiemos-app.vercel.app/?alarms-setup=1.
 2. Toca **Instalar alarmas para Windows** y abri el archivo descargado. Es un
-   instalador independiente (1.6.3): no requiere Rainmeter, widgets ni reinstalar
+   instalador independiente (1.6.3.2): no requiere Rainmeter, widgets ni reinstalar
    la app. Al terminar abre nuevamente la pantalla de activacion.
 3. Marca el consentimiento y toca **Conectar con Windows**. Acepta **Abrir**
    en el navegador. Si no aparece, usa **Abrir activacion de Windows**, sin
@@ -51,7 +51,7 @@ minuto: puede sonar hasta un minuto despues del horario. Tras sincronizar, funci
 abierta la PWA. Recibe los cambios de otros dispositivos desde la cuenta. Sin
 conexion usa la ultima copia recibida; no puede recibir ediciones nuevas.
 
-Cuando hay una alarma, Windows muestra una vista en la pantalla principal con
+Cuando hay una alarma, Windows intenta mostrar una vista en la pantalla activa con
 el nombre de la tarea y repite el sonido hasta elegir **Entendido**, abrir
 Inbox, pulsar Escape o alcanzar el limite de seguridad de cinco minutos. La
 alerta conserva una salida visible y no bloquea los controles del sistema.
@@ -80,6 +80,12 @@ operativo puede suspender la web y el audio. No se promete puntualidad de un
 temporizador web en segundo plano.
 
 ## Implementacion Y Privacidad
+
+El parche de instalador 1.6.3.2 acepta tambien la ruta vacia normalizada por
+Windows (`connect/?link=...`). Conserva el protocolo de conexion 1.6.3 y su
+validacion estricta del token; no permite otros caminos ni parametros extra.
+La escritura y lectura DPAPI cargan el modulo oficial de seguridad desde
+`PSHOME`, sin depender de rutas de modulos heredadas por el navegador o lanzador.
 
 Aplicar `supabase/windows-alarms.sql` antes de desplegar el feed. La funcion
 `get_windows_alarm_snapshot` solo puede ejecutarla `service_role`; devuelve
@@ -122,8 +128,16 @@ la credencial cifrada para ese usuario de Windows. El archivo legado
 compartido para informacion privada. Cerrar el navegador o cerrar sesion no
 revoca esta conexion independiente. Al vencer los 90 dias hay que reconectar;
 una respuesta 401/403 detiene los avisos, sin recurrir a datos anteriores.
-`activation-status.json` registra solo etapa, codigo HTTP y fecha de un fallo;
-no incluye tokens, titulos de tareas ni datos de la cuenta.
+`activation-status.json` y `sync-status.json` registran estados, fechas y,
+si hay errores, su tipo, codigo HTTP, HResult o linea del script. No registran
+mensajes completos de excepciones, tokens, titulos ni datos de la cuenta.
+`display-status.json` se actualiza despues de restaurar explicitamente la
+ventana y solicitar el primer plano con las APIs de Windows. Verifica
+visibilidad real, ventana activa, limites de pantalla y sesion de proceso/consola.
+Comprueba ademas que el escritorio reciba entrada (`inputDesktop=1`) y que
+Windows no haya ocultado la ventana (`cloaked=0`).
+No basta con un evento Shown, TopMost o `delivered.json` para afirmar que el
+usuario fue interrumpido. No se alteran las restricciones de foco de Windows.
 
 Desactivar todas las alarmas Windows y sincronizar deja la programacion vacia.
 Para quitar el proceso opcional, elimina la tarea `Estudiemos Inbox <usuario>` en
@@ -157,3 +171,42 @@ conectada y el Programador de tareas sigue disponible en el boton de la app.
 Referencias: [Programador de tareas](https://learn.microsoft.com/en-us/windows/win32/taskschd/repeating-a-task),
 [sesion interactiva sin contrasena](https://learn.microsoft.com/en-us/windows/win32/taskschd/principal-logontype),
 [permisos de notificaciones web](https://developer.mozilla.org/en-US/docs/Web/API/Notifications_API/Using_the_Notifications_API).
+
+### Verificacion Real 27/09/2026
+
+Instalador 1.6.3.1 instalado y conectado en la sesion interactiva real de Windows.
+Se programo una tarea piloto para las 11:54 y se retiro la pagina de Estudiemos
+del navegador de prueba antes del vencimiento. El Programador, sin invocacion
+manual de la alarma, consulto el feed a las 11:54:48 y el evento Shown registro
+`fullScreen=true` y `topMost=true` a las 11:54:49 (Argentina). La tarea piloto
+quedo registrada como entregada. Se verificaron las huellas de los archivos
+desde el mismo contexto que ejecuta el Programador, no solo desde la consola
+de desarrollo. No se midio el audio fisico ni se verificaron otras pantallas
+o aplicaciones con modo exclusivo. No se cambiaron protecciones de Windows.
+Pasaron 34 pruebas automatizadas de alarmas y `scripts/security-check.js`.
+Actualizacion posterior: el usuario indico que solo vio el aviso web. Por eso
+esa comprobacion NO demuestra interrupcion del escritorio; queda invalidada
+como prueba visual de extremo a extremo. 1.6.3.2 agrega restauracion y solicitud
+explicita de primer plano, con comprobacion posterior de visibilidad/sesion.
+
+### Confirmacion Del Usuario 28/09/2026
+
+Con 1.6.3.2 se creo desde la app una alarma piloto para el 27/09 a las 17:18.
+El componente la recibio antes del vencimiento y se retiro la pagina de
+Estudiemos del navegador. La ejecucion programada registro la entrega a las
+17:18:40, sin invocar manualmente el aviso: pantalla completa, TopMost,
+visible, escritorio interactivo (`inputDesktop=1`) y no oculta (`cloaked=0`).
+El usuario confirmo posteriormente que esa prueba interrumpio el escritorio
+como esperaba, incluso con Estudiemos cerrado.
+
+El muestreo de foco marco `foreground=false`: ese dato indica quien tenia
+el foco del teclado en ese instante, no demuestra que una ventana TopMost
+estuviera tapada. Se conserva el diagnostico prudente `foreground-unconfirmed`
+y se registra por separado la confirmacion visual del usuario. No se declara
+exito visual solo a partir de indicadores del sistema.
+
+Pasaron 35 pruebas aisladas de alarmas y el verificador de seguridad. Los ocho
+instaladores incluyen 1.6.3.2. Esta comprobacion corresponde a una sesion
+Windows iniciada y desbloqueada; no garantiza interrupcion de una pantalla
+segura/UAC, una PC suspendida/apagada o una aplicacion en modo exclusivo.
+No se modificaron protecciones ni restricciones de foco de Windows.

@@ -5,6 +5,9 @@ param(
 $ErrorActionPreference = 'Stop'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 try {
+$stage = 'componente-cifrado'
+# Shell-launched processes can inherit a module path without Windows PowerShell modules.
+Import-Module (Join-Path $PSHOME 'Modules\Microsoft.PowerShell.Security\Microsoft.PowerShell.Security.psd1') -ErrorAction Stop
 $stage = 'archivo'
 if ($ConnectionFile) {
   . (Join-Path $PSScriptRoot 'ReadAlarmConnection.ps1')
@@ -19,19 +22,23 @@ $stage = 'programador'
 & (Join-Path $PSScriptRoot 'InstallInboxAlarm.ps1')
 if (!$?) { throw 'Could not register alarm task.' }
 # DPAPI binds the read-only alarm credential to this Windows user.
-$stage = 'credencial'
+$stage = 'credencial-cifrado'
 $protected = ConvertTo-SecureString -String $result.feedToken -AsPlainText -Force | ConvertFrom-SecureString
+$stage = 'credencial-guardado'
 [IO.File]::WriteAllText((Join-Path $directory 'feed.dpapi'), $protected)
+$stage = 'programacion-guardado'
 $result.snapshot | ConvertTo-Json -Depth 8 -Compress | Set-Content -LiteralPath (Join-Path $directory 'cloud.json') -Encoding UTF8
 $state = @{connectedAt=(Get-Date).ToString('o');version='1.6.3';lastSync=(Get-Date).ToString('o');status='connected'}
 $state | ConvertTo-Json -Compress | Set-Content -LiteralPath (Join-Path $directory 'connection.json') -Encoding UTF8
+$stage = 'confirmacion'
 Start-Process ('https://estudiemos-app.vercel.app/?windows-alarms-ready=' + $result.confirmation)
+@{status='connected';stage='complete';checkedAt=(Get-Date).ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $directory 'activation-status.json') -Encoding UTF8
 } catch {
   $status = 0
   if ($_.Exception.Response) { $status = [int]$_.Exception.Response.StatusCode }
   $stateDirectory = Join-Path $env:LOCALAPPDATA 'Estudiemos\Windows\InboxAlarms'
   New-Item -ItemType Directory -Path $stateDirectory -Force | Out-Null
-  @{status='activation-error';stage=$stage;httpStatus=$status;checkedAt=(Get-Date).ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $stateDirectory 'activation-status.json') -Encoding UTF8
+  @{status='activation-error';stage=$stage;httpStatus=$status;errorType=$_.Exception.GetType().FullName;errorCode=$_.Exception.HResult;line=$_.InvocationInfo.ScriptLineNumber;checkedAt=(Get-Date).ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $stateDirectory 'activation-status.json') -Encoding UTF8
   Add-Type -AssemblyName System.Windows.Forms
   $message = if ($stage -eq 'archivo') { 'El archivo de conexion no es valido. Genera uno nuevo desde Estudiemos. No necesitas reinstalar.' } elseif ($stage -eq 'programador') { 'Windows no pudo registrar la tarea de alarma. Reinstala el componente del paso 1 y vuelve a conectar.' } elseif ($status -eq 401) { 'La conexion vencio. Genera otro enlace o archivo desde Estudiemos. No necesitas reinstalar.' } else { 'No se pudo completar la activacion (' + $stage + '). Comprueba Internet y vuelve a conectar desde Estudiemos.' }
   [void][Windows.Forms.MessageBox]::Show($message, 'Estudiemos: activacion pendiente', [Windows.Forms.MessageBoxButtons]::OK, [Windows.Forms.MessageBoxIcon]::Warning)

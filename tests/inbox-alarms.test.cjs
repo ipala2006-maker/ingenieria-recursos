@@ -235,13 +235,14 @@ test('Windows keeps a hidden alarm bridge active without visible widgets', () =>
   assert.match(bridge,/refreshFromCloud/);
   assert.match(packageSource,/ActivateConfig \"Estudiemos\\AlarmBridge\"/);
   assert.match(launcher,/Estudiemos\\AlarmBridge/);
-  assert.match(packageSource,/#define AppVersion \"1\.6\.3\"/);
+  assert.match(packageSource,/#define AppVersion \"1\.6\.3\.2\"/);
 });
 
 test('due Windows alarms show their names in a dismissible full-screen alert with looping sound', () => {
   const source=fs.readFileSync(path.join(root,'windows-installer/InboxAlarm.ps1'),'utf8');
   assert.match(source,/FormBorderStyle\]::None/);
-  assert.match(source,/PrimaryScreen\]::PrimaryScreen\.Bounds|Screen\]::PrimaryScreen\.Bounds/);
+  assert.match(source,/Screen\]::FromHandle\(\[Estudiemos.AlarmWindow\]::GetForegroundWindow\(\)\)/);
+  assert.match(source,/\$form\.Bounds = \$targetScreen\.Bounds/);
   assert.match(source,/\.TopMost\s*=\s*\$true/);
   assert.match(source,/\$alarmName\.Text\s*=\s*\(\$titles -join/);
   assert.match(source,/PlayLooping\(\)/);

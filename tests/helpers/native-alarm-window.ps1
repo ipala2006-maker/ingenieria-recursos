@@ -11,7 +11,8 @@ $probeTimer.Interval = 1800
 $probeTimer.Add_Tick({
   $probeTimer.Stop()
   try {
-    if (!$form.Visible -or !$form.TopMost -or $form.Bounds -ne [Windows.Forms.Screen]::PrimaryScreen.Bounds) { throw 'Alarm must cover the primary display.' }
+    if (!$form.Visible -or !$form.TopMost -or $form.Bounds -ne $targetScreen.Bounds) { throw 'Alarm must cover the active display.' }
+    if ([Estudiemos.AlarmWindow]::GetForegroundWindow() -ne $form.Handle) { throw 'Alarm is not in the foreground.' }
     if ($dismissButton.Text -ne 'Entendido' -or !$dismissButton.Visible) { throw 'Dismiss action unavailable.' }
     if ($alarmName.Text -ne 'Tu alarma aparece en toda la pantalla') { throw 'Alarm title missing.' }
     $bitmap = New-Object Drawing.Bitmap($form.Width, $form.Height)
