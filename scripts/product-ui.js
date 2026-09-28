@@ -33,7 +33,7 @@
   for (const [key,label,panel] of views) {
     const button = document.createElement('button');
     button.type = 'button';
-    button.textContent = label;
+    button.textContent = key === 'space' && !window.EstudiemosRelease?.enabled('workspace') ? label + ' · Próximamente' : label;
     button.id = `home-tab-${key}`;
     button.dataset.homeView = key;
     button.setAttribute('role', 'tab');

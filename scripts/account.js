@@ -1259,6 +1259,7 @@
   }
 
   function requestAndroidWidget(widget) {
+    if (widget === 'workspace' && !window.EstudiemosRelease?.enabled('workspace')) return setStatus('Mi espacio: próximamente.', 'success');
     if (!hasAndroidBridge() || !["agenda", "calendar", "streak", "pomodoro", "workspace"].includes(widget)) return;
     window.EstudiemosAndroid.postMessage(JSON.stringify({ type: "widget-pin", widget }));
     setStatus("Android abrirá la confirmación para agregar el widget.", "success");
@@ -1274,6 +1275,7 @@
   }
 
   async function openDesktopWidget(widget) {
+    if (widget === 'workspace' && !window.EstudiemosRelease?.enabled('workspace')) return setStatus('Mi espacio: próximamente.', 'success');
     const validWidgets = ["workspace", "inbox", "calendar", "pomodoro", "streak"];
     if (isWindowsDevice() && validWidgets.includes(widget)) {
       if (localStorage.getItem(WINDOWS_WIDGETS_READY_KEY) !== "true") {
@@ -1296,6 +1298,7 @@
   }
 
   async function launchWindowsWidget(widget) {
+    if (widget === 'workspace' && !window.EstudiemosRelease?.enabled('workspace')) return setStatus('Mi espacio: próximamente.', 'success');
     localStorage.setItem(WINDOWS_WIDGET_PENDING_KEY, widget);
     setDesktopWidgetBusy(widget, true);
     setStatus("Conectando y agregando el widget...", "success");

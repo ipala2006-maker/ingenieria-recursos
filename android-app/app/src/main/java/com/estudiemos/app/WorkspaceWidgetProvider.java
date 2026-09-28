@@ -69,6 +69,7 @@ public class WorkspaceWidgetProvider extends AppWidgetProvider {
 
     static List<WorkspaceEntry> readRootEntries(Context context) {
         List<WorkspaceEntry> entries = new ArrayList<>();
+        if (!ReleaseFeatures.WORKSPACE) return entries;
         String raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_ITEMS, "[]");
         try {
             JSONArray items = new JSONArray(raw);
@@ -100,6 +101,10 @@ public class WorkspaceWidgetProvider extends AppWidgetProvider {
         serviceIntent.setData(Uri.parse(serviceIntent.toUri(Intent.URI_INTENT_SCHEME)));
         views.setRemoteAdapter(R.id.workspace_widget_list, serviceIntent);
         views.setEmptyView(R.id.workspace_widget_list, R.id.workspace_widget_empty);
+        if (!ReleaseFeatures.WORKSPACE) {
+            views.setTextViewText(R.id.workspace_widget_empty, "Próximamente");
+            views.setTextViewText(R.id.workspace_widget_subtitle, "Disponible en una próxima etapa");
+        }
 
         Intent openItem = new Intent(context, MainActivity.class)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);

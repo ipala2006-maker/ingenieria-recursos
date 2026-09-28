@@ -803,6 +803,7 @@
   }
 
   function openAgendaAssistant() {
+    if (!window.EstudiemosRelease?.enabled('ai')) return window.EstudiemosReleaseUI?.show('ai');
     const editor = document.querySelector(".agenda-editor");
     const panel = document.getElementById("agendaAssistant");
     if (!editor || !panel) return;
@@ -837,6 +838,7 @@
   }
 
   async function previewAgendaAssistant() {
+    if (!window.EstudiemosRelease?.enabled('ai')) return window.EstudiemosReleaseUI?.show('ai');
     const prompt = document.getElementById("agendaAssistantPrompt")?.value.trim() || "";
     const fromValue = document.getElementById("agendaAssistantFrom")?.value || "";
     const untilValue = document.getElementById("agendaAssistantUntil")?.value || "";
@@ -1210,6 +1212,7 @@
   }
 
   function saveAgendaAssistantItems() {
+    if (!window.EstudiemosRelease?.enabled('ai')) return window.EstudiemosReleaseUI?.show('ai');
     if (agendaAssistantAction?.type !== "ai") return;
     const current = readList(STORAGE_KEYS.agenda);
     const deleteIds = new Set(agendaAssistantAction.deleteIds || []);

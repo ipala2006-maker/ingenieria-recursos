@@ -1,0 +1,16 @@
+.release-badge { display:inline-flex; align-items:center; padding:4px 9px; border:1px solid currentColor; border-radius:6px; color:var(--muted,#8c9bb2); font-size:12px; font-weight:600; line-height:1.4; letter-spacing:0; }
+.release-placeholder { display:flex; flex-direction:column; justify-content:center; align-items:flex-start; gap:14px; padding:24px; min-height:0; height:100%; box-sizing:border-box; font-family:system-ui,sans-serif; }
+.release-placeholder h2 { margin:0; font-size:22px; }
+.release-placeholder p { margin:0; max-width:34ch; line-height:1.6; color:var(--muted,#8c9bb2); }
+.release-dialog { width:min(400px,calc(100vw - 40px)); box-sizing:border-box; padding:28px; border:1px solid #72849c66; border-radius:8px; background:var(--surface,#151e2c); color:var(--text,#eef3fb); }
+.release-dialog::backdrop { background:#0008; }
+.release-dialog h2 { margin:18px 0 10px; font-size:24px; }
+.release-dialog p { line-height:1.6; }
+.release-dialog button { padding:10px 18px; min-height:44px; border:0; border-radius:6px; background:#8cb4fa; color:#0c1830; font:inherit; cursor:pointer; }
+.release-dialog button:focus-visible { outline:2px solid currentColor; outline-offset:4px; }
+[data-home-ai-form].release-pending { display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:14px; }
+[data-home-ai-form].release-pending p { margin:0; font-size:13px; color:var(--muted,#8c9bb2); }
+[data-home-ai-form].release-pending [hidden], [data-home-prompt][hidden] { display:none !important; }
+[data-home-ai-form].release-pending { background:transparent; border:0; box-shadow:none; min-height:0; }
+.product-home-navigation [data-home-view="space"] { white-space:normal; }
+html.theme-light .release-dialog { background:#fff; color:#1c293b; }

@@ -220,6 +220,7 @@
   }
 
   function openPanel(name) {
+    if (name === 'assistant' && !window.EstudiemosRelease?.enabled('ai')) return window.EstudiemosReleaseUI?.show('ai');
     const panel = document.querySelector(`[data-quick-panel="${name}"]`);
     if (!panel) return;
     hidePanels();
@@ -286,6 +287,7 @@
   }
 
   async function routeGeneralAssistant(event) {
+    if (!window.EstudiemosRelease?.enabled('ai')) { event?.preventDefault(); return window.EstudiemosReleaseUI?.show('ai'); }
     event.preventDefault();
     const form = event.currentTarget;
     const instruction = form.elements.instruction.value.trim();

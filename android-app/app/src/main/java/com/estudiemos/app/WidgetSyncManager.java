@@ -132,11 +132,12 @@ final class WidgetSyncManager {
         Response stateResponse = get(session, "/rest/v1/user_states?select=state,updated_at&limit=1");
         if (stateResponse.code < 200 || stateResponse.code >= 300) return;
 
+        applyCloudState(context, stateResponse.body);
+        if (!ReleaseFeatures.WORKSPACE) return;
         Response workspaceResponse = get(
                 session,
                 "/rest/v1/workspace_items?select=id,parent_id,kind,name,mime_type,size_bytes,updated_at&order=updated_at.desc"
         );
-        applyCloudState(context, stateResponse.body);
         if (workspaceResponse.code >= 200 && workspaceResponse.code < 300) {
             applyWorkspace(context, workspaceResponse.body);
         }
