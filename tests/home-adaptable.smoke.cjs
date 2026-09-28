@@ -51,12 +51,14 @@ async function contained(page,child,parent){
     const handle=page.locator('[data-home-resize=focus]');await handle.scrollIntoViewIfNeeded();
     const before=await page.locator('.study-focus').boundingBox();
     const r=await handle.boundingBox();await page.mouse.move(r.x+r.width/2,r.y+r.height/2);await page.mouse.down();
-    await page.mouse.move(r.x+r.width/2+60,r.y+r.height/2+60,{steps:8});await page.mouse.up();
-    const after=await page.locator('.study-focus').boundingBox();assert.ok(after.height>before.height,'drag increases tool height');
+    const desktop=await page.locator('body').evaluate(n=>n.classList.contains('home-board'));
+    const delta=desktop?-24:60;
+    await page.mouse.move(r.x+r.width/2+delta,r.y+r.height/2+delta,{steps:8});await page.mouse.up();
+    const after=await page.locator('.study-focus').boundingBox();assert.ok(desktop?after.height<before.height:after.height>before.height,'drag resizes tool independently');
     await noOverflow(page);
     await page.locator('.home-layout-done').click();
     await page.reload({waitUntil:'networkidle'});
-    assert.ok((await page.locator('.study-focus').boundingBox()).height>=after.height-2,'size persists');
+    assert.ok(Math.abs((await page.locator('.study-focus').boundingBox()).height-after.height)<2,'size persists');
     await page.locator('[data-home-customize]').click();await page.locator('.home-layout-manage').click();await page.locator('[data-home-customizer-reset]').click();await page.locator('.home-customizer__done').click();await page.locator('.home-layout-done').click();
     const compact=await page.locator('[data-home-navigation]').isVisible();
     if(compact){
