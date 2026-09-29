@@ -11,7 +11,13 @@
   list.innerHTML=spaces.map(([key,label,min])=>`<div class="home-customizer__item"><label class="home-customizer__space"><strong>${label}</strong><input type="checkbox" value="${key}" aria-label="Mostrar ${label}"></label>${key==='shortcuts'?'':`<div class="home-customizer__dimensions" data-dimensions="${key}"><label>Alto<input type="range" min="${min}" max="720" step="1" data-height="${key}" aria-label="Alto de ${label}"><output data-size-label="${key}"></output></label></div><div class="home-customizer__position" data-position="${key}">${[['x','Horizontal'],['y','Vertical'],['w','Ancho'],['h','Alto']].map(([field,name])=>`<label>${name}<input type="number" min="0" step="8" data-box="${key}" data-field="${field}" aria-label="${name} de ${label}"></label>`).join('')}</div>`}</div>`).join('');
   function button(className,text,label){const b=document.createElement('button');b.type='button';b.className=className;b.textContent=text;b.hidden=true;if(label){b.title=label;b.setAttribute('aria-label',label);}trigger.after(b);return b;}
   list.querySelectorAll('[data-box]').forEach(input=>{input.step='1';});
+  list.querySelectorAll('[data-position]').forEach(fields=>{
+    const details=document.createElement('details'),summary=document.createElement('summary');
+    details.className='home-customizer__precision';details.dataset.position=fields.dataset.position;delete fields.dataset.position;
+    summary.textContent='Posición y tamaño';fields.before(details);details.append(summary,fields);
+  });
   const done=button('home-layout-done','Listo'),manage=button('home-layout-manage','Herramientas'),undo=button('home-layout-undo','↶','Deshacer último ajuste');
+  const toolbar=document.createElement('div');toolbar.className='home-layout-toolbar';toolbar.hidden=true;toolbar.setAttribute('role','group');toolbar.setAttribute('aria-label','Editar distribución');trigger.after(toolbar);toolbar.append(undo,manage,done);
   const overlay=document.createElement('div');overlay.className='home-board-guides';overlay.setAttribute('aria-hidden','true');page.appendChild(overlay);
   const status=document.createElement('div');status.className='home-layout-status';status.setAttribute('role','status');status.setAttribute('aria-live','polite');page.appendChild(status);
   const dialogStatus=document.createElement('p');dialogStatus.className='home-layout-dialog-status';dialogStatus.setAttribute('role','status');dialog.querySelector('footer').before(dialogStatus);
@@ -52,20 +58,20 @@
   function select(key){armed=key;for(const [k,node] of nodes){node?.classList.toggle('home-tool-selected',k===key);node?.querySelector('[data-home-move]')?.setAttribute('aria-pressed',String(k===key));}}
   function setEditing(on){
     if(gesture)finish({pointerId:gesture.id,type:'pointercancel'});
-    editing=on;select(null);announce();document.body.classList.toggle('home-layout-editing',on);done.hidden=!on;manage.hidden=!on;undo.hidden=!on;undo.disabled=!undoValue;trigger.setAttribute('aria-pressed',String(on));
-    for(const [key,node] of nodes)if(key!=='shortcuts'&&node){node.querySelector('[data-home-resize]').hidden=!on;node.querySelector('[data-home-move]').hidden=!on||mobile.matches;}apply();
+    editing=on;select(null);announce();document.body.classList.toggle('home-layout-editing',on);toolbar.hidden=!on;done.hidden=!on;manage.hidden=!on;undo.hidden=!on;undo.disabled=!undoValue;trigger.setAttribute('aria-pressed',String(on));
+    for(const [key,node] of nodes)if(key!=='shortcuts'&&node){node.querySelectorAll('.home-resize-handle').forEach(handle=>{handle.hidden=!on||(mobile.matches&&handle.dataset.edge!=='se');});node.querySelector('[data-home-move]').hidden=!on||mobile.matches;}apply();
   }
   function begin(event,kind,key){
     if(event.button!==0||!event.isPrimary||!editing)return;event.preventDefault();announce();
     const start=read(),value=prepare(clone(start)),node=nodes.get(key);node.getAnimations().forEach(a=>a.cancel());
-    gesture={kind,key,value,start,x:event.clientX,y:event.clientY,id:event.pointerId,target:event.currentTarget,rect:node.getBoundingClientRect(),layout:lastLayout};
+    gesture={kind,key,edge:event.currentTarget.dataset.edge||'se',value,start,x:event.clientX,y:event.clientY,id:event.pointerId,target:event.currentTarget,rect:node.getBoundingClientRect(),layout:lastLayout};
     event.currentTarget.setPointerCapture(event.pointerId);document.body.classList.add('home-board-dragging');node.classList.add(kind==='move'?'home-tool-moving':'is-resizing');
   }
   function change(event){if(!gesture||gesture.id!==event.pointerId)return;gesture.pointer={x:event.clientX,y:event.clientY,snap:!event.altKey};cancelAnimationFrame(frame);frame=requestAnimationFrame(updateGesture);}
   function updateGesture(){
     if(!gesture?.pointer)return;const g=gesture,p=g.pointer;
     if(mobile.matches){g.value.sizes[g.key].mobileHeight=clamp(g.rect.height+p.y-g.y,spaces.find(s=>s[0]===g.key)[2],720,300);apply(g.value);return;}
-    const l=g.layout,result=board.proposal(l.boxes[g.key],{x:p.x-g.x,y:p.y-g.y},g.kind,l.boxes,g.key,l.width,l.height,p.snap);
+    const l=g.layout,result=board.proposal(l.boxes[g.key],{x:p.x-g.x,y:p.y-g.y},g.kind,l.boxes,g.key,l.width,l.height,p.snap,g.edge);
     g.result=result;moveBox(nodes.get(g.key),result.box,false);nodes.get(g.key).classList.toggle('home-placement-blocked',!result.valid);overlay.replaceChildren();
     for(const guide of result.guides){const line=document.createElement('i');line.className=`home-align-guide home-align-guide--${guide.axis}`;line.style[guide.axis==='x'?'left':'top']=`${guide.position+(guide.axis==='y'?54:0)}px`;overlay.appendChild(line);}
   }
@@ -83,15 +89,18 @@
     apply(g.value);save(g.value,g.start);
   }
   function wire(b){b.addEventListener('pointermove',change);for(const type of ['pointerup','pointercancel','lostpointercapture'])b.addEventListener(type,finish);}
-  function commitProposal(key,delta,kind){
-    const before=read(),value=prepare(clone(before)),l=lastLayout,r=board.proposal(l.boxes[key],delta,kind,l.boxes,key,l.width,l.height,false);
+  function commitProposal(key,delta,kind,edge='se'){
+    const before=read(),value=prepare(clone(before)),l=lastLayout,r=board.proposal(l.boxes[key],delta,kind,l.boxes,key,l.width,l.height,false,edge);
     if(!r.valid){announce('No hay espacio para ese ajuste.');return false;}
     value.placement.boxes[key]=r.box;apply(value,true);save(value,before);announce();return true;
   }
   for(const [key,label] of spaces){const node=nodes.get(key);if(!node||key==='shortcuts')continue;
-    const handle=document.createElement('button');handle.type='button';handle.className='home-resize-handle';handle.dataset.homeResize=key;handle.hidden=true;handle.title=`Cambiar tamaño de ${label}`;handle.setAttribute('aria-label',handle.title);handle.innerHTML='<span aria-hidden="true">⌟</span>';node.appendChild(handle);wire(handle);
-    handle.addEventListener('pointerdown',e=>begin(e,'resize',key));
-    handle.addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key))return;e.preventDefault();const d=e.shiftKey?1:8;if(mobile.matches){const value=read();value.sizes[key].mobileHeight=clamp(value.sizes[key].mobileHeight+(['ArrowUp','ArrowLeft'].includes(e.key)?-d:d),spaces.find(s=>s[0]===key)[2],720,300);apply(value);save(value);}else commitProposal(key,{x:e.key==='ArrowLeft'?-d:e.key==='ArrowRight'?d:0,y:e.key==='ArrowUp'?-d:e.key==='ArrowDown'?d:0},'resize');});
+    for(const [edge,name] of [['n','borde superior'],['e','borde derecho'],['s','borde inferior'],['w','borde izquierdo'],['nw','esquina superior izquierda'],['ne','esquina superior derecha'],['sw','esquina inferior izquierda'],['se','esquina inferior derecha']]){
+      const handle=document.createElement('button');handle.type='button';handle.className='home-resize-handle';handle.dataset.edge=edge;handle.dataset.homeEdge=key;if(edge==='se')handle.dataset.homeResize=key;
+      handle.hidden=true;handle.title=`Ajustar ${name} de ${label}`;handle.setAttribute('aria-label',edge==='se'?`Cambiar tamaño de ${label}`:handle.title);node.appendChild(handle);wire(handle);
+      handle.addEventListener('pointerdown',e=>begin(e,'resize',key));
+      handle.addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key))return;e.preventDefault();const d=e.shiftKey?1:8;if(mobile.matches){const value=read();value.sizes[key].mobileHeight=clamp(value.sizes[key].mobileHeight+(['ArrowUp','ArrowLeft'].includes(e.key)?-d:d),spaces.find(s=>s[0]===key)[2],720,300);apply(value);save(value);}else commitProposal(key,{x:e.key==='ArrowLeft'?-d:e.key==='ArrowRight'?d:0,y:e.key==='ArrowUp'?-d:e.key==='ArrowDown'?d:0},'resize',edge);});
+    }
     const move=document.createElement('button');move.type='button';move.className='home-move-handle';move.dataset.homeMove=key;move.hidden=true;move.title=`Mover ${label}. Arrastrar o seleccionar y tocar un espacio vacío`;move.setAttribute('aria-label',`Mover ${label}`);move.setAttribute('aria-pressed','false');move.innerHTML='<span aria-hidden="true">⠿</span>';node.appendChild(move);wire(move);move.addEventListener('pointerdown',e=>begin(e,'move',key));
     move.addEventListener('click',e=>{if(e.detail===0)select(armed===key?null:key);});
     move.addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)||!lastLayout)return;e.preventDefault();const d=e.shiftKey?1:8;commitProposal(key,{x:e.key==='ArrowLeft'?-d:e.key==='ArrowRight'?d:0,y:e.key==='ArrowUp'?-d:e.key==='ArrowDown'?d:0},'move');});

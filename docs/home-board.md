@@ -6,7 +6,9 @@ apartado no agranda sus vecinos. Las listas largas conservan su desplazamiento
 interno para no ocultar tareas o archivos.
 
 - El icono de personalizacion activa la edicion directamente.
-- La esquina inferior derecha cambia solo el tamano de esa herramienta.
+- Los cuatro bordes y las cuatro esquinas cambian solo el tamano de esa
+  herramienta, manteniendo fijo el borde opuesto. En movil apilado se mantiene
+  el agarre inferior para el alto. Los controles desaparecen al terminar.
 - El agarre superior mueve la herramienta libremente. Las guias alinean bordes
   cercanos; Alt desactiva esa ayuda. Las herramientas no se superponen: una
   posicion ocupada se marca con borde discontinuo y se cancela al soltar.
@@ -15,7 +17,9 @@ interno para no ocultar tareas o archivos.
 - Escape cancela el movimiento actual. Deshacer recupera el ultimo ajuste.
 - Herramientas permite mostrar u ocultar apartados; Listo termina la edicion.
 - Los agarres admiten flechas de teclado (8 px; Shift, 1 px). Herramientas
-  permite editar posicion y dimensiones numericamente, sin arrastrar.
+  permite editar posicion y dimensiones numericamente, sin arrastrar, dentro
+  del desplegable Posicion y tamano. La barra de edicion agrupa deshacer,
+  herramientas y Listo sin una cuadricula decorativa sobre el fondo.
 - En pantallas angostas se mantiene navegacion movil y ajuste de alto.
 
 `shared/home-board.js` conserva el arbol anterior para migracion y restablecer;

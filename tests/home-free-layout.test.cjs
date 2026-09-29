@@ -59,3 +59,29 @@ test('all tool visibility combinations preserve holes with free positioning',()=
     assert.equal(Object.keys(next.boxes).length,Object.values(visible).filter(Boolean).length);
   }
 });
+test('all four edges and corners resize while anchoring the opposite sides',()=>{
+  const box={x:100,y:100,w:400,h:300},boxes={focus:box};
+  for(const edge of ['n','e','s','w','nw','ne','sw','se']){
+    const {box:r,valid}=board.proposal(box,{x:30,y:20},'resize',boxes,'focus',1000,800,false,edge);
+    assert.ok(valid,edge);
+    assert.equal(r.x,edge.includes('w')?130:100,edge);
+    assert.equal(r.y,edge.includes('n')?120:100,edge);
+    assert.equal(r.w,edge.includes('w')?370:edge.includes('e')?430:400,edge);
+    assert.equal(r.h,edge.includes('n')?280:edge.includes('s')?320:300,edge);
+  }
+});
+test('leading edges clamp to viewport and minimum size without moving the far edge',()=>{
+  const box={x:100,y:100,w:400,h:300};
+  for(const delta of [-10000,-60,0,90,10000])for(const edge of ['n','e','s','w','nw','ne','sw','se']){
+    const {box:r,valid}=board.proposal(box,{x:delta,y:delta},'resize',{focus:box},'focus',1000,800,false,edge);
+    assert.ok(valid);assert.ok(r.w>=240&&r.h>=200);
+    if(edge.includes('w'))assert.equal(r.x+r.w,500);
+    if(edge.includes('n'))assert.equal(r.y+r.h,400);
+  }
+});
+test('edge snapping cannot move an inactive axis or obscure another tool',()=>{
+  const box={x:100,y:100,w:400,h:300},boxes={focus:box,inbox:{x:0,y:450,w:500,h:250}};
+  const r=board.proposal(box,{x:-98,y:99},'resize',boxes,'focus',1000,800,true,'w');
+  assert.equal(r.box.x,0);assert.equal(r.box.x+r.box.w,500);assert.equal(r.box.y,100);assert.equal(r.box.h,300);
+  assert.equal(board.proposal(box,{x:0,y:80},'resize',boxes,'focus',1000,800,false,'s').valid,false);
+});

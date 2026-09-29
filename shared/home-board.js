@@ -65,16 +65,25 @@
     if(previous?.width>0&&previous?.height>0)for(const key of keys){const r=previous.boxes?.[key];if(r)all[key]={x:r.x*width/previous.width,y:r.y*height/previous.height,w:r.w*width/previous.width,h:r.h*height/previous.height};}
     return {width,height,boxes:{...all,...current.boxes}};
   }
-  function proposal(box,delta,kind,boxes,key,width,height,snap=true){
-    let r={...box};
-    if(kind==='move'){r.x=clamp(box.x+delta.x,0,width-box.w);r.y=clamp(box.y+delta.y,0,height-box.h);}
-    else {r.w=clamp(box.w+delta.x,Math.min(240,box.w),width-box.x);r.h=clamp(box.h+delta.y,Math.min(key==='progress'?228:200,box.h),height-box.y);}
+  function proposal(box,delta,kind,boxes,key,width,height,snap=true,edge='se'){
+    const r={...box};
     const guides=[];
-    if(snap)for(const axis of ['x','y']){
-      const size=axis==='x'?'w':'h',limit=axis==='x'?width:height;
+    for(const axis of ['x','y']){
+      const size=axis==='x'?'w':'h',limit=axis==='x'?width:height,leading=edge.includes(axis==='x'?'w':'n'),trailing=edge.includes(axis==='x'?'e':'s');
+      if(kind!=='move'&&!leading&&!trailing)continue;
+      const min=Math.min(size==='w'?240:key==='progress'?228:200,box[size]),far=box[axis]+box[size];
+      // Leading-edge resizing changes the origin while anchoring the opposite edge.
+      function adjust(d){
+        if(kind==='move')r[axis]=clamp(r[axis]+d,0,limit-r[size]);
+        else if(leading){r[axis]=clamp(r[axis]+d,0,far-min);r[size]=far-r[axis];}
+        else r[size]=clamp(r[size]+d,min,limit-r[axis]);
+      }
+      adjust(delta[axis]);
+      if(!snap)continue;
       const targets=[0,limit];for(const [k,b] of Object.entries(boxes))if(k!==key)targets.push(b[axis],b[axis]+b[size],b[axis]-8,b[axis]+b[size]+8);
-      let best=null;for(const t of targets)for(const edge of kind==='move'?[r[axis],r[axis]+r[size]]:[r[axis]+r[size]]){const d=t-edge;if(Math.abs(d)<=5&&(!best||Math.abs(d)<Math.abs(best.d)))best={d,t};}
-      if(best){const before={...r};if(kind==='move')r[axis]=clamp(r[axis]+best.d,0,limit-r[size]);else r[size]=clamp(r[size]+best.d,Math.min(size==='w'?240:key==='progress'?228:200,box[size]),limit-r[axis]);if(r[axis]!==before[axis]||r[size]!==before[size])guides.push({axis,position:best.t});}
+      const movingEdges=kind==='move'?[r[axis],r[axis]+r[size]]:[leading?r[axis]:r[axis]+r[size]];
+      let best=null;for(const t of targets)for(const position of movingEdges){const d=t-position;if(Math.abs(d)<=5&&(!best||Math.abs(d)<Math.abs(best.d)))best={d,t};}
+      if(best){const before={...r};adjust(best.d);if(r[axis]!==before[axis]||r[size]!==before[size])guides.push({axis,position:best.t});}
     }
     return {box:r,valid:fits(r,boxes,key,width,height),guides};
   }
