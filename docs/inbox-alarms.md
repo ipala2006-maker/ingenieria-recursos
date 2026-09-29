@@ -23,21 +23,22 @@ modelo. Genera solicitudes al alojamiento y a la base de datos.
 ## PC Con La App Cerrada
 
 1. En la campana de una tarea, toca **Activar pantalla completa en esta PC**.
-   Tambien podes abrir https://estudiemos-app.vercel.app/?alarms-setup=1.
-2. Toca **Instalar alarmas para Windows** y abri el archivo descargado. Es un
+   Tambien podes entrar desde Perfil > **Alarmas con la app cerrada**, o abrir
+   https://estudiemos-app.vercel.app/?setup-alarms=1.
+2. Toca **Descargar complemento de alarmas** y abri el archivo descargado. Es un
    instalador independiente (1.6.3.2): no requiere Rainmeter, widgets ni reinstalar
    la app. Al terminar abre nuevamente la pantalla de activacion.
 3. Marca el consentimiento y toca **Conectar con Windows**. Acepta **Abrir**
    en el navegador. Si no aparece, usa **Abrir activacion de Windows**, sin
    descargar otra vez. No se marca listo hasta recibir una
    confirmacion autentificada despues de registrar la tarea de Windows.
-   Si Chrome no abre el componente, usa **Conectar sin el aviso del navegador**:
-   **Generar archivo de conexion**, luego abre el archivo `.estudiemos-alarmas`
+   Si Chrome no abre el componente, usa **No se abrio nada**:
+   **Conectar mediante archivo**, luego abre el archivo `.estudiemos-alarmas`
    desde Descargas antes de dos minutos. No es otro instalador ni un script:
    contiene un enlace temporal personal que solo interpreta el componente ya
    instalado. No lo compartas. Si vence, genera otro; no reinstales la app.
-4. Toca **Probar alarma de Windows**. Esta prueba ya esta disponible despues
-   de instalar y es independiente de conectar la cuenta. Ejecuta el mismo aviso
+4. Toca **Probar alarma de Windows**. Tambien esta disponible en **Ayuda y
+   reparacion** antes de conectar la cuenta. Ejecuta el mismo aviso
    nativo, con sonido y **Entendido**. No demuestra que la cuenta este vinculada.
 5. Volve a tu tarea, marca **Mostrar esta alarma con la app cerrada** y guarda.
    Espera la sincronizacion de la cuenta antes de cerrar la app. Las alarmas

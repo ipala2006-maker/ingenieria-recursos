@@ -3,11 +3,11 @@
 .alarm-setup { width:min(500px,calc(100% - 24px)); }
 .alarm-setup h2 { font-size:20px; }
 .alarm-setup>p { font-size:14px;line-height:1.5; }
-.alarm-setup-steps { margin:20px 0;padding-left:25px; }
+.alarm-setup-steps { margin:20px 0;padding:0; }
 .alarm-setup-steps li { padding:0 0 18px 7px; }
 .alarm-setup-steps li::marker { color:var(--accent);font-weight:700; }
 .alarm-setup-steps p { font-size:13px;color:var(--muted);line-height:1.5;margin:6px 0 10px; }
-.alarm-setup .alarm-setup-download { display:inline-flex;min-height:42px;align-items:center;padding:8px 12px;border:1px solid var(--border);border-radius:6px;color:var(--text);text-decoration:none;font-size:13px; }
+.alarm-setup .alarm-setup-download { display:inline-flex;min-height:42px;align-items:center;padding:8px 12px;border:1px solid var(--accent);border-radius:6px;color:var(--bg);background:var(--accent);text-decoration:none;font-size:13px;font-weight:650; }
 .alarm-setup [data-alarm-activate],.alarm-setup [data-alarm-native-test]:enabled { background:var(--accent);color:var(--bg);border-color:var(--accent); }
 .alarm-setup button:disabled { opacity:.45;cursor:not-allowed; }
 .alarm-setup-consent { display:flex;align-items:flex-start;gap:9px;font-size:13px;line-height:1.5;margin:10px 0; }
@@ -18,7 +18,16 @@
 .alarm-setup-file summary { min-height:44px;display:list-item;align-content:center;cursor:pointer; }
 .alarm-setup-file button { min-height:44px; }
 .alarm-setup-file a:not([hidden]) { display:block;margin-top:10px;color:var(--accent);overflow-wrap:anywhere; }
-.alarm-setup[data-ready=true] .alarm-setup-steps li:nth-child(-n+2) { display:none; }
+.alarm-setup [hidden] { display:none!important; }
+.alarm-setup-progress { display:flex;gap:8px;border-bottom:1px solid var(--border);padding:12px 0;font-size:12px;color:var(--muted); }
+.alarm-setup-progress span { flex:1;min-width:0;padding-block:6px; }
+.alarm-setup-progress [aria-current=step] { color:var(--accent);font-weight:700;box-shadow:0 2px var(--accent); }
+.alarm-setup-steps section>button,.alarm-setup-steps .alarm-setup-download { display:flex;justify-content:center;align-items:center;width:100%;box-sizing:border-box;min-height:44px;margin-top:12px; }
+.alarm-setup-trouble { border-top:1px solid var(--border);margin:18px 0;padding-top:8px;font-size:13px; }
+.alarm-setup-trouble summary { min-height:44px;align-content:center;cursor:pointer; }
+.alarm-setup-trouble button,.alarm-setup-trouble a { display:block;margin-block:8px;min-height:44px; }
+.alarm-setup-trouble a { color:var(--accent);align-content:center; }
+.alarm-setup [data-alarm-native-status]:empty { display:none; }
 .alarm-setup>small { display:block;color:var(--muted);font-size:12px;line-height:1.5; }
 .inbox-alarm-dialog header,.inbox-alarm-dialog footer { display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .inbox-alarm-dialog h2 { margin:4px 0; font-size:22px; letter-spacing:0; }

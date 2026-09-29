@@ -282,7 +282,7 @@
     rules.src = `${rootPath}shared/inbox-alarms.js?v=20260912`;
     rules.onload = () => {
       const ui = document.createElement('script');
-      ui.src = `${rootPath}scripts/inbox-alarms.js?v=20260921-connection`;
+      ui.src = `${rootPath}scripts/inbox-alarms.js?v=20260929-setup`;
       document.head.appendChild(ui);
     };
     document.head.appendChild(rules);
@@ -338,7 +338,7 @@
     if (document.querySelector('script[src*="scripts/account.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/account.js?v=20260914-custom`;
+    script.src = `${rootPath}scripts/account.js?v=20260929-setup`;
     script.defer = true;
     document.head.appendChild(script);
   }

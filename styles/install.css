@@ -569,3 +569,8 @@ html.theme-light .install-closing{background:linear-gradient(#edf3f8,#e5edf4)}ht
   *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
   .is-motion-ready [data-reveal]{opacity:1;transform:none}
 }
+.install-widget-choices { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:16px 0; }
+.install-widget-choices a { display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;padding:10px 12px;border:1px solid var(--border,#8bb5ff40);border-radius:6px;color:inherit;text-decoration:none;font-size:14px; }
+.install-widget-choices a:hover,.install-widget-choices a:focus-visible { border-color:var(--accent,#8bb5ff);background:#8bb5ff12; }
+.install-widget-choices a:focus-visible { outline:2px solid var(--accent,#8bb5ff);outline-offset:2px; }
+[data-continue-widget][hidden] { display:none; }
