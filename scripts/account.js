@@ -24,6 +24,7 @@
   const WINDOWS_WIDGETS_READY_KEY = "estudiemos_windows_widgets_ready";
   const WINDOWS_WIDGET_PENDING_KEY = "estudiemos_windows_widget_pending";
   const WINDOWS_WIDGET_SETUP_URL = "https://estudiemos-app.vercel.app/instalar.html#pc-widgets";
+  let widgetSetup = null, widgetLaunching = false, widgetResumeSignIn = false;
   const PENDING_REFERRAL_KEY = "estudiemos_pending_referral";
   const COMMERCIAL_LAUNCH_ENABLED = false;
   const WHATSAPP_BOT_ENABLED = false;
@@ -218,7 +219,7 @@
 
         <div class="account-android-widgets account-desktop-widgets" data-account-desktop-widgets hidden>
           <strong>Widgets de escritorio</strong>
-          <small>Elegí uno. Si todavía falta el soporte, te llevamos a prepararlo una sola vez.</small>
+          <small>Elegí el que querés agregar. Te acompañamos sin salir de Estudiemos.</small>
           <div>
             <button class="account-secondary" type="button" data-account-desktop-widget="workspace">+ Mi espacio</button>
             <button class="account-secondary" type="button" data-account-desktop-widget="inbox">+ Inbox</button>
@@ -228,7 +229,11 @@
           </div>
           <button class="account-widget-installer" type="button" data-account-install-widgets>
             ${desktopIcon()}
-            <span><strong>Preparar o reparar widgets</strong><small>Abre la guía segura para Windows, sin iniciar descargas repetidas</small></span>
+            <span><strong>Configurar widgets</strong><small>Continuar la instalación o resolver un problema</small></span>
+          </button>
+          <button class="account-widget-installer" type="button" data-account-setup-alarms>
+            ${desktopIcon()}
+            <span><strong>Alarmas con la app cerrada</strong><small>Activar o comprobar la pantalla completa en Windows</small></span>
           </button>
         </div>
 
@@ -242,6 +247,7 @@
     if (desktopWidgetActions) desktopWidgetActions.hidden = !supportsDesktopWidgets();
     const desktopInstaller = shell.querySelector("[data-account-install-widgets]");
     if (desktopInstaller) desktopInstaller.hidden = !isWindowsDevice();
+    shell.querySelector('[data-account-setup-alarms]').hidden = !isWindowsDevice();
   }
 
   function bindAccountEvents() {
@@ -261,6 +267,7 @@
       const desktopWidgetButton = event.target.closest("[data-account-desktop-widget]");
       if (desktopWidgetButton) openDesktopWidget(desktopWidgetButton.dataset.accountDesktopWidget);
       if (event.target.closest("[data-account-install-widgets]")) installDesktopWidgets();
+      if (event.target.closest('[data-account-setup-alarms]')) { closeDialog(); window.EstudiemosInboxAlarms?.showSetup(); }
     });
 
     document.querySelector("[data-account-form]")?.addEventListener("submit", (event) => {
@@ -1278,11 +1285,8 @@
     if (widget === 'workspace' && !window.EstudiemosRelease?.enabled('workspace')) return setStatus('Mi espacio: próximamente.', 'success');
     const validWidgets = ["workspace", "inbox", "calendar", "pomodoro", "streak"];
     if (isWindowsDevice() && validWidgets.includes(widget)) {
-      if (localStorage.getItem(WINDOWS_WIDGETS_READY_KEY) !== "true") {
-        installDesktopWidgets(widget);
-        return;
-      }
-      launchWindowsWidget(widget);
+      showWidgetSetup(widget);
+      if(localStorage.getItem(WINDOWS_WIDGETS_READY_KEY)==='true')launchWindowsWidget(widget);
       return;
     }
     const manager = window.EstudiemosDesktopWidgets;
@@ -1299,32 +1303,33 @@
 
   async function launchWindowsWidget(widget) {
     if (widget === 'workspace' && !window.EstudiemosRelease?.enabled('workspace')) return setStatus('Mi espacio: próximamente.', 'success');
+    if (widgetLaunching) return;
+    if (!session?.access_token) { widgetResumeSignIn=true; widgetSetup?.close(); openDialog(); setStatus('Iniciá sesión para conectar el widget a tu cuenta.', 'success'); return; }
+    widgetLaunching=true;
     localStorage.setItem(WINDOWS_WIDGET_PENDING_KEY, widget);
     setDesktopWidgetBusy(widget, true);
-    setStatus("Conectando y agregando el widget...", "success");
-
-    const accountLink = await createWindowsWidgetLink(widget);
-    const query = new URLSearchParams({ widget, callback: "0" });
-    if (accountLink) query.set("link", accountLink);
-
-    const launcher = document.createElement("a");
-    launcher.hidden = true;
-    launcher.setAttribute("aria-hidden", "true");
-    launcher.href = `estudiemos-widgets://add?${query.toString()}`;
-    document.body.appendChild(launcher);
-    launcher.click();
-
-    window.setTimeout(() => {
-      launcher.remove();
+    widgetSetup?.querySelector('[data-widget-open]')?.setAttribute('disabled','');
+    widgetSetupMessage('Conectando tu cuenta…');
+    const userId=session.user?.id;
+    try {
+      const accountLink = await createWindowsWidgetLink(widget);
+      if (!session?.access_token || session.user?.id!==userId) throw new Error('La cuenta cambió. Volvé a intentar con tu sesión actual.');
+      const query = new URLSearchParams({ widget, callback: '1', link: accountLink });
+      const launcher = document.createElement('a');
+      launcher.href = `estudiemos-widgets://add?${query.toString()}`;
+      document.body.appendChild(launcher); launcher.click(); launcher.remove();
+      widgetSetupMessage('Aceptá «Abrir» si el navegador lo pide. Después minimizá Estudiemos para ver el escritorio. Todavía no confirmamos que el widget apareció.');
+      if(widgetSetup) { widgetSetup.querySelector('[data-widget-confirm]').hidden=false; widgetSetup.querySelector('[data-widget-help]').hidden=false; }
+    } catch(error) { widgetSetupMessage(error.message); }
+    finally {
+      widgetLaunching=false;
       setDesktopWidgetBusy(widget, false);
-      localStorage.setItem(WINDOWS_WIDGETS_READY_KEY, "true");
-      localStorage.removeItem(WINDOWS_WIDGET_PENDING_KEY);
-      setStatus("Widget agregado. Minimizá Estudiemos o presioná Win + D para verlo.", "success");
-    }, 2200);
+      widgetSetup?.querySelector('[data-widget-open]')?.removeAttribute('disabled');
+    }
   }
 
   async function createWindowsWidgetLink(widget) {
-    if (!session?.access_token) return "";
+    if (!session?.access_token) throw new Error('Iniciá sesión para conectar el widget.');
     try {
       const response = await fetch(`${getRootPath()}api/widget-link`, {
         method: "POST",
@@ -1333,27 +1338,74 @@
           Authorization: `Bearer ${session.access_token}`,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ widget })
+        body: JSON.stringify({ widget }),
+        signal: AbortSignal.timeout(12000)
       });
       const data = await response.json().catch(() => ({}));
-      return response.ok && data.token ? data.token : "";
+      if(!response.ok || !data.token) throw new Error('No pudimos conectar tu cuenta. Reintentá sin descargar ni instalar otra vez.');
+      return data.token;
     } catch (_) {
-      return "";
+      throw new Error('No pudimos conectar tu cuenta. Revisá Internet y volvé a intentar; no hace falta reinstalar.');
     }
   }
 
   function installDesktopWidgets(widget) {
-    if (widget) localStorage.setItem(WINDOWS_WIDGET_PENDING_KEY, widget);
-    if (widget) setDesktopWidgetBusy(widget, true);
-    const setupUrl = new URL(WINDOWS_WIDGET_SETUP_URL);
-    if (widget) setupUrl.searchParams.set("widget", widget);
-    location.href = setupUrl.href;
+    showWidgetSetup(widget || localStorage.getItem(WINDOWS_WIDGET_PENDING_KEY) || 'inbox', true);
+  }
+
+  function widgetSetupMessage(message) {
+    if(widgetSetup) widgetSetup.querySelector('[data-widget-status]').textContent=message;
+    else setStatus(message,'success');
+  }
+  function showWidgetSetup(widget, repair=false) {
+    if(widgetLaunching)return;
+    const labels={inbox:'Inbox',calendar:'Calendario',pomodoro:'Pomodoro',streak:'Racha'};
+    if(!Object.hasOwn(labels,widget))return;
+    localStorage.setItem(WINDOWS_WIDGET_PENDING_KEY,widget);
+    if(!widgetSetup){
+      const css=document.createElement('link');css.rel='stylesheet';css.href=`${getRootPath()}styles/windows-setup.css?v=20260929`;document.head.appendChild(css);
+      widgetSetup=document.createElement('dialog');widgetSetup.className='windows-setup';widgetSetup.setAttribute('aria-labelledby','widgetSetupTitle');
+      widgetSetup.innerHTML=`<header><div><small>ESCRITORIO DE WINDOWS</small><h2 id="widgetSetupTitle"></h2></div><button type="button" data-widget-close aria-label="Cerrar">×</button></header>
+        <section data-widget-install><p>Una sola instalación prepara los widgets. Después agregás únicamente los que elijas.</p><a class="windows-setup__primary" href="https://estudiemos-app.vercel.app/downloads/Estudiemos-Widgets-para-Windows.exe" download data-widget-download>Descargar complemento</a><p data-widget-download-note hidden>Abrí <strong>Estudiemos-Widgets-para-Windows.exe</strong> desde Descargas y completá la instalación. Al terminar volvés a Estudiemos con tu elección guardada.</p><button type="button" data-widget-installed>Ya lo instalé · Continuar</button></section>
+        <section data-widget-launch hidden><p>El widget se conecta con tu sesión de Estudiemos. No necesitás volver a iniciar sesión dentro de él.</p><button class="windows-setup__primary" type="button" data-widget-open>Agregar al escritorio</button><button type="button" data-widget-confirm hidden>Ya lo veo en mi escritorio</button></section>
+        <p data-widget-status role="status" aria-live="polite"></p>
+        <details data-widget-help><summary>¿No apareció o se bloqueó?</summary><p>Si no se abrió el aviso del navegador, probá «Agregar al escritorio» otra vez. Si Windows no encuentra el complemento, instalalo una vez y volvé aquí.</p><button type="button" data-widget-repair>Instalar o reparar complemento</button><a href="${WINDOWS_WIDGET_SETUP_URL}" target="_blank" rel="noopener">Ayuda con la descarga de Windows</a></details>`;
+      document.body.appendChild(widgetSetup);
+      widgetSetup.addEventListener('click',e=>{
+        if(e.target.closest('[data-widget-close]'))widgetSetup.close();
+        if(e.target.closest('[data-widget-download]'))widgetSetup.querySelector('[data-widget-download-note]').hidden=false;
+        if(e.target.closest('[data-widget-installed]'))widgetSetupStage(false);
+        if(e.target.closest('[data-widget-repair]'))widgetSetupStage(true);
+        if(e.target.closest('[data-widget-open]'))launchWindowsWidget(widgetSetup.dataset.widget);
+        if(e.target.closest('[data-widget-confirm]')){
+          localStorage.setItem(WINDOWS_WIDGETS_READY_KEY,'true');localStorage.removeItem(WINDOWS_WIDGET_PENDING_KEY);widgetSetup.close();
+          openDialog();setStatus('Listo. Podés agregar otro widget cuando quieras.','success');
+        }
+      });
+      window.addEventListener('estudiemos:account-change',()=>{if(widgetResumeSignIn&&session?.access_token){widgetResumeSignIn=false;showWidgetSetup(localStorage.getItem(WINDOWS_WIDGET_PENDING_KEY),false);widgetSetupStage(false);}});
+    }
+    widgetSetup.dataset.widget=widget;
+    widgetSetup.querySelector('h2').textContent=`Agregar ${labels[widget]}`;
+    widgetSetup.querySelector('[data-widget-confirm]').hidden=true;
+    widgetSetup.querySelector('[data-widget-help]').open=false;
+    widgetSetupStage(repair||(localStorage.getItem(WINDOWS_WIDGETS_READY_KEY)!=='true'&&sessionStorage.getItem('estudiemos_widget_setup_stage')!=='connect'));
+    closeDialog();if(!widgetSetup.open)widgetSetup.showModal();
+  }
+  function widgetSetupStage(install) {
+    sessionStorage.setItem('estudiemos_widget_setup_stage',install?'install':'connect');
+    widgetSetup.querySelector('[data-widget-install]').hidden=!install;
+    widgetSetup.querySelector('[data-widget-launch]').hidden=install;
+    widgetSetupMessage('');
+    if(widgetSetup.open)widgetSetup.querySelector(install?'[data-widget-download]':'[data-widget-open]').focus();
   }
 
   function consumeWindowsWidgetsReadyMarker() {
     const url = new URL(location.href);
     const ready = url.searchParams.get("windows-widgets-ready") === "1";
-    const addedWidget = url.searchParams.get("windows-widget-added") || "";
+    const returnedWidget = url.searchParams.get("windows-widget-added") || "";
+    const addedWidget = ['inbox','calendar','pomodoro','streak'].includes(returnedWidget)?returnedWidget:'';
+    const requestedWidget=url.searchParams.get('setup-widget');
+    if(requestedWidget){url.searchParams.delete('setup-widget');history.replaceState(history.state,'',`${url.pathname}${url.search}${url.hash}`);window.setTimeout(()=>showWidgetSetup(requestedWidget),0);}
     if (!ready && !addedWidget) return;
     const pendingWidget = localStorage.getItem(WINDOWS_WIDGET_PENDING_KEY);
     localStorage.setItem(WINDOWS_WIDGETS_READY_KEY, "true");
@@ -1373,12 +1425,12 @@
         streak: "Racha"
       }[addedWidget || pendingWidget];
       if (ready && pendingWidget && !addedWidget) {
-        readyPromise.finally(() => launchWindowsWidget(pendingWidget));
+        readyPromise.finally(() => {showWidgetSetup(pendingWidget);launchWindowsWidget(pendingWidget);});
         return;
       }
       setStatus(
         widgetLabel
-          ? `${widgetLabel} se agregó al escritorio correctamente.`
+          ? `Windows recibió ${widgetLabel}. Minimizá Estudiemos para verlo en el escritorio.`
           : "Windows está preparado. Ahora cada botón + agrega únicamente el widget elegido.",
         "success"
       );

@@ -66,7 +66,9 @@
 
   if (widgetLabel && requestedWidgetMessage) {
     requestedWidgetMessage.hidden = false;
-    requestedWidgetMessage.textContent = `Elegiste ${widgetLabel}. Al terminar la preparación, Estudiemos lo agregará al escritorio.`;
+    requestedWidgetMessage.textContent = `Elegiste ${widgetLabel}. Continuá en Estudiemos para instalarlo y conectarlo a tu cuenta.`;
+    const continueWidget=document.querySelector('[data-continue-widget]');
+    if(continueWidget){continueWidget.href=`./?setup-widget=${encodeURIComponent(requestedWidget)}`;continueWidget.hidden=false;continueWidget.textContent=`Continuar con ${widgetLabel}`;}
     document.querySelector("#pc-widgets")?.classList.add("is-requested");
   }
 
@@ -126,10 +128,6 @@
     widgetInstaller.classList.add("is-started");
     widgetInstaller.innerHTML = "Descarga iniciada <span aria-hidden=\"true\">✓</span>";
 
-    window.setTimeout(() => {
-      const help = document.querySelector("[data-windows-download-help]");
-      help?.setAttribute("open", "");
-    }, 900);
   });
 
   function prepareMotion() {
