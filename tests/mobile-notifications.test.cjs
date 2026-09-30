@@ -91,3 +91,44 @@ test('service worker shows system notification with no open client and prevents 
   assert.equal(notices.length, 1); assert.equal(notices[0].title, 'Pilot task');
   assert.equal(notices[0].options.data.url, 'https://estudiemos-app.vercel.app/?agenda=1');
 });
+
+function mobileClient({ android = false, installed = true, enabled = true } = {}) {
+  const listeners = {}, storage = new Map(), sent = [];
+  let currentUser = user, subscriptionValue = null, unsubscribed = 0, permissionRequests = 0;
+  const reg = { active: { postMessage: value => sent.push(value) }, pushManager: {
+    getSubscription: async () => subscriptionValue,
+    subscribe: async () => subscriptionValue = { toJSON: () => subscription, unsubscribe: async () => { subscriptionValue=null; unsubscribed++; return true; } }
+  } };
+  const account = { getUser: () => currentUser ? { id: currentUser } : null, getSession: () => ({access_token:'test-session'}), whenReady: async () => {} };
+  const notification = { permission: 'default', requestPermission: () => { permissionRequests++; notification.permission='granted'; return Promise.resolve('granted'); } };
+  const window = { EstudiemosAccount: account, Notification: notification, PushManager: {}, addEventListener: (name,fn) => (listeners[name] ||= []).push(fn), dispatchEvent: e => { for(const fn of listeners[e.type] || []) fn(e); } };
+  if (android) window.EstudiemosAndroid = { postMessage: text => sent.push(JSON.parse(text)) };
+  const context = { window, Notification: notification, navigator: { userAgent: android ? 'Android' : 'iPhone', standalone: installed, platform:'iPhone', serviceWorker:{getRegistration:async()=>reg,ready:Promise.resolve(reg)} }, document:{currentScript:{src:'https://estudiemos-app.vercel.app/scripts/mobile-notifications.js'}}, matchMedia:()=>({matches:installed}), URL, Uint8Array, Intl, atob: str => Buffer.from(str,'base64').toString('binary'), CustomEvent: class {constructor(type,init){this.type=type;this.detail=init?.detail;}}, localStorage: { getItem:key=>storage.get(key)||null,setItem:(key,value)=>storage.set(key,value),removeItem:key=>storage.delete(key) }, fetch: async (url,options) => {
+    if(!options?.method) return {ok:true,json:async()=>({enabled,publicKey:'B'.repeat(87)})};
+    sent.push(JSON.parse(options.body)); return {ok:enabled,json:async()=>({connected:enabled})};
+  } };
+  vm.runInNewContext(fs.readFileSync(path.join(root,'scripts/mobile-notifications.js'),'utf8'),context);
+  return { api: window.EstudiemosMobileNotifications, sent, flush:()=>new Promise(resolve=>setImmediate(resolve)), requests:()=>permissionRequests, unsubscribed:()=>unsubscribed,
+    nativeStatus: value=>window.dispatchEvent({type:'estudiemos-android-inbox-status',detail:value}), logout:()=>{currentUser=null; window.dispatchEvent({type:'estudiemos:account-change'});} };
+}
+
+test('Android activation uses the native permission bridge, not browser notifications', async () => {
+  const client = mobileClient({android:true}); await client.flush();
+  client.nativeStatus({permission:'default',exact:false}); await client.api.request();
+  assert.ok(client.sent.some(message=>message.type==='inbox-notifications-enable'));
+  assert.equal(client.requests(),0);
+  client.nativeStatus({permission:'granted',exact:true});
+  assert.equal(client.api.status().ready,true);
+  await client.api.request(); assert.ok(client.sent.some(message=>message.type==='inbox-notifications-settings'));
+});
+
+test('iPhone requires home-screen install and backend readiness, then disconnects on logout', async () => {
+  const tab = mobileClient({installed:false}); await tab.flush();
+  assert.match(tab.api.status().text,/Agregar a inicio/); await tab.api.request(); assert.equal(tab.requests(),0);
+  const unavailable = mobileClient({enabled:false}); await unavailable.flush();
+  await unavailable.api.request(); assert.equal(unavailable.requests(),0); assert.notEqual(unavailable.api.status().ready,true);
+  const client = mobileClient(); await client.flush();
+  await client.api.request(); assert.equal(client.requests(),1); assert.equal(client.api.status().ready,true);
+  assert.ok(client.sent.some(message=>message.action==='test'));
+  client.logout(); await client.flush(); assert.equal(client.unsubscribed(),1); assert.notEqual(client.api.status().ready,true);
+});

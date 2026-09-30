@@ -90,5 +90,6 @@
   window.EstudiemosMobileNotifications = { handled, status, request };
   window.addEventListener('estudiemos-android-inbox-status', e => { nativeStatus = e.detail; changed(); });
   for (const event of ['estudiemos-android-ready', 'estudiemos:account-ready', 'estudiemos:account-change']) window.addEventListener(event, reconcile);
+  window.addEventListener('pageshow', () => { lastOwner = undefined; loadConfig(); reconcile(); });
   loadConfig(); reconcile(); changed();
 })();

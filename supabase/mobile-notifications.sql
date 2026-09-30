@@ -65,10 +65,11 @@ begin
     alarm := item->'alarm';
     if item->'done' = 'true'::jsonb or pg_catalog.jsonb_typeof(item->'id') is distinct from 'string'
        or length(item->>'id') > 180 or coalesce(item->>'id','') = '' then continue; end if;
-    if coalesce(alarm->>'date','') !~ '^20[0-9]{2}-[0-9]{2}-[0-9]{2}$'
-       or coalesce(alarm->>'time','') !~ '^[0-2][0-9]:[0-5][0-9]$' then continue; end if;
+    if coalesce(alarm->>'date','') !~ '^(20[0-9]{2}|2100)-[0-9]{2}-[0-9]{2}$'
+       or coalesce(alarm->>'time','') !~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' then continue; end if;
     begin start_day := (alarm->>'date')::date; clock := (alarm->>'time')::time;
     exception when others then continue; end;
+    if start_day < date '2020-01-01' then continue; end if;
     kind := coalesce(alarm->>'repeat','none');
     for day in select d::date from pg_catalog.generate_series(
       ((now() - interval '10 minutes') at time zone p_timezone)::date::timestamp,
