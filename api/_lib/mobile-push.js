@@ -71,6 +71,7 @@ module.exports = async function mobilePush(req, res) {
   if (!validSubscription(subscription) || !validZone(timezone)) return res.status(400).json({ message: 'La suscripción no es válida.' });
   if (action === 'test' && !(await enforceRateLimit(req, res, { route: `mobile-push-test:${user.id}`, limit: 3, windowSeconds: 300 }))) return;
   try {
+    if (await rpc('mobile_push_ready') !== true) return res.status(503).json({ message: 'El servicio de alarmas todavía no está activo. Volvé a intentarlo más tarde.' });
     const result = await rpc('register_mobile_push', { p_user: user.id, p_subscription: subscription, p_timezone: timezone });
     if (action === 'test') {
       await send(subscription, { title: 'Estudiemos', body: 'Las notificaciones de este celular están conectadas.', tag: 'estudiemos-push-test', owner: user.id });
