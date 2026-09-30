@@ -12,6 +12,7 @@
 ## Activación del servidor (una sola vez)
 
 1. Ejecutar `supabase/mobile-notifications.sql` en el proyecto existente.
+   Ejecutar también la versión actualizada de `supabase/windows-alarms.sql`: elimina el filtro antiguo que excluía en Windows las alarmas creadas en el celular. No agrega acceso público; sigue consultando solo el feed autorizado de esa cuenta.
 2. Generar VAPID con la biblioteca `web-push` (`generateVAPIDKeys()`). Guardar `WEB_PUSH_PUBLIC_KEY`, `WEB_PUSH_PRIVATE_KEY` y un `MOBILE_PUSH_CRON_SECRET` aleatorio de al menos 32 bytes en las variables de producción de Vercel. No poner claves privadas en archivos públicos ni Git.
 3. Guardar el mismo secreto de cron en Supabase Vault, nombre `estudiemos_mobile_push_cron`. No incrustarlo en el SQL de un repositorio ni logs.
 4. Desplegar la app y ejecutar `supabase/mobile-notifications-cron.sql`. El cron verifica las tareas cada minuto en la base existente y solo llama al servidor cuando hay avisos pendientes.

@@ -27,8 +27,9 @@ async function snapshot(userId) {
   const items=rows?.[0]?.alarm_items || [];
   return {version:1,updatedAt:rows?.[0]?.updated_at || null,items:(Array.isArray(items)?items:[]).slice(0,500).flatMap(item=>{
     const alarm=rules.normalize(item?.alarm);
-    if(!alarm?.windows||item.done||typeof item.id!=='string')return [];
-    return [{id:item.id.slice(0,180),title:String(item.title||'Tarea pendiente').slice(0,90),alarm}];
+    if(!alarm||item.done||typeof item.id!=='string')return [];
+    // Consent belongs to the connected Windows device, not the device creating the task.
+    return [{id:item.id.slice(0,180),title:String(item.title||'Tarea pendiente').slice(0,90),alarm:{...alarm,windows:true}}];
   })};
 }
 module.exports = async function alarmFeed(request,response) {

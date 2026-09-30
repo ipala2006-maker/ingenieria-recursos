@@ -70,11 +70,11 @@
       <div data-alarm-options hidden>
         <div class="inbox-alarm-date"><label>Día<input type="date" name="inboxAlarmDate" min="2020-01-01" max="2100-12-31"></label><label>Hora<input type="time" name="inboxAlarmTime"></label></div>
         <label>Repetir<select name="inboxAlarmRepeat" aria-label="Repetir">${rules.repeats.map(r => `<option value="${r}">${rules.labels[r]}</option>`).join('')}</select></label>
-        <small>Hora local de cada dispositivo. Al completar la tarea, deja de sonar.</small>
+        <small>Se sincroniza con tu cuenta y avisa en cada dispositivo activado. Hora local de cada dispositivo. Al completar la tarea, deja de sonar.</small>
         <small data-alarm-permission-status role="status" ${windows?'hidden':''}></small>
         <button type="button" data-alarm-permission ${windows?'hidden':''}>Permitir notificaciones</button>
         <details class="inbox-alarm-delivery" ${windows ? 'open' : 'hidden'}><summary>Pantalla completa en Windows</summary>
-          <label><input type="checkbox" data-alarm-native ${localStorage.getItem(NATIVE_KEY) === 'true' ? 'checked' : ''}> Mostrar esta alarma con la app cerrada</label>
+          <input type="checkbox" data-alarm-native hidden ${nativeReady() ? 'checked' : ''}>
           <small>El nombre de tu tarea ocupa toda la pantalla y suena hasta que cierres el aviso.</small>
           <small data-alarm-native-status role="status"></small>
           <button type="button" data-alarm-native-connect>Activar pantalla completa en esta PC</button>
@@ -88,7 +88,7 @@
     form.elements.inboxAlarmDate.value = a?.date || rules.dateKey(soon);
     form.elements.inboxAlarmTime.value = a?.time || `${String(soon.getHours()).padStart(2, '0')}:${String(soon.getMinutes()).padStart(2, '0')}`;
     form.elements.inboxAlarmRepeat.value = a?.repeat || 'none';
-    form.querySelector('[data-alarm-native]').checked = a ? a.windows : localStorage.getItem(NATIVE_KEY) === 'true';
+    form.querySelector('[data-alarm-native]').checked = nativeReady() || !!a?.windows;
     reveal(form);
   }
   function reveal(form) {
@@ -127,7 +127,7 @@
     if(setupStage==='test'&&!ready)setupStage='connect';
     setup.querySelectorAll('[data-alarm-stage]').forEach(node=>node.hidden=node.dataset.alarmStage!==setupStage);
     setup.querySelectorAll('[data-alarm-step]').forEach(node=>{if(node.dataset.alarmStep===setupStage)node.setAttribute('aria-current','step');else node.removeAttribute('aria-current');});
-    document.querySelectorAll('[data-alarm-native-status]').forEach(node=>node.textContent=nativeMessage || (ready?'Conectada. Marcá «Mostrar esta alarma con la app cerrada» al guardar cada tarea.':setupStage==='install'?'':'Falta conectar tu cuenta para recibir alarmas con Estudiemos cerrado.'));
+    document.querySelectorAll('[data-alarm-native-status]').forEach(node=>node.textContent=nativeMessage || (ready?'Conectada. Esta PC recibe también las alarmas que creás desde el celular.':setupStage==='install'?'':'Conectá esta PC una vez para recibir todas las alarmas de tu cuenta.'));
     document.querySelectorAll('[data-alarm-native-connect]').forEach(button=>{button.textContent=ready?'Comprobar alarma de pantalla completa':'Activar pantalla completa en esta PC';});
     setup.querySelector('[data-alarm-activate]').disabled=nativeConnecting||!setup.querySelector('[data-alarm-consent]').checked;
     setup.querySelector('[data-alarm-file]').disabled=nativeConnecting||!setup.querySelector('[data-alarm-consent]').checked;

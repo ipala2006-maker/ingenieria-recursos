@@ -28,8 +28,9 @@ test('push only accepts encrypted subscriptions to official providers, never arb
 test('database enforces ownership, recurrence, deduplication and cancels completed tasks before sending', async () => {
   const db = new PGlite();
   try {
-    await db.exec("create role anon; create role authenticated; create role service_role; create schema auth; create table auth.users(id uuid primary key); create table public.user_states(user_id uuid primary key, state jsonb);");
+    await db.exec("create role anon; create role authenticated; create role service_role; create schema auth; create table auth.users(id uuid primary key); create table public.user_states(user_id uuid primary key, state jsonb, updated_at timestamptz default now());");
     await db.exec(fs.readFileSync(path.join(root, 'supabase/mobile-notifications.sql'), 'utf8'));
+    await db.exec(fs.readFileSync(path.join(root, 'supabase/windows-alarms.sql'), 'utf8'));
     await db.query('insert into auth.users values ($1),($2)', [user, other]);
     await db.query('select register_mobile_push($1,$2,$3)', [user, subscription, 'America/Argentina/Buenos_Aires']);
     await assert.rejects(db.query('select register_mobile_push($1,$2,$3)', [other, subscription, 'UTC']), /another account/);
@@ -42,6 +43,8 @@ test('database enforces ownership, recurrence, deduplication and cancels complet
       { id: 'invalid', alarm: { date: '2026-99-99', time: '99:00' } }
     ];
     await db.query('insert into user_states values ($1,$2)', [user, { values: { bandeja_agenda: JSON.stringify(agenda) } }]);
+    const windows = (await db.query('select * from get_windows_alarm_snapshot($1)',[user])).rows[0];
+    assert.ok(windows.alarm_items.some(item=>item.id==='due' && item.alarm.windows===true),'Windows receives a mobile alarm without a per-task Windows opt-in');
     assert.equal((await db.query('select * from mobile_due_tasks($1,$2)', [other, 'UTC'])).rows.length, 0);
     const due = (await db.query('select * from mobile_due_tasks($1,$2)', [user, 'America/Argentina/Buenos_Aires'])).rows;
     assert.equal(due.length, 1); assert.equal(due[0].title, 'Pilot task');

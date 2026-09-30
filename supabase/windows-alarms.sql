@@ -43,7 +43,7 @@ begin
     from pg_catalog.jsonb_array_elements(agenda) with ordinality as entry(value, position)
     where entry.position <= 500
       and pg_catalog.jsonb_typeof(entry.value -> 'id') = 'string'
-      and entry.value -> 'alarm' -> 'windows' = 'true'::jsonb
+      and pg_catalog.jsonb_typeof(entry.value -> 'alarm') = 'object'
       and entry.value -> 'done' is distinct from 'true'::jsonb;
 end;
 $$;
@@ -51,4 +51,4 @@ $$;
 revoke all on function public.get_windows_alarm_snapshot(uuid) from public, anon, authenticated;
 grant execute on function public.get_windows_alarm_snapshot(uuid) to service_role;
 comment on function public.get_windows_alarm_snapshot(uuid) is
-  'Server-only: enabled Windows alarm titles and schedules for the signed feed owner. No account state or write access.';
+  'Server-only: all task alarm titles and schedules for an owner who connected this Windows device. Origin device does not change delivery. No account state or write access.';
