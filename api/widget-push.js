@@ -4,6 +4,7 @@ const { enforceRateLimit, isSameOriginRequest, rejectOversizedBody, setSecurityH
 
 module.exports = async function widgetPush(request, response) {
   setSecurityHeaders(response);
+  if (request.query?.mobilePush) return require('./_lib/mobile-push')(request, response);
   if (request.method !== "POST") return response.status(405).json({ message: "Metodo no permitido." });
   if (!isSameOriginRequest(request)) return response.status(403).json({ message: "Origen no permitido." });
   if (rejectOversizedBody(request, response, 8 * 1024)) return;

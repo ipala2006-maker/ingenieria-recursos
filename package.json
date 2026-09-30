@@ -1,0 +1,14 @@
+{
+  "name": "estudiemos-services",
+  "private": true,
+  "version": "1.0.0",
+  "dependencies": {
+    "web-push": "3.6.7"
+  },
+  "scripts": {
+    "test:mobile": "node --test tests/mobile-notifications.test.cjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.8"
+  }
+}

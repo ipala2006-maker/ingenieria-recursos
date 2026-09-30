@@ -1,6 +1,8 @@
 const WINDOWS_WIDGET_TAGS = ["estudiemos-inbox", "estudiemos-calendar", "estudiemos-streak"];
 const WINDOWS_WIDGET_STATE_URL = new URL("./widgets/runtime-state.json", self.registration.scope).href;
 const WINDOWS_WIDGET_CACHE = "estudiemos-windows-widget-data-v1";
+const PUSH_OWNER_URL = new URL('./__push_owner', self.registration.scope).href;
+const PUSH_CACHE = 'estudiemos-push-v1';
 
 self.addEventListener("install", () => self.skipWaiting());
 
@@ -15,6 +17,17 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("message", (event) => {
+  if (event.data?.type === 'ESTUDIEMOS_PUSH_OWNER' && event.source?.url && new URL(event.source.url).origin === self.location.origin) {
+    event.waitUntil((async () => {
+      const cache = await caches.open(PUSH_CACHE);
+      const owner = String(event.data.owner || '');
+      if (/^[a-f0-9-]{36}$/i.test(owner)) await cache.put(PUSH_OWNER_URL, new Response(owner));
+      else {
+        await cache.delete(PUSH_OWNER_URL);
+        for (const notification of await self.registration.getNotifications()) notification.close();
+      }
+    })());
+  }
   if (event.data?.type === "SKIP_WAITING") self.skipWaiting();
   if (event.data?.type === "ESTUDIEMOS_WIDGET_DATA") {
     event.waitUntil(saveWindowsWidgetState(event.data.state));
@@ -45,8 +58,29 @@ self.addEventListener("periodicsync", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const destination = event.notification.data?.url || new URL("./", self.registration.scope).href;
+  let destination = new URL("./", self.registration.scope).href;
+  try {
+    const requested = new URL(event.notification.data?.url || destination, self.registration.scope);
+    if (requested.origin === self.location.origin && requested.protocol === 'https:') destination = requested.href;
+  } catch (_) {}
   event.waitUntil(openAppWindow(destination));
+});
+
+self.addEventListener('push', event => {
+  event.waitUntil((async () => {
+    let payload;
+    try { payload = event.data?.json(); } catch (_) { return; }
+    if (!payload || typeof payload.owner !== 'string') return;
+    const owner = await (await (await caches.open(PUSH_CACHE)).match(PUSH_OWNER_URL))?.text();
+    // A logout or account switch must never reveal the previous student's task titles.
+    if (!owner || owner !== payload.owner) return;
+    await self.registration.showNotification(String(payload.title || 'Estudiemos').slice(0,160), {
+      body: String(payload.body || 'Tenés una tarea pendiente.').slice(0,240),
+      tag: String(payload.tag || 'estudiemos-inbox').slice(0,100),
+      icon: new URL('./assets/icon-192.png', self.registration.scope).href,
+      data: { url: new URL('./?agenda=1', self.registration.scope).href }
+    });
+  })());
 });
 
 async function saveWindowsWidgetState(value) {

@@ -76,6 +76,7 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
                     .apply();
             notifyDataChanged(context);
             CalendarWidgetProvider.notifyDataChanged(context);
+            InboxAlarmReceiver.refresh(context);
         } catch (Exception ignored) {
             // Keep the last valid copy when Android receives incomplete data.
         }
@@ -87,6 +88,7 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
     }
 
     static void clearForAccount(Context context) {
+        InboxAlarmReceiver.clear(context);
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .edit()
                 .remove(KEY_AGENDA)
@@ -209,6 +211,7 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
                     .apply();
             notifyDataChanged(context);
             CalendarWidgetProvider.notifyDataChanged(context);
+            InboxAlarmReceiver.refresh(context);
         } catch (Exception ignored) {
             // Keep the last valid widget state.
         }

@@ -58,14 +58,15 @@ test('receipts distinguish the legacy helper from the independent installer',asy
     assert.equal(confirmed.body.version,expected);
   }
 });
-test('feed queries only its owner and emits only enabled alarm fields, including empty snapshots',async()=>{
+test('feed queries only its owner and includes mobile-created alarms on authorized PCs',async()=>{
   const {api,call,calls,setRows}=setup();
   const alarm={date:'2026-09-15',time:'18:00',repeat:'daily',windows:true};
   setRows([{updated_at:'2026-09-14',alarm_items:[
     {id:'a',title:'Pilot',note:'private note',alarm},{id:'b',title:'done',done:true,alarm},
     {id:'c',alarm:{...alarm,windows:false}},{id:'d',title:'No alarm'}]}]);
   const feed=await call('GET',{}, {alarmFeed:'1'},{authorization:`Bearer ${api.sign(id,'alarm-feed',60)}`});
-  assert.equal(feed.status,200);assert.equal(feed.body.items.length,1);
+  assert.equal(feed.status,200);assert.equal(feed.body.items.length,2);
+  assert.equal(feed.body.items[1].alarm.windows,true,'mobile-created alarm reaches an already authorized Windows device');
   assert.deepEqual(Object.keys(feed.body.items[0]).sort(),['alarm','id','title']);
   assert.equal(calls[0].url,'/rest/v1/rpc/get_windows_alarm_snapshot');
   assert.equal(calls[0].method,'POST');

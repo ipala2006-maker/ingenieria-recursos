@@ -26,6 +26,15 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Install locked dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts
+
+      - name: Audit server dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Test mobile notifications
+        run: npm run test:mobile
+
       - name: Run application tests
         run: node --test tests/*.test.js tests/free-release.test.cjs tests/commercial-launch-hidden.test.cjs tests/home-board.test.cjs tests/home-free-layout.test.cjs tests/home-layout-storage.test.cjs tests/windows-setup-flow.test.cjs
 

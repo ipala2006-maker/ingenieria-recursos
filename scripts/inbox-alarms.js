@@ -2,6 +2,11 @@
   if (window.EstudiemosInboxAlarms || !window.EstudiemosAlarmRules) return;
   const rules = window.EstudiemosAlarmRules;
   const root = new URL('../', document.currentScript.src);
+  if (!window.EstudiemosMobileNotifications) {
+    const mobile = document.createElement('script');
+    mobile.src = new URL('scripts/mobile-notifications.js?v=20260930', root);
+    document.head.appendChild(mobile);
+  }
   const KEY = 'bandeja_agenda';
   const NATIVE_KEY = 'estudiemos_inbox_alarm_windows';
   const FIRED_KEY = 'estudiemos_inbox_alarm_delivered';
@@ -65,11 +70,11 @@
       <div data-alarm-options hidden>
         <div class="inbox-alarm-date"><label>Día<input type="date" name="inboxAlarmDate" min="2020-01-01" max="2100-12-31"></label><label>Hora<input type="time" name="inboxAlarmTime"></label></div>
         <label>Repetir<select name="inboxAlarmRepeat" aria-label="Repetir">${rules.repeats.map(r => `<option value="${r}">${rules.labels[r]}</option>`).join('')}</select></label>
-        <small>Hora local de cada dispositivo. Al completar la tarea, deja de sonar.</small>
+        <small>Se sincroniza con tu cuenta y avisa en cada dispositivo activado. Hora local de cada dispositivo. Al completar la tarea, deja de sonar.</small>
         <small data-alarm-permission-status role="status" ${windows?'hidden':''}></small>
         <button type="button" data-alarm-permission ${windows?'hidden':''}>Permitir notificaciones</button>
         <details class="inbox-alarm-delivery" ${windows ? 'open' : 'hidden'}><summary>Pantalla completa en Windows</summary>
-          <label><input type="checkbox" data-alarm-native ${localStorage.getItem(NATIVE_KEY) === 'true' ? 'checked' : ''}> Mostrar esta alarma con la app cerrada</label>
+          <input type="checkbox" data-alarm-native hidden ${nativeReady() ? 'checked' : ''}>
           <small>El nombre de tu tarea ocupa toda la pantalla y suena hasta que cierres el aviso.</small>
           <small data-alarm-native-status role="status"></small>
           <button type="button" data-alarm-native-connect>Activar pantalla completa en esta PC</button>
@@ -83,7 +88,7 @@
     form.elements.inboxAlarmDate.value = a?.date || rules.dateKey(soon);
     form.elements.inboxAlarmTime.value = a?.time || `${String(soon.getHours()).padStart(2, '0')}:${String(soon.getMinutes()).padStart(2, '0')}`;
     form.elements.inboxAlarmRepeat.value = a?.repeat || 'none';
-    form.querySelector('[data-alarm-native]').checked = a ? a.windows : localStorage.getItem(NATIVE_KEY) === 'true';
+    form.querySelector('[data-alarm-native]').checked = nativeReady() || !!a?.windows;
     reveal(form);
   }
   function reveal(form) {
@@ -99,6 +104,14 @@
   }
   function renderPermission(form) {
     renderNativeStatus();
+    const mobile = window.EstudiemosMobileNotifications;
+    if (mobile?.handled()) {
+      const state = mobile.status();
+      const button = form.querySelector('[data-alarm-permission]');
+      button.hidden = !state.button; button.textContent = state.button || ''; button.disabled = !!state.disabled;
+      form.querySelector('[data-alarm-permission-status]').textContent = state.text;
+      return;
+    }
     const permission = 'Notification' in window ? Notification.permission : 'unavailable';
     form.querySelector('[data-alarm-permission]').hidden = /Windows/i.test(navigator.userAgent) || permission !== 'default';
     form.querySelector('[data-alarm-permission-status]').textContent = permission === 'granted'
@@ -114,7 +127,7 @@
     if(setupStage==='test'&&!ready)setupStage='connect';
     setup.querySelectorAll('[data-alarm-stage]').forEach(node=>node.hidden=node.dataset.alarmStage!==setupStage);
     setup.querySelectorAll('[data-alarm-step]').forEach(node=>{if(node.dataset.alarmStep===setupStage)node.setAttribute('aria-current','step');else node.removeAttribute('aria-current');});
-    document.querySelectorAll('[data-alarm-native-status]').forEach(node=>node.textContent=nativeMessage || (ready?'Conectada. Marcá «Mostrar esta alarma con la app cerrada» al guardar cada tarea.':setupStage==='install'?'':'Falta conectar tu cuenta para recibir alarmas con Estudiemos cerrado.'));
+    document.querySelectorAll('[data-alarm-native-status]').forEach(node=>node.textContent=nativeMessage || (ready?'Conectada. Esta PC recibe también las alarmas que creás desde el celular.':setupStage==='install'?'':'Conectá esta PC una vez para recibir todas las alarmas de tu cuenta.'));
     document.querySelectorAll('[data-alarm-native-connect]').forEach(button=>{button.textContent=ready?'Comprobar alarma de pantalla completa':'Activar pantalla completa en esta PC';});
     setup.querySelector('[data-alarm-activate]').disabled=nativeConnecting||!setup.querySelector('[data-alarm-consent]').checked;
     setup.querySelector('[data-alarm-file]').disabled=nativeConnecting||!setup.querySelector('[data-alarm-consent]').checked;
@@ -165,6 +178,11 @@
   }
   async function requestPermission() {
     enableSound();
+    if (window.EstudiemosMobileNotifications?.handled()) {
+      await window.EstudiemosMobileNotifications.request();
+      document.querySelectorAll('form:has(.inbox-alarm-fields)').forEach(renderPermission);
+      return;
+    }
     if ('Notification' in window && Notification.permission === 'default') {
       try { await Notification.requestPermission(); } catch (_) {}
     }
@@ -172,7 +190,8 @@
   }
   function readForm(form) {
     if (!form?.elements.inboxAlarmEnabled?.checked) return null;
-    const alarm = rules.normalize({ date: form.elements.inboxAlarmDate.value, time: form.elements.inboxAlarmTime.value, repeat: form.elements.inboxAlarmRepeat.value, windows: form.querySelector('[data-alarm-native]').checked });
+    // Keep old Windows feeds compatible. Delivery still requires the device connection.
+    const alarm = rules.normalize({ date: form.elements.inboxAlarmDate.value, time: form.elements.inboxAlarmTime.value, repeat: form.elements.inboxAlarmRepeat.value, windows: true });
     if (!alarm || !rules.next(alarm)) throw new Error('Elegí una fecha y hora futuras para la alarma.');
     return alarm;
   }
@@ -267,7 +286,7 @@
     if (e.target.name?.startsWith('inboxAlarm')) {
       form.elements.inboxAlarmTime.setCustomValidity(''); reveal(form);
       if (e.target.name === 'inboxAlarmEnabled' && e.target.checked) {
-        if(!/Windows/i.test(navigator.userAgent))requestPermission();else enableSound();
+        if(!/Windows/i.test(navigator.userAgent) && !window.EstudiemosMobileNotifications?.handled())requestPermission();else enableSound();
         const native = form.querySelector('[data-alarm-native]');
         if (native && !native.checked && /Windows/i.test(navigator.userAgent)) {
           native.checked = nativeReady();
@@ -306,8 +325,8 @@
         for (const item of matches) delivered[item.key] = Date.now();
         delivered = Object.fromEntries(Object.entries(delivered).filter(([, at]) => at > Date.now() - 14 * 86400000));
         localStorage.setItem(FIRED_KEY, JSON.stringify(delivered));
-        startAlert(matches);
-        if ('Notification' in window && Notification.permission === 'granted') {
+        if (!window.EstudiemosMobileNotifications?.status?.().ready) startAlert(matches);
+        if (!window.EstudiemosMobileNotifications?.handled() && 'Notification' in window && Notification.permission === 'granted') {
           const options = { body: notice.querySelector('p').textContent, tag: 'estudiemos-inbox-alarm', requireInteraction: true, icon: new URL('assets/icon-192.png', root).href, data: { url: new URL('?agenda=1', root).href } };
           const registration = await navigator.serviceWorker?.getRegistration();
           if (registration) await registration.showNotification('Alarma de Inbox', options);
@@ -328,7 +347,8 @@
       return;
     }
     const user = window.EstudiemosAccount?.getUser?.();
-    const payload = { version: 1, items: user ? items().filter(i => !i.done && rules.normalize(i.alarm)?.windows).map(i => ({ id: String(i.id).slice(0, 180), title: String(i.title).slice(0, 90), alarm: rules.normalize(i.alarm) })) : [] };
+    const localConsent = nativeReady() || localStorage.getItem(NATIVE_KEY) === 'true';
+    const payload = { version: 1, items: user && localConsent ? items().filter(i => !i.done && rules.normalize(i.alarm)).map(i => ({ id: String(i.id).slice(0, 180), title: String(i.title).slice(0, 90), alarm: { ...rules.normalize(i.alarm), windows: true } })) : [] };
     const text = JSON.stringify(payload); if (text === lastNative) return;
     const encoded = btoa(Array.from(new TextEncoder().encode(text), b => String.fromCharCode(b)).join(''));
     const chunks = encoded.match(/.{1,3000}/g) || [];
@@ -339,6 +359,7 @@
     lastNative = text;
   }
   window.EstudiemosInboxAlarms = { readForm, button, open, check, showSetup };
+  window.addEventListener('estudiemos:mobile-notifications', () => document.querySelectorAll('form:has(.inbox-alarm-fields)').forEach(renderPermission));
   const entry=new URL(location.href);
   if(entry.searchParams.get('alarms-setup')==='1'){setupStage='connect';entry.searchParams.delete('alarms-setup');history.replaceState(history.state,'',entry.pathname+entry.search+entry.hash);showSetup();}
   if(entry.searchParams.get('setup-alarms')==='1'){entry.searchParams.delete('setup-alarms');history.replaceState(history.state,'',entry.pathname+entry.search+entry.hash);showSetup();}

@@ -1,6 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "functions": {
+    "api/widget-push.js": {
+      "maxDuration": 60
+    },
     "api/whatsapp-webhook.js": {
       "maxDuration": 60
     }
