@@ -196,7 +196,7 @@
   function loadProductInterface() {
     if (document.querySelector('script[src*="scripts/product-ui.js"]')) return;
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/product-ui.js?v=20260920-fluid`;
+    script.src = `${rootPath}scripts/product-ui.js?v=20260929-device`;
     document.head.appendChild(script);
   }
 
@@ -338,7 +338,7 @@
     if (document.querySelector('script[src*="scripts/account.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/account.js?v=20260929-setup`;
+    script.src = `${rootPath}scripts/account.js?v=20260929-device`;
     script.defer = true;
     document.head.appendChild(script);
   }
