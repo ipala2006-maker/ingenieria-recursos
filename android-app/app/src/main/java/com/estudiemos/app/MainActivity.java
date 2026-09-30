@@ -144,6 +144,7 @@ public class MainActivity extends Activity {
                 notifyWebAppReady();
                 notifyNativeSessionToWeb();
                 sendNotificationStatusToWeb();
+                sendInboxNotificationStatus();
                 notifyPendingAgendaCompletions();
                 notifyPomodoroStateToWeb();
                 openAgendaIfRequested();
@@ -207,6 +208,20 @@ public class MainActivity extends Activity {
             String type = payload.optString("type");
             if ("agenda-sync".equals(type)) {
                 AgendaWidgetProvider.storeAgendaAndUpdate(this, message.getData());
+            } else if ("inbox-notifications-enable".equals(type)) {
+                InboxAlarmReceiver.enable(this);
+                if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                    requestPermissions(new String[] { Manifest.permission.POST_NOTIFICATIONS }, 4102);
+                } else if (!InboxAlarmReceiver.permitted(this)) {
+                    startActivity(new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName()));
+                } else requestExactReminderPermissionIfNeeded();
+                sendInboxNotificationStatus();
+            } else if ("inbox-notifications-status".equals(type)) {
+                sendInboxNotificationStatus();
+            } else if ("inbox-notifications-settings".equals(type)) {
+                AlarmManager alarms = getSystemService(AlarmManager.class);
+                if (Build.VERSION.SDK_INT >= 31 && alarms != null && !alarms.canScheduleExactAlarms()) requestExactReminderPermissionIfNeeded();
+                else startActivity(new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName()));
             } else if ("pomodoro-streak-sync".equals(type)) {
                 StreakWidgetProvider.storeStreakAndUpdate(this, message.getData());
             } else if ("pomodoro-sync".equals(type)) {
@@ -222,6 +237,7 @@ public class MainActivity extends Activity {
             } else if ("account-native-sync".equals(type)) {
                 WidgetSyncManager.handleAccountMessage(this, payload);
                 configureFirebase(payload.optJSONObject("config"));
+                sendInboxNotificationStatus();
             } else if ("app-update".equals(type)) {
                 notifyWebUpdateStarted();
                 startAppUpdate();
@@ -309,6 +325,16 @@ public class MainActivity extends Activity {
         );
     }
 
+    private void sendInboxNotificationStatus() {
+        if (!webReady || webView == null) return;
+        AlarmManager alarms = getSystemService(AlarmManager.class);
+        boolean exact = Build.VERSION.SDK_INT < 31 || (alarms != null && alarms.canScheduleExactAlarms());
+        String permission = InboxAlarmReceiver.enabled(this)
+                ? (InboxAlarmReceiver.permitted(this) ? "granted" : "denied") : "default";
+        webView.evaluateJavascript("window.dispatchEvent(new CustomEvent('estudiemos-android-inbox-status',{detail:{permission:"
+                + JSONObject.quote(permission) + ",exact:" + exact + "}}));", null);
+    }
+
     private void notifyPendingAgendaCompletions() {
         if (!webReady) return;
         for (String itemId : AgendaWidgetProvider.getPendingCompletions(this)) {
@@ -388,6 +414,11 @@ public class MainActivity extends Activity {
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == 4102) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) requestExactReminderPermissionIfNeeded();
+            InboxAlarmReceiver.refresh(this);
+            sendInboxNotificationStatus();
+        }
         if (requestCode == 4101) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 requestExactReminderPermissionIfNeeded();
@@ -433,6 +464,8 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        InboxAlarmReceiver.refresh(this);
+        sendInboxNotificationStatus();
         if (updateAfterPermission && canInstallUpdates()) {
             updateAfterPermission = false;
             startAppUpdate();

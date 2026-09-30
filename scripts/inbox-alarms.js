@@ -2,6 +2,11 @@
   if (window.EstudiemosInboxAlarms || !window.EstudiemosAlarmRules) return;
   const rules = window.EstudiemosAlarmRules;
   const root = new URL('../', document.currentScript.src);
+  if (!window.EstudiemosMobileNotifications) {
+    const mobile = document.createElement('script');
+    mobile.src = new URL('scripts/mobile-notifications.js?v=20260930', root);
+    document.head.appendChild(mobile);
+  }
   const KEY = 'bandeja_agenda';
   const NATIVE_KEY = 'estudiemos_inbox_alarm_windows';
   const FIRED_KEY = 'estudiemos_inbox_alarm_delivered';
@@ -99,6 +104,14 @@
   }
   function renderPermission(form) {
     renderNativeStatus();
+    const mobile = window.EstudiemosMobileNotifications;
+    if (mobile?.handled()) {
+      const state = mobile.status();
+      const button = form.querySelector('[data-alarm-permission]');
+      button.hidden = !state.button; button.textContent = state.button || ''; button.disabled = !!state.disabled;
+      form.querySelector('[data-alarm-permission-status]').textContent = state.text;
+      return;
+    }
     const permission = 'Notification' in window ? Notification.permission : 'unavailable';
     form.querySelector('[data-alarm-permission]').hidden = /Windows/i.test(navigator.userAgent) || permission !== 'default';
     form.querySelector('[data-alarm-permission-status]').textContent = permission === 'granted'
@@ -165,6 +178,11 @@
   }
   async function requestPermission() {
     enableSound();
+    if (window.EstudiemosMobileNotifications?.handled()) {
+      await window.EstudiemosMobileNotifications.request();
+      document.querySelectorAll('form:has(.inbox-alarm-fields)').forEach(renderPermission);
+      return;
+    }
     if ('Notification' in window && Notification.permission === 'default') {
       try { await Notification.requestPermission(); } catch (_) {}
     }
@@ -267,7 +285,7 @@
     if (e.target.name?.startsWith('inboxAlarm')) {
       form.elements.inboxAlarmTime.setCustomValidity(''); reveal(form);
       if (e.target.name === 'inboxAlarmEnabled' && e.target.checked) {
-        if(!/Windows/i.test(navigator.userAgent))requestPermission();else enableSound();
+        if(!/Windows/i.test(navigator.userAgent) && !window.EstudiemosMobileNotifications?.handled())requestPermission();else enableSound();
         const native = form.querySelector('[data-alarm-native]');
         if (native && !native.checked && /Windows/i.test(navigator.userAgent)) {
           native.checked = nativeReady();
@@ -306,8 +324,8 @@
         for (const item of matches) delivered[item.key] = Date.now();
         delivered = Object.fromEntries(Object.entries(delivered).filter(([, at]) => at > Date.now() - 14 * 86400000));
         localStorage.setItem(FIRED_KEY, JSON.stringify(delivered));
-        startAlert(matches);
-        if ('Notification' in window && Notification.permission === 'granted') {
+        if (!window.EstudiemosMobileNotifications?.status?.().ready) startAlert(matches);
+        if (!window.EstudiemosMobileNotifications?.handled() && 'Notification' in window && Notification.permission === 'granted') {
           const options = { body: notice.querySelector('p').textContent, tag: 'estudiemos-inbox-alarm', requireInteraction: true, icon: new URL('assets/icon-192.png', root).href, data: { url: new URL('?agenda=1', root).href } };
           const registration = await navigator.serviceWorker?.getRegistration();
           if (registration) await registration.showNotification('Alarma de Inbox', options);
@@ -339,6 +357,7 @@
     lastNative = text;
   }
   window.EstudiemosInboxAlarms = { readForm, button, open, check, showSetup };
+  window.addEventListener('estudiemos:mobile-notifications', () => document.querySelectorAll('form:has(.inbox-alarm-fields)').forEach(renderPermission));
   const entry=new URL(location.href);
   if(entry.searchParams.get('alarms-setup')==='1'){setupStage='connect';entry.searchParams.delete('alarms-setup');history.replaceState(history.state,'',entry.pathname+entry.search+entry.hash);showSetup();}
   if(entry.searchParams.get('setup-alarms')==='1'){entry.searchParams.delete('setup-alarms');history.replaceState(history.state,'',entry.pathname+entry.search+entry.hash);showSetup();}
