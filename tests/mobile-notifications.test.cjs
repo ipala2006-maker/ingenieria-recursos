@@ -25,6 +25,14 @@ test('push only accepts encrypted subscriptions to official providers, never arb
   delete process.env.MOBILE_PUSH_CRON_SECRET;
 });
 
+test('new alarms include compatibility delivery on every platform without granting a new device permission', () => {
+  const source = fs.readFileSync(path.join(root, 'scripts/inbox-alarms.js'), 'utf8');
+  const readForm = source.slice(source.indexOf('function readForm(form)'), source.indexOf('function mount()'));
+  assert.match(readForm, /windows: true/);
+  assert.doesNotMatch(readForm, /data-alarm-native/);
+  assert.match(source, /user && localConsent/);
+});
+
 test('database enforces ownership, recurrence, deduplication and cancels completed tasks before sending', async () => {
   const db = new PGlite();
   try {

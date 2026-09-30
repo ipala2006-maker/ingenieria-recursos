@@ -58,7 +58,7 @@ test('receipts distinguish the legacy helper from the independent installer',asy
     assert.equal(confirmed.body.version,expected);
   }
 });
-test('feed queries only its owner and emits only enabled alarm fields, including empty snapshots',async()=>{
+test('feed queries only its owner and includes mobile-created alarms on authorized PCs',async()=>{
   const {api,call,calls,setRows}=setup();
   const alarm={date:'2026-09-15',time:'18:00',repeat:'daily',windows:true};
   setRows([{updated_at:'2026-09-14',alarm_items:[

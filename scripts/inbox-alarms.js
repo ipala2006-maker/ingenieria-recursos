@@ -190,7 +190,8 @@
   }
   function readForm(form) {
     if (!form?.elements.inboxAlarmEnabled?.checked) return null;
-    const alarm = rules.normalize({ date: form.elements.inboxAlarmDate.value, time: form.elements.inboxAlarmTime.value, repeat: form.elements.inboxAlarmRepeat.value, windows: form.querySelector('[data-alarm-native]').checked });
+    // Keep old Windows feeds compatible. Delivery still requires the device connection.
+    const alarm = rules.normalize({ date: form.elements.inboxAlarmDate.value, time: form.elements.inboxAlarmTime.value, repeat: form.elements.inboxAlarmRepeat.value, windows: true });
     if (!alarm || !rules.next(alarm)) throw new Error('Elegí una fecha y hora futuras para la alarma.');
     return alarm;
   }
@@ -346,7 +347,8 @@
       return;
     }
     const user = window.EstudiemosAccount?.getUser?.();
-    const payload = { version: 1, items: user ? items().filter(i => !i.done && rules.normalize(i.alarm)?.windows).map(i => ({ id: String(i.id).slice(0, 180), title: String(i.title).slice(0, 90), alarm: rules.normalize(i.alarm) })) : [] };
+    const localConsent = nativeReady() || localStorage.getItem(NATIVE_KEY) === 'true';
+    const payload = { version: 1, items: user && localConsent ? items().filter(i => !i.done && rules.normalize(i.alarm)).map(i => ({ id: String(i.id).slice(0, 180), title: String(i.title).slice(0, 90), alarm: { ...rules.normalize(i.alarm), windows: true } })) : [] };
     const text = JSON.stringify(payload); if (text === lastNative) return;
     const encoded = btoa(Array.from(new TextEncoder().encode(text), b => String.fromCharCode(b)).join(''));
     const chunks = encoded.match(/.{1,3000}/g) || [];
