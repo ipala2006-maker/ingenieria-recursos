@@ -12,10 +12,9 @@
     "estudiemos_pomodoro_streak",
     "estudiemos_workspace_changed",
     "estudiemos_android_devices",
-    "estudiemos_theme",
-    "estudiemos_home_layout"
+    "estudiemos_theme"
   ];
-  const LIST_KEYS = new Set(SYNC_KEYS.filter((key) => !["estudiemos_theme", "estudiemos_pomodoro_streak", "estudiemos_workspace_changed", "estudiemos_home_layout"].includes(key)));
+  const LIST_KEYS = new Set(SYNC_KEYS.filter((key) => !["estudiemos_theme", "estudiemos_pomodoro_streak", "estudiemos_workspace_changed"].includes(key)));
   const PRIVATE_SYNC_KEYS = SYNC_KEYS.filter((key) => key !== "estudiemos_theme");
   const LINKED_USER_KEY = "estudiemos_cloud_user";
   const LOCAL_CHANGED_KEY = "estudiemos_cloud_local_changed";
@@ -771,7 +770,8 @@
 
   function captureLocalState() {
     const values = {};
-    const changedAt = readKeyChangedAt();
+    const changedAt = {};
+    const savedChangedAt = readKeyChangedAt();
     const fallbackAt = Number(localStorage.getItem(LOCAL_CHANGED_KEY) || 0);
     SYNC_KEYS.forEach((key) => {
       const raw = localStorage.getItem(key);
@@ -781,7 +781,7 @@
       } else {
         values[key] = raw || (key === "estudiemos_theme" ? "dark" : key === "estudiemos_workspace_changed" ? "0" : "{}");
       }
-      if (!changedAt[key] && fallbackAt) changedAt[key] = fallbackAt;
+      changedAt[key] = Number(savedChangedAt[key]) || fallbackAt || 0;
     });
     return { version: 2, values, changedAt };
   }

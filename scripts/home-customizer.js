@@ -1,7 +1,7 @@
 (function(){
   const dialog=document.querySelector('[data-home-customizer]'),trigger=document.querySelector('[data-home-customize]'),page=document.querySelector('.workspace-page'),board=window.EstudiemosHomeBoard;
   if(!dialog||!trigger||!page||!board)return;
-  const KEY='estudiemos_home_layout',spaces=[['focus','Pomodoro',240],['progress','Tu progreso',300],['assistant','Organizador IA',260],['shortcuts','Accesos rápidos',64],['workspace','Mi espacio',280],['calendar','Calendario',340],['inbox','Inbox',280]];
+  const layoutStorage=window.EstudiemosHomeLayout,KEY=layoutStorage.key,spaces=[['focus','Pomodoro',240],['progress','Tu progreso',300],['assistant','Organizador IA',260],['shortcuts','Accesos rápidos',64],['workspace','Mi espacio',280],['calendar','Calendario',340],['inbox','Inbox',280]];
   const mobile=matchMedia('(max-width:700px), (min-width:701px) and (max-width:900px) and (max-height:899px)');
   const reduced=matchMedia('(prefers-reduced-motion:reduce)'),nodes=new Map(spaces.map(([key])=>[key,document.querySelector(`[data-home-space="${key}"]`)])),list=dialog.querySelector('[data-home-customizer-spaces]');
   let editing=false,gesture=null,frame=0,lastLayout=null,undoValue=null,armed=null;
@@ -23,11 +23,11 @@
   const dialogStatus=document.createElement('p');dialogStatus.className='home-layout-dialog-status';dialogStatus.setAttribute('role','status');dialog.querySelector('footer').before(dialogStatus);
   function announce(text=''){status.textContent=dialog.open?'':text;dialogStatus.textContent=dialog.open?text:'';}
   function read(){
-    let saved={};try{saved=JSON.parse(localStorage.getItem(KEY)||'{}')||{};}catch(_){}
+    const saved=layoutStorage.read();
     const visible={},sizes={};for(const [key,,min] of spaces){visible[key]=saved.visible?.[key]!==false;sizes[key]={mobileHeight:clamp(saved.sizes?.[key]?.mobileHeight,min,720,min)};}
     return {version:4,density:saved.density==='compact'?'compact':'comfortable',visible,sizes,tree:board.sanitize(saved.tree),placement:saved.placement||null};
   }
-  function store(value){localStorage.setItem(KEY,JSON.stringify(value));window.dispatchEvent(new CustomEvent('estudiemos:data-change',{detail:{key:KEY}}));window.dispatchEvent(new CustomEvent('estudiemos:home-customized',{detail:value}));}
+  function store(value){layoutStorage.write(value);window.dispatchEvent(new CustomEvent('estudiemos:home-customized',{detail:value}));}
   function save(value,before=read()){undoValue=clone(before);undo.disabled=false;store(value);}
   function prepare(value=read()){if(lastLayout)value.placement=board.remember(lastLayout,value.placement,value.tree);return value;}
   function moveBox(node,r,animate){

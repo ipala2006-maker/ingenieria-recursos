@@ -22,7 +22,7 @@ const base = process.env.TEST_BASE_URL || 'http://127.0.0.1:8149/';
       const progress = page.locator('[data-home-customizer-spaces] input[value="progress"]');
       await progress.uncheck();
       assert.equal(await page.locator('[data-home-space="progress"]').first().evaluate(element => element.classList.contains('home-space-disabled')), true);
-      assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('estudiemos_home_layout')).visible.progress), false);
+      assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('estudiemos_home_layout_local')).visible.progress), false);
       await page.locator('.home-customizer__density label').filter({ has: page.locator('[value="compact"]') }).click();
       assert.equal(await page.locator('body').getAttribute('data-home-density'), 'compact');
       await page.locator('.home-customizer__done').click();

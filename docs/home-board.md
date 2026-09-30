@@ -25,10 +25,18 @@ interno para no ocultar tareas o archivos.
 `shared/home-board.js` conserva el arbol anterior para migracion y restablecer;
 calcula tambien posiciones libres, limites, colisiones y alineacion.
 `scripts/home-customizer.js` aplica los cambios en cada frame del arrastre.
-La preferencia version 4 se guarda en `estudiemos_home_layout`, con `placement`
+La preferencia version 4 se guarda en `estudiemos_home_layout_local`, con `placement`
 (ancho y alto de referencia, rectangulos de todas las herramientas). Se escala
-proporcionalmente en otras pantallas sin compactar los huecos. La sincronizacion
-existente de preferencias conserva ese objeto. No se cambia la base de datos.
+proporcionalmente al redimensionar esa ventana sin compactar los huecos.
+La distribucion NO se sincroniza: cada navegador/instalacion conserva sus propios
+tamanos, posiciones, densidad y herramientas visibles, aunque use la misma cuenta.
+Un cambio en PC no oculta ni mueve herramientas del telefono o la tablet.
+`shared/home-layout-storage.js` migra una sola vez la preferencia que ya exista
+localmente, antes de cargar la cuenta. Los valores antiguos en la nube se ignoran;
+las tareas, calendario y progreso continuan sincronizados. Borrar datos del sitio
+restablece la distribucion de ese dispositivo. Chrome y su PWA pueden compartir
+la misma distribucion porque comparten almacenamiento del sitio. No se cambia
+la base de datos ni se crea un identificador de seguimiento del dispositivo.
 Las preferencias v3 mantienen su aspecto hasta el primer ajuste. Ocultar guarda
 la posicion; volver a mostrar busca el hueco libre mas cercano. Si no cabe, no
 se alteran las otras herramientas y se indica que falta espacio.

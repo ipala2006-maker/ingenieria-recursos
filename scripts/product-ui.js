@@ -26,7 +26,7 @@
     if (key === 'overview') return true;
     const mapped = key === 'space' ? 'workspace' : key;
     try {
-      const value = JSON.parse(localStorage.getItem('estudiemos_home_layout') || '{}');
+      const value = window.EstudiemosHomeLayout?.read() || {};
       return value.visible?.[mapped] !== false;
     } catch (_) { return true; }
   };
@@ -94,6 +94,9 @@
   });
   mobile.addEventListener('change', render);
   window.addEventListener('estudiemos:home-customized', render);
+  window.addEventListener('storage', event => {
+    if (event.key === window.EstudiemosHomeLayout?.key) render();
+  });
   window.addEventListener('estudiemos:cloud-restored', render);
   window.addEventListener('popstate', event => {
     current = views.some(([key]) => key === event.state?.homeView) ? event.state.homeView : views[0][0];
