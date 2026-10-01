@@ -281,7 +281,8 @@ try {
     $start = [datetime]::MinValue
     if (![datetime]::TryParseExact($a.date, 'yyyy-MM-dd', $culture, [Globalization.DateTimeStyles]::None, [ref]$start)) { continue }
     if ($start.Year -lt 2020 -or $start.Year -gt 2100) { continue }
-    foreach ($day in @($Now.Date.AddDays(-1), $Now.Date)) {
+    # Recurrence days remain nominal, including tomorrow's midnight alarm.
+    foreach ($day in @($Now.Date.AddDays(-1), $Now.Date, $Now.Date.AddDays(1))) {
       if ($day -lt $start) { continue }
       if ($a.repeat -eq 'none' -and $day -ne $start) { continue }
       if ($a.repeat -eq 'weekdays' -and $day.DayOfWeek -in @('Saturday','Sunday')) { continue }
@@ -290,6 +291,7 @@ try {
       $at = $day.AddHours([int]$a.time.Substring(0,2)).AddMinutes([int]$a.time.Substring(3,2))
       # Match the web clock when daylight saving skips this wall-clock time.
       if ([TimeZoneInfo]::Local.IsInvalidTime($at)) { $at = $at.AddHours(1) }
+      $at = $at.AddSeconds(-30)
       if ($at -gt $Now -or $at -le $Now.AddMinutes(-10)) { continue }
       $key = $item.id + '|' + $day.ToString('yyyy-MM-dd') + '|' + $a.time
       if ($delivered.ContainsKey($key)) { continue }

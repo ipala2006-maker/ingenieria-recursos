@@ -1,7 +1,7 @@
 [Setup]
 AppId={{10257322-F14A-47E1-9C71-03CB33D39726}
 AppName=Alarmas de Estudiemos
-AppVersion=1.6.3.2
+AppVersion=1.6.3.3
 ChangesAssociations=yes
 AppPublisher=Estudiemos
 DefaultDirName={localappdata}\Estudiemos\Windows\AlarmService
@@ -19,7 +19,7 @@ Compression=lzma2
 OutputDir=..\downloads
 OutputBaseFilename=Activar-Alarmas-Estudiemos
 SetupIconFile=..\assets\estudiemos.ico
-VersionInfoVersion=1.6.3.2
+VersionInfoVersion=1.6.3.3
 VersionInfoDescription=Alarmas a pantalla completa de Estudiemos
 [Languages]
 Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"

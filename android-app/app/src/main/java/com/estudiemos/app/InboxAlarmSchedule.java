@@ -6,7 +6,13 @@ import java.time.Instant;
 import java.time.ZoneId;
 
 final class InboxAlarmSchedule {
+    static final long LEAD_MS = 30000L;
     private InboxAlarmSchedule() {}
+
+    static long nextTrigger(String date, String time, String repeat, long after, ZoneId zone) {
+        long nominal = next(date, time, repeat, after + LEAD_MS, zone);
+        return nominal < 0 ? -1 : nominal - LEAD_MS;
+    }
 
     static long next(String date, String time, String repeat, long after, ZoneId zone) {
         try {

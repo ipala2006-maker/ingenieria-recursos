@@ -89,7 +89,7 @@ public class InboxAlarmReceiver extends BroadcastReceiver {
                 if (alarm == null || id.isEmpty()) continue;
                 long at = next(alarm, now - GRACE - 1);
                 if (at > 0 && at <= now) {
-                    String key = id + "|" + at;
+                    String key = id + "|" + (at + InboxAlarmSchedule.LEAD_MS);
                     if (!delivered.has(key)) {
                         notifyTask(context, id, item.optString("title", "Tarea pendiente"));
                         delivered.put(key, now);
@@ -113,7 +113,7 @@ public class InboxAlarmReceiver extends BroadcastReceiver {
     }
 
     private static long next(JSONObject alarm, long after) {
-        return InboxAlarmSchedule.next(alarm.optString("date"), alarm.optString("time"),
+        return InboxAlarmSchedule.nextTrigger(alarm.optString("date"), alarm.optString("time"),
                 alarm.optString("repeat", "none"), after, ZoneId.systemDefault());
     }
 

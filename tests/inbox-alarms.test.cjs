@@ -10,6 +10,31 @@ const rules = require('../shared/inbox-alarms');
 const root = path.resolve(__dirname, '..');
 const alarm = (repeat = 'none', date = '2026-09-11', time = '18:00') => ({ date, time, repeat, windows: true });
 const plain = value => JSON.parse(JSON.stringify(value));
+
+test('delivery starts 30 seconds early without changing saved time or occurrence identity', () => {
+  for (const repeat of rules.repeats) {
+    const a = alarm(repeat, '2026-09-11', '17:30');
+    const item = { id: 'lead', alarm: a };
+    const due = now => rules.due([item], new Date(now));
+    assert.equal(due('2026-09-11T17:29:29.999').length, 0);
+    const first = due('2026-09-11T17:29:30')[0];
+    assert.equal(first.key, 'lead|2026-09-11|17:30');
+    assert.equal(first.at, new Date('2026-09-11T17:30:00').getTime());
+    assert.equal(due('2026-09-11T17:30:00')[0].key, first.key);
+    assert.equal(due('2026-09-11T17:39:30').length, 0);
+    assert.equal(a.time, '17:30');
+    assert.match(rules.describe(a), /17:30/);
+  }
+});
+
+test('lead preserves nominal recurrence days across midnight, weekends and month ends', () => {
+  const a = alarm('weekdays', '2026-09-14', '00:00');
+  const result = rules.due([{id:'midnight', alarm:a}], new Date('2026-09-13T23:59:30'));
+  assert.equal(result[0].key, 'midnight|2026-09-14|00:00');
+  assert.equal(rules.due([{id:'midnight', alarm:a}], new Date('2026-09-18T23:59:30')).length, 0);
+  const monthly = rules.nextTrigger(alarm('monthly','2026-01-31','00:00'), new Date('2026-02-01T00:00:00'));
+  assert.equal(monthly.getTime(), new Date('2026-03-30T23:59:30').getTime());
+});
 test('optional alarms reject impossible dates, times, recurrence and extra data', () => {
   assert.equal(rules.normalize(null), null);
   for (const a of [alarm('hourly'), alarm('none','2026-02-30'), alarm('none','2026-09-11','24:00'), alarm('none','0001-01-01')]) assert.equal(rules.normalize(a), null);
@@ -198,6 +223,13 @@ test('Windows scheduler evaluates the same snapshot without showing notices or c
   assert.equal(run('2026-09-11T18:01:00').length,1);
   assert.equal(run('2026-09-12T18:01:00').length,0);
   assert.equal(run('2026-09-14T18:01:00').length,1);
+  assert.equal(run('2026-09-11T17:59:29').length,0);
+  assert.equal(run('2026-09-11T17:59:30')[0].key,'a|2026-09-11|18:00');
+  data.items[0].alarm=alarm('weekdays','2026-09-14','00:00');
+  fs.writeFileSync(snapshot,`[Alarms]\nCount=1\nChunk0=${Buffer.from(JSON.stringify(data)).toString('base64')}\n`);
+  assert.equal(run('2026-09-13T23:59:29').length,0);
+  assert.equal(run('2026-09-13T23:59:30')[0].key,'a|2026-09-14|00:00');
+  assert.equal(run('2026-09-18T23:59:30').length,0);
   assert.equal(fs.existsSync(path.join(dir,'delivered.json')),false);
 });
 
@@ -235,7 +267,7 @@ test('Windows keeps a hidden alarm bridge active without visible widgets', () =>
   assert.match(bridge,/refreshFromCloud/);
   assert.match(packageSource,/ActivateConfig \"Estudiemos\\AlarmBridge\"/);
   assert.match(launcher,/Estudiemos\\AlarmBridge/);
-  assert.match(packageSource,/#define AppVersion \"1\.6\.3\.2\"/);
+  assert.match(packageSource,/#define AppVersion \"1\.6\.3\.3\"/);
 });
 
 test('due Windows alarms show their names in a dismissible full-screen alert with looping sound', () => {
