@@ -12,6 +12,11 @@
   omiten los meses que no tienen dia 31.
 - La hora es local en cada dispositivo. Si viajas, las 18:00 siguen siendo
   las 18:00 del lugar donde esta ese dispositivo.
+- El disparo interno se adelanta 30 segundos: las 17:30 se guardan y muestran
+  como 17:30, pero el aviso es elegible desde las 17:29:30. No cambia la tarea,
+  la interpretacion de IA ni los dias de repeticion. Aplica tambien a alarmas
+  existentes. Windows requiere el componente 1.6.3.3 y Android la app 1.5.9.
+  Web Push requiere aplicar la version actual de `supabase/mobile-notifications.sql`.
 
 Ejemplo para el organizador: "Avisame de resolver la guia de Fisica todos los
 viernes a las 18, desde el 18 de septiembre". Antes de guardar se ve la tarea
@@ -26,7 +31,7 @@ modelo. Genera solicitudes al alojamiento y a la base de datos.
    Tambien podes entrar desde Perfil > **Alarmas con la app cerrada**, o abrir
    https://estudiemos-app.vercel.app/?setup-alarms=1.
 2. Toca **Descargar complemento de alarmas** y abri el archivo descargado. Es un
-   instalador independiente (1.6.3.2): no requiere Rainmeter, widgets ni reinstalar
+   instalador independiente (1.6.3.3): no requiere Rainmeter, widgets ni reinstalar
    la app. Al terminar abre nuevamente la pantalla de activacion.
 3. Marca el consentimiento y toca **Conectar con Windows**. Acepta **Abrir**
    en el navegador. Si no aparece, usa **Abrir activacion de Windows**, sin
@@ -48,7 +53,8 @@ La activacion agrega una tarea del Programador de tareas para el usuario
 actual. No pide su contrasena, no eleva privilegios, no usa servicios pagos
 ni desactiva antivirus. La tarea y su lanzador permanecen ocultos cuando no
 hay avisos; no abren una consola cada minuto. Comprueba los avisos una vez por
-minuto: puede sonar hasta un minuto despues del horario. Tras sincronizar, funciona sin tener
+minuto: con el adelanto puede sonar unos 30 segundos antes o despues del horario,
+mas las demoras de red y del sistema. No garantiza puntualidad exacta. Tras sincronizar, funciona sin tener
 abierta la PWA. Recibe los cambios de otros dispositivos desde la cuenta. Sin
 conexion usa la ultima copia recibida; no puede recibir ediciones nuevas.
 

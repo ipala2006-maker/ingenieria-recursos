@@ -72,15 +72,16 @@ begin
     if start_day < date '2020-01-01' then continue; end if;
     kind := coalesce(alarm->>'repeat','none');
     for day in select d::date from pg_catalog.generate_series(
-      ((now() - interval '10 minutes') at time zone p_timezone)::date::timestamp,
-      (now() at time zone p_timezone)::date::timestamp, interval '1 day') d loop
+      ((now() - interval '10 minutes' + interval '30 seconds') at time zone p_timezone)::date::timestamp,
+      ((now() + interval '30 seconds') at time zone p_timezone)::date::timestamp, interval '1 day') d loop
       if day < start_day then continue; end if;
       if not (kind='daily' or (kind='none' and day=start_day)
         or (kind='weekdays' and extract(isodow from day)<=5)
         or (kind='weekly' and extract(isodow from day)=extract(isodow from start_day))
         or (kind='monthly' and extract(day from day)=extract(day from start_day))) then continue; end if;
       candidate := (day + clock) at time zone p_timezone;
-      if candidate > now() or candidate < now() - interval '10 minutes' then continue; end if;
+      if candidate - interval '30 seconds' > now()
+        or candidate - interval '30 seconds' < now() - interval '10 minutes' then continue; end if;
       task_id := item->>'id'; title := left(coalesce(nullif(item->>'title',''),'Tarea pendiente'),160);
       occurrence := candidate; return next;
     end loop;

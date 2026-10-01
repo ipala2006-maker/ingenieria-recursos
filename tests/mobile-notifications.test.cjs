@@ -10,6 +10,29 @@ const subscription = { endpoint: 'https://web.push.apple.com/Q/test', keys: { p2
 const user = '00000000-0000-4000-8000-000000000001';
 const other = '00000000-0000-4000-8000-000000000002';
 
+test('push becomes eligible 30 seconds early and retains the nominal deduplication timestamp', async () => {
+  const db = new PGlite();
+  try {
+    await db.exec("create role anon; create role authenticated; create role service_role; create schema auth; create table auth.users(id uuid primary key); create table public.user_states(user_id uuid primary key, state jsonb); create function public.test_clock() returns timestamptz language sql stable as $$select current_setting('test.clock')::timestamptz$$;");
+    // Substitute only the clock in an isolated database; production uses now().
+    const sql = fs.readFileSync(path.join(root, 'supabase/mobile-notifications.sql'), 'utf8');
+    await db.exec(sql.replace(/\bnow\(\)/g, 'public.test_clock()'));
+    await db.query('insert into auth.users values ($1)', [user]);
+    const agenda = [{id:'early',title:'Pilot',alarm:{date:'2026-10-05',time:'00:00',repeat:'weekdays'}}];
+    await db.query('insert into user_states values ($1,$2)', [user,{values:{bandeja_agenda:agenda}}]);
+    const due = async clock => {
+      await db.query("select set_config('test.clock',$1,false)",[clock]);
+      return (await db.query('select * from mobile_due_tasks($1,$2)',[user,'UTC'])).rows;
+    };
+    assert.equal((await due('2026-10-04T23:59:29Z')).length,0);
+    const first = (await due('2026-10-04T23:59:30Z'))[0];
+    assert.equal(new Date(first.occurrence).toISOString(),'2026-10-05T00:00:00.000Z');
+    assert.equal(new Date((await due('2026-10-05T00:00:00Z'))[0].occurrence).getTime(),new Date(first.occurrence).getTime());
+    assert.equal((await due('2026-10-09T23:59:30Z')).length,0);
+    assert.equal((await due('2026-10-05T00:09:31Z')).length,0);
+  } finally { await db.close(); }
+});
+
 test('push only accepts encrypted subscriptions to official providers, never arbitrary servers', () => {
   assert.ok(validSubscription(subscription));
   for (const endpoint of ['http://web.push.apple.com/Q/test', 'https://localhost/x', 'https://127.0.0.1/x', 'https://web.push.apple.com.evil.test/x', 'https://user:pass@web.push.apple.com/x', 'https://web.push.apple.com:123/x', 'https://example.com/x']) {

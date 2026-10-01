@@ -3,6 +3,7 @@
   if (typeof module === 'object' && module.exports) module.exports = rules;
   else root.EstudiemosAlarmRules = rules;
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  const LEAD_MS = 30000;
   const repeats = ['none', 'daily', 'weekdays', 'weekly', 'monthly'];
   const labels = { none: 'Una vez', daily: 'Todos los días', weekdays: 'Lunes a viernes', weekly: 'Cada semana', monthly: 'Cada mes' };
   function hasIntent(value) {
@@ -44,12 +45,18 @@
     }
     return null;
   }
+  function nextTrigger(value, after = new Date()) {
+    const nominal = next(value, new Date(after.getTime() + LEAD_MS));
+    return nominal ? new Date(nominal.getTime() - LEAD_MS) : null;
+  }
   function due(items, now = new Date(), grace = 10 * 60000) {
     const previous = new Date(now.getTime() - grace);
     return items.filter(item => item && !item.done).flatMap(item => {
       const alarm = normalize(item.alarm);
-      const at = next(alarm, previous);
-      if (!at || at > now) return [];
+      const trigger = nextTrigger(alarm, previous);
+      if (!trigger || trigger > now) return [];
+      // Keep the original occurrence identity across upgrades and midnight.
+      const at = new Date(trigger.getTime() + LEAD_MS);
       return [{ id: String(item.id), title: String(item.title || 'Tarea').slice(0, 90), at: at.getTime(), key: `${item.id}|${dateKey(at)}|${alarm.time}` }];
     });
   }
@@ -59,5 +66,5 @@
     const [y, m, d] = a.date.split('-');
     return `${d}/${m}/${y} · ${a.time} · ${labels[a.repeat]}`;
   }
-  return { normalize, next, due, occurrence, dateKey, describe, repeats, labels, hasIntent };
+  return { normalize, next, nextTrigger, LEAD_MS, due, occurrence, dateKey, describe, repeats, labels, hasIntent };
 });

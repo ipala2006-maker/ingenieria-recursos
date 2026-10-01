@@ -279,7 +279,7 @@
     if (document.querySelector('script[data-inbox-alarms]')) return;
     const rules = document.createElement('script');
     rules.dataset.inboxAlarms = 'true';
-    rules.src = `${rootPath}shared/inbox-alarms.js?v=20260912`;
+    rules.src = `${rootPath}shared/inbox-alarms.js?v=20260930-lead30`;
     rules.onload = () => {
       const ui = document.createElement('script');
       ui.src = `${rootPath}scripts/inbox-alarms.js?v=20260930-mobile`;
