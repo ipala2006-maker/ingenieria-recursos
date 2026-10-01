@@ -2,6 +2,7 @@ const { enforceRateLimit, setSecurityHeaders } = require("./_lib/request-securit
 
 module.exports = async function handler(request, response) {
   setSecurityHeaders(response);
+  if (request.query?.friends === '1') return require('./_lib/friends')(request,response);
   if (request.method !== "GET") {
     response.setHeader("Allow", "GET");
     return response.status(405).json({ message: "Método no permitido." });

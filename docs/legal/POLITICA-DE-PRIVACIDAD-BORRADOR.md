@@ -29,6 +29,11 @@ Estudiemos puede tratar:
 - Datos técnicos: dirección IP, navegador, sistema operativo, dispositivo e información necesaria para seguridad y funcionamiento.
 - Datos de pagos futuros: identificadores de operación, plan, importe, moneda, estado y fechas. Estudiemos no almacenará el número completo de tarjeta ni el código de seguridad.
 - Comunicaciones: sugerencias, consultas y reclamos enviados voluntariamente.
+- Amigos: alias elegido, solicitudes, relaciones aceptadas, bloqueos y preferencia
+  de compartir la racha. La racha es privada por defecto. Si se activa, los amigos
+  aceptados pueden ver los días consecutivos de estudio en su ranking; no reciben
+  el correo, teléfono, tareas ni historial diario. Ocultar la racha impide nuevas
+  consultas, pero no elimina copias que otros ya hayan realizado.
 
 ## 3. Finalidades
 

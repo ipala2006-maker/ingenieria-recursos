@@ -1,0 +1,92 @@
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const vm=require('node:vm');
+const {PGlite}=require('@electric-sql/pglite');
+const root=path.resolve(__dirname,'..');
+const ids=[1,2,3,4].map(i=>`00000000-0000-4000-8000-${String(i).padStart(12,'0')}`);
+async function database(){
+  const db=new PGlite();
+  await db.exec('create role anon; create role authenticated; create role service_role; create schema auth; create table auth.users(id uuid primary key); create table public.user_states(user_id uuid primary key,state jsonb);');
+  await db.exec(fs.readFileSync(path.join(root,'supabase/friends.sql'),'utf8'));
+  for(const id of ids)await db.query('insert into auth.users values($1)',[id]);
+  return db;
+}
+const call=async(db,user,action='list',data={})=>(await db.query('select friends_action($1,$2,$3) as result',[user,action,data])).rows[0].result;
+test('friends require acceptance; privacy applies in SQL, including hiding again and removal',async()=>{
+  const db=await database();try{
+    const [a,b,c]=ids;
+    const alice=await call(db,a),bob=await call(db,b);
+    assert.equal(alice.me.share,false);assert.deepEqual(alice.friends,[]);
+    await call(db,b,'profile',{name:'Bob',share:true,timezone:'UTC'});
+    const rows=(await db.query("select to_char((now() at time zone 'UTC')::date-i,'YYYY-MM-DD') as day from generate_series(0,2)i")).rows;
+    await db.query('insert into user_states values($1,$2)',[b,{values:{estudiemos_pomodoro_streak:JSON.stringify({days:Object.fromEntries(rows.map(r=>[r.day,25]))}),bandeja_agenda:[{title:'PRIVATE'}]}}]);
+    let result=await call(db,a,'request',{invite:bob.me.invite});
+    assert.equal(result.outgoing.length,1);assert.deepEqual(result.friends,[]);assert.ok(!JSON.stringify(result).includes('streak":3'));
+    await assert.rejects(call(db,a,'accept',{id:b}),/REQUEST_NOT_FOUND/);
+    await assert.rejects(call(db,c,'accept',{id:a}),/REQUEST_NOT_FOUND/);
+    await call(db,b,'request',{invite:alice.me.invite});
+    assert.equal((await call(db,b)).incoming.length,1,'reciprocal request does not silently accept');
+    await call(db,b,'accept',{id:a});
+    result=await call(db,a);assert.equal(result.friends[0].streak,3);assert.equal(result.friends[0].name,'Bob');
+    assert.ok(!JSON.stringify(result).includes('PRIVATE'));assert.ok(!JSON.stringify(result).includes(bob.me.invite));
+    assert.deepEqual((await call(db,c)).friends,[]);
+    await call(db,b,'profile',{name:'Bob',share:false,timezone:'UTC'});
+    assert.equal((await call(db,a)).friends[0].streak,null);
+    await call(db,a,'remove',{id:b});assert.deepEqual((await call(db,b)).friends,[]);
+    await db.exec('set role authenticated');
+    for(const query of ['select * from friend_profiles','select * from friend_links','select * from friend_blocks',`select friend_streak('${b}','UTC')`,`select friends_action('${b}','list','{}')`])await assert.rejects(db.query(query),/permission denied/);
+    await db.exec('reset role; set role anon');
+    await assert.rejects(db.query('select * from friend_profiles'),/permission denied/);
+    await db.exec('reset role; set role service_role');
+    assert.equal((await call(db,a)).me.id,a);
+  }finally{await db.close();}
+});
+test('block, unblock, cancellation and link rotation preserve control without disclosing blocked users',async()=>{
+  const db=await database();try{
+    const [a,b]=ids,alice=await call(db,a),bob=await call(db,b);
+    await assert.rejects(call(db,a,'request',{invite:alice.me.invite}),/INVALID_INVITE/);
+    await call(db,a,'request',{invite:bob.me.invite});
+    await call(db,b,'block',{id:a});
+    await assert.rejects(call(db,a,'request',{invite:bob.me.invite}),/INVALID_INVITE/);
+    assert.deepEqual((await call(db,a)).blocked,[]);
+    assert.equal((await call(db,b)).blocked[0].id,a);
+    await call(db,b,'unblock',{id:a});
+    await call(db,a,'request',{invite:bob.me.invite});await call(db,a,'decline',{id:b});
+    assert.deepEqual((await call(db,b)).incoming,[]);
+    const rotated=await call(db,b,'rotate');assert.notEqual(rotated.me.invite,bob.me.invite);
+    await assert.rejects(call(db,a,'request',{invite:bob.me.invite}),/INVALID_INVITE/);
+    await call(db,a,'request',{invite:rotated.me.invite});
+    assert.equal((await call(db,b)).incoming.length,1);
+  }finally{await db.close();}
+});
+test('streak matches local 25-minute rule, tolerates invalid history, and enforces profile validation and write limits',async()=>{
+  const db=await database();try{
+    const [a]=ids;await call(db,a);
+    await assert.rejects(call(db,a,'profile',{name:'',share:true,timezone:'UTC'}),/INVALID_PROFILE/);
+    await assert.rejects(call(db,a,'profile',{name:'Pilot',share:true,timezone:'invalid'}),/INVALID_TIMEZONE/);
+    const rows=(await db.query("select to_char((now() at time zone 'UTC')::date-i,'YYYY-MM-DD') as day,i from generate_series(0,3)i")).rows;
+    const days=Object.fromEntries(rows.map(r=>[r.day,r.i===0?24:r.i===3?0:25]));
+    await db.query('insert into user_states values($1,$2)',[a,{values:{estudiemos_pomodoro_streak:{days}}}]);
+    assert.equal((await call(db,a)).me.streak,2,'yesterday sustains unfinished today');
+    await db.query('update user_states set state=$2 where user_id=$1',[a,{values:{estudiemos_pomodoro_streak:'invalid'}}]);
+    assert.equal((await call(db,a)).me.streak,0);
+    for(let i=0;i<20;i++)await call(db,a,'profile',{name:'Pilot',share:false,timezone:'UTC'});
+    await assert.rejects(call(db,a,'rotate'),/TOO_MANY_ACTIONS/);
+    assert.equal((await call(db,a)).me.share,false,'read access still works');
+  }finally{await db.close();}
+});
+test('API authenticates server-side, ignores forged actor and returns only generic backend errors',async()=>{
+  let actor=ids[0],calls=[];
+  const handler={module:{exports:{}},require:name=>name==='./supabase-admin'?{
+    authenticateBearer:async()=>actor?{id:actor}:null,
+    adminRequest:async(url,options)=>{calls.push(JSON.parse(options.body));return {friends:[]};}
+  }:{setSecurityHeaders:()=>{},isSameOriginRequest:()=>true,requireJsonRequest:()=>true,rejectOversizedBody:()=>false,enforceRateLimit:async()=>true}};
+  vm.runInNewContext(fs.readFileSync(path.join(root,'api/_lib/friends.js'),'utf8'),handler);
+  const response={status(code){this.code=code;return this;},json(body){this.body=body;return this;}};
+  const req={method:'POST',headers:{authorization:'Bearer pilot'},body:{action:'request',invite:'a'.repeat(32),p_user:ids[1],id:ids[1]}};
+  await handler.module.exports(req,response);assert.equal(response.code,200);assert.equal(calls[0].p_user,ids[0]);assert.deepEqual(Object.keys(calls[0].p_data),['invite']);
+  actor=null;await handler.module.exports(req,response);assert.equal(response.code,401);assert.equal(calls.length,1);
+  actor=ids[0];req.body.invite='bad';await handler.module.exports(req,response);assert.equal(response.code,400);
+});
