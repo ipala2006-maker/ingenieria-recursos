@@ -35,6 +35,9 @@ jobs:
       - name: Test mobile notifications
         run: npm run test:mobile
 
+      - name: Test friend privacy and permissions
+        run: node --test tests/friends.test.cjs
+
       - name: Run application tests
         run: node --test tests/*.test.js tests/free-release.test.cjs tests/commercial-launch-hidden.test.cjs tests/home-board.test.cjs tests/home-free-layout.test.cjs tests/home-layout-storage.test.cjs tests/windows-setup-flow.test.cjs
 
