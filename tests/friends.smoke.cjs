@@ -1,4 +1,4 @@
-const {chromium}=require('../tmp/ui-check/node_modules/playwright');
+const {chromium,webkit}=require('../tmp/ui-check/node_modules/playwright');
 const {PGlite}=require('@electric-sql/pglite');
 const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
 const root=path.resolve(__dirname,'..'),output=path.join(root,'tmp/friends-check');
@@ -29,7 +29,9 @@ const ids=['00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-00000
       try{const ext=path.extname(file);res.setHeader('Content-Type',({'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.png':'image/png','.webp':'image/webp'})[ext]||'application/octet-stream');res.end(fs.readFileSync(file));}catch(_){res.writeHead(404).end();}
     });
     await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const base=`http://127.0.0.1:${server.address().port}/`;
-    browser=await chromium.launch({channel:'msedge',headless:true,args:['--enable-unsafe-swiftshader']});
+    browser=process.env.FRIENDS_BROWSER==='webkit'
+      ? await webkit.launch({headless:true})
+      : await chromium.launch({channel:'msedge',headless:true,args:['--enable-unsafe-swiftshader']});
     const pages=[],errors=[];
     for(const [i,id] of ids.entries()){
       const context=await browser.newContext({viewport:i?{width:390,height:844}:{width:1366,height:768}});
