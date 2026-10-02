@@ -2,7 +2,6 @@
   const page = document.querySelector(".install-page");
   const installButton = document.querySelector("[data-install-pc]");
   const installStatus = document.querySelector("[data-install-pc-status]");
-  const manualGuide = document.querySelector("[data-install-pc-guide]");
   const widgetInstaller = document.querySelector("[data-install-windows-widgets]");
   const requestedWidgetMessage = document.querySelector("[data-requested-widget]");
   const tourTabs = Array.from(document.querySelectorAll("[data-tour-target]"));
@@ -25,7 +24,6 @@
   const isIosWebKit = /iP(?:hone|ad|od)/i.test(navigator.userAgent)
     || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
-  let installPrompt = null;
   let widgetIndex = 0;
   let widgetTimer = null;
   let widgetPausedByUser = false;
@@ -111,17 +109,15 @@
   }
 
   if (installButton) {
-    if (isInstalled()) showInstalledState();
-
-    window.addEventListener("beforeinstallprompt", (event) => {
-      event.preventDefault();
-      installPrompt = event;
-      installButton.disabled = false;
-      installStatus.textContent = "Lista para instalar. Se agrega como aplicación sin descargar un archivo .exe.";
+    // Keep the real download link usable without JavaScript and in installed PWAs.
+    installButton.addEventListener('click', (event) => {
+      if (!/Windows/i.test(navigator.userAgent)) {
+        event.preventDefault();
+        installStatus.textContent = 'Este instalador es para Windows. En Android o iPhone elegí la opción de tu dispositivo.';
+        return;
+      }
+      installStatus.textContent = 'Abrí Estudiemos-Para-Windows.exe desde Descargas. Instala la app, los widgets y el soporte de alarmas juntos.';
     });
-
-    window.addEventListener("appinstalled", showInstalledState);
-    installButton.addEventListener("click", installApplication);
   }
 
   widgetInstaller?.addEventListener("click", () => {
@@ -374,45 +370,6 @@
     widgetPause.textContent = widgetPausedByUser ? "▶" : "Ⅱ";
     if (widgetPausedByUser) stopWidgetRotation();
     else startWidgetRotation();
-  }
-
-  async function installApplication() {
-    if (isInstalled()) {
-      location.href = referralCode
-        ? `https://estudiemos-app.vercel.app/?ref=${encodeURIComponent(referralCode)}`
-        : "https://estudiemos-app.vercel.app/";
-      return;
-    }
-
-    if (installPrompt) {
-      const prompt = installPrompt;
-      installPrompt = null;
-      await prompt.prompt();
-      const choice = await prompt.userChoice;
-      if (choice.outcome === "accepted") {
-        showInstalledState();
-      } else {
-        installStatus.textContent = "La instalación se canceló. Podés intentarlo nuevamente cuando quieras.";
-      }
-      return;
-    }
-
-    manualGuide.hidden = false;
-    manualGuide.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    installStatus.textContent = "Tu navegador no mostró el instalador automático. Seguí estos tres pasos.";
-  }
-
-  function showInstalledState() {
-    if (!installButton || !installStatus || !manualGuide) return;
-    installButton.textContent = "Abrir Estudiemos";
-    installButton.disabled = false;
-    installStatus.textContent = "Estudiemos ya está instalada en este dispositivo.";
-    manualGuide.hidden = true;
-  }
-
-  function isInstalled() {
-    return window.navigator.standalone === true
-      || ["standalone", "window-controls-overlay", "fullscreen"].some((mode) => window.matchMedia(`(display-mode: ${mode})`).matches);
   }
 
   function normalizeReferralCode(value) {

@@ -1,5 +1,36 @@
 # Widgets y alarmas: recorrido de instalacion
 
+## Instalacion completa de Windows (1.6.4.0)
+
+El boton principal de instalar.html y el boton Instalar dentro de la web
+descargan Estudiemos-Para-Windows.exe. Es el mismo paquete verificado que
+el complemento, ahora con accesos directos en Escritorio e Inicio.
+Incluye Rainmeter, los cuatro widgets disponibles y AlarmService. No instala
+programas pagos ni cambia SmartScreen. Requiere Windows x64 compatible.
+
+El acceso abre la web real en una ventana de Edge (Chrome como alternativa),
+sin crear otro perfil de navegador. No es un nuevo motor nativo ni una
+instalacion PWA silenciosa. La interfaz se actualiza desde la web; cambios
+del componente de Windows requieren actualizar el instalador.
+
+Al finalizar abre directamente Conectar alarmas, sin otra descarga. Iniciar
+sesion y consentir la consulta de alarmas sigue siendo necesario. La marca
+windows-bundle es solo una pista de instalacion, nunca prueba de identidad
+ni autorizacion: el recibo autenticado sigue siendo obligatorio.
+No se agrega ningun widget visible sin elegirlo. Desde Perfil, el + usa
+el soporte instalado y pide abrir el protocolo del navegador si corresponde.
+Las conexiones existentes cifradas con DPAPI no se borran ni reemplazan.
+
+La instalacion de Android y la de iPhone no cambian. Los sistemas moviles
+siguen requiriendo sus propios permisos de notificacion.
+
+Verificado: compilacion Inno Setup de los siete paquetes, instalacion de
+actualizacion real en Windows con el registro indicando exito, acceso directo
+apuntando a AppLauncher y tarea Inbox habilitada/oculta con AlarmService.
+La prueba de navegador windows-bundle.smoke.cjs usa almacenamiento vacio y
+comprueba descarga, un solo modal, consentimiento y paso a inicio de sesion.
+No equivale a una prueba en una PC virgen ni elimina avisos de SmartScreen.
+
 ## Widgets
 
 1. En Perfil, elegir el widget. Desde la pagina de descarga, elegir Inbox,
@@ -37,6 +68,6 @@ permisos web para resolver una funcion que requiere el complemento de Windows.
 
 Las pruebas automatizadas simulan protocolos y respuestas sin instalar,
 vincular cuentas reales ni disparar alarmas. La revision visual usa un servidor
-local sin cuentas. El componente nativo no cambia en esta revision; el flujo
-real de Windows depende de aceptar su aviso y abrir el instalador.
+local sin cuentas. El flujo real de Windows depende de aceptar su aviso y
+abrir el instalador.
 No se evitan SmartScreen, antivirus ni permisos del sistema.

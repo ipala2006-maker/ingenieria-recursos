@@ -287,7 +287,7 @@
     rules.src = `${rootPath}shared/inbox-alarms.js?v=20260930-lead30`;
     rules.onload = () => {
       const ui = document.createElement('script');
-      ui.src = `${rootPath}scripts/inbox-alarms.js?v=20260930-mobile`;
+      ui.src = `${rootPath}scripts/inbox-alarms.js?v=20261001-bundle`;
       document.head.appendChild(ui);
     };
     document.head.appendChild(rules);
@@ -343,7 +343,7 @@
     if (document.querySelector('script[src*="scripts/account.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/account.js?v=20260929-device`;
+    script.src = `${rootPath}scripts/account.js?v=20261001-bundle`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -361,7 +361,7 @@
     if (document.querySelector('script[src*="scripts/install-app.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/install-app.js?v=20260824-installed-context`;
+    script.src = `${rootPath}scripts/install-app.js?v=20261001-bundle`;
     script.defer = true;
     document.head.appendChild(script);
   }

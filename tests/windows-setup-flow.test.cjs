@@ -6,6 +6,39 @@ const vm=require('node:vm');
 const account=fs.readFileSync(path.join(__dirname,'../scripts/account.js'),'utf8');
 const alarms=fs.readFileSync(path.join(__dirname,'../scripts/inbox-alarms.js'),'utf8');
 
+test('bundle marker skips only installation, never account consent or verification',()=>{
+  const saved=new Map();let replaced;
+  const c={URL,location:{href:'https://estudiemos-app.vercel.app/?windows-bundle=1&alarms-setup=1'},
+    history:{state:null,replaceState:(_s,_t,url)=>replaced=url},WINDOWS_WIDGETS_READY_KEY:'widgets',
+    localStorage:{getItem:k=>saved.get(k),setItem:(k,v)=>saved.set(k,v)},window:{setTimeout:()=>assert.fail('must not open another dialog')}};
+  vm.createContext(c);
+  vm.runInContext(account.slice(account.indexOf('  function consumeWindowsWidgetsReadyMarker('),account.indexOf('  function setDesktopWidgetBusy(')),c);
+  c.consumeWindowsWidgetsReadyMarker();
+  assert.equal(saved.get('widgets'),'true');assert.equal(saved.get('estudiemos_windows_bundle_installed'),'true');
+  assert.equal(replaced,'/?alarms-setup=1');assert.equal(saved.size,2,'no credential or verified connection created');
+  const setup={open:false,showModal(){this.open=true;}};
+  const a={setupStage:'install',nativeReady:()=>false,localStorage:c.localStorage,setup,renderNativeStatus(){}};
+  vm.createContext(a);
+  vm.runInContext(alarms.slice(alarms.indexOf('  function showSetup('),alarms.indexOf('  function setSetupStage(')),a);
+  a.showSetup();assert.equal(a.setupStage,'connect');assert.equal(setup.open,true);
+});
+
+test('Windows download includes app shortcuts, widgets and the hidden alarm service',()=>{
+  const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
+  const landing=read('instalar.html'),installer=read('windows-installer/Estudiemos-Windows.iss');
+  assert.match(landing,/data-install-pc href="https:\/\/estudiemos-app.vercel.app\/downloads\/Estudiemos-Para-Windows.exe" download/);
+  assert.match(read('scripts/install-app.js'),/rootUrl\('downloads\/Estudiemos-Para-Windows.exe'\)/);
+  assert.doesNotMatch(read('scripts/install-page.js'),/prompt\.prompt\(/,'PC download must not fall back to PWA-only installation');
+  assert.match(installer,/Name: "\{userdesktop\}\\Estudiemos"/);
+  assert.match(installer,/Name: "\{userprograms\}\\Estudiemos"/);
+  assert.match(installer,/AlarmService\\InstallInboxAlarm.ps1/);
+  assert.match(installer,/not WizardSilent/,'silent maintenance must not open the app');
+  const launcher=read('windows-installer/AppLauncher.vbs');
+  assert.match(launcher,/--app=/);assert.match(launcher,/windows-bundle=1/);
+  assert.match(launcher,/If WScript.Arguments\(0\) = "--setup"/);
+  assert.doesNotMatch(launcher,/--user-data-dir|--disable-web-security|ExecutionPolicy/);
+});
+
 function widgetHarness(){
   const saved=new Map(),links=[],messages=[],busy=[];
   const controls=new Map();

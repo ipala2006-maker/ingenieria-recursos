@@ -42,7 +42,7 @@
     const link=setup.querySelector('[data-alarm-file-download]');link.hidden=true;link.removeAttribute('href');
   }
   setup.addEventListener('close',clearConnectionFile);
-  function showSetup(){if(nativeReady())setupStage='test';renderNativeStatus();if(!setup.open)setup.showModal();}
+  function showSetup(){if(nativeReady())setupStage='test';else if(setupStage==='install'&&localStorage.getItem('estudiemos_windows_bundle_installed')==='true')setupStage='connect';renderNativeStatus();if(!setup.open)setup.showModal();}
   function setSetupStage(stage){setupStage=stage;sessionStorage.setItem('estudiemos_alarm_setup_stage',stage==='install'?'install':'connect');nativeMessage='';renderNativeStatus();if(setup.open)setup.querySelector(`[data-alarm-stage="${setupStage}"]`)?.querySelector('a, input, button')?.focus();}
   function signInForSetup(){setup.close();setupAfterSignIn=true;window.EstudiemosAccount?.open?.();}
   function launchNative(url){const link=document.createElement('a');link.href=url;document.body.appendChild(link);link.click();link.remove();}

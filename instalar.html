@@ -238,19 +238,19 @@
             <div class="install-option__meta"><span class="install-option__platform">Windows</span><span class="install-option__current">Versión actual</span></div>
             <div class="install-option__glyph" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div>
             <h3>Estudiemos para PC</h3>
-            <p>Usala como cualquier otro programa, con acceso directo y actualizaciones automáticas.</p>
-            <button class="install-option__button" type="button" data-install-pc>Instalar para PC <span aria-hidden="true">→</span></button>
-            <small data-install-pc-status>No descarga instaladores externos ni modifica la seguridad del equipo.</small>
+            <p>Una sola instalación: Estudiemos, widgets y alarmas. Con acceso directo en tu escritorio.</p>
+            <a class="install-option__button" data-install-pc href="https://estudiemos-app.vercel.app/downloads/Estudiemos-Para-Windows.exe" download="Estudiemos-Para-Windows.exe">Descargar para Windows <span aria-hidden="true">↓</span></a>
+            <small data-install-pc-status>Abrí el archivo descargado. Después iniciá sesión y autorizá las alarmas una vez. No desactives la seguridad de Windows.</small>
 
             <section class="install-addon" id="pc-widgets" aria-labelledby="pcWidgetsTitle">
               <div class="install-addon__head">
                 <div>
-                  <span>OPCIONAL</span>
+                  <span>INCLUIDOS</span>
                   <h4 id="pcWidgetsTitle">Widgets de escritorio</h4>
                 </div>
                 <span class="install-addon__count">4 widgets</span>
               </div>
-              <p>Elegí uno para empezar. Estudiemos conserva tu elección y te guía para instalarlo y conectarlo a tu cuenta.</p>
+              <p>El soporte ya viene con la instalación de Windows. Agregá solo los widgets que quieras desde tu perfil.</p>
               <p class="install-addon__request" data-requested-widget hidden></p>
               <div class="install-widget-choices" aria-label="Elegir widget">
                 <a href="./?setup-widget=inbox">Inbox <span aria-hidden="true">+</span></a>
@@ -259,7 +259,7 @@
                 <a href="./?setup-widget=streak">Racha <span aria-hidden="true">+</span></a>
               </div>
               <a class="install-option__button install-option__button--secondary" data-continue-widget hidden href="./">Continuar con mi widget <span aria-hidden="true">→</span></a>
-              <small>Complemento gratuito. Se instala una sola vez; no agrega todos los widgets juntos.</small>
+              <small>No necesitás otra descarga si instalaste Estudiemos para Windows. Tu escritorio queda como vos elijas.</small>
               <details class="install-option__manual" data-windows-download-help>
                 <summary>Descarga manual y ayuda de Windows</summary>
                 <a class="install-option__retry" data-install-windows-widgets href="https://estudiemos-app.vercel.app/downloads/Estudiemos-Widgets-para-Windows.exe" download="Estudiemos-Widgets-para-Windows.exe">Descargar complemento de widgets</a>
@@ -275,19 +275,11 @@
             </section>
 
             <section class="install-addon" aria-labelledby="pcAlarmsTitle">
-              <div class="install-addon__head"><div><span>OPCIONAL</span><h4 id="pcAlarmsTitle">Alarmas con la app cerrada</h4></div></div>
-              <p>Un aviso con sonido ocupa toda la pantalla de Windows cuando llega la hora de tu tarea. No requiere widgets.</p>
+              <div class="install-addon__head"><div><span>INCLUIDAS · REQUIEREN TU PERMISO</span><h4 id="pcAlarmsTitle">Alarmas con la app cerrada</h4></div></div>
+              <p>El soporte se instala junto con Estudiemos. Conectá tu cuenta una vez para recibir tus alarmas en toda la pantalla, incluso con la app cerrada.</p>
               <a class="install-option__button install-option__button--secondary" href="./?setup-alarms=1">Activar alarmas en esta PC <span aria-hidden="true">→</span></a>
             </section>
 
-            <div class="install-pc-guide" data-install-pc-guide hidden>
-              <strong>Instalación desde Edge o Chrome</strong>
-              <ol>
-                <li>Abrí el menú de los tres puntos.</li>
-                <li>Entrá en <strong>Aplicaciones</strong>.</li>
-                <li>Elegí <strong>Instalar Estudiemos</strong>.</li>
-              </ol>
-            </div>
           </article>
         </div>
       </section>
@@ -314,6 +306,6 @@
       </div>
     </footer>
 
-    <script src="./scripts/install-page.js?v=20260929-setup"></script>
+    <script src="./scripts/install-page.js?v=20261001-bundle"></script>
   </body>
 </html>
