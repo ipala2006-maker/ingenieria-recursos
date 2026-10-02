@@ -1401,6 +1401,13 @@
 
   function consumeWindowsWidgetsReadyMarker() {
     const url = new URL(location.href);
+    // Installer hint only: never treat this as proof of account/alarm connection.
+    if (url.searchParams.get('windows-bundle') === '1') {
+      localStorage.setItem(WINDOWS_WIDGETS_READY_KEY, 'true');
+      localStorage.setItem('estudiemos_windows_bundle_installed', 'true');
+      url.searchParams.delete('windows-bundle');
+      history.replaceState(history.state, '', `${url.pathname}${url.search}${url.hash}`);
+    }
     const ready = url.searchParams.get("windows-widgets-ready") === "1";
     const returnedWidget = url.searchParams.get("windows-widget-added") || "";
     const addedWidget = ['inbox','calendar','pomodoro','streak'].includes(returnedWidget)?returnedWidget:'';

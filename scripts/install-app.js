@@ -68,6 +68,15 @@
       location.href = ANDROID_OPEN_URL;
       return;
     }
+    if (/Windows/i.test(navigator.userAgent)) {
+      const download = document.createElement('a');
+      download.href = rootUrl('downloads/Estudiemos-Para-Windows.exe');
+      download.download = 'Estudiemos-Para-Windows.exe';
+      document.body.appendChild(download); download.click(); download.remove();
+      openGuide();
+      sheet.querySelector('[data-install-content]').innerHTML = '<p class="app-install-sheet__lead">Abrí <strong>Estudiemos-Para-Windows.exe</strong> desde Descargas. Incluye la app, los widgets y el soporte de alarmas.</p><p>Al terminar, iniciá sesión y autorizá las alarmas una vez. Elegís los widgets desde tu perfil. No desactives la seguridad de Windows.</p><button class="app-install-sheet__primary" type="button" data-install-close>Entendido</button>';
+      return;
+    }
     if (installPrompt) {
       const prompt = installPrompt;
       installPrompt = null;

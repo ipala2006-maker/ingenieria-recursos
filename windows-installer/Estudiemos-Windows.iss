@@ -1,4 +1,4 @@
-#define AppVersion "1.6.3.3"
+#define AppVersion "1.6.4.0"
 #define RainmeterInstaller "Rainmeter-4.5.26.exe"
 #ifndef OutputBaseName
   #define OutputBaseName "Estudiemos-Widgets-para-Windows"
@@ -9,7 +9,7 @@
 
 [Setup]
 AppId={{A75D2076-BCB9-4C41-A079-FE92871549C4}
-AppName=Widgets de Estudiemos
+AppName=Estudiemos para Windows
 AppVersion={#AppVersion}
 ChangesAssociations=yes
 AppPublisher=Estudiemos
@@ -37,13 +37,15 @@ OutputBaseFilename={#OutputBaseName}
 SetupIconFile=..\assets\estudiemos.ico
 VersionInfoVersion={#AppVersion}
 VersionInfoCompany=Estudiemos
-VersionInfoDescription=Soporte de widgets de escritorio para Estudiemos
-VersionInfoProductName=Widgets de Estudiemos
+VersionInfoDescription=Estudiemos con widgets y alarmas para Windows
+VersionInfoProductName=Estudiemos
 
 [Languages]
 Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
 
 [Files]
+Source: "AppLauncher.vbs"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\assets\estudiemos.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "vendor\{#RainmeterInstaller}"; Flags: dontcopy
 Source: "WidgetLauncher.vbs"; DestDir: "{app}"; Flags: ignoreversion
 Source: "AlarmLauncher.vbs"; DestDir: "{app}"; Flags: ignoreversion
@@ -61,6 +63,8 @@ Source: "..\windows-rainmeter\Skins\Estudiemos\*"; DestDir: "{code:GetSkinDirect
 Source: "..\windows-rainmeter\Plugins\64bit\WebView2.dll"; DestDir: "{code:GetRainmeterPluginDirectory}"; Flags: ignoreversion restartreplace
 
 [Icons]
+Name: "{userdesktop}\Estudiemos"; Filename: "{sys}\wscript.exe"; Parameters: """{app}\AppLauncher.vbs"""; WorkingDir: "{app}"; IconFilename: "{app}\estudiemos.ico"; Comment: "Abrir Estudiemos"
+Name: "{userprograms}\Estudiemos"; Filename: "{sys}\wscript.exe"; Parameters: """{app}\AppLauncher.vbs"""; WorkingDir: "{app}"; IconFilename: "{app}\estudiemos.ico"; Comment: "Abrir Estudiemos"
 Name: "{userstartup}\Rainmeter"; Filename: "{code:GetRainmeterExecutable}"; WorkingDir: "{code:GetRainmeterDirectory}"; Comment: "Iniciar los widgets de Estudiemos con Windows"
 
 [Registry]
@@ -205,7 +209,7 @@ begin
       GetRainmeterDirectory(''), SW_HIDE, ewWaitUntilTerminated, ResultCode);
     ReminderScript := ExpandConstant('{app}\StreakReminder.ps1');
     Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
-      '-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + ExpandConstant('{app}\InstallInboxAlarm.ps1') + '" -ResourceDirectory "' + GetSkinDirectory('') + '\Estudiemos\@Resources"',
+      '-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + ExpandConstant('{app}\AlarmService\InstallInboxAlarm.ps1') + '" -ResourceDirectory "' + GetSkinDirectory('') + '\Estudiemos\@Resources"',
       '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
     if ResultCode <> 0 then
       MsgBox('Los widgets se instalaron, pero Windows no pudo activar las alarmas de Inbox. Podés usar las alarmas con la app abierta y volver a instalar el soporte más tarde.', mbInformation, MB_OK);
@@ -230,10 +234,10 @@ begin
         '', SW_HIDE, ewNoWait, ResultCode);
     end;
 
-    if RequestedWidget = '' then
-      ShellExecAsOriginalUser('',
-        'https://estudiemos-app.vercel.app/?windows-widgets-ready=1',
-        '', '', SW_SHOWNORMAL, ewNoWait, ResultCode);
+    if (RequestedWidget = '') and (not WizardSilent) then
+      ExecAsOriginalUser(ExpandConstant('{sys}\wscript.exe'),
+        '"' + ExpandConstant('{app}\AppLauncher.vbs') + '" --setup',
+        '', SW_HIDE, ewNoWait, ResultCode);
 
   end;
 end;
