@@ -3,14 +3,19 @@
 ## Uso
 
 1. Abrir Amigos desde el icono de personas de la barra superior e iniciar sesion.
-2. En Mi nombre y privacidad, elegir un alias. Compartir la racha es opcional
+2. En el icono de ajustes (Mi nombre y privacidad), elegir un alias. Compartir la racha es opcional
    y viene desactivado. No se publica el correo ni el telefono.
-3. Copiar el enlace y enviarlo por el medio que prefieras. Al abrirlo, el otro
-   usuario puede iniciar sesion y enviar una solicitud. No se acepta sola.
+3. Tocar +, copiar la invitacion y enviarla por el medio que prefieras. Al abrirla,
+   se envia la solicitud automaticamente con la cuenta iniciada. Si falta iniciar
+   sesion, el enlace espera hasta que termine el acceso. No hay que pegarlo de nuevo.
 4. Aceptar en Solicitudes. El ranking muestra dias consecutivos, solo entre
    amigos aceptados con racha compartida. Los empates tienen el mismo puesto.
 5. Quitar o bloquear desde las opciones del amigo. Un bloqueo elimina la
    amistad. Desbloquear no la restaura automaticamente.
+
+Todos muestra la lista completa, incluso amigos con racha privada. Ranking muestra
+solo quienes la comparten. Desde seis amigos aparece un buscador por nombre.
+Las solicitudes pendientes se muestran arriba de la lista, sin abrir otro menu.
 
 El ranking conserva el criterio de la app: 25 minutos registrados por dia.
 Si hoy aun no se completo el objetivo, mantiene la racha de ayer. Se calcula
@@ -33,6 +38,12 @@ fuente de minutos existente sigue siendo el temporizador del dispositivo.
   no puede borrar lo que alguien ya vio o capturo.
 - Invitaciones aleatorias de 128 bits, revocables. Los enlaces no identifican
   la cuenta publicamente. Cada amistad requiere aceptacion del destinatario.
+- Abrir un enlace envia una solicitud, no acepta una amistad ni comparte la racha.
+  Una invitacion pendiente se conserva localmente hasta 24 horas para sobrevivir
+  recargas e inicio de sesion. Antes de enviarla queda vinculada a esa cuenta;
+  no se reutiliza con otra. Se elimina al completar, caducar o resultar invalida.
+  Un error de conexion permite reintentar sin duplicar solicitudes. No se envia
+  correo ni se permite buscar cuentas privadas por email.
 - Limite de 100 relaciones (amigos + solicitudes) por cuenta y 200 bloqueos.
   Limite persistente de 20 cambios/minuto por cuenta mas limitacion de API.
 - Actualiza al abrir, manualmente o cada 60 segundos solo con Amigos visible;
@@ -49,4 +60,6 @@ fuente de minutos existente sigue siendo el temporizador del dispositivo.
 Las pruebas usan PostgreSQL embebido y cuentas ficticias locales: invitacion,
 aceptacion, ranking, retirada de consentimiento, bloqueos, rotacion, RLS,
 suplantacion del actor, limites y vistas de escritorio/movil/claro/oscuro.
+El recorrido de navegador tambien comprueba enlaces directos, login diferido,
+recarga, enlaces repetidos/propios/invalidos, reintento y cambios de fragmento.
 No crean usuarios ni amistades en produccion.
