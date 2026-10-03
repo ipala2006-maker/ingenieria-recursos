@@ -35,7 +35,7 @@ export function createStudyChart(host,onSelect) {
     mode=next;const request=++generation;scene?.dispose();scene=null;draw();
     if(next!=='depth')return;
     try{
-      const {createProgressDepth}=await import('./progress-depth.js?v=20260914-chart');
+      const {createProgressDepth}=await import('./progress-depth.js?v=20261003-refined');
       if(disposed||request!==generation)return;
       scene=createProgressDepth(host,onSelect);scene.update(days,selected);
     }catch(_){if(request===generation){mode='bars';draw();}}

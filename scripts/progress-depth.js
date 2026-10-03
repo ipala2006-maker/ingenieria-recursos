@@ -13,17 +13,17 @@ export function createProgressDepth(host, onSelect) {
   if(!context) {renderer.dispose();throw new Error('Canvas unavailable');}
   const scene=new THREE.Scene(), group=new THREE.Group();
   const camera=new THREE.OrthographicCamera(-160,160,90,-90,.1,1000);
-  camera.position.set(0,125,400); camera.lookAt(0,44,0);
+  camera.position.set(0,90,400); camera.lookAt(0,43,0);
   scene.add(group,new THREE.HemisphereLight(0xffffff,0x253349,2.4));
-  const light=new THREE.DirectionalLight(0xffffff,3); light.position.set(-120,160,180); scene.add(light);
-  const geometry=new THREE.BoxGeometry(1,1,18);
+  const light=new THREE.DirectionalLight(0xffffff,1); light.position.set(-120,160,180); scene.add(light);
+  const geometry=new THREE.BoxGeometry(1,1,8);
   const bars=Array.from({length:30},(_,index)=>{
-    const material=new THREE.MeshStandardMaterial({metalness:.15,roughness:.26,transparent:true,opacity:.92});
+    const material=new THREE.MeshStandardMaterial({metalness:0,roughness:1,transparent:true,opacity:.9});
     const mesh=new THREE.Mesh(geometry,material); mesh.userData.index=index; mesh.visible=false;
     mesh.scale.y=1; mesh.position.y=.5; group.add(mesh); return mesh;
   });
-  const floorGeometry=new THREE.BoxGeometry(290,2,48);
-  const floorMaterial=new THREE.MeshStandardMaterial({metalness:.15,roughness:.45,transparent:true,opacity:.72});
+  const floorGeometry=new THREE.BoxGeometry(290,1,18);
+  const floorMaterial=new THREE.MeshStandardMaterial({metalness:0,roughness:1,transparent:true,opacity:.35});
   const floor=new THREE.Mesh(floorGeometry,floorMaterial); floor.position.y=-2; group.add(floor);
   const vertices=[];
   for(const y of [0,30,60,90]) vertices.push(-140,y,-15,140,y,-15);
@@ -32,15 +32,16 @@ export function createProgressDepth(host, onSelect) {
   const grid=new THREE.LineSegments(gridGeometry,gridMaterial); group.add(grid);
   const raycaster=new THREE.Raycaster();
   let frame=0, disposed=false, visible=true, selected=-1, signature='', days=[], drag=null;
-  let rotationY=-.16, rotationX=0, suppressClickUntil=0;
+  let rotationY=-.08, rotationX=0, suppressClickUntil=0;
   let worldWidth=320;
-  group.rotation.y=-.16;
+  group.rotation.y=-.08;
   function layout() {
-    const spread=worldWidth*.78;
+    const spread=worldWidth*.9;
+    const slot=spread/Math.max(1,days.length);
     floor.scale.x=worldWidth/320; grid.scale.x=worldWidth/320;
     bars.forEach((bar,index)=>{
-      bar.scale.x=Math.min(worldWidth*.078,spread/Math.max(1,days.length)*.7);
-      bar.position.x=(index/Math.max(1,days.length-1)-.5)*spread;
+      bar.scale.x=slot*.72;
+      bar.position.x=-spread/2+slot*(index+.5);
     });
   }
   const heightAt=index=>Math.max(1,(days[index]?.minutes || 0)/Math.max(25,...days.map(d=>d.minutes))*86);
@@ -53,7 +54,7 @@ export function createProgressDepth(host, onSelect) {
     if(renderer.domElement.width!==Math.floor(width*ratio) || renderer.domElement.height!==Math.floor(height*ratio)) {
       renderer.setSize(width,height,false); surface.width=renderer.domElement.width; surface.height=renderer.domElement.height;
       // Keep the tallest data bar in frame even in a short, wide module.
-      worldWidth=150*width/height;
+      worldWidth=112*width/height;
       camera.left=-worldWidth/2; camera.right=worldWidth/2;
       camera.top=worldWidth*height/width/2; camera.bottom=-camera.top; camera.updateProjectionMatrix();
       layout();
@@ -65,13 +66,13 @@ export function createProgressDepth(host, onSelect) {
     const colors=getComputedStyle(host), accent=colors.getPropertyValue('--accent').trim();
     bars.forEach((bar,index)=>{
       if(!bar.visible) return;
-      const target=heightAt(index), depth=index===selected ? 12 : 0;
+      const target=heightAt(index), depth=index===selected ? 3 : 0;
       bar.scale.y+=(target-bar.scale.y)*.2;
       bar.position.y=bar.scale.y/2;
       bar.position.z+=(depth-bar.position.z)*.2;
       moving ||= Math.abs(target-bar.scale.y)+Math.abs(depth-bar.position.z)>.02;
-      bar.material.color.set(index===selected ? '#ffb04f' : accent);
-      bar.material.opacity=days[index].minutes>0 ? .92 : .3;
+      bar.material.color.set(accent);
+      bar.material.opacity=days[index].minutes>0 ? (index===selected ? 1 : .76) : .2;
     });
     floorMaterial.color.set(colors.getPropertyValue('--panel-2').trim());
     gridMaterial.color.set(colors.getPropertyValue('--muted').trim());
@@ -98,8 +99,8 @@ export function createProgressDepth(host, onSelect) {
     const dx=event.clientX-drag.x, dy=event.clientY-drag.y;
     if(Math.hypot(dx,dy)>5) drag.moved=true;
     if(!drag.moved) return;
-    rotationY=Math.max(-.48,Math.min(.48,drag.rotationY+dx*.004));
-    rotationX=event.pointerType==='mouse' ? Math.max(-.12,Math.min(.22,drag.rotationX+dy*.003)) : 0;
+    rotationY=Math.max(-.22,Math.min(.22,drag.rotationY+dx*.002));
+    rotationX=event.pointerType==='mouse' ? Math.max(-.06,Math.min(.1,drag.rotationX+dy*.0015)) : 0;
     host.classList.add('is-orbiting'); schedule();
   }
   function finish(event) {
@@ -144,7 +145,7 @@ export function createProgressDepth(host, onSelect) {
         selected=index; schedule();
       }
     },
-    reset() {rotationY=-.16;rotationX=0;schedule();},
+    reset() {rotationY=-.08;rotationX=0;schedule();},
     dispose
   };
 }

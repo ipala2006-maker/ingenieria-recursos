@@ -111,7 +111,7 @@ body.install-page main{overflow:clip}
   position:fixed;
   z-index:45;
   top:50%;
-  right:max(18px,calc((100vw - var(--install-max))/2 - 84px));
+  right:12px;
   width:46px;
   display:grid;
   gap:18px;
@@ -133,7 +133,7 @@ body.install-page main{overflow:clip}
 .journey-rail a:hover strong,.journey-rail a:focus-visible strong{opacity:1;transform:none}
 .journey-rail a.is-active::before{border-color:var(--install-cyan);background:var(--install-cyan);box-shadow:0 0 0 5px rgba(99,216,220,.12);transform:scale(1.08)}
 
-.install-hero{position:relative;min-height:max(880px,100svh);display:grid;place-items:start center;padding:clamp(126px,16vh,170px) 24px 54px;isolation:isolate}
+.install-hero{position:relative;display:flex;flex-direction:column;align-items:center;gap:36px;padding:126px 80px 54px;isolation:isolate}
 .install-hero::before{content:"";position:absolute;z-index:-1;inset:0;background:linear-gradient(180deg,rgba(5,11,21,.05) 0%,rgba(5,11,21,.2) 50%,#07101e 100%)}
 .install-hero::after{content:"";position:absolute;z-index:-1;left:50%;bottom:5%;width:min(1100px,86vw);height:1px;background:linear-gradient(90deg,transparent,rgba(99,216,220,.5),transparent);box-shadow:0 0 45px 12px rgba(99,216,220,.07);transform:translateX(-50%)}
 .install-hero__content{position:relative;z-index:4;width:min(820px,100%);margin:0 auto;text-align:center}
@@ -167,19 +167,18 @@ body.install-page main{overflow:clip}
 .install-hero__sync span{width:7px;height:7px;border-radius:50%;background:var(--install-green);box-shadow:0 0 0 4px rgba(98,213,166,.1),0 0 18px rgba(98,213,166,.45)}
 
 .hero-product{
-  position:absolute;
+  position:relative;
   z-index:1;
-  left:50%;
-  bottom:-5%;
-  width:min(1440px,94vw);
-  height:clamp(500px,70vh,760px);
+  flex:none;
+  width:min(1320px,100%);
+  height:480px;
   overflow:hidden;
   border:1px solid rgba(176,202,239,.24);
   border-radius:18px 18px 0 0;
   background:rgba(10,20,36,.7);
   box-shadow:0 36px 100px rgba(0,0,0,.5),0 0 0 10px rgba(132,173,231,.025),inset 0 1px rgba(255,255,255,.06);
   backdrop-filter:blur(18px) saturate(135%);
-  transform:translateX(-50%) perspective(1400px) rotateX(2.5deg);
+  transform:none;
   transform-origin:50% 100%;
 }
 .hero-product::after{content:"";position:absolute;z-index:3;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(7,16,30,.12),rgba(7,16,30,.06) 50%,rgba(7,16,30,.88) 96%)}
@@ -357,6 +356,8 @@ body.install-page main{overflow:clip}
   backdrop-filter:blur(18px) saturate(130%);
 }
 .install-option__meta{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.install-anchor{display:block;height:0;scroll-margin-top:32px}
+.install-option>.install-addon__request{min-height:0;margin-top:12px;font-size:12px}
 .install-option__platform{color:#e7eef8;font-size:12px;font-weight:760}.install-option__current{color:#76d8ad;font-size:9px;font-weight:750;text-transform:uppercase;letter-spacing:.08em !important}
 .install-option__glyph{width:46px;height:46px;display:grid;place-items:center;margin-top:38px;border:1px solid rgba(140,183,255,.24);border-radius:13px;color:#bcd5ff;background:linear-gradient(145deg,rgba(40,63,98,.75),rgba(16,29,49,.82));box-shadow:7px 7px 17px rgba(0,0,0,.26),-5px -5px 14px rgba(91,126,180,.07),inset 1px 1px rgba(255,255,255,.07);font-size:15px;font-weight:800}
 .install-option h3{margin:19px 0 10px;color:#f4f7fb;font-size:23px;font-weight:680}
@@ -427,8 +428,8 @@ html.theme-light .install-closing{background:linear-gradient(#edf3f8,#e5edf4)}ht
 
 @media (max-width:920px){
   .journey-rail{display:none}
-  .install-hero{min-height:max(820px,100svh)}
-  .hero-product{width:calc(100vw - 30px);height:clamp(430px,61vh,620px)}
+  .install-hero{padding:112px 24px 54px}
+  .hero-product{height:430px}
   .demo-dashboard{grid-template-columns:minmax(0,1fr) minmax(230px,32%);padding:18px}
   .demo-space{padding:17px}.demo-folder-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .product-tour{grid-template-columns:1fr;gap:26px}
@@ -448,11 +449,11 @@ html.theme-light .install-closing{background:linear-gradient(#edf3f8,#e5edf4)}ht
   .install-header{inset:8px 8px auto;height:54px;border-radius:13px;padding-left:8px}
   .install-brand .brand__mark{width:36px;height:36px}.install-brand .brand__text{font-size:15px}
   .install-nav a:not(.install-nav__primary){display:none}.install-nav .install-nav__primary{min-height:36px;margin:0;padding:0 12px}
-  .install-hero{min-height:820px;padding:108px 16px 42px}
+  .install-hero{padding:108px 16px 42px}
   .install-hero h1{font-size:clamp(46px,14vw,62px);white-space:nowrap}
   .install-hero__lead{max-width:350px;margin-top:17px;font-size:17px}
   .install-hero__actions{width:100%;max-width:360px;flex-direction:column;margin:23px auto 0}.install-action{width:100%}
-  .hero-product{bottom:-1%;width:calc(100vw - 16px);height:390px;border-radius:15px 15px 0 0;transform:translateX(-50%) perspective(900px) rotateX(2deg)}
+  .hero-product{height:390px;border-radius:8px;transform:none}
   .hero-product__bar small{display:none}
   .demo-topbar{height:43px;padding:0 13px}.demo-brand b{width:27px;height:27px;font-size:16px}.demo-brand strong{font-size:11px}.demo-nav{gap:8px}.demo-nav i:nth-child(-n+2){display:none}
   .demo-dashboard{height:calc(100% - 43px);grid-template-columns:1fr;padding:11px}.demo-side{display:none}.demo-space{padding:13px}.demo-heading h3{font-size:18px}.demo-heading small{font-size:8px}.demo-toolbar{height:37px;margin:12px 0 9px}.demo-folder-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.demo-folder-grid article{min-height:57px;padding:8px}.demo-folder-grid article:nth-child(n+5){display:none}.demo-folder-grid article>i{width:28px;height:24px}.demo-folder-grid strong{font-size:8px}.demo-folder-grid small{font-size:7px}
@@ -494,7 +495,7 @@ html.theme-light .install-closing{background:linear-gradient(#edf3f8,#e5edf4)}ht
   html.is-ios-webkit .install-option,
   html.is-ios-webkit .install-action{-webkit-backdrop-filter:none;backdrop-filter:none}
   html.is-ios-webkit .install-header{background:rgba(9,18,33,.96)}
-  html.is-ios-webkit .hero-product{background:rgba(10,20,36,.98);transform:translateX(-50%)}
+  html.is-ios-webkit .hero-product{background:rgba(10,20,36,.98);transform:none}
   html.is-ios-webkit .product-tour__visual{contain:paint;backface-visibility:hidden;background:rgba(10,20,36,.98);transform:translateZ(0)}
   html.is-ios-webkit .product-scene{transform:translate3d(0,20px,0);transition:opacity .18s ease,transform .38s cubic-bezier(.3,0,.55,1)}
   html.is-ios-webkit .product-scene.is-before{transform:translate3d(0,-24px,0)}
@@ -550,7 +551,7 @@ html.theme-light .install-closing{background:linear-gradient(#edf3f8,#e5edf4)}ht
 .install-action{border-radius:6px}
 @media(max-width:920px){.install-hero h1{font-size:68px}.install-section-heading h2,.install-widgets__copy h2{font-size:42px}}
 @media(max-width:680px){
-  .install-hero{min-height:760px;padding-top:104px}.install-hero h1{font-size:50px;white-space:normal}.install-hero__lead{font-size:17px;max-width:310px}
+  .install-hero{padding-top:104px;gap:28px}.install-hero h1{font-size:50px;white-space:normal}.install-hero__lead{font-size:17px;max-width:310px}
   .hero-product{height:335px;bottom:0}.hero-product::after{background:linear-gradient(180deg,transparent 85%,var(--install-bg))}
   .install-section-heading h2,.install-widgets__copy h2{font-size:36px}
   .demo-folder-grid strong,.scene-folders strong{font-size:11px}.demo-folder-grid small,.scene-folders small{font-size:9px}

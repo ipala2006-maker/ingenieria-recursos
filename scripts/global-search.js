@@ -297,7 +297,7 @@
     if (document.querySelector('script[src*="scripts/pomodoro.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/pomodoro.js?v=20260913-sync`;
+    script.src = `${rootPath}scripts/pomodoro.js?v=20261003-refined`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -352,7 +352,7 @@
     if (document.querySelector('script[src*="scripts/desktop-widgets.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/desktop-widgets.js?v=20260914-chart`;
+    script.src = `${rootPath}scripts/desktop-widgets.js?v=20261003-refined`;
     script.async = false;
     document.head.appendChild(script);
   }
