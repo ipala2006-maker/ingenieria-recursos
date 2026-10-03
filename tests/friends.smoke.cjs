@@ -6,9 +6,9 @@ const ids=['00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-00000
 (async()=>{
   fs.mkdirSync(output,{recursive:true});const db=new PGlite();let browser,server;
   try{
-    await db.exec('create role anon;create role authenticated;create role service_role;create schema auth;create table auth.users(id uuid primary key);create table user_states(user_id uuid primary key,state jsonb);');
+    await db.exec('create role anon;create role authenticated;create role service_role;create schema auth;create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz);create table user_states(user_id uuid primary key,state jsonb);');
     await db.exec(fs.readFileSync(path.join(root,'supabase/friends.sql'),'utf8'));
-    for(const id of ids)await db.query('insert into auth.users values($1)',[id]);
+    for(const [i,id] of ids.entries())await db.query('insert into auth.users values($1,$2,now())',[id,`student${i+1}@example.test`]);
     const today=(await db.query("select to_char(now() at time zone 'UTC','YYYY-MM-DD') as day")).rows[0].day;
     await db.query('insert into user_states values($1,$2)',[ids[0],{values:{estudiemos_pomodoro_streak:{days:{[today]:30}}}}]);
     const sandbox={module:{exports:{}},require:name=>name==='./supabase-admin'?{
@@ -34,12 +34,39 @@ const ids=['00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-00000
       : await chromium.launch({channel:'msedge',headless:true,args:['--enable-unsafe-swiftshader']});
     const pages=[],errors=[];
     for(const [i,id] of ids.entries()){
-      const context=await browser.newContext({serviceWorkers:'block',viewport:i?{width:390,height:844}:{width:1366,height:768}});
+      const context=await browser.newContext({serviceWorkers:'block',timezoneId:'UTC',viewport:i?{width:390,height:844}:{width:1366,height:768}});
       await context.route('**/*',route=>new URL(route.request().url()).origin===new URL(base).origin?route.continue():route.abort());
       await context.addInitScript(id=>{window.EstudiemosAccount={getUser:()=>({id}),getSession:()=>({access_token:id}),getClient:()=>null,whenReady:async()=>{},open:()=>{}};localStorage.setItem('estudiemos_theme','dark');},id);
       const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));await page.goto(base);await page.locator('[data-friends-open]').click();await page.locator('[data-content]').waitFor({state:'visible'});pages.push(page);
     }
     const [alice,bob]=pages;
+    await bob.getByRole('button',{name:'Mi nombre y privacidad',exact:true}).click();
+    await bob.locator('#friendName').fill('Bruno');await bob.locator('#friendUsername').fill('@BRUNO_ESTUDIA');
+    await bob.getByRole('button',{name:'Guardar cambios'}).click();await bob.getByText('Nombre y privacidad guardados.').waitFor();
+    await bob.locator('[data-back]').click();
+    await bob.getByRole('button',{name:'Cerrar amigos',exact:true}).click();
+    await alice.getByRole('button',{name:'Agregar amigos',exact:true}).click();
+    assert.equal(await alice.locator('[data-invite-form],#friendInvite,.friends-paste').count(),0,'links are handled automatically, with no paste form');
+    await alice.locator('#friendContact').fill('STUDENT2@example.test');
+    await alice.locator('[data-contact-form]').getByRole('button',{name:'Enviar solicitud',exact:true}).click();
+    await alice.getByText('Si corresponde a una cuenta confirmada',{exact:false}).waitFor();
+    assert.equal(await alice.locator('[data-outgoing] .friends-request').count(),1);
+    await bob.locator('[data-friends-open]').click();await bob.locator('[data-incoming] .friends-request').waitFor();
+    assert.equal(await bob.locator('[data-incoming] .friends-request').count(),1,'email request arrives in the recipient app without a link or manual refresh');
+    await bob.locator('[data-incoming]').getByRole('button',{name:'Aceptar',exact:true}).waitFor();
+    await alice.getByRole('button',{name:'Cancelar',exact:true}).click();await alice.getByText('Solicitud cancelada.',{exact:true}).waitFor();
+    await alice.getByRole('button',{name:'Agregar amigos',exact:true}).click();
+    await alice.locator('#friendContact').fill('@BRUNO_ESTUDIA');
+    await alice.locator('[data-contact-form]').getByRole('button',{name:'Enviar solicitud',exact:true}).click();
+    await alice.getByText('Si corresponde a una cuenta confirmada',{exact:false}).waitFor();
+    await alice.locator('[data-outgoing]').getByText('@bruno_estudia',{exact:true}).waitFor();
+    await bob.locator('[data-refresh]').click();await bob.locator('[data-incoming] .friends-request').waitFor();
+    assert.equal(await bob.locator('[data-incoming] .friends-request').count(),1,'username routes to the same recipient in-app');
+    await alice.getByRole('button',{name:'Cancelar',exact:true}).click();await alice.getByText('Solicitud cancelada.',{exact:true}).waitFor();
+    await bob.getByRole('button',{name:'Agregar amigos',exact:true}).click();
+    await bob.screenshot({path:path.join(output,'friends-email-mobile.png')});
+    assert.ok(await bob.locator('.friends-dialog').evaluate(el=>el.scrollWidth<=el.clientWidth+1));
+    await bob.locator('[data-back]').click();
     await alice.getByRole('button',{name:'Mi nombre y privacidad',exact:true}).click();await alice.locator('#friendName').fill('Alex');await alice.locator('[data-share]').check();await alice.getByRole('button',{name:'Guardar cambios'}).click();await alice.getByText('Nombre y privacidad guardados.').waitFor();await alice.locator('[data-back]').click();
     const link=await alice.locator('[data-my-link]').inputValue();
     await bob.goto(link);await bob.getByText('Solicitud enviada. Tu amigo tiene que aceptarla.',{exact:true}).waitFor();
@@ -85,7 +112,7 @@ const ids=['00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-00000
     const ownLink=await guest.locator('[data-my-link]').inputValue();await guest.evaluate(url=>{location.hash=new URL(url).hash;},ownLink);await guest.getByText('Este es tu propio enlace.',{exact:false}).waitFor();
     assert.equal(await guest.evaluate(()=>localStorage.getItem('estudiemos_friend_invite_v2')),null);
     await guest.evaluate(()=>{location.hash='friend='+'0'.repeat(32);});await guest.locator('[data-status].is-error').waitFor();assert.equal(await guest.evaluate(()=>localStorage.getItem('estudiemos_friend_invite_v2')),null,'invalid token is not retried forever');
-    const lateId='00000000-0000-4000-8000-000000000003';ids.push(lateId);await db.query('insert into auth.users values($1)',[lateId]);
+    const lateId='00000000-0000-4000-8000-000000000003';ids.push(lateId);await db.query('insert into auth.users(id) values($1)',[lateId]);
     const lateContext=await browser.newContext({serviceWorkers:'block'});await lateContext.route('**/*',route=>{
       const url=new URL(route.request().url());
       if(url.pathname==='/fixture.html')return route.fulfill({contentType:'text/html; charset=utf-8',body:'<!doctype html><html><head><meta charset="utf-8"></head><body><nav class="topbar__nav"></nav><script src="/scripts/page-shell.js"></script><script src="/scripts/friends.js"></script></body></html>'});
@@ -102,7 +129,7 @@ const ids=['00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-00000
     // A populated list stays readable and searchable, including long aliases and private streaks.
     const sqlCall=async(user,action,data={})=>(await db.query('select friends_action($1,$2,$3) as result',[user,action,data])).rows[0].result;
     for(let n=10;n<16;n++){
-      const id=`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`;await db.query('insert into auth.users values($1)',[id]);
+      const id=`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`;await db.query('insert into auth.users(id) values($1)',[id]);
       const profile=await sqlCall(id,'profile',{name:n===10?'María Victoria Fernández López':['Sofía','Lucas','Valentina','Tomás','Camila'][n-11],share:n%2===0,timezone:'UTC'});
       await sqlCall(ids[0],'request',{invite:profile.me.invite});await sqlCall(id,'accept',{id:ids[0]});
     }
@@ -110,5 +137,12 @@ const ids=['00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-00000
     await alice.screenshot({path:path.join(output,'friends-populated-desktop.png')});await alice.locator('#friendSearch').fill('Fernández');assert.equal(await alice.locator('.friends-row').count(),1);await alice.locator('#friendSearch').fill('');
     await alice.setViewportSize({width:320,height:640});await alice.screenshot({path:path.join(output,'friends-populated-mobile.png')});assert.ok(await alice.locator('.friends-dialog').evaluate(el=>el.scrollWidth<=el.clientWidth+1));
     assert.deepEqual(errors,[]);console.log('PASS: automatic link, idempotency, sign-in/reload, late account-ready, account binding, expiry, hashchange, retry, invalid/self links, acceptance, ranking privacy, populated search, desktop/mobile/light.');
+  }catch(error){
+    for(const [i,context] of (browser?.contexts()||[]).entries())for(const page of context.pages()){
+      await page.screenshot({path:path.join(output,`failure-${i}.png`)}).catch(()=>{});
+      console.error('Pilot UI:',await page.locator('.friends-dialog').innerText().catch(()=>''));
+    }
+    console.error('Pilot profiles:',(await db.query('select user_id,name,share_streak,timezone from friend_profiles')).rows);
+    throw error;
   }finally{await browser?.close();if(server)await new Promise(resolve=>server.close(resolve));await db.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

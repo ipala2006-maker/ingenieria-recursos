@@ -2,7 +2,7 @@
   if (window.EstudiemosFriends || location.pathname.endsWith('/widget.html')) return;
   const root = new URL('../', document.currentScript.src);
   const endpoint = new URL('api/account-config?friends=1', root);
-  const css = document.createElement('link'); css.rel='stylesheet'; css.href=new URL('styles/friends.css?v=20261002',root); document.head.append(css);
+  const css = document.createElement('link'); css.rel='stylesheet'; css.href=new URL('styles/friends.css?v=20261003-email',root); document.head.append(css);
   const pendingKey='estudiemos_friend_invite_v2';
   let model=null,busy=false,epoch=0,owner='',lastFocus=null,panel='friends',view='all',resumeLogin=false,notice='';
   let memoryPending=null;
@@ -39,18 +39,21 @@
     <section data-signed-out hidden><h3>Conectá con tu grupo</h3><p>Iniciá sesión para enviar la solicitud y ver a tus amigos.</p><button type="button" class="friends-primary" data-login>Iniciar sesión</button></section>
     <div data-content hidden>
       <button type="button" class="friends-back" data-back hidden>${icon('arrow-left')} Mis amigos</button>
-      <section data-panel="invite" hidden><h3>Estudiar, mejor acompañado</h3><p class="friends-caption">Compartí tu enlace. Cuando lo abran e inicien sesión, recibirás su solicitud para aceptar.</p>
+      <section data-panel="invite" hidden><h3>Agregar amigos</h3>
+        <form data-contact-form><label for="friendContact">Usuario o correo de tu amigo</label><div class="friends-inline"><input id="friendContact" type="text" maxlength="254" placeholder="@usuario o nombre@correo.com" autocomplete="off" autocapitalize="none" spellcheck="false" required><button type="submit">Enviar solicitud</button></div></form>
+        <p class="friends-caption">La solicitud aparece en Amigos de su cuenta de Estudiemos.</p>
+        <div class="friends-invite-divider"><span>O compartí tu enlace</span></div><p class="friends-caption">Al abrirlo e iniciar sesión, se envía la solicitud automáticamente. Solo queda aceptarla.</p>
         <button type="button" class="friends-primary friends-copy" data-copy>${icon('link')} Copiar mi invitación</button><input data-my-link readonly aria-label="Tu enlace de invitación">
-        <details class="friends-paste"><summary>Tengo un enlace</summary><form data-invite-form><label for="friendInvite">Enlace de un amigo</label><div class="friends-inline"><input id="friendInvite" type="url" maxlength="300" placeholder="Pegá su invitación" required><button type="submit">Enviar solicitud</button></div></form></details>
       </section>
       <section data-panel="settings" hidden><h3>Mi nombre y privacidad</h3><form data-profile>
         <label for="friendName">Nombre visible para tus amigos</label><input id="friendName" maxlength="32" required autocomplete="nickname">
+        <label for="friendUsername">Tu usuario único (opcional)</label><input id="friendUsername" maxlength="25" placeholder="@tu_usuario" autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="friendUsernameHint"><small id="friendUsernameHint" class="friends-caption">3–24 letras sin tildes, números o guion bajo.</small>
         <label class="friends-toggle"><span>Compartir mi racha<small>Solo con amigos aceptados. Podés ocultarla cuando quieras.</small></span><input type="checkbox" role="switch" data-share></label>
         <button type="submit">Guardar cambios</button><button type="button" data-rotate>Cambiar enlace de invitación</button>
       </form><div data-blocked></div></section>
       <section data-panel="friends"><section data-requests hidden><h3>Solicitudes <span data-request-count></span></h3><div data-incoming></div><div data-outgoing></div></section>
         <div class="friends-section-head"><div class="friends-views" role="group" aria-label="Vista de amigos"><button type="button" data-view="all" aria-pressed="true">Todos</button><button type="button" data-view="ranking" aria-pressed="false">Ranking</button></div><button type="button" class="friends-icon" data-refresh aria-label="Actualizar amigos" title="Actualizar">${icon('refresh-cw')}</button></div>
-        <label data-search hidden>Buscar amigos<input id="friendSearch" type="search" placeholder="Nombre" autocomplete="off"></label>
+        <label data-search hidden>Buscar amigos<input id="friendSearch" type="search" placeholder="Nombre o @usuario" autocomplete="off"></label>
         <p class="friends-caption" data-ranking-caption hidden>Días consecutivos · Solo rachas compartidas</p><ol class="friends-list" data-list></ol>
       </section>
     </div>`;
@@ -87,11 +90,15 @@
           const previous=new Set(result.outgoing.map(p=>p.id));
           try{result=await call('request',{invite:invitation.token});}catch(error){if(error.status===400)clearPending(invitation.token);throw error;}
           if(current!==epoch || account()?.getUser()?.id!==user)return;
-          clearPending(invitation.token);q('#friendInvite').value='';showPanel('friends');
+          clearPending(invitation.token);showPanel('friends');
           notice=result.outgoing.some(p=>!previous.has(p.id))?'Solicitud enviada. Tu amigo tiene que aceptarla.':'Esta invitación ya estaba procesada. Revisá tus amigos y solicitudes.';
         }
       }
       if(message)notice=message;
+      if(action==='request_email'||action==='request_username'){
+        q('#friendContact').value='';showPanel('friends');
+        notice='Si corresponde a una cuenta confirmada y disponible, recibirá tu solicitud en Amigos. Si ya había una solicitud, no se duplica.';
+      }
       model=result;draw();status(notice);
     }catch(error){if(current===epoch)status(error.name==='AbortError'?'La conexión tardó demasiado. Volvé a intentar.':error.message,true);}
     finally{
@@ -99,6 +106,7 @@
     }
   }
   function avatar(name){return text('span',name.trim().split(/\s+/).slice(0,2).map(word=>Array.from(word)[0]||'').join('').toLocaleUpperCase(),'friends-avatar');}
+  function identity(person){const node=text('div','','friends-person');node.append(text('strong',person.name+(person.self?' (vos)':'')));if(person.username)node.append(text('span','@'+person.username));return node;}
   function drawList(){
     if(!model)return;
     const list=q('[data-list]');list.replaceChildren();
@@ -107,10 +115,10 @@
     const query=q('#friendSearch').value.trim().toLocaleLowerCase();let rank=0,last=-1;
     rows.forEach((friend,index)=>{
       if(friend.streak!==last){rank=index+1;last=friend.streak;}
-      if(query && !friend.name.toLocaleLowerCase().includes(query))return;
+      if(query && !friend.name.toLocaleLowerCase().includes(query) && !('@'+(friend.username||'')).includes(query))return;
       const row=document.createElement('li');row.className='friends-row';
       row.append(view==='ranking'?text('span',String(rank),'friends-rank'):avatar(friend.name));
-      const person=text('div','','friends-person');person.append(text('strong',friend.name+(friend.self?' (vos)':'')),text('span',friend.share?`${friend.streak} ${friend.streak===1?'día':'días'} de racha`:'Racha privada'));row.append(person);
+      const person=identity(friend);person.append(text('span',friend.share?`${friend.streak} ${friend.streak===1?'día':'días'} de racha`:'Racha privada'));row.append(person);
       if(!friend.self){const more=document.createElement('details');more.className='friends-row-menu';const summary=text('summary','•••');summary.setAttribute('aria-label',`Opciones de ${friend.name}`);more.append(summary,button('Quitar',()=>confirmAction('remove',friend)),button('Bloquear',()=>confirmAction('block',friend)));row.append(more);}
       list.append(row);
     });
@@ -124,13 +132,13 @@
   }
   function draw(){
     q('[data-signed-out]').hidden=true;q('[data-content]').hidden=false;
-    q('#friendName').value=model.me.name;q('[data-share]').checked=model.me.share;q('[data-my-link]').value=new URL(`#friend=${model.me.invite}`,root).href;
+    q('#friendName').value=model.me.name;q('#friendUsername').value=model.me.username||'';q('[data-share]').checked=model.me.share;q('[data-my-link]').value=new URL(`#friend=${model.me.invite}`,root).href;
     q('[data-count]').textContent=`${model.friends.length} ${model.friends.length===1?'amigo':'amigos'}`;q('[data-search]').hidden=model.friends.length<6;
     drawList();
     const count=model.incoming.length+model.outgoing.length;q('[data-requests]').hidden=!count;q('[data-request-count]').textContent=String(count);
     const incoming=q('[data-incoming]'),outgoing=q('[data-outgoing]');incoming.replaceChildren();outgoing.replaceChildren();
-    for(const p of model.incoming){const row=text('div','','friends-request');const actions=text('div','','friends-request-actions');const accept=button('Aceptar',()=>refresh('accept',{id:p.id},'Solicitud aceptada.'));accept.className='friends-primary';const more=document.createElement('details');more.className='friends-row-menu';const summary=text('summary','•••');summary.setAttribute('aria-label',`Opciones de la solicitud de ${p.name}`);more.append(summary,button('Rechazar',()=>refresh('decline',{id:p.id},'Solicitud rechazada.')),button('Bloquear',()=>confirmAction('block',p)));actions.append(accept,more);row.append(avatar(p.name),text('strong',p.name),actions);incoming.append(row);}
-    for(const p of model.outgoing){const row=text('div','','friends-request');const person=text('div','','friends-person');person.append(text('strong',p.name),text('span','Solicitud enviada'));row.append(avatar(p.name),person,button('Cancelar',()=>refresh('decline',{id:p.id},'Solicitud cancelada.')));outgoing.append(row);}
+    for(const p of model.incoming){const row=text('div','','friends-request');const actions=text('div','','friends-request-actions');const accept=button('Aceptar',()=>refresh('accept',{id:p.id},'Solicitud aceptada.'));accept.className='friends-primary';const more=document.createElement('details');more.className='friends-row-menu';const summary=text('summary','•••');summary.setAttribute('aria-label',`Opciones de la solicitud de ${p.name}`);more.append(summary,button('Rechazar',()=>refresh('decline',{id:p.id},'Solicitud rechazada.')),button('Bloquear',()=>confirmAction('block',p)));actions.append(accept,more);row.append(avatar(p.name),identity(p),actions);incoming.append(row);}
+    for(const p of model.outgoing){const row=text('div','','friends-request');const person=identity(p);person.append(text('span','Solicitud enviada'));row.append(avatar(p.name),person,button('Cancelar',()=>refresh('decline',{id:p.id},'Solicitud cancelada.')));outgoing.append(row);}
     const blocked=q('[data-blocked]');blocked.replaceChildren();if(model.blocked.length)blocked.append(text('h3','Bloqueados'));
     for(const p of model.blocked){const row=text('div','','friends-inline');row.append(text('span',p.name),button('Desbloquear',()=>refresh('unblock',{id:p.id},'Usuario desbloqueado.')));blocked.append(row);}
   }
@@ -144,17 +152,19 @@
   q('[data-invite-toggle]').onclick=()=>showPanel(panel==='invite'?'friends':'invite');q('[data-settings-toggle]').onclick=()=>showPanel(panel==='settings'?'friends':'settings');q('[data-back]').onclick=()=>{notice='';status('');showPanel('friends');};
   dialog.querySelectorAll('[data-view]').forEach(n=>n.onclick=()=>{view=n.dataset.view;drawList();});q('#friendSearch').oninput=drawList;
   q('[data-refresh]').onclick=()=>{notice='';refresh();};q('[data-retry]').onclick=()=>refresh();
-  q('[data-profile]').onsubmit=e=>{e.preventDefault();refresh('profile',{name:q('#friendName').value,share:q('[data-share]').checked,timezone:Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC'},'Nombre y privacidad guardados.');};
-  q('[data-invite-form]').onsubmit=e=>{e.preventDefault();const invite=inviteToken(q('#friendInvite').value);if(!invite){status('Pegá un enlace de invitación de Estudiemos válido.',true);return;}remember(invite);refresh();};
+  q('[data-profile]').onsubmit=e=>{e.preventDefault();refresh('profile',{name:q('#friendName').value,username:q('#friendUsername').value.trim(),share:q('[data-share]').checked,timezone:Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC'},'Nombre y privacidad guardados.');};
+  q('[data-contact-form]').onsubmit=e=>{e.preventDefault();const value=q('#friendContact').value.trim();if(value.indexOf('@')>0)refresh('request_email',{email:value});else refresh('request_username',{username:value});};
   q('[data-copy]').onclick=async()=>{try{await navigator.clipboard.writeText(q('[data-my-link]').value);status('Enlace copiado.');}catch(_){q('[data-my-link]').select();status('Seleccioné tu enlace para que puedas copiarlo.');}};
   q('[data-rotate]').onclick=()=>{if(confirm('¿Cambiar tu enlace? Los anteriores dejarán de permitir nuevas solicitudes. Tus amigos actuales no cambian.'))refresh('rotate',{},'Enlace de invitación actualizado.');};
   function accountChanged(){
     const next=account()?.getUser()?.id||'';
-    if(next!==owner){owner=next;epoch++;model=null;notice='';lock(false);q('[data-content]').hidden=true;q('[data-list]').replaceChildren();q('#friendName').value='';q('[data-my-link]').value='';q('#friendSearch').value='';q('[data-count]').textContent='Tu círculo de estudio';showPanel('friends');status('');}
+    if(next!==owner){owner=next;epoch++;model=null;notice='';lock(false);q('[data-content]').hidden=true;q('[data-list]').replaceChildren();q('#friendName').value='';q('#friendUsername').value='';q('#friendContact').value='';q('[data-my-link]').value='';q('#friendSearch').value='';q('[data-count]').textContent='Tu círculo de estudio';showPanel('friends');status('');}
     if(next && (resumeLogin||pending())){resumeLogin=false;open();}else if(dialog.open)refresh();
   }
   window.addEventListener('estudiemos:account-change',accountChanged);window.addEventListener('estudiemos:account-ready',accountChanged);
   window.addEventListener('hashchange',()=>{if(captureInvitation())open();});
+  window.addEventListener('popstate',()=>{if(captureInvitation())open();});
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden && !busy){if(pending())open();else if(dialog.open && panel==='friends')refresh();}});
   setInterval(()=>{if(dialog.open&&!document.hidden&&!busy&&panel==='friends'&&!dialog.querySelector('form:focus-within,details[open]')&&!q('[data-status]').classList.contains('is-error'))refresh();},60000);
   window.EstudiemosFriends={open};
   const nav=document.querySelector('.topbar__nav');if(nav){const trigger=button('',open);trigger.className='topbar__link topbar-icon-btn';trigger.dataset.friendsOpen='';trigger.title='Amigos';trigger.setAttribute('aria-label','Amigos');trigger.innerHTML=icon('users-round');nav.append(trigger);}
