@@ -9,7 +9,8 @@
    una solicitud dentro de Amigos. No se manda un email. Tambien podes copiar
    la invitacion y enviarla por el medio que prefieras. Al abrirla,
    se envia la solicitud automaticamente con la cuenta iniciada. Si falta iniciar
-   sesion, el enlace espera hasta que termine el acceso. No hay que pegarlo de nuevo.
+   sesion, el enlace espera hasta que termine el acceso. No hay campo para pegar
+   invitaciones: basta con abrir el enlace recibido.
 4. Aceptar en Solicitudes. El ranking muestra dias consecutivos, solo entre
    amigos aceptados con racha compartida. Los empates tienen el mismo puesto.
 5. Quitar o bloquear desde las opciones del amigo. Un bloqueo elimina la

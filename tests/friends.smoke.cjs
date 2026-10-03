@@ -40,12 +40,16 @@ const ids=['00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-00000
       const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));await page.goto(base);await page.locator('[data-friends-open]').click();await page.locator('[data-content]').waitFor({state:'visible'});pages.push(page);
     }
     const [alice,bob]=pages;
+    await bob.getByRole('button',{name:'Cerrar amigos',exact:true}).click();
     await alice.getByRole('button',{name:'Agregar amigos',exact:true}).click();
+    assert.equal(await alice.locator('[data-invite-form],#friendInvite,.friends-paste').count(),0,'links are handled automatically, with no paste form');
     await alice.locator('#friendEmail').fill('STUDENT2@example.test');
     await alice.locator('[data-email-form]').getByRole('button',{name:'Enviar solicitud',exact:true}).click();
     await alice.getByText('Si ese correo tiene una cuenta confirmada',{exact:false}).waitFor();
     assert.equal(await alice.locator('[data-outgoing] .friends-request').count(),1);
-    await bob.locator('[data-refresh]').click();await bob.locator('[data-incoming] .friends-request').waitFor();
+    await bob.locator('[data-friends-open]').click();await bob.locator('[data-incoming] .friends-request').waitFor();
+    assert.equal(await bob.locator('[data-incoming] .friends-request').count(),1,'email request arrives in the recipient app without a link or manual refresh');
+    await bob.locator('[data-incoming]').getByRole('button',{name:'Aceptar',exact:true}).waitFor();
     await alice.getByRole('button',{name:'Cancelar',exact:true}).click();await alice.getByText('Solicitud cancelada.',{exact:true}).waitFor();
     await bob.getByRole('button',{name:'Agregar amigos',exact:true}).click();
     await bob.screenshot({path:path.join(output,'friends-email-mobile.png')});
