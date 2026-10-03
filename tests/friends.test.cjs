@@ -8,12 +8,52 @@ const root=path.resolve(__dirname,'..');
 const ids=[1,2,3,4].map(i=>`00000000-0000-4000-8000-${String(i).padStart(12,'0')}`);
 async function database(){
   const db=new PGlite();
-  await db.exec('create role anon; create role authenticated; create role service_role; create schema auth; create table auth.users(id uuid primary key); create table public.user_states(user_id uuid primary key,state jsonb);');
+  await db.exec('create role anon; create role authenticated; create role service_role; create schema auth; create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz); create table public.user_states(user_id uuid primary key,state jsonb);');
   await db.exec(fs.readFileSync(path.join(root,'supabase/friends.sql'),'utf8'));
-  for(const id of ids)await db.query('insert into auth.users values($1)',[id]);
+  for(const [i,id] of ids.entries())await db.query('insert into auth.users values($1,$2,now())',[id,`student${i+1}@example.test`]);
   return db;
 }
 const call=async(db,user,action='list',data={})=>(await db.query('select friends_action($1,$2,$3) as result',[user,action,data])).rows[0].result;
+
+test('exact email sends one private request even before the recipient has opened Friends',async()=>{
+  const db=await database();try{
+    const [a,b]=ids;
+    let result=await call(db,a,'request_email',{email:'  STUDENT2@EXAMPLE.TEST  '});
+    assert.equal(result.outgoing.length,1);assert.equal(result.outgoing[0].id,b);
+    assert.deepEqual(result.friends,[]);assert.ok(!JSON.stringify(result).includes('@'));
+    assert.equal((await call(db,b)).incoming[0].id,a);
+    await call(db,a,'request_email',{email:'student2@example.test'});
+    await call(db,b,'request_email',{email:'student1@example.test'});
+    assert.equal((await db.query('select count(*)::int as n from friend_links')).rows[0].n,1);
+    assert.equal((await call(db,b)).incoming.length,1,'reciprocal email does not accept');
+    await call(db,b,'accept',{id:a});assert.equal((await call(db,a)).friends[0].id,b);
+    await call(db,b,'block',{id:a});
+    result=await call(db,a,'request_email',{email:'student2@example.test'});
+    assert.deepEqual(result.outgoing,[]);assert.deepEqual(result.blocked,[]);
+    await db.exec(fs.readFileSync(path.join(root,'supabase/friends.sql'),'utf8'));
+    assert.equal((await call(db,b)).blocked[0].id,a,'migration rerun preserves existing graph');
+  }finally{await db.close();}
+});
+
+test('email verification, generic misses, validation and persistent guessing limit',async()=>{
+  const db=await database();try{
+    const [a,b]=ids;
+    await assert.rejects(call(db,a,'request_email',{email:'bad'}),/INVALID_EMAIL/);
+    await assert.rejects(call(db,a,'request_email',{email:['student2@example.test']}),/INVALID_EMAIL/);
+    await db.query('update auth.users set email_confirmed_at=null where id=$1',[a]);
+    await assert.rejects(call(db,a,'request_email',{email:'student2@example.test'}),/EMAIL_VERIFICATION_REQUIRED/);
+    await db.query('update auth.users set email_confirmed_at=now() where id=$1',[a]);
+    await db.query('update auth.users set email_confirmed_at=null where id=$1',[b]);
+    for(const email of ['student1@example.test','student2@example.test','missing@example.test','student%@example.test']){
+      const result=await call(db,a,'request_email',{email});assert.deepEqual(result.outgoing,[]);
+    }
+    for(let i=0;i<6;i++)await call(db,a,'request_email',{email:`missing${i}@example.test`});
+    await assert.rejects(call(db,a,'request_email',{email:'student3@example.test'}),/EMAIL_REQUEST_LIMIT/);
+    await call(db,a);
+    await db.query("update friend_profiles set email_window=now()-interval '11 minutes' where user_id=$1",[a]);
+    assert.equal((await call(db,a,'request_email',{email:'student3@example.test'})).outgoing.length,1);
+  }finally{await db.close();}
+});
 test('friends require acceptance; privacy applies in SQL, including hiding again and removal',async()=>{
   const db=await database();try{
     const [a,b,c]=ids;
@@ -89,4 +129,10 @@ test('API authenticates server-side, ignores forged actor and returns only gener
   await handler.module.exports(req,response);assert.equal(response.code,200);assert.equal(calls[0].p_user,ids[0]);assert.deepEqual(Object.keys(calls[0].p_data),['invite']);
   actor=null;await handler.module.exports(req,response);assert.equal(response.code,401);assert.equal(calls.length,1);
   actor=ids[0];req.body.invite='bad';await handler.module.exports(req,response);assert.equal(response.code,400);
+  req.body={action:'request_email',email:' STUDENT2@EXAMPLE.TEST ',p_user:ids[1],id:ids[1]};
+  await handler.module.exports(req,response);assert.equal(response.code,200);
+  assert.deepEqual(calls.at(-1),{p_user:ids[0],p_action:'request_email',p_data:{email:'student2@example.test'}});
+  for(const email of ['bad','x@y.test\nInjected: x','x'.repeat(255),null,['x@y.test']]){
+    req.body.email=email;await handler.module.exports(req,response);assert.equal(response.code,400);
+  }
 });

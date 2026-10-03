@@ -2,7 +2,7 @@
   if (window.EstudiemosFriends || location.pathname.endsWith('/widget.html')) return;
   const root = new URL('../', document.currentScript.src);
   const endpoint = new URL('api/account-config?friends=1', root);
-  const css = document.createElement('link'); css.rel='stylesheet'; css.href=new URL('styles/friends.css?v=20261002',root); document.head.append(css);
+  const css = document.createElement('link'); css.rel='stylesheet'; css.href=new URL('styles/friends.css?v=20261002-email',root); document.head.append(css);
   const pendingKey='estudiemos_friend_invite_v2';
   let model=null,busy=false,epoch=0,owner='',lastFocus=null,panel='friends',view='all',resumeLogin=false,notice='';
   let memoryPending=null;
@@ -39,7 +39,10 @@
     <section data-signed-out hidden><h3>Conectá con tu grupo</h3><p>Iniciá sesión para enviar la solicitud y ver a tus amigos.</p><button type="button" class="friends-primary" data-login>Iniciar sesión</button></section>
     <div data-content hidden>
       <button type="button" class="friends-back" data-back hidden>${icon('arrow-left')} Mis amigos</button>
-      <section data-panel="invite" hidden><h3>Estudiar, mejor acompañado</h3><p class="friends-caption">Compartí tu enlace. Cuando lo abran e inicien sesión, recibirás su solicitud para aceptar.</p>
+      <section data-panel="invite" hidden><h3>Agregar amigos</h3>
+        <form data-email-form><label for="friendEmail">Correo de tu amigo</label><div class="friends-inline"><input id="friendEmail" type="email" maxlength="254" placeholder="nombre@correo.com" autocomplete="off" autocapitalize="none" spellcheck="false" required><button type="submit">Enviar solicitud</button></div></form>
+        <p class="friends-caption">La solicitud aparece en Amigos de su cuenta de Estudiemos.</p>
+        <div class="friends-invite-divider"><span>O compartí tu enlace</span></div><p class="friends-caption">Al abrirlo e iniciar sesión, se envía la solicitud automáticamente. Solo queda aceptarla.</p>
         <button type="button" class="friends-primary friends-copy" data-copy>${icon('link')} Copiar mi invitación</button><input data-my-link readonly aria-label="Tu enlace de invitación">
         <details class="friends-paste"><summary>Tengo un enlace</summary><form data-invite-form><label for="friendInvite">Enlace de un amigo</label><div class="friends-inline"><input id="friendInvite" type="url" maxlength="300" placeholder="Pegá su invitación" required><button type="submit">Enviar solicitud</button></div></form></details>
       </section>
@@ -92,6 +95,10 @@
         }
       }
       if(message)notice=message;
+      if(action==='request_email'){
+        q('#friendEmail').value='';showPanel('friends');
+        notice='Si ese correo tiene una cuenta confirmada y disponible, recibirá tu solicitud en Amigos. Si ya había una solicitud, no se duplica.';
+      }
       model=result;draw();status(notice);
     }catch(error){if(current===epoch)status(error.name==='AbortError'?'La conexión tardó demasiado. Volvé a intentar.':error.message,true);}
     finally{
@@ -146,15 +153,18 @@
   q('[data-refresh]').onclick=()=>{notice='';refresh();};q('[data-retry]').onclick=()=>refresh();
   q('[data-profile]').onsubmit=e=>{e.preventDefault();refresh('profile',{name:q('#friendName').value,share:q('[data-share]').checked,timezone:Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC'},'Nombre y privacidad guardados.');};
   q('[data-invite-form]').onsubmit=e=>{e.preventDefault();const invite=inviteToken(q('#friendInvite').value);if(!invite){status('Pegá un enlace de invitación de Estudiemos válido.',true);return;}remember(invite);refresh();};
+  q('[data-email-form]').onsubmit=e=>{e.preventDefault();refresh('request_email',{email:q('#friendEmail').value.trim()});};
   q('[data-copy]').onclick=async()=>{try{await navigator.clipboard.writeText(q('[data-my-link]').value);status('Enlace copiado.');}catch(_){q('[data-my-link]').select();status('Seleccioné tu enlace para que puedas copiarlo.');}};
   q('[data-rotate]').onclick=()=>{if(confirm('¿Cambiar tu enlace? Los anteriores dejarán de permitir nuevas solicitudes. Tus amigos actuales no cambian.'))refresh('rotate',{},'Enlace de invitación actualizado.');};
   function accountChanged(){
     const next=account()?.getUser()?.id||'';
-    if(next!==owner){owner=next;epoch++;model=null;notice='';lock(false);q('[data-content]').hidden=true;q('[data-list]').replaceChildren();q('#friendName').value='';q('[data-my-link]').value='';q('#friendSearch').value='';q('[data-count]').textContent='Tu círculo de estudio';showPanel('friends');status('');}
+    if(next!==owner){owner=next;epoch++;model=null;notice='';lock(false);q('[data-content]').hidden=true;q('[data-list]').replaceChildren();q('#friendName').value='';q('#friendEmail').value='';q('[data-my-link]').value='';q('#friendSearch').value='';q('[data-count]').textContent='Tu círculo de estudio';showPanel('friends');status('');}
     if(next && (resumeLogin||pending())){resumeLogin=false;open();}else if(dialog.open)refresh();
   }
   window.addEventListener('estudiemos:account-change',accountChanged);window.addEventListener('estudiemos:account-ready',accountChanged);
   window.addEventListener('hashchange',()=>{if(captureInvitation())open();});
+  window.addEventListener('popstate',()=>{if(captureInvitation())open();});
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden && !busy){if(pending())open();else if(dialog.open && panel==='friends')refresh();}});
   setInterval(()=>{if(dialog.open&&!document.hidden&&!busy&&panel==='friends'&&!dialog.querySelector('form:focus-within,details[open]')&&!q('[data-status]').classList.contains('is-error'))refresh();},60000);
   window.EstudiemosFriends={open};
   const nav=document.querySelector('.topbar__nav');if(nav){const trigger=button('',open);trigger.className='topbar__link topbar-icon-btn';trigger.dataset.friendsOpen='';trigger.title='Amigos';trigger.setAttribute('aria-label','Amigos');trigger.innerHTML=icon('users-round');nav.append(trigger);}

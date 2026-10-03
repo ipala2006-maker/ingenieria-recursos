@@ -1,9 +1,12 @@
 const { authenticateBearer, adminRequest } = require('./supabase-admin');
 const { setSecurityHeaders, isSameOriginRequest, requireJsonRequest, rejectOversizedBody, enforceRateLimit } = require('./request-security');
-const actions = new Set(['profile','request','accept','decline','remove','block','unblock','rotate']);
+const actions = new Set(['profile','request','request_email','accept','decline','remove','block','unblock','rotate']);
 const errors = {
   TOO_MANY_ACTIONS:'Hiciste varios cambios seguidos. Esperá un minuto e intentá de nuevo.',
   INVALID_INVITE:'El enlace no es válido, ya cambió o no está disponible.',
+  INVALID_EMAIL:'Ingresá un correo electrónico válido.',
+  EMAIL_VERIFICATION_REQUIRED:'Confirmá tu correo antes de enviar solicitudes por email.',
+  EMAIL_REQUEST_LIMIT:'Ya enviaste varias solicitudes por correo. Volvé a intentar en diez minutos.',
   INVALID_PROFILE:'Elegí un nombre de 1 a 32 caracteres y la privacidad de tu racha.',
   INVALID_TIMEZONE:'No pudimos reconocer la zona horaria del dispositivo.',
   FRIEND_LIMIT:'Alcanzaste el límite de amigos o solicitudes. Revisá las pendientes.',
@@ -29,6 +32,9 @@ module.exports = async function friends(request,response) {
   } else if(action==='request') {
     if(typeof body.invite!=='string' || !/^[a-f0-9]{32}$/.test(body.invite)) return response.status(400).json({message:errors.INVALID_INVITE});
     data.invite=body.invite;
+  } else if(action==='request_email') {
+    if(typeof body.email!=='string' || body.email.length>254 || !/^[^\s@\u0000-\u001f\u007f]+@[^\s@\u0000-\u001f\u007f]+\.[^\s@\u0000-\u001f\u007f]+$/.test(body.email.trim())) return response.status(400).json({message:errors.INVALID_EMAIL});
+    data.email=body.email.trim().toLowerCase();
   } else if(['accept','decline','remove','block','unblock'].includes(action)) {
     if(typeof body.id!=='string' || !/^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(body.id)) return response.status(400).json({message:errors.INVALID_TARGET});
     data.id=body.id;
@@ -37,9 +43,9 @@ module.exports = async function friends(request,response) {
     const result=await adminRequest('/rest/v1/rpc/friends_action',{method:'POST',body:JSON.stringify({p_user:user.id,p_action:action,p_data:data})});
     return response.status(200).json(result);
   } catch(error) {
-    if(error.message==='TOO_MANY_ACTIONS') {
-      response.setHeader('Retry-After','60');
-      return response.status(429).json({message:errors.TOO_MANY_ACTIONS});
+    if(['TOO_MANY_ACTIONS','EMAIL_REQUEST_LIMIT'].includes(error.message)) {
+      response.setHeader('Retry-After',error.message==='EMAIL_REQUEST_LIMIT'?'600':'60');
+      return response.status(429).json({message:errors[error.message]});
     }
     if(errors[error.message]) return response.status(400).json({message:errors[error.message]});
     return response.status(503).json({message:'Amigos no está disponible en este momento. Volvé a intentar en unos minutos.'});
