@@ -31,7 +31,7 @@
   loadAccountScript();
   if (!document.querySelector('script[data-friends]')) {
     const friends = document.createElement('script'); friends.dataset.friends = '';
-    friends.src = rootPath + 'scripts/friends.js?v=20261003-username';
+    friends.src = rootPath + 'scripts/friends.js?v=20261003-identity';
     document.head.appendChild(friends);
   }
   loadPomodoroScript();

@@ -41,7 +41,7 @@ const ids=['00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-00000
     }
     const [alice,bob]=pages;
     await bob.getByRole('button',{name:'Mi nombre y privacidad',exact:true}).click();
-    await bob.locator('#friendName').fill('Bruno');await bob.locator('#friendUsername').fill('@BRUNO_ESTUDIA');
+    await bob.locator('#friendName').fill('@BRUNO_ESTUDIA');
     await bob.getByRole('button',{name:'Guardar cambios'}).click();await bob.getByText('Nombre y privacidad guardados.').waitFor();
     await bob.locator('[data-back]').click();
     await bob.getByRole('button',{name:'Cerrar amigos',exact:true}).click();
@@ -67,7 +67,7 @@ const ids=['00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-00000
     await bob.screenshot({path:path.join(output,'friends-email-mobile.png')});
     assert.ok(await bob.locator('.friends-dialog').evaluate(el=>el.scrollWidth<=el.clientWidth+1));
     await bob.locator('[data-back]').click();
-    await alice.getByRole('button',{name:'Mi nombre y privacidad',exact:true}).click();await alice.locator('#friendName').fill('Alex');await alice.locator('[data-share]').check();await alice.getByRole('button',{name:'Guardar cambios'}).click();await alice.getByText('Nombre y privacidad guardados.').waitFor();await alice.locator('[data-back]').click();
+    await alice.getByRole('button',{name:'Mi nombre y privacidad',exact:true}).click();await alice.locator('#friendName').fill('alex');await alice.locator('[data-share]').check();await alice.getByRole('button',{name:'Guardar cambios'}).click();await alice.getByText('Nombre y privacidad guardados.').waitFor();await alice.locator('[data-back]').click();
     const link=await alice.locator('[data-my-link]').inputValue();
     await bob.goto(link);await bob.getByText('Solicitud enviada. Tu amigo tiene que aceptarla.',{exact:true}).waitFor();
     assert.equal(await bob.locator('[data-outgoing] .friends-request').count(),1,'opening an invitation automatically creates a request');

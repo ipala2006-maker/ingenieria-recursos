@@ -56,6 +56,27 @@
     dialog.querySelector(`[name="homeDensity"][value="${value.density}"]`).checked=true;
   }
   function select(key){armed=key;for(const [k,node] of nodes){node?.classList.toggle('home-tool-selected',k===key);node?.querySelector('[data-home-move]')?.setAttribute('aria-pressed',String(k===key));}}
+  function findSwapTarget(key,pointer){
+    if(!pointer||mobile.matches)return null;
+    let best=null;
+    for(const [other,node] of nodes){
+      if(other===key||other==='shortcuts'||!node||node.classList.contains('home-space-disabled'))continue;
+      const handle=node.querySelector('[data-home-move]');
+      if(!handle||handle.hidden)continue;
+      const r=handle.getBoundingClientRect(),pad=10;
+      if(pointer.x<r.left-pad||pointer.x>r.right+pad||pointer.y<r.top-pad||pointer.y>r.bottom+pad)continue;
+      const score=Math.hypot(pointer.x-(r.left+r.width/2),pointer.y-(r.top+r.height/2));
+      if(!best||score<best.score)best={key:other,score};
+    }
+    return best?.key||null;
+  }
+  function markSwapTarget(target,key){
+    for(const [other,node] of nodes){
+      if(!node)continue;
+      node.classList.toggle('home-swap-target',other===target);
+      node.classList.toggle('home-swap-source',Boolean(target)&&other===key);
+    }
+  }
   function setEditing(on){
     if(gesture)finish({pointerId:gesture.id,type:'pointercancel'});
     editing=on;select(null);announce();document.body.classList.toggle('home-layout-editing',on);toolbar.hidden=!on;done.hidden=!on;manage.hidden=!on;undo.hidden=!on;undo.disabled=!undoValue;trigger.setAttribute('aria-pressed',String(on));
@@ -71,13 +92,19 @@
   function updateGesture(){
     if(!gesture?.pointer)return;const g=gesture,p=g.pointer;
     if(mobile.matches){g.value.sizes[g.key].mobileHeight=clamp(g.rect.height+p.y-g.y,spaces.find(s=>s[0]===g.key)[2],720,300);apply(g.value);return;}
-    const l=g.layout,result=board.proposal(l.boxes[g.key],{x:p.x-g.x,y:p.y-g.y},g.kind,l.boxes,g.key,l.width,l.height,p.snap,g.edge);
+    const l=g.layout,swapTarget=g.kind==='move'?findSwapTarget(g.key,p):null;
+    g.swapTarget=swapTarget;markSwapTarget(swapTarget,g.key);
+    if(swapTarget){
+      const box={...l.boxes[swapTarget]};g.result={box,valid:true,guides:[]};
+      moveBox(nodes.get(g.key),box,false);nodes.get(g.key).classList.remove('home-placement-blocked');overlay.replaceChildren();return;
+    }
+    const result=board.proposal(l.boxes[g.key],{x:p.x-g.x,y:p.y-g.y},g.kind,l.boxes,g.key,l.width,l.height,p.snap,g.edge);
     g.result=result;moveBox(nodes.get(g.key),result.box,false);nodes.get(g.key).classList.toggle('home-placement-blocked',!result.valid);overlay.replaceChildren();
     for(const guide of result.guides){const line=document.createElement('i');line.className=`home-align-guide home-align-guide--${guide.axis}`;line.style[guide.axis==='x'?'left':'top']=`${guide.position+(guide.axis==='y'?54:0)}px`;overlay.appendChild(line);}
   }
   function cleanup(g){
     if(g.target.hasPointerCapture(g.id))g.target.releasePointerCapture(g.id);
-    document.body.classList.remove('home-board-dragging');overlay.replaceChildren();for(const node of nodes.values())node?.classList.remove('is-resizing','home-tool-moving','home-placement-blocked');
+    document.body.classList.remove('home-board-dragging');overlay.replaceChildren();for(const node of nodes.values())node?.classList.remove('is-resizing','home-tool-moving','home-placement-blocked','home-swap-target','home-swap-source');
   }
   function finish(event){
     if(!gesture||gesture.id!==event.pointerId)return;cancelAnimationFrame(frame);updateGesture();const g=gesture;gesture=null;cleanup(g);
@@ -85,6 +112,11 @@
     const distance=g.pointer?Math.hypot(g.pointer.x-g.x,g.pointer.y-g.y):0;
     if(g.kind==='move'&&distance<4){select(armed===g.key?null:g.key);apply(g.start);return;}
     select(null);
+    if(!mobile.matches&&g.kind==='move'&&g.swapTarget){
+      const sourceBox={...g.layout.boxes[g.key]},targetBox={...g.layout.boxes[g.swapTarget]};
+      g.value.placement.boxes[g.key]=targetBox;g.value.placement.boxes[g.swapTarget]=sourceBox;
+      apply(g.value,true);save(g.value,g.start);announce('Herramientas intercambiadas.');return;
+    }
     if(!mobile.matches){if(!g.result?.valid){apply(g.start,true);if(g.result)announce('No hay espacio ahí. El resto de las herramientas no se movió.');return;}g.value.placement.boxes[g.key]=g.result.box;}
     apply(g.value);save(g.value,g.start);
   }

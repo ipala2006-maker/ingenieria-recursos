@@ -56,9 +56,27 @@ async function contained(page,child,parent){
     await page.mouse.move(r.x+r.width/2+delta,r.y+r.height/2+delta,{steps:8});await page.mouse.up();
     const after=await page.locator('.study-focus').boundingBox();assert.ok(desktop?after.height<before.height:after.height>before.height,'drag resizes tool independently');
     await noOverflow(page);
+    let expectedFocusAfterReload=after.height;
+    if(desktop){
+      const focusBefore=await page.locator('.study-focus').boundingBox();
+      const progressBefore=await page.locator('.study-progress').boundingBox();
+      const source=await page.locator('[data-home-move="progress"]').boundingBox();
+      const target=await page.locator('[data-home-move="focus"]').boundingBox();
+      await page.mouse.move(source.x+source.width/2,source.y+source.height/2);await page.mouse.down();
+      await page.mouse.move(target.x+target.width/2,target.y+target.height/2,{steps:10});await page.mouse.up();
+      await page.waitForTimeout(260);
+      const focusSwapped=await page.locator('.study-focus').boundingBox();
+      const progressSwapped=await page.locator('.study-progress').boundingBox();
+      assert.ok(Math.abs(progressSwapped.x-focusBefore.x)<3&&Math.abs(progressSwapped.y-focusBefore.y)<3,'progress moves into focus position');
+      assert.ok(Math.abs(progressSwapped.width-focusBefore.width)<3&&Math.abs(progressSwapped.height-focusBefore.height)<3,'progress receives focus size');
+      assert.ok(Math.abs(focusSwapped.x-progressBefore.x)<3&&Math.abs(focusSwapped.y-progressBefore.y)<3,'focus moves into progress position');
+      assert.ok(Math.abs(focusSwapped.width-progressBefore.width)<3&&Math.abs(focusSwapped.height-progressBefore.height)<3,'focus receives progress size');
+      expectedFocusAfterReload=focusSwapped.height;
+      await noOverflow(page);
+    }
     await page.locator('.home-layout-done').click();
     await page.reload({waitUntil:'networkidle'});
-    assert.ok(Math.abs((await page.locator('.study-focus').boundingBox()).height-after.height)<2,'size persists');
+    assert.ok(Math.abs((await page.locator('.study-focus').boundingBox()).height-expectedFocusAfterReload)<2,'size persists');
     await page.locator('[data-home-customize]').click();await page.locator('.home-layout-manage').click();await page.locator('[data-home-customizer-reset]').click();await page.locator('.home-customizer__done').click();await page.locator('.home-layout-done').click();
     const compact=await page.locator('[data-home-navigation]').isVisible();
     if(compact){
