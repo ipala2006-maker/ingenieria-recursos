@@ -15,6 +15,55 @@ async function database(){
 }
 const call=async(db,user,action='list',data={})=>(await db.query('select friends_action($1,$2,$3) as result',[user,action,data])).rows[0].result;
 
+test('unique usernames preserve display names and route exact requests without auto-accepting',async()=>{
+  const db=await database();try{
+    const [a,b,c]=ids;
+    const profile={name:'Alex',username:'@ALEX_ESTUDIA',share:false,timezone:'UTC'};
+    assert.equal((await call(db,b,'profile',profile)).me.username,'alex_estudia');
+    await call(db,c,'profile',{...profile,username:'otro_alex'});
+    await assert.rejects(call(db,c,'profile',profile),/USERNAME_TAKEN/);
+    assert.equal((await call(db,c)).me.username,'otro_alex');
+    await call(db,b,'profile',{name:'Alex',share:false,timezone:'UTC'});
+    assert.equal((await call(db,b)).me.username,'alex_estudia','legacy clients preserve the handle');
+    const result=await call(db,a,'request_username',{username:' @Alex_Estudia '});
+    assert.equal(result.outgoing[0].id,b);assert.equal(result.outgoing[0].username,'alex_estudia');
+    assert.deepEqual(result.friends,[]);assert.equal((await call(db,b)).incoming[0].id,a);
+    assert.deepEqual((await call(db,c)).incoming,[],'same display name never selects another account');
+    await call(db,a,'request_username',{username:'alex_estudia'});
+    assert.equal((await call(db,b)).incoming.length,1);
+    for(const username of ['alex','alex_estudia_extra','missing_user']){
+      assert.equal((await call(db,a,'request_username',{username})).outgoing.length,1,'no prefix matching');
+    }
+    await call(db,b,'accept',{id:a});assert.equal((await call(db,a)).friends[0].username,'alex_estudia');
+    await call(db,b,'block',{id:a});
+    assert.deepEqual((await call(db,a,'request_username',{username:'alex_estudia'})).outgoing,[]);
+    await db.exec(fs.readFileSync(path.join(root,'supabase/friends.sql'),'utf8'));
+    assert.equal((await call(db,b)).me.username,'alex_estudia','migration rerun preserves handles');
+  }finally{await db.close();}
+});
+
+test('username validation, verification, removal and shared lookup limit',async()=>{
+  const db=await database();try{
+    const [a,b]=ids,profile={name:'Pilot',share:false,timezone:'UTC'};
+    for(const username of ['ab','x'.repeat(25),'name space','@@name','álex',null,['alex']]){
+      await assert.rejects(call(db,b,'profile',{...profile,username}),/INVALID_USERNAME/);
+      await assert.rejects(call(db,a,'request_username',{username}),/INVALID_USERNAME/);
+    }
+    await call(db,b,'profile',{...profile,username:'pilot_user'});
+    await db.query('update auth.users set email_confirmed_at=null where id=$1',[a]);
+    await assert.rejects(call(db,a,'request_username',{username:'pilot_user'}),/EMAIL_VERIFICATION_REQUIRED/);
+    await db.query('update auth.users set email_confirmed_at=now() where id=$1',[a]);
+    await db.query('update auth.users set email_confirmed_at=null where id=$1',[b]);
+    assert.deepEqual((await call(db,a,'request_username',{username:'pilot_user'})).outgoing,[]);
+    await db.query('update auth.users set email_confirmed_at=now() where id=$1',[b]);
+    assert.deepEqual((await call(db,b,'request_username',{username:'pilot_user'})).outgoing,[],'own handle is a no-op');
+    await call(db,b,'profile',{...profile,username:''});assert.equal((await call(db,b)).me.username,null);
+    assert.deepEqual((await call(db,a,'request_username',{username:'pilot_user'})).outgoing,[]);
+    for(let i=0;i<8;i++)await call(db,a,'request_email',{email:`missing${i}@example.test`});
+    await assert.rejects(call(db,a,'request_username',{username:'missing_user'}),/EMAIL_REQUEST_LIMIT/);
+  }finally{await db.close();}
+});
+
 test('exact email sends one private request even before the recipient has opened Friends',async()=>{
   const db=await database();try{
     const [a,b]=ids;
@@ -135,4 +184,13 @@ test('API authenticates server-side, ignores forged actor and returns only gener
   for(const email of ['bad','x@y.test\nInjected: x','x'.repeat(255),null,['x@y.test']]){
     req.body.email=email;await handler.module.exports(req,response);assert.equal(response.code,400);
   }
+  req.body={action:'request_username',username:'@ALEX_123',p_user:ids[1],email:'private@example.test'};
+  await handler.module.exports(req,response);assert.equal(response.code,200);
+  assert.deepEqual(calls.at(-1),{p_user:ids[0],p_action:'request_username',p_data:{username:'alex_123'}});
+  for(const username of ['',null,[], 'ab','@@alex','name space','x'.repeat(26)]){
+    req.body.username=username;await handler.module.exports(req,response);assert.equal(response.code,400);
+  }
+  req.body={action:'profile',name:'Alex',share:false,timezone:'UTC',username:'@ALEX_123'};
+  await handler.module.exports(req,response);assert.equal(response.code,200);assert.equal(calls.at(-1).p_data.username,'alex_123');
+  req.body.username='invalid space';await handler.module.exports(req,response);assert.equal(response.code,400);
 });

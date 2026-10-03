@@ -18,6 +18,8 @@ create table if not exists public.friend_links (
 );
 alter table public.friend_profiles add column if not exists email_window timestamptz not null default now();
 alter table public.friend_profiles add column if not exists email_count integer not null default 0;
+alter table public.friend_profiles add column if not exists username text check (username ~ '^[a-z0-9_]{3,24}$');
+create unique index if not exists friend_username on public.friend_profiles(username);
 create unique index if not exists friend_pair on public.friend_links(least(sender,recipient),greatest(sender,recipient));
 create index if not exists friend_recipient on public.friend_links(recipient);
 create table if not exists public.friend_blocks (
@@ -59,10 +61,10 @@ revoke all on function public.friend_streak(uuid,text) from public,anon,authenti
 
 create or replace function public.friends_action(p_user uuid,p_action text,p_data jsonb default '{}'::jsonb)
 returns jsonb language plpgsql security definer set search_path='' as $$
-declare target uuid; mine jsonb; people jsonb; incoming jsonb; outgoing jsonb; blocked jsonb; zone text; target_email text;
+declare target uuid; mine jsonb; people jsonb; incoming jsonb; outgoing jsonb; blocked jsonb; zone text; target_email text; handle text;
 begin
   if not exists(select 1 from auth.users where id=p_user) then raise exception 'AUTH_REQUIRED'; end if;
-  if p_action not in ('list','profile','request','request_email','accept','decline','remove','block','unblock','rotate') then raise exception 'INVALID_ACTION'; end if;
+  if p_action not in ('list','profile','request','request_email','request_username','accept','decline','remove','block','unblock','rotate') then raise exception 'INVALID_ACTION'; end if;
   if p_action='request' then
     select user_id into target from public.friend_profiles where invite=p_data->>'invite';
     if target is null or target=p_user then raise exception 'INVALID_INVITE'; end if;
@@ -74,6 +76,12 @@ begin
     -- Exact server-only lookup, never an email directory or prefix search.
     select u.id into target from auth.users u where lower(u.email)=target_email
       and u.email_confirmed_at is not null and u.id<>p_user limit 1;
+  elsif p_action='request_username' then
+    handle:=regexp_replace(lower(trim(p_data->>'username')),'^@','');
+    if jsonb_typeof(p_data->'username') is distinct from 'string' or handle !~ '^[a-z0-9_]{3,24}$' then raise exception 'INVALID_USERNAME'; end if;
+    if not exists(select 1 from auth.users where id=p_user and email_confirmed_at is not null) then raise exception 'EMAIL_VERIFICATION_REQUIRED'; end if;
+    select p.user_id into target from public.friend_profiles p join auth.users u on u.id=p.user_id
+      where p.username=handle and u.email_confirmed_at is not null and u.id<>p_user;
   elsif p_action in ('accept','decline','remove','block','unblock') then
     begin target:=(p_data->>'id')::uuid; exception when others then raise exception 'INVALID_TARGET'; end;
     if target is null or target=p_user then raise exception 'INVALID_TARGET'; end if;
@@ -88,7 +96,7 @@ begin
       action_window=case when action_window<now()-interval '1 minute' then now() else action_window end where user_id=p_user;
     if (select action_count from public.friend_profiles where user_id=p_user)>20 then raise exception 'TOO_MANY_ACTIONS'; end if;
   end if;
-  if p_action='request_email' then
+  if p_action in ('request_email','request_username') then
     update public.friend_profiles set email_count=case when email_window<now()-interval '10 minutes' then 1 else email_count+1 end,
       email_window=case when email_window<now()-interval '10 minutes' then now() else email_window end where user_id=p_user;
     if (select email_count from public.friend_profiles where user_id=p_user)>10 then raise exception 'EMAIL_REQUEST_LIMIT'; end if;
@@ -103,15 +111,22 @@ begin
       then raise exception 'INVALID_PROFILE'; end if;
     zone:=p_data->>'timezone';
     if not exists(select 1 from pg_catalog.pg_timezone_names where name=zone) then raise exception 'INVALID_TIMEZONE'; end if;
+    if p_data ? 'username' then
+      handle:=regexp_replace(lower(trim(p_data->>'username')),'^@','');
+      if jsonb_typeof(p_data->'username') is distinct from 'string' or (handle<>'' and handle !~ '^[a-z0-9_]{3,24}$') then raise exception 'INVALID_USERNAME'; end if;
+      begin
+        update public.friend_profiles set username=nullif(handle,'') where user_id=p_user;
+      exception when unique_violation then raise exception 'USERNAME_TAKEN'; end;
+    end if;
     update public.friend_profiles set name=trim(p_data->>'name'),share_streak=(p_data->>'share')::boolean,timezone=zone where user_id=p_user;
   elsif p_action='rotate' then
     update public.friend_profiles set invite=replace(gen_random_uuid()::text,'-','') where user_id=p_user;
-  elsif p_action in ('request','request_email','accept') and target is not null then
+  elsif p_action in ('request','request_email','request_username','accept') and target is not null then
     if exists(select 1 from public.friend_blocks where (owner=p_user and friend_blocks.blocked=target) or (owner=target and friend_blocks.blocked=p_user)) then raise exception 'INVALID_INVITE'; end if;
-    if p_action in ('request','request_email') and not exists(select 1 from public.friend_links where (sender=p_user and recipient=target) or (sender=target and recipient=p_user))
+    if p_action in ('request','request_email','request_username') and not exists(select 1 from public.friend_links where (sender=p_user and recipient=target) or (sender=target and recipient=p_user))
       and ((select count(*) from public.friend_links where sender=p_user or recipient=p_user)>=100
       or (select count(*) from public.friend_links where sender=target or recipient=target)>=100) then raise exception 'FRIEND_LIMIT'; end if;
-    if p_action in ('request','request_email') then
+    if p_action in ('request','request_email','request_username') then
       insert into public.friend_links(sender,recipient) values(p_user,target) on conflict do nothing;
     else
       update public.friend_links set accepted=true where sender=target and recipient=p_user and not accepted;
@@ -128,18 +143,18 @@ begin
   elsif p_action='unblock' then
     delete from public.friend_blocks where owner=p_user and friend_blocks.blocked=target;
   end if;
-  select jsonb_build_object('id',p.user_id,'name',p.name,'share',p.share_streak,'invite',p.invite,
+  select jsonb_build_object('id',p.user_id,'name',p.name,'username',p.username,'share',p.share_streak,'invite',p.invite,
     'streak',public.friend_streak(p_user,p.timezone)) into mine from public.friend_profiles p where p.user_id=p_user;
   select coalesce(jsonb_agg(row),'[]'::jsonb) into people from (
-    select p.user_id as id,p.name,p.share_streak as share,
+    select p.user_id as id,p.name,p.username,p.share_streak as share,
       case when p.share_streak then public.friend_streak(p.user_id,p.timezone) else null end as streak
     from public.friend_links l join public.friend_profiles p on p.user_id=case when l.sender=p_user then l.recipient else l.sender end
     where (l.sender=p_user or l.recipient=p_user) and l.accepted
     order by streak desc nulls last,p.name,p.user_id
   ) row;
-  select coalesce(jsonb_agg(jsonb_build_object('id',p.user_id,'name',p.name)),'[]'::jsonb) into incoming
+  select coalesce(jsonb_agg(jsonb_build_object('id',p.user_id,'name',p.name,'username',p.username)),'[]'::jsonb) into incoming
     from public.friend_links l join public.friend_profiles p on p.user_id=l.sender where l.recipient=p_user and not l.accepted;
-  select coalesce(jsonb_agg(jsonb_build_object('id',p.user_id,'name',p.name)),'[]'::jsonb) into outgoing
+  select coalesce(jsonb_agg(jsonb_build_object('id',p.user_id,'name',p.name,'username',p.username)),'[]'::jsonb) into outgoing
     from public.friend_links l join public.friend_profiles p on p.user_id=l.recipient where l.sender=p_user and not l.accepted;
   select coalesce(jsonb_agg(jsonb_build_object('id',p.user_id,'name',p.name)),'[]'::jsonb) into blocked
     from public.friend_blocks b join public.friend_profiles p on p.user_id=b.blocked where b.owner=p_user;

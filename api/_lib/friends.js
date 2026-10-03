@@ -1,12 +1,15 @@
 const { authenticateBearer, adminRequest } = require('./supabase-admin');
 const { setSecurityHeaders, isSameOriginRequest, requireJsonRequest, rejectOversizedBody, enforceRateLimit } = require('./request-security');
-const actions = new Set(['profile','request','request_email','accept','decline','remove','block','unblock','rotate']);
+const actions = new Set(['profile','request','request_email','request_username','accept','decline','remove','block','unblock','rotate']);
+const normalizeUsername=value=>value.trim().toLowerCase().replace(/^@/,'');
 const errors = {
   TOO_MANY_ACTIONS:'Hiciste varios cambios seguidos. Esperá un minuto e intentá de nuevo.',
   INVALID_INVITE:'El enlace no es válido, ya cambió o no está disponible.',
   INVALID_EMAIL:'Ingresá un correo electrónico válido.',
-  EMAIL_VERIFICATION_REQUIRED:'Confirmá tu correo antes de enviar solicitudes por email.',
-  EMAIL_REQUEST_LIMIT:'Ya enviaste varias solicitudes por correo. Volvé a intentar en diez minutos.',
+  EMAIL_VERIFICATION_REQUIRED:'Confirmá tu correo antes de enviar solicitudes por usuario o correo.',
+  EMAIL_REQUEST_LIMIT:'Ya enviaste varias solicitudes. Volvé a intentar en diez minutos.',
+  INVALID_USERNAME:'Usá de 3 a 24 letras sin tildes, números o guion bajo para el usuario.',
+  USERNAME_TAKEN:'Ese usuario ya está en uso. Elegí otro.',
   INVALID_PROFILE:'Elegí un nombre de 1 a 32 caracteres y la privacidad de tu racha.',
   INVALID_TIMEZONE:'No pudimos reconocer la zona horaria del dispositivo.',
   FRIEND_LIMIT:'Alcanzaste el límite de amigos o solicitudes. Revisá las pendientes.',
@@ -29,12 +32,20 @@ module.exports = async function friends(request,response) {
   if(action==='profile') {
     if(typeof body.name!=='string' || body.name.trim().length<1 || body.name.length>32 || /[\u0000-\u001f\u007f]/.test(body.name) || typeof body.share!=='boolean' || typeof body.timezone!=='string' || body.timezone.length>80) return response.status(400).json({message:errors.INVALID_PROFILE});
     Object.assign(data,{name:body.name.trim(),share:body.share,timezone:body.timezone});
+    if(Object.hasOwn(body,'username')) {
+      if(typeof body.username!=='string' || body.username.length>25) return response.status(400).json({message:errors.INVALID_USERNAME});
+      data.username=normalizeUsername(body.username);
+      if(data.username && !/^[a-z0-9_]{3,24}$/.test(data.username)) return response.status(400).json({message:errors.INVALID_USERNAME});
+    }
   } else if(action==='request') {
     if(typeof body.invite!=='string' || !/^[a-f0-9]{32}$/.test(body.invite)) return response.status(400).json({message:errors.INVALID_INVITE});
     data.invite=body.invite;
   } else if(action==='request_email') {
     if(typeof body.email!=='string' || body.email.length>254 || !/^[^\s@\u0000-\u001f\u007f]+@[^\s@\u0000-\u001f\u007f]+\.[^\s@\u0000-\u001f\u007f]+$/.test(body.email.trim())) return response.status(400).json({message:errors.INVALID_EMAIL});
     data.email=body.email.trim().toLowerCase();
+  } else if(action==='request_username') {
+    if(typeof body.username!=='string' || body.username.length>25 || !/^[a-z0-9_]{3,24}$/.test(normalizeUsername(body.username))) return response.status(400).json({message:errors.INVALID_USERNAME});
+    data.username=normalizeUsername(body.username);
   } else if(['accept','decline','remove','block','unblock'].includes(action)) {
     if(typeof body.id!=='string' || !/^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(body.id)) return response.status(400).json({message:errors.INVALID_TARGET});
     data.id=body.id;

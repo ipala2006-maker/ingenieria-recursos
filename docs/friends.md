@@ -3,9 +3,11 @@
 ## Uso
 
 1. Abrir Amigos desde el icono de personas de la barra superior e iniciar sesion.
-2. En el icono de ajustes (Mi nombre y privacidad), elegir un alias. Compartir la racha es opcional
+2. En el icono de ajustes (Mi nombre y privacidad), elegir un nombre visible y,
+   opcionalmente, un @usuario unico (3 a 24 letras sin tildes, numeros o guion bajo).
+   El nombre visible puede repetirse; el usuario no. Compartir la racha es opcional
    y viene desactivado. No se publica el correo ni el telefono.
-3. Tocar + e ingresar el correo exacto de otra cuenta confirmada para enviarle
+3. Tocar + e ingresar el @usuario o correo exacto de otra cuenta confirmada para enviarle
    una solicitud dentro de Amigos. No se manda un email. Tambien podes copiar
    la invitacion y enviarla por el medio que prefieras. Al abrirla,
    se envia la solicitud automaticamente con la cuenta iniciada. Si falta iniciar
@@ -17,7 +19,7 @@
    amistad. Desbloquear no la restaura automaticamente.
 
 Todos muestra la lista completa, incluso amigos con racha privada. Ranking muestra
-solo quienes la comparten. Desde seis amigos aparece un buscador por nombre.
+solo quienes la comparten. Desde seis amigos aparece un buscador por nombre o usuario.
 Las solicitudes pendientes se muestran arriba de la lista, sin abrir otro menu.
 
 El ranking conserva el criterio de la app: 25 minutos registrados por dia.
@@ -56,6 +58,13 @@ fuente de minutos existente sigue siendo el temporizador del dispositivo.
   Tanto el emisor como el destinatario deben tener su email confirmado.
   Hasta 10 intentos cada 10 minutos por cuenta, contados incluso sin coincidencia.
   El correo solo se usa en la consulta parametrizada, no en logs ni respuestas.
+- Solicitudes por usuario: coincidencia exacta, con o sin @ inicial, sin distinguir
+  mayusculas. Un indice unico en PostgreSQL impide duplicados incluso ante guardados
+  simultaneos. No se buscan nombres visibles ambiguos ni prefijos. Comparte el limite
+  de 10 intentos cada 10 minutos con la busqueda por correo y respeta los mismos
+  bloqueos, verificacion y aceptacion. El @usuario aparece en solicitudes y amigos.
+  Los perfiles anteriores conservan nombre y amistades; pueden elegir su usuario
+  cuando quieran. Los clientes antiguos que no envian ese campo no lo borran.
 - Limite de 100 relaciones (amigos + solicitudes) por cuenta y 200 bloqueos.
   Limite persistente de 20 cambios/minuto por cuenta mas limitacion de API.
 - Actualiza al abrir, manualmente o cada 60 segundos solo con Amigos visible;
@@ -75,7 +84,7 @@ aceptacion, ranking, retirada de consentimiento, bloqueos, rotacion, RLS,
 suplantacion del actor, limites y vistas de escritorio/movil/claro/oscuro.
 El recorrido de navegador tambien comprueba enlaces directos, login diferido,
 recarga, enlaces repetidos/propios/invalidos, reintento y cambios de fragmento.
-Incluye solicitudes por correo antes de abrir Amigos, mayusculas, duplicados,
+Incluye solicitudes por usuario y correo antes de abrir Amigos, mayusculas, duplicados,
 cuentas no verificadas, bloqueos, limites y permisos privados. La fecha de estudio
 de las pruebas y el navegador usan UTC para evitar fallos por la medianoche local.
 No crean usuarios ni amistades en produccion.
