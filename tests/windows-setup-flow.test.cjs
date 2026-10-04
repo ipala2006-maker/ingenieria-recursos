@@ -95,8 +95,9 @@ test('widget selection stays in the app and installer downloads remain explicit'
   assert.doesNotMatch(install,/location.href\s*=|\.click\(\)/);
   assert.match(install,/showWidgetSetup/);assert.match(install,/data-widget-installed/);
   const landing=fs.readFileSync(path.join(__dirname,'../instalar.html'),'utf8');
-  for(const name of ['inbox','calendar','pomodoro','streak'])assert.match(landing,new RegExp('setup-widget='+name));
-  assert.match(landing,/setup-alarms=1/);
+  assert.doesNotMatch(landing,/install-widget-choices|pcAlarmsTitle|pcWidgetsTitle/);
+  assert.match(landing,/data-install-pc href="https:\/\/estudiemos-app.vercel.app\/downloads\/Estudiemos-Para-Windows.exe"/);
+  assert.match(landing,/id="pc-widgets"/,'old widget links still have a download destination');
 });
 test('alarm setup requires consent and authenticated receipt, not a download or test click',()=>{
   assert.match(alarms,/data-alarm-consent>/);assert.doesNotMatch(alarms,/data-alarm-consent checked/);

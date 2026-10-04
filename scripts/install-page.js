@@ -2,7 +2,6 @@
   const page = document.querySelector(".install-page");
   const installButton = document.querySelector("[data-install-pc]");
   const installStatus = document.querySelector("[data-install-pc-status]");
-  const widgetInstaller = document.querySelector("[data-install-windows-widgets]");
   const requestedWidgetMessage = document.querySelector("[data-requested-widget]");
   const tourTabs = Array.from(document.querySelectorAll("[data-tour-target]"));
   const tourScenes = Array.from(document.querySelectorAll("[data-scene]"));
@@ -119,12 +118,6 @@
       installStatus.textContent = 'Abrí Estudiemos-Para-Windows.exe desde Descargas. Instala la app, los widgets y el soporte de alarmas juntos.';
     });
   }
-
-  widgetInstaller?.addEventListener("click", () => {
-    widgetInstaller.classList.add("is-started");
-    widgetInstaller.innerHTML = "Descarga iniciada <span aria-hidden=\"true\">✓</span>";
-
-  });
 
   function prepareMotion() {
     if (!page || reduceMotion || !("IntersectionObserver" in window)) return;

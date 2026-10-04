@@ -1,5 +1,5 @@
 import { attachTimerDial } from './timer-dial.js?v=20260909-depth2';
-import { createStudyChart } from './study-chart.js?v=20260914-chart';
+import { createStudyChart } from './study-chart.js?v=20261003-refined';
 const home = document.querySelector('[data-study-home]');
 if (home) {
   if (!window.EstudiemosRelease?.enabled('ai')) {
@@ -137,7 +137,7 @@ if (home) {
     const request = ++generation;
     depthPending = true;
     try {
-      const module = await import('./study-scene.js?v=20260913-phase');
+      const module = await import('./study-scene.js?v=20261003-refined');
       if (request !== generation || reduced.matches || home.hidden) return;
       if(!depth) depth = module.createStudyScene(host);
       update();

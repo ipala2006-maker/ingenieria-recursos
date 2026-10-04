@@ -2,6 +2,8 @@
 .study-chart-modes button{border:0;border-radius:4px;min-height:26px;padding:3px 10px;font:inherit;font-size:11px;color:var(--muted);background:transparent;cursor:pointer;}
 .study-chart-modes button[aria-pressed=true]{background:var(--panel,var(--bg));color:var(--accent);box-shadow:0 1px 3px #0002;}
 .has-study-chart{position:relative;isolation:isolate;}
+.has-study-chart[data-chart-mode=depth] canvas{inset:0 0 28px;height:calc(100% - 28px);}
+.has-study-chart.has-progress-depth button[aria-pressed=true]{background:color-mix(in srgb,var(--accent) 8%,transparent);box-shadow:inset 0 -2px var(--accent);}
 .has-study-chart .study-chart-plot{position:absolute;inset:0 0 24px;width:100%;height:calc(100% - 24px);overflow:visible;z-index:0;fill:none;stroke:none;}
 .study-chart-plot .chart-grid line{stroke:var(--border,var(--line));stroke-width:1;}
 .study-chart-plot .chart-grid text{fill:var(--muted);stroke:none;font:10px system-ui,sans-serif;}

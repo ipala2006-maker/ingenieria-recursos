@@ -1198,7 +1198,7 @@
     focusDepthRequested = true;
     const generation = ++focusDepthGeneration;
     try {
-      const { createFocusDepth } = await import(new URL("focus-depth.js?v=20260913-phase", SCRIPT_URL).href);
+      const { createFocusDepth } = await import(new URL("focus-depth.js?v=20261003-refined", SCRIPT_URL).href);
       if (reducedMotion.matches || generation !== focusDepthGeneration) return;
       focusDepth = createFocusDepth(document.querySelector(".pomodoro-timer"));
       renderTimerOnly();

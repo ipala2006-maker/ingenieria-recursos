@@ -1,5 +1,5 @@
-import {createTimerDepth} from './timer-depth.js?v=20260913-phase';
-import {createStudyChart} from './study-chart.js?v=20260914-chart';
+import {createTimerDepth} from './timer-depth.js?v=20261003-refined';
+import {createStudyChart} from './study-chart.js?v=20261003-refined';
 
 const instances=new WeakMap();
 export function enhanceWidget(content) {
