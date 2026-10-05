@@ -10,6 +10,17 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 
+# Local audit artifacts, backups and private signing material.
+/tmp/
+/.backups/
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.key
+*service-account*.json
+
 # Android build output and local machine configuration
 android-app/.gradle/
 android-app/local.properties
