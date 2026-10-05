@@ -2,6 +2,7 @@
   if (window.EstudiemosAccount) return;
 
   const SUPABASE_CDN = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.min.js";
+  const SUPABASE_INTEGRITY = "sha256-z1Kf6JgMvm8t0+OTDs+WNS7T09cSM7Z2Dk+Sf4m5S58=";
   const TURNSTILE_SCRIPT = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
   const SYNC_KEYS = [
     "bandeja_favoritos",
@@ -410,6 +411,10 @@
       const script = document.createElement("script");
       script.src = source;
       script.async = true;
+      if (source === SUPABASE_CDN) {
+        script.integrity = SUPABASE_INTEGRITY;
+        script.crossOrigin = "anonymous";
+      }
       script.dataset.supabaseClient = "true";
       script.onload = () => window.supabase?.createClient ? resolve() : reject(new Error("invalid-client"));
       script.onerror = () => {

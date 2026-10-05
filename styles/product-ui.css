@@ -61,6 +61,10 @@ html.theme-light .topbar .topbar-icon-btn:hover { background:var(--panel-2)!impo
 html.theme-light .workspace-home .workspace-browser,
 html.theme-light .workspace-home .dashboard-widget { background:transparent; box-shadow:none; }
 html.theme-light .workspace-home .workspace-item { background:var(--panel); }
+@media (max-width:620px) {
+  html:has(body.workspace-home) { overflow-x:clip; }
+  html body.workspace-home { overflow-x:clip; }
+}
 html .topbar-icon-btn {
   border-radius:8px;
   transition:background .18s ease, color .18s ease, transform .18s var(--ui-ease);

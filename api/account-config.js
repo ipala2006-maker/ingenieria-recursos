@@ -1,4 +1,5 @@
 const { enforceRateLimit, setSecurityHeaders } = require("./_lib/request-security");
+const { isPublicSupabaseKey } = require("./_lib/public-config");
 
 module.exports = async function handler(request, response) {
   setSecurityHeaders(response);
@@ -18,7 +19,7 @@ module.exports = async function handler(request, response) {
     senderId: process.env.FIREBASE_SENDER_ID || ""
   };
 
-  if (!url || !publishableKey) {
+  if (!url || !isPublicSupabaseKey(publishableKey)) {
     return response.status(503).json({
       enabled: false,
       message: "La sincronizacion de cuentas todavia no esta configurada."

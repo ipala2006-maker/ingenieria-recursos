@@ -4,14 +4,18 @@ const path = require("node:path");
 
 const root = path.resolve(__dirname, "..");
 const textExtensions = new Set([
-  ".css", ".gradle", ".gs", ".html", ".java", ".js", ".json", ".md", ".properties", ".sql", ".xml", ".yaml", ".yml"
+  ".css", ".gradle", ".gs", ".html", ".java", ".js", ".json", ".md", ".properties", ".sql", ".xml", ".yaml", ".yml",
+  ".cjs", ".mjs", ".jsx", ".ts", ".tsx", ".ps1", ".psm1", ".vbs", ".bat", ".cmd", ".py", ".sh", ".env", ".ini", ".config", ".txt"
 ]);
 const secretPatterns = [
   ["private key", /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/],
   ["Google API key", /AIza[0-9A-Za-z_-]{35}/],
   ["Supabase secret key", /sb_secret_[0-9A-Za-z_-]{20,}/],
   ["Meta access token", /EAA[0-9A-Za-z]{45,}/],
-  ["AWS access key", /AKIA[0-9A-Z]{16}/]
+  ["AWS access key", /AKIA[0-9A-Z]{16}/],
+  ["GitHub token", /gh[pousr]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{60,}/],
+  ["OpenAI project key", /sk-(?:proj|svcacct)-[A-Za-z0-9_-]{40,}/],
+  ["Stripe private key", /(?:sk|rk)_live_[A-Za-z0-9]{24,}/]
 ];
 const dependencies = [
   { package: { ecosystem: "npm", name: "three" }, version: "0.185.1" },
@@ -37,6 +41,12 @@ function scanTrackedFiles() {
     const content = fs.readFileSync(path.join(root, relative), "utf8");
     for (const [label, pattern] of secretPatterns) {
       if (pattern.test(content)) findings.push(`${relative}: ${label}`);
+    }
+    for (const match of content.matchAll(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g)) {
+      try {
+        const claims = JSON.parse(Buffer.from(match[0].split(".")[1], "base64url").toString("utf8"));
+        if (claims.role === "service_role") findings.push(`${relative}: Supabase service-role JWT`);
+      } catch (_) {}
     }
   }
   if (findings.length) throw new Error(`Possible committed secrets:\n${findings.join("\n")}`);

@@ -198,12 +198,15 @@
             }
 
             const thumbnail = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+            const title = document.createElement("p");
+            title.className = "video-card__title";
+            title.textContent = data.title || video.title || "Video sin título";
 
             return `
               <a class="video-card" href="${video.url}" target="_blank" rel="noopener noreferrer">
-                <img src="${thumbnail}" alt="${video.title || "Video sin título"}">
+                <img src="${thumbnail}" alt="" loading="lazy">
                 <div class="video-card__body">
-                  <p class="video-card__title">${data.title || video.title || "Video sin título"}</p>
+                  ${title.outerHTML}
                 </div>
               </a>
             `;

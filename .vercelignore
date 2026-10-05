@@ -7,3 +7,21 @@ marketing/social-studio/
 .vercel/
 tmp/
 tests/
+.backups/
+**/*.jks
+**/*.keystore
+**/*.p12
+**/*.pfx
+**/*.pem
+**/*.key
+**/*service-account*.json
+
+# Operational source and reports are not application assets.
+docs/
+supabase/
+windows-installer/
+android-app/
+google-apps-script/
+.github/
+scripts/security-check.js
+scripts/csp-check.js

@@ -30,7 +30,7 @@ jobs:
         run: npm ci --ignore-scripts
 
       - name: Audit server dependencies
-        run: npm audit --omit=dev --audit-level=high
+        run: npm audit --audit-level=high
 
       - name: Test mobile notifications
         run: npm run test:mobile
@@ -43,6 +43,9 @@ jobs:
 
       - name: Check tracked files and dependencies
         run: node scripts/security-check.js
+
+      - name: Verify script security policy matches public pages
+        run: node scripts/csp-check.js
 
       - name: Scan Git history for secrets
         env:
