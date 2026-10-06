@@ -1,6 +1,6 @@
 # Widgets y alarmas: recorrido de instalacion
 
-## Instalacion completa de Windows (1.6.4.0)
+## Instalacion completa de Windows (1.6.4.1)
 
 El boton principal de instalar.html y el boton Instalar dentro de la web
 descargan Estudiemos-Para-Windows.exe. Es el mismo paquete verificado que
@@ -71,3 +71,28 @@ vincular cuentas reales ni disparar alarmas. La revision visual usa un servidor
 local sin cuentas. El flujo real de Windows depende de aceptar su aviso y
 abrir el instalador.
 No se evitan SmartScreen, antivirus ni permisos del sistema.
+
+## Procesos sin consola (1.6.4.1)
+
+Los cinco recordatorios de racha, la conexion de alarmas y su prueba usan
+`conhost.exe --headless`, con PowerShell sin perfil y no interactivo. No se
+confia solo en `WindowStyle Hidden`: el terminal predeterminado puede mostrar
+una ventana antes de que PowerShell procese ese argumento. La pantalla y el
+sonido de una alarma vencida siguen siendo intencionales.
+
+`InstallStreakReminders.ps1` migra solo tareas de este usuario cuyo comando
+contenga la ruta exacta de `StreakReminder.ps1`. Conserva los horarios y el
+estado habilitado de tareas anteriores. Las nuevas llevan el SID del usuario
+para no reemplazar tareas de otra cuenta. No modifica el antivirus, el terminal
+predeterminado ni las credenciales de alarmas.
+
+Pruebas: `node --test tests/windows-background.test.js` usa un programador
+simulado para verificar la migracion sin tocar tareas reales. El probe
+`tests/helpers/windows-background-probe.ps1` puede ejecutarse en una tarea
+temporal para comprobar que la consola no sea visible, sin disparar alarmas.
+
+Verificado el 2026-10-06 en Windows: las cinco tareas existentes de racha se
+migraron sin cambiar horarios ni preferencias. La credencial cifrada de
+alarmas mantuvo el mismo hash. Una tarea temporal real termino con codigo 0,
+sin consola ni ventana principal visible. Ambos protocolos ejecutaron un
+helper piloto tambien sin consola. Se reconstruyeron todos los instaladores.

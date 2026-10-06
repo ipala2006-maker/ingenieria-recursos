@@ -1,5 +1,5 @@
 Option Explicit
-Dim shell, files, request, script, argument, token, expression, powerShell, failure
+Dim shell, files, request, script, argument, token, expression, powerShell, consoleHost, failure
 Set shell = CreateObject("WScript.Shell")
 Set files = CreateObject("Scripting.FileSystemObject")
 LogStage "received", 0
@@ -37,8 +37,9 @@ If Not files.FileExists(script) Then
   WScript.Quit 4
 End If
 powerShell = shell.ExpandEnvironmentStrings("%SystemRoot%") & "\System32\WindowsPowerShell\v1.0\powershell.exe"
+consoleHost = shell.ExpandEnvironmentStrings("%SystemRoot%") & "\System32\conhost.exe"
 On Error Resume Next
-shell.Run Chr(34) & powerShell & Chr(34) & " -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File " & Chr(34) & script & Chr(34) & argument, 0, False
+shell.Run Chr(34) & consoleHost & Chr(34) & " --headless " & Chr(34) & powerShell & Chr(34) & " -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File " & Chr(34) & script & Chr(34) & argument, 0, False
 failure = Err.Number
 On Error GoTo 0
 If failure <> 0 Then
