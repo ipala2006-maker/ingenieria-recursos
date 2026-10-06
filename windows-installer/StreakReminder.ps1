@@ -1,3 +1,4 @@
+param([switch]$DryRun)
 $ErrorActionPreference = "SilentlyContinue"
 $today = Get-Date -Format "yyyy-MM-dd"
 $stateFile = Join-Path ([Environment]::GetFolderPath("MyDocuments")) "Rainmeter\Skins\Estudiemos\@Resources\ReminderState.inc"
@@ -14,6 +15,7 @@ if (Test-Path -LiteralPath $stateFile) {
   }
 }
 
+if ($DryRun) { @{minutes=$minutes;wouldNotify=($minutes -lt 25)} | ConvertTo-Json -Compress; return }
 if ($minutes -ge 25) { exit 0 }
 
 Add-Type -AssemblyName System.Windows.Forms

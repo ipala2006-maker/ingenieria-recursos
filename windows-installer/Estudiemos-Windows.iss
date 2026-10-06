@@ -1,4 +1,4 @@
-#define AppVersion "1.6.4.0"
+#define AppVersion "1.6.4.1"
 #define RainmeterInstaller "Rainmeter-4.5.26.exe"
 #ifndef OutputBaseName
   #define OutputBaseName "Estudiemos-Widgets-para-Windows"
@@ -55,6 +55,7 @@ Source: "InstallInboxAlarm.ps1"; DestDir: "{app}\AlarmService"; Flags: ignorever
 Source: "ConnectInboxAlarms.ps1"; DestDir: "{app}\AlarmService"; Flags: ignoreversion
 Source: "ReadAlarmConnection.ps1"; DestDir: "{app}\AlarmService"; Flags: ignoreversion
 Source: "StreakReminder.ps1"; DestDir: "{app}"; Flags: ignoreversion
+Source: "InstallStreakReminders.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "InboxAlarm.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "InstallInboxAlarm.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "ConnectInboxAlarms.ps1"; DestDir: "{app}"; Flags: ignoreversion
@@ -187,8 +188,6 @@ procedure CurStepChanged(CurStep: TSetupStep);
 var
   ResultCode: Integer;
   RainmeterExe: String;
-  ReminderScript: String;
-  TaskCommand: String;
   LauncherScript: String;
   RequestedWidget: String;
 begin
@@ -207,22 +206,16 @@ begin
     ExecAsOriginalUser(RainmeterExe,
       '!ActivateConfig "Estudiemos\AlarmBridge" "AlarmBridge.ini"',
       GetRainmeterDirectory(''), SW_HIDE, ewWaitUntilTerminated, ResultCode);
-    ReminderScript := ExpandConstant('{app}\StreakReminder.ps1');
-    Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
-      '-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + ExpandConstant('{app}\AlarmService\InstallInboxAlarm.ps1') + '" -ResourceDirectory "' + GetSkinDirectory('') + '\Estudiemos\@Resources"',
+    Exec(ExpandConstant('{sys}\conhost.exe'),
+      '--headless "' + ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe') + '" -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + ExpandConstant('{app}\AlarmService\InstallInboxAlarm.ps1') + '" -ResourceDirectory "' + GetSkinDirectory('') + '\Estudiemos\@Resources"',
       '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
     if ResultCode <> 0 then
       MsgBox('Los widgets se instalaron, pero Windows no pudo activar las alarmas de Inbox. Podés usar las alarmas con la app abierta y volver a instalar el soporte más tarde.', mbInformation, MB_OK);
-    TaskCommand := '/Create /F /SC DAILY /TN "Estudiemos\Racha 12-00" /ST 12:00 /TR "powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File ""' + ReminderScript + '"""';
-    Exec(ExpandConstant('{sys}\schtasks.exe'), TaskCommand, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-    TaskCommand := '/Create /F /SC DAILY /TN "Estudiemos\Racha 14-30" /ST 14:30 /TR "powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File ""' + ReminderScript + '"""';
-    Exec(ExpandConstant('{sys}\schtasks.exe'), TaskCommand, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-    TaskCommand := '/Create /F /SC DAILY /TN "Estudiemos\Racha 17-00" /ST 17:00 /TR "powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File ""' + ReminderScript + '"""';
-    Exec(ExpandConstant('{sys}\schtasks.exe'), TaskCommand, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-    TaskCommand := '/Create /F /SC DAILY /TN "Estudiemos\Racha 19-30" /ST 19:30 /TR "powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File ""' + ReminderScript + '"""';
-    Exec(ExpandConstant('{sys}\schtasks.exe'), TaskCommand, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-    TaskCommand := '/Create /F /SC DAILY /TN "Estudiemos\Racha 22-00" /ST 22:00 /TR "powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File ""' + ReminderScript + '"""';
-    Exec(ExpandConstant('{sys}\schtasks.exe'), TaskCommand, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    Exec(ExpandConstant('{sys}\conhost.exe'),
+      '--headless "' + ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe') + '" -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + ExpandConstant('{app}\InstallStreakReminders.ps1') + '"',
+      '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    if ResultCode <> 0 then
+      MsgBox('Windows no pudo preparar los recordatorios de racha. Las alarmas de Inbox y los widgets se mantienen disponibles.', mbInformation, MB_OK);
 
     RequestedWidget := DetectRequestedWidget;
     if RequestedWidget <> '' then
