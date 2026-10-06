@@ -792,6 +792,9 @@ html.theme-dark .theme-switcher__btn.is-active{
   .productivity-page .topbar__nav,
   .topbar .topbar__nav{
     gap:1px;
+    max-width:100%;
+    flex-shrink:1;
+    flex-wrap:wrap;
   }
 
   .workspace-home .topbar-icon-btn,

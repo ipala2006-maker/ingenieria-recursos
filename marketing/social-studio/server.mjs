@@ -8,7 +8,7 @@ import { Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { spawn } from 'node:child_process';
 import { Studio } from './lib/studio.mjs';
-import { TOPICS, PLATFORMS } from './lib/content.mjs';
+import { TOPICS, PLATFORMS, assertTopicAvailable } from './lib/content.mjs';
 import { probe, command } from './lib/media.mjs';
 import { hashFile, approvalDigest, assertApproved } from './lib/store.mjs';
 
@@ -119,6 +119,7 @@ export async function createServer({ root = path.join(ROOT, '.social-studio'), e
         const [, type, id, platform, name] = media, job = await studio.store.get(id), state = job.platforms[platform];
         if (!state.files[name]) throw new Error('El archivo todavia no esta listo.');
         if (type === 'download') {
+          assertTopicAvailable(job.brief.topic);
           if (!job.approval || job.approval.digest !== approvalDigest(job, await studio.store.accounts())) throw new Error('Aprueba la pieza antes de descargar el paquete.');
           if (await hashFile(path.join(studio.store.dir(id), platform, name)) !== state.files[name]) throw new Error('El archivo cambio despues de la revision.');
         } else if (!['video.mp4', 'cover.jpg'].includes(name)) throw new Error('Vista previa no disponible.');

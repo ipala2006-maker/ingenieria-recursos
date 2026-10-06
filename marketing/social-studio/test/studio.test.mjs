@@ -7,7 +7,7 @@ import http from 'node:http';
 import { Studio } from '../lib/studio.mjs';
 import { hashFile, assertApproved } from '../lib/store.mjs';
 import { allowedRequest, network } from '../lib/network.mjs';
-import { PLATFORMS, brief, profile, publicationUrl } from '../lib/content.mjs';
+import { PLATFORMS, TOPICS, FUTURE_TOPICS, brief, profile, publicationUrl } from '../lib/content.mjs';
 import { parseSrt, renderPlan, command } from '../lib/media.mjs';
 import { capabilities, publishers } from '../lib/publishers.mjs';
 import { createServer } from '../server.mjs';
@@ -47,6 +47,26 @@ test('all platform assets prepared, reviewed, delivered and independently report
   assert.equal(again.platforms.tiktok.status, 'manual_reported');
   assert.equal(again.platforms.youtube.status, 'manual_ready'); assert.equal(calls, 0);
   const logs = await studio.store.logs(); assert.equal(logs.filter(l => l.event === 'manual_reported').length, 1);
+});
+
+test('future tools retain their briefs but cannot be generated, approved or published', async t => {
+  assert.deepEqual(Object.keys(TOPICS), ['inbox', 'pomodoro', 'widgets']);
+  assert.ok(FUTURE_TOPICS.espacio.beats.length && FUTURE_TOPICS.organizador.beats.length);
+  for (const topic of ['espacio', 'organizador']) assert.throws(() => brief({ topic }), /no esta disponible/);
+  let calls = 0;
+  const { studio, id } = await fixture(t, { fetchImpl: () => { calls++; throw new Error('No network expected'); } });
+  await studio.prepare(id); await studio.approve(id, review);
+  const job = await studio.store.get(id);
+  job.brief.topic = 'organizador'; await studio.store.save(job);
+  await assert.rejects(studio.prepare(id), /no esta disponible/);
+  await assert.rejects(studio.approve(id, review), /no esta disponible/);
+  await assert.rejects(studio.dispatch(id), /no esta disponible/);
+  const preserved = await studio.store.get(id);
+  assert.equal(preserved.brief.topic, 'organizador');
+  assert.ok(preserved.source.sha256);
+  assert.ok(preserved.platforms.youtube.files['video.mp4']);
+  const paused = (await studio.snapshot()).jobs.find(row => row.id === id);
+  assert.equal(paused.available, false); assert.equal(paused.approved, false); assert.equal(calls, 0);
 });
 
 test('token and every ads, billing, arbitrary host and redirect request are blocked', async () => {

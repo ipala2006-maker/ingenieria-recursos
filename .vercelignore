@@ -1,6 +1,8 @@
 # The social studio runs locally. Never deploy its data or credentials.
 .social-studio/
 marketing/social-studio/
+# Campaign drafts can contain future features; they are not public product pages.
+marketing/
 
 # Local credentials and test artifacts are never public assets.
 **/.env*

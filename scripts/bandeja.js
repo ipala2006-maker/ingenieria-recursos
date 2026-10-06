@@ -1482,7 +1482,7 @@
       id: String(item.id),
       title: String(item.title),
       type: normalizeAgendaType(item.type),
-      date: item.date || "",
+      date: typeof item.date === 'string' ? item.date : "",
       subject: item.subject || "",
       note: item.note || "",
       horaInicio: item.horaInicio || item.startTime || "",

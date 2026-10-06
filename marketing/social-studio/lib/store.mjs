@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import { createReadStream } from 'node:fs';
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
+import { assertTopicAvailable } from './content.mjs';
 
 export async function atomic(file, data) {
   await fs.mkdir(path.dirname(file), { recursive: true });
@@ -72,6 +73,7 @@ export function approvalDigest(job, accounts) {
 }
 
 export async function assertApproved(store, job, accounts) {
+  assertTopicAvailable(job.brief.topic);
   if (!job.approval || job.approval.digest !== approvalDigest(job, accounts)) throw new Error('Revisa y aprueba la version actual antes de continuar.');
   for (const [platform, state] of Object.entries(job.platforms)) {
     for (const [name, sha256] of Object.entries(state.files || {})) {

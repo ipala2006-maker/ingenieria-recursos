@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { PLATFORMS, brief, makeCopy, validateCopy, profile, publicationUrl } from './content.mjs';
+import { PLATFORMS, TOPICS, assertTopicAvailable, brief, makeCopy, validateCopy, profile, publicationUrl } from './content.mjs';
 import { Store, hashFile, approvalDigest, assertApproved } from './store.mjs';
 import { renderPlan, renderVariant, writePackage } from './media.mjs';
 import { capabilities, publishers } from './publishers.mjs';
@@ -34,6 +34,7 @@ export class Studio {
   }
   async prepare(id) {
     const job = await this.store.get(id), accounts = await this.store.accounts();
+    assertTopicAvailable(job.brief.topic);
     if (!job.source) throw new Error('Primero carga un video.');
     if (Object.values(job.platforms).some(p => SENT.includes(p.status))) throw new Error('Esta pieza ya inicio la publicacion. Crea otra version para cambiar el video.');
     renderPlan(job.brief, job.source);
@@ -77,6 +78,7 @@ export class Studio {
   }
   async approve(id, attestation) {
     const job = await this.store.get(id), accounts = await this.store.accounts();
+    assertTopicAvailable(job.brief.topic);
     if (!attestation?.reviewed || !attestation?.rights || !attestation?.pilot) throw new Error('Confirma la revision de las tres versiones, los derechos y los datos piloto.');
     if (!PLATFORMS.every(p => job.platforms[p].status === 'ready' || job.platforms[p].status === 'failed' || job.platforms[p].status === 'manual_ready')) throw new Error('Termina de preparar las tres versiones antes de aprobar.');
     for (const p of PLATFORMS) await writePackage(this.store.dir(id), p, job, accounts[p]);
@@ -148,7 +150,8 @@ export class Studio {
     const accounts = await this.store.accounts();
     return { accounts, capabilities: capabilities(this.env, accounts), busy: this.store.pending.size > 0,
       jobs: (await this.store.list()).map(job => ({ ...job,
-        approved: !!job.approval && job.approval.digest === approvalDigest(job, accounts),
+        available: !!TOPICS[job.brief.topic],
+        approved: !!TOPICS[job.brief.topic] && !!job.approval && job.approval.digest === approvalDigest(job, accounts),
         platforms: Object.fromEntries(Object.entries(job.platforms).map(([p, s]) => { const { remote, ...safe } = s; return [p, safe]; })) })),
       logs: await this.store.logs() };
   }

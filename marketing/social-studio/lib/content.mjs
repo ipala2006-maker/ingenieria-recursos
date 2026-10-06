@@ -1,6 +1,8 @@
+import release from '../../../shared/release.js';
+
 export const PLATFORMS = ['instagram', 'tiktok', 'youtube'];
 export const NAMES = { instagram: 'Instagram Reels', tiktok: 'TikTok', youtube: 'YouTube Shorts' };
-export const TOPICS = {
+const ALL_TOPICS = {
   inbox: {
     name: 'Inbox y calendario',
     hook: 'Tres parciales. Un solo plan.',
@@ -48,6 +50,15 @@ export const TOPICS = {
   }
 };
 
+export const FUTURE_TOPICS = Object.freeze({ espacio: ALL_TOPICS.espacio, organizador: ALL_TOPICS.organizador });
+export const TOPICS = Object.freeze(Object.fromEntries(Object.entries(ALL_TOPICS).filter(([key]) =>
+  key === 'espacio' ? release.enabled('workspace') : key === 'organizador' ? release.enabled('ai') : true
+)));
+
+export function assertTopicAvailable(key) {
+  if (!TOPICS[key]) throw new Error('Esta herramienta no esta disponible en el lanzamiento actual. El borrador queda guardado para mas adelante.');
+}
+
 export function text(value, name, max, min = 1) {
   if (typeof value !== 'string' || value.trim().length < min || value.length > max || /[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(value)) {
     throw new Error(`${name}: revisa el texto (maximo ${max} caracteres).`);
@@ -56,6 +67,7 @@ export function text(value, name, max, min = 1) {
 }
 
 export function brief(input) {
+  assertTopicAvailable(input.topic);
   const topic = TOPICS[input.topic];
   if (!topic) throw new Error('Elegi una herramienta para este video.');
   const start = Number(input.start ?? 0), end = input.end === '' || input.end == null ? null : Number(input.end);
@@ -74,6 +86,7 @@ export function brief(input) {
 }
 
 export function makeCopy(b, platform, id) {
+  assertTopicAvailable(b.topic);
   const topic = TOPICS[b.topic];
   const tags = ['Estudiemos', ...topic.tags];
   const cta = { instagram: 'Guardalo para tu proxima semana de parciales.', tiktok: 'Pasaselo a tu grupo de cursada.', youtube: 'Proba este paso en tu proxima sesion.' }[platform];

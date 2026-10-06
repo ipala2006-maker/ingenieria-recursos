@@ -21,6 +21,16 @@
   addPanels();
   bindEvents();
   renderDashboard();
+  const calendarGrid = document.querySelector('[data-dashboard-calendar]');
+  if (calendarGrid && window.ResizeObserver) {
+    let calendarResizeFrame = 0;
+    new ResizeObserver(() => {
+      cancelAnimationFrame(calendarResizeFrame);
+      calendarResizeFrame = requestAnimationFrame(() => {
+        if (state.calendarView === 'month' && calendarGrid.dataset.monthCapacity !== String(monthCapacity(calendarGrid))) renderCalendar();
+      });
+    }).observe(calendarGrid);
+  }
   window.addEventListener('estudiemos:alarms-ready', renderAgenda);
   syncPanelsWithHistory();
   restorePendingAssistant();
@@ -431,6 +441,8 @@
     const cells = [];
     document.querySelector("[data-dashboard-calendar-widget]")?.setAttribute("data-view", state.calendarView);
     grid.dataset.view = state.calendarView;
+    const capacity = monthCapacity(grid);
+    grid.dataset.monthCapacity = String(capacity);
     document.querySelectorAll("[data-dashboard-calendar-view]").forEach((button) => {
       const active = button.dataset.dashboardCalendarView === state.calendarView;
       button.classList.toggle("is-active", active);
@@ -441,14 +453,52 @@
       const value = toDateValue(date);
       const hasStreak = (streakDays[value] || 0) >= 25;
       const dayItems = (dated.get(value) || []).slice().sort(compareCalendarItems);
-      const weekContent = state.calendarView === "week" ? renderWeekDay(date, dayItems) : "";
-      cells.push(`<button class="dashboard-calendar__day ${state.calendarView === "month" && date.getMonth() !== state.month ? "is-outside" : ""} ${value === today ? "is-today" : ""} ${dayItems.length ? "has-items" : ""} ${hasStreak ? "has-study-streak" : ""}" type="button" data-dashboard-date="${value}" aria-label="${formatFullDate(value)}${dayItems.length ? `, ${dayItems.length} anotaciones` : ""}${hasStreak ? ", presencia de estudio registrada" : ""}"><span class="dashboard-calendar__number">${date.getDate()}</span>${hasStreak ? flameIcon() : ""}${weekContent}</button>`);
+      const content = state.calendarView === "week" ? renderWeekDay(date, dayItems) : renderMonthDay(dayItems, capacity);
+      const description = [formatFullDate(value), ...dayItems.map(item => `${formatCalendarTime(item)}: ${item.title}`), hasStreak ? '25 minutos de estudio registrados' : ''].filter(Boolean).join(', ');
+      cells.push(`<button class="dashboard-calendar__day ${state.calendarView === "month" && date.getMonth() !== state.month ? "is-outside" : ""} ${value === today ? "is-today" : ""} ${dayItems.length ? "has-items" : ""} ${hasStreak ? "has-study-streak" : ""}" type="button" data-dashboard-date="${value}" ${value === today ? 'aria-current="date"' : ''} aria-label="${escapeHtml(description)}"><span class="dashboard-calendar__number">${date.getDate()}</span>${hasStreak ? flameIcon() : ""}${content}</button>`);
     }
     grid.innerHTML = cells.join("");
     grid.querySelectorAll('[data-dashboard-date]').forEach(button => {
       const items = dated.get(button.dataset.dashboardDate) || [];
       button.title = [formatFullDate(button.dataset.dashboardDate),...items.slice(0,4).map(item=>`${formatCalendarTime(item)} · ${item.title}`)].join('\n');
     });
+    renderMonthLegend(grid, agenda, streakDays);
+  }
+
+  function monthCapacity(grid) {
+    if (grid.clientWidth / 7 < 68) return 0;
+    return Math.min(3, Math.max(0, Math.floor((grid.clientHeight / 6 - 48) / 22)));
+  }
+
+  function calendarKind(item) {
+    if (item.type === 'Clase') return 'class';
+    if (['Parcial', 'Final', 'Examen'].includes(item.type)) return 'exam';
+    return 'task';
+  }
+
+  function renderMonthDay(items, capacity) {
+    if (!items.length) return '';
+    if (!capacity) return `<span class="dashboard-calendar__count">${items.length}<span> act.</span></span>`;
+    const entries = items.slice(0, capacity).map(item => `<span class="dashboard-calendar__month-event is-${calendarKind(item)} ${item.done ? 'is-done' : ''}"><time>${escapeHtml(item.horaInicio || '')}</time><span>${escapeHtml(item.title)}</span></span>`).join('');
+    return `<span class="dashboard-calendar__month-events">${entries}${items.length > capacity ? `<span class="dashboard-calendar__month-more">+${items.length - capacity} más</span>` : ''}</span>`;
+  }
+
+  function renderMonthLegend(grid, agenda, streakDays) {
+    let legend = grid.parentElement.querySelector('[data-calendar-legend]');
+    if (!legend) {
+      legend = document.createElement('div');
+      legend.className = 'dashboard-calendar__legend';
+      legend.dataset.calendarLegend = '';
+      grid.after(legend);
+    }
+    legend.hidden = state.calendarView !== 'month';
+    if (legend.hidden) return;
+    const prefix = `${state.year}-${String(state.month + 1).padStart(2, '0')}-`;
+    const items = agenda.filter(item => item.date.startsWith(prefix));
+    const kinds = new Set(items.map(calendarKind));
+    const references = [['class', 'Clase'], ['exam', 'Examen'], ['task', 'Tarea']].filter(([kind]) => kinds.has(kind));
+    const hasStudy = Object.entries(streakDays).some(([day, minutes]) => day.startsWith(prefix) && minutes >= 25);
+    legend.innerHTML = `<span class="dashboard-calendar__month-total">${items.length ? `${items.length} ${items.length === 1 ? 'actividad' : 'actividades'} este mes` : 'Sin actividades este mes'}</span><span class="dashboard-calendar__references">${references.map(([kind, title]) => `<span class="is-${kind}"><i aria-hidden="true"></i>${title}</span>`).join('')}${hasStudy ? `<span>${flameIcon()}25 min de estudio</span>` : ''}</span>`;
   }
 
   function renderAgenda() {
@@ -539,7 +589,7 @@
   function readAgenda() {
     return readList(AGENDA_KEY).filter((item) => item?.id && item?.title).map((item) => ({
       ...item,
-      date: item.date || "",
+      date: typeof item.date === 'string' ? item.date : "",
       subject: item.subject || "",
       type: item.type || "Tarea",
       done: Boolean(item.done),
