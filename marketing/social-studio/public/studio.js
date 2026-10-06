@@ -15,7 +15,7 @@ async function api(route, input, method = 'POST') {
 function current() { return snapshot?.jobs.find(job => job.id === selected); }
 function caption(c) { return c.description + '\n\n' + c.hashtags.map(tag => '#' + tag).join(' '); }
 function controls() {
-  const job = current(), ready = job && platforms.every(p => ['ready', 'failed', 'manual_ready'].includes(job.platforms[p].status));
+  const job = current(), ready = job && job.available !== false && platforms.every(p => ['ready', 'failed', 'manual_ready'].includes(job.platforms[p].status));
   $('#approve').disabled = !ready || snapshot?.busy;
   $('#dispatch').disabled = !job?.approved || dirty || snapshot?.busy;
   $('#save-copy').disabled = !job || !dirty || snapshot?.busy;
@@ -80,10 +80,11 @@ function renderReview() {
   if (lastRendered === stamp) { controls(); return; }
   lastRendered = stamp;
   $('#piece-title').textContent = job.brief.title;
-  $('#piece-status').textContent = job.approved ? 'Version aprobada' : 'Pendiente de revision';
+  $('#piece-status').textContent = job.available === false ? 'Guardada para una proxima etapa' : job.approved ? 'Version aprobada' : 'Pendiente de revision';
   $('#download-all').hidden = !job.approved; $('#download-all').href = `/download/${job.id}/paquete.zip`;
-  $('#piece-error').textContent = job.error || ''; $('#piece-error').hidden = !job.error;
-  $('#retry-prepare').hidden = !job.source || !platforms.some(p => ['draft', 'render_failed'].includes(job.platforms[p].status));
+  $('#piece-error').textContent = job.available === false ? 'La herramienta de este video no esta disponible todavia. Conservamos el borrador, sin publicarlo.' : job.error || '';
+  $('#piece-error').hidden = job.available !== false && !job.error;
+  $('#retry-prepare').hidden = job.available === false || !job.source || !platforms.some(p => ['draft', 'render_failed'].includes(job.platforms[p].status));
   const locked = platforms.some(p => ['publishing', 'processing', 'published', 'uploaded', 'manual_reported', 'uncertain'].includes(job.platforms[p].status));
   $('#platforms').innerHTML = platforms.map(p => {
     const state = job.platforms[p], account = snapshot.accounts[p], available = !!state.files['video.mp4'];

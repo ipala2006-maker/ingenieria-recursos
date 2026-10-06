@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#09101d">
-    <meta name="description" content="Descubrí Estudiemos: organizá tus tareas, tu calendario y tus sesiones de estudio. Instalá la última versión en Android, iPhone, iPad o PC.">
+    <meta name="description" content="Descubrí Estudiemos: organizá tus archivos, tu Inbox, tu calendario y tus sesiones de estudio. Instalá la última versión en Android, iPhone, iPad o PC.">
     <meta property="og:site_name" content="Estudiemos">
     <meta property="og:type" content="website">
     <meta property="og:title" content="Estudiemos | Tu estudio, conectado">
-    <meta property="og:description" content="Organizá tareas, calendario y sesiones de estudio desde todos tus dispositivos.">
+    <meta property="og:description" content="Organizá archivos, Inbox, calendario y sesiones de estudio desde todos tus dispositivos.">
     <meta property="og:url" content="https://estudiemos-app.vercel.app/instalar.html">
-    <meta property="og:image" content="https://estudiemos-app.vercel.app/assets/install/free-launch-preview.png">
+    <meta property="og:image" content="https://estudiemos-app.vercel.app/assets/install/pilot-home-wide.png">
     <meta property="og:image:alt" content="Panel principal de Estudiemos">
     <meta name="twitter:card" content="summary_large_image">
     <script>
@@ -25,7 +25,7 @@
     <link rel="preload" href="./assets/fonts/space-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin>
     <title>Estudiemos | Tu estudio, conectado</title>
     <script src="./scripts/theme-init.js?v=20260830-install-experience"></script>
-    <link rel="stylesheet" href="./styles/install.css?v=20261005-free-launch">
+    <link rel="stylesheet" href="./styles/install.css?v=20261003-refined">
   </head>
   <body class="install-page">
     <header class="install-header" data-install-header>
@@ -73,18 +73,20 @@
               </div>
               <div class="demo-dashboard">
                 <section class="demo-space">
-                  <div class="demo-heading"><span>PENDIENTES</span><h3>Inbox</h3><small>Tu próxima tarea, a mano.</small></div>
-                  <div class="demo-toolbar"><span>3 tareas pendientes</span><b>Esta semana</b></div>
-                  <div class="demo-task-list">
-                    <p><i></i><span><strong>Repasar integrales</strong><small>Análisis Matemático</small></span><time>Hoy · 18:30</time></p>
-                    <p><i></i><span><strong>Resolver la guía 3</strong><small>Álgebra</small></span><time>Mañana</time></p>
-                    <p><i></i><span><strong>Entregar el informe</strong><small>Física</small></span><time>Viernes</time></p>
+                  <div class="demo-heading"><span>VISTA PREVIA · PRÓXIMAMENTE</span><h3>Mi espacio</h3><small>Carpetas y archivos en una próxima etapa.</small></div>
+                  <div class="demo-toolbar"><span>Buscar en mi espacio</span><b>Más recientes</b></div>
+                  <div class="demo-folder-grid">
+                    <article><i class="folder-blue"></i><span><strong>Álgebra</strong><small>9 archivos</small></span></article>
+                    <article><i class="folder-green"></i><span><strong>Programación</strong><small>14 archivos</small></span></article>
+                    <article><i class="folder-violet"></i><span><strong>Materiales</strong><small>7 archivos</small></span></article>
+                    <article><i class="folder-yellow"></i><span><strong>Proyecto piloto</strong><small>5 archivos</small></span></article>
+                    <article class="demo-file"><i></i><span><strong>Guía de matrices.pdf</strong><small>PDF · 1,8 MB</small></span></article>
+                    <article class="demo-add"><b>+</b><span><strong>Agregar</strong><small>Carpeta o archivo</small></span></article>
                   </div>
-                  <div class="demo-focus-summary"><span><small>POMODORO</small><strong>25:00</strong></span><div><b>Bloque 1 de 4</b><small>25 min de estudio · 5 min de descanso</small></div></div>
                 </section>
                 <aside class="demo-side">
                   <section class="demo-calendar"><header><span>CALENDARIO</span><strong>24 – 30 de agosto</strong></header><div class="demo-week"><p><b>LUN 24</b><i>08:00</i><span>Álgebra</span></p><p><b>MAR 25</b><i>09:00</i><span>Programación</span></p><p><b>MIÉ 26</b><i>10:00</i><span>Materiales</span></p><p><b>JUE 27</b><i>08:00</i><span>Mecánica</span></p><p><b>VIE 28</b><i>08:00</i><span>Programación</span></p></div></section>
-                  <section class="demo-inbox"><header><span>PROGRESO</span><strong>Tu constancia</strong></header><div class="demo-progress"><span><small>Hoy</small><b>1 h 25 min</b></span><span><small>Esta semana</small><b>7 h 40 min</b></span></div></section>
+                  <section class="demo-inbox"><header><span>PENDIENTES</span><strong>Inbox</strong></header><p><i></i><span><b>Completar guía de matrices</b><small>Álgebra</small></span></p><p><i></i><span><b>Preparar simulacro</b><small>Viernes</small></span></p><p><i></i><span><b>Entregar informe</b><small>Proyecto</small></span></p></section>
                 </aside>
               </div>
             </div>
@@ -104,28 +106,29 @@
         </div>
 
         <div class="product-tour" data-reveal>
-          <div class="product-tour__visual" id="tourPanel" role="tabpanel" aria-labelledby="tourTabInbox" aria-live="polite">
+          <div class="product-tour__visual" id="tourPanel" role="tabpanel" aria-labelledby="tourTabSpace" aria-live="polite">
             <div class="product-tour__chrome" aria-hidden="true"><span></span><span></span><span></span><small>Estudiemos</small></div>
             <div class="product-scenes" data-tour-scenes>
-              <section class="product-scene product-scene--inbox is-active" data-scene="inbox" aria-label="Tareas y alarmas en Inbox">
-                <header><span>INBOX</span><h3>Tu próxima tarea.</h3></header>
-                <div class="scene-task-list">
-                  <p><i></i><span><b>Repasar integrales</b><small>Análisis Matemático</small></span><time>Hoy</time></p>
-                  <p><i></i><span><b>Resolver la guía 3</b><small>Álgebra</small></span><time>Mañana</time></p>
-                  <p class="is-done"><i>✓</i><span><b>Revisar el informe</b><small>Física</small></span><time>Hecha</time></p>
+              <section class="product-scene product-scene--space is-active" data-scene="space" aria-label="Mi espacio e Inbox">
+                <div class="scene-space-head"><span>MI ESPACIO · PRÓXIMAMENTE</span><h3>Todo encuentra su lugar.</h3></div>
+                <div class="scene-search"><i></i><span>Buscar archivos y carpetas</span><b>⌘ K</b></div>
+                <div class="scene-folders">
+                  <article><i class="folder-blue"></i><strong>Álgebra</strong><small>9 archivos</small><span>•••</span></article>
+                  <article><i class="folder-green"></i><strong>Programación</strong><small>14 archivos</small><span>•••</span></article>
+                  <article><i class="folder-violet"></i><strong>Materiales</strong><small>7 archivos</small><span>•••</span></article>
+                  <article><i class="folder-yellow"></i><strong>Proyecto</strong><small>5 archivos</small><span>•••</span></article>
                 </div>
-                <div class="scene-alarm"><span>ALARMA</span><strong>Repasar integrales</strong><div><time>18:30</time><small>Lunes · Cada semana</small></div></div>
+                <div class="scene-inbox-strip"><span>INBOX</span><p><i></i><b>Completar guía de matrices</b><small>Sin fecha</small></p><p><i></i><b>Preparar simulacro</b><small>Viernes</small></p></div>
               </section>
 
-              <section class="product-scene product-scene--calendar" data-scene="calendar" aria-label="Calendario semanal">
-                <header><span>CALENDARIO</span><h3>Tu semana, en orden.</h3></header>
-                <div class="scene-week">
-                  <p><b>LUN<small>5</small></b><time>08:00</time><span>Clase de Álgebra</span></p>
-                  <p><b>MAR<small>6</small></b><time>10:00</time><span>Física</span></p>
-                  <p class="is-today"><b>MIÉ<small>7</small></b><time>18:30</time><span>Repasar integrales</span></p>
-                  <p><b>JUE<small>8</small></b><time>09:00</time><span>Programación</span></p>
-                  <p><b>VIE<small>9</small></b><time>Todo el día</time><span>Entregar el informe</span></p>
+              <section class="product-scene product-scene--ai" data-scene="ai" aria-label="Organizador inteligente">
+                <header><span>IA · PRÓXIMAMENTE</span><h3>Pedilo como te salga.</h3></header>
+                <div class="scene-chat">
+                  <p class="scene-message scene-message--user">Anotá preparar el parcial de Álgebra y ordená mis apuntes.</p>
+                  <div class="scene-thinking"><i></i><i></i><i></i></div>
+                  <div class="scene-message scene-message--ai"><b>Listo.</b><span>Creé la tarea en Inbox y organicé los archivos dentro de Álgebra.</span><div><small>Tarea agregada</small><small>3 archivos ordenados</small></div></div>
                 </div>
+                <div class="scene-prompt"><span>Escribí o dictá una indicación</span><b>↑</b></div>
               </section>
 
               <section class="product-scene product-scene--focus" data-scene="focus" aria-label="Temporizador Pomodoro">
@@ -144,17 +147,17 @@
               </section>
             </div>
             <span class="product-tour__glow" aria-hidden="true"></span>
-            <div class="product-tour__status" aria-hidden="true"><span data-tour-number>01</span><strong data-tour-title>Inbox y alarmas</strong></div>
+            <div class="product-tour__status" aria-hidden="true"><span data-tour-number>01</span><strong data-tour-title>Tu espacio</strong></div>
           </div>
           <div class="product-tour__controls" role="tablist" aria-label="Herramientas de Estudiemos" data-tour-controls>
             <span class="product-tour__path" aria-hidden="true"><i data-tour-progress></i></span>
-            <button class="product-tour__tab is-active" id="tourTabInbox" type="button" role="tab" aria-selected="true" aria-controls="tourPanel" data-tour-target="inbox">
+            <button class="product-tour__tab is-active" id="tourTabSpace" type="button" role="tab" aria-selected="true" aria-controls="tourPanel" data-tour-target="space">
               <span>01</span><i aria-hidden="true"></i>
-              <span><strong>Inbox y alarmas</strong><small>Tareas y recordatorios para tu día.</small></span>
+              <span><strong>Mi espacio · Próximamente</strong><small>Carpetas y archivos en una próxima etapa.</small></span>
             </button>
-            <button class="product-tour__tab" id="tourTabCalendar" type="button" role="tab" aria-selected="false" aria-controls="tourPanel" tabindex="-1" data-tour-target="calendar">
+            <button class="product-tour__tab" id="tourTabAi" type="button" role="tab" aria-selected="false" aria-controls="tourPanel" tabindex="-1" data-tour-target="ai">
               <span>02</span><i aria-hidden="true"></i>
-              <span><strong>Tu calendario</strong><small>Clases y entregas, por semana o mes.</small></span>
+              <span><strong>Trabajar con la IA · Próximamente</strong><small>Organización inteligente en una próxima etapa.</small></span>
             </button>
             <button class="product-tour__tab" id="tourTabFocus" type="button" role="tab" aria-selected="false" aria-controls="tourPanel" tabindex="-1" data-tour-target="focus">
               <span>03</span><i aria-hidden="true"></i>
@@ -172,11 +175,11 @@
         <div class="install-widgets__copy" data-reveal>
           <p class="install-kicker">SIEMPRE A MANO</p>
           <h2 id="widgetsTitle">Tu día, sin abrir nada.</h2>
-          <p>Inbox, calendario, Pomodoro y racha en tu pantalla de inicio o escritorio.</p>
+          <p>Inbox, calendario, Pomodoro y racha en tu pantalla de inicio o escritorio. Mi espacio, próximamente.</p>
         </div>
         <section class="widget-gallery" id="widget-stage" data-reveal data-widget-carousel aria-roledescription="carrusel" aria-label="Widgets de Estudiemos">
           <div class="widget-gallery__toolbar">
-            <span data-widget-status aria-live="polite">1 de 4</span>
+            <span data-widget-status aria-live="polite">1 de 5</span>
             <div class="widget-gallery__buttons">
               <button type="button" data-widget-prev aria-label="Widget anterior">←</button>
               <button type="button" data-widget-pause aria-label="Pausar movimiento" aria-pressed="false">Ⅱ</button>
@@ -185,6 +188,9 @@
           </div>
           <div class="widget-gallery__viewport">
             <div class="widget-gallery__track" data-widget-track>
+              <figure class="widget-gallery__item widget-card widget-card--workspace">
+                <div class="widget-preview"><header><b>&sum;</b><span>Mi espacio</span><small>Próximamente</small></header><div class="widget-file-list"><p><i class="folder-blue"></i><span><b>Álgebra</b><small>9 archivos</small></span><em>›</em></p><p><i class="folder-green"></i><span><b>Programación</b><small>14 archivos</small></span><em>›</em></p><p><i class="folder-violet"></i><span><b>Materiales</b><small>7 archivos</small></span><em>›</em></p><p><i class="folder-yellow"></i><span><b>Proyecto piloto</b><small>5 archivos</small></span><em>›</em></p></div></div><figcaption>Mi espacio · Próximamente</figcaption>
+              </figure>
               <figure class="widget-gallery__item widget-card widget-card--calendar">
                 <div class="widget-preview"><header><b>24</b><span>Esta semana</span><small>Agosto</small></header><div class="widget-calendar-list"><p><strong>Lun</strong><i>08:00</i><span>Álgebra</span></p><p><strong>Mar</strong><i>09:00</i><span>Programación</span></p><p><strong>Mié</strong><i>10:00</i><span>Materiales</span></p><p><strong>Jue</strong><i>08:00</i><span>Mecánica</span></p><p><strong>Vie</strong><i>08:00</i><span>Programación</span></p></div></div><figcaption>Calendario</figcaption>
               </figure>
@@ -214,7 +220,7 @@
             <div class="install-option__meta"><span class="install-option__platform">Android</span><span class="install-option__current">Versión actual</span></div>
             <div class="install-option__glyph" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M10 18h4"/></svg></div>
             <h3>Aplicación y widgets</h3>
-            <p>Inbox, calendario semanal, Pomodoro y racha en tu pantalla de inicio.</p>
+            <p>Inbox, calendario semanal, Pomodoro y racha en tu pantalla de inicio. Mi espacio, próximamente.</p>
             <a class="install-option__button" data-install-android href="intent://open#Intent;scheme=estudiemos;package=com.estudiemos.app;S.browser_fallback_url=https%3A%2F%2Fgithub.com%2Fipala2006-maker%2Fingenieria-recursos%2Freleases%2Fdownload%2Fandroid-latest%2FEstudiemos-Android.apk;end">Abrir o descargar <span aria-hidden="true">→</span></a>
             <small><strong>Siempre usa la última versión.</strong> Si ya la tenés, podés <a href="https://github.com/ipala2006-maker/ingenieria-recursos/releases/download/android-latest/Estudiemos-Android.apk">actualizarla encima</a> sin desinstalar.</small>
           </article>
@@ -265,6 +271,6 @@
       </div>
     </footer>
 
-    <script src="./scripts/install-page.js?v=20261005-free-launch"></script>
+    <script src="./scripts/install-page.js?v=20261003-refined"></script>
   </body>
 </html>
