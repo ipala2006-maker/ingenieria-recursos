@@ -38,23 +38,37 @@ const headers = require('../vercel.json').headers.find(rule => rule.source === '
           { id: 'long', title: 'Repasar integrales y resolver todos los ejercicios de la guia', subject: 'Analisis matematico', note: 'Resolver los ejercicios 4 al 18.\nLlevar las dudas a la consulta con el profesor.', alarm: {date: day(5), time: '18:00', repeat: 'none'}, type: 'Tarea', date: day(5), horaInicio: '18:30' },
           { id: 'unsafe', title: '<img src=x onerror="window.__xss=true">', type: 'Tarea', date: day(5) },
           { id: 'done', title: 'Guia terminada', type: 'Tarea', date: day(12), done: true },
+          { id: 'long-class', title: 'Clase de Analisis Matematico: integrales multiples y aplicaciones', type: 'Clase', date: day(6), horaInicio: '08:00', horaFin: '11:00' },
           { id: 'bad-date', title: 'Fecha invalida', type: 'Tarea', date: {} }
         ];
         localStorage.setItem('bandeja_agenda', JSON.stringify(items));
         localStorage.setItem('estudiemos_calendar_view', 'month');
         localStorage.setItem('estudiemos_home_layout_local', JSON.stringify({ visible: { focus:false, progress:false, assistant:false, shortcuts:false, workspace:false, inbox:false, calendar:true } }));
         localStorage.setItem('estudiemos_pomodoro_streak', JSON.stringify({ days: { [day(5)]: 30 } }));
+        history.replaceState({homeView:'space'}, '');
       });
       const page = await context.newPage(), errors = [];
       page.on('pageerror', error => errors.push(error.message));
       await page.goto(base + '/');
       const calendar = page.locator('[data-dashboard-calendar-widget]');
-      if (width < 500) await page.locator('[data-home-view="calendar"]').click();
+      if (width < 500) {
+        assert.equal(await page.locator('[data-home-view="overview"]').getAttribute('aria-selected'),'true');
+        await page.locator('[data-home-view="calendar"]').click();
+      }
       await calendar.waitFor({ state: 'visible' });
       await page.waitForTimeout(350);
+      if (width < 500) await page.locator('[data-home-view="overview"]').click();
+      await page.locator('[data-home-customize]').click();
+      await page.locator('.home-layout-manage').click();
+      const tools = page.locator('[data-home-customizer]');
+      assert.equal(await tools.locator('input[value="assistant"],input[value="workspace"]').count(), 0);
+      assert.doesNotMatch(await tools.innerText(), /Organizador IA|Mi espacio/);
+      await tools.locator('.home-customizer__done').click();
+      await page.locator('.home-layout-done').click();
+      if (width < 500) await page.locator('[data-home-view="calendar"]').click();
       const expectedCells = await page.evaluate(() => { const d = new Date(); return Math.ceil((((new Date(d.getFullYear(), d.getMonth(), 1).getDay()+6)%7) + new Date(d.getFullYear(), d.getMonth()+1, 0).getDate()) / 7) * 7; });
       assert.equal(await calendar.locator('[data-dashboard-date]').count(), expectedCells);
-      assert.match(await calendar.locator('[data-calendar-legend]').textContent(), /6 actividades este mes/);
+      assert.match(await calendar.locator('[data-calendar-legend]').textContent(), /7 actividades este mes/);
       const prefix = await page.evaluate(() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-'; });
       const busy = calendar.locator('[data-dashboard-date="' + prefix + '05"]');
       assert.match(await busy.getAttribute('aria-label'), /Clase de Algebra/);
@@ -71,6 +85,10 @@ const headers = require('../vercel.json').headers.find(rule => rule.source === '
       }
       const empty = calendar.locator('[data-dashboard-date="' + prefix + '04"]');
       assert.equal(await empty.locator('.dashboard-calendar__month-event,.dashboard-calendar__count').count(), 0);
+      assert.deepEqual(await calendar.locator('.dashboard-calendar__month-event').evaluateAll(nodes => nodes.filter(node => {
+        const cell = node.closest('[data-dashboard-date]').getBoundingClientRect(), rect = node.getBoundingClientRect();
+        return rect.bottom > cell.bottom+1 || rect.right > cell.right+1 || node.scrollWidth > node.clientWidth+1;
+      }).map(node => node.textContent)), [], 'month previews must fit completely, never show partial titles');
       for (const theme of ['dark', 'light']) {
         await page.evaluate(theme => window.EstudiemosTheme.set(theme), theme);
         await page.waitForTimeout(120);
@@ -79,6 +97,18 @@ const headers = require('../vercel.json').headers.find(rule => rule.source === '
       }
       await busy.focus(); await page.keyboard.press('Enter');
       const reader = page.locator('[data-calendar-reader]');
+      assert.equal(await reader.isVisible(), false);
+      assert.equal(await calendar.getAttribute('data-view'), 'schedule');
+      assert.equal(await calendar.locator('.calendar-activity').count(), 5);
+      assert.match(await calendar.locator('.calendar-activity.is-class').textContent(), /08:00-10:00/);
+      assert.deepEqual(await calendar.locator('h4,.calendar-activity__note').evaluateAll(nodes => nodes.filter(node => node.scrollWidth > node.clientWidth+1 || node.scrollHeight > node.clientHeight+1).map(node => node.textContent)), [], 'inline schedule titles and notes must never be clipped');
+      await calendar.screenshot({path:path.join(output, 'schedule-light-'+width+'.png')});
+      await calendar.locator('[data-calendar-schedule-input]').fill(prefix+'04');
+      assert.match(await calendar.locator('[data-dashboard-calendar]').textContent(), /No hay actividades/);
+      await calendar.locator('[data-dashboard-month-change="1"]').click();
+      assert.equal(await calendar.locator('[data-calendar-schedule-input]').inputValue(), prefix+'05');
+      await calendar.locator('[data-calendar-schedule-input]').fill(prefix+'05');
+      await calendar.locator('[data-calendar-expand]').click();
       await reader.waitFor({ state: 'visible' });
       assert.match(await reader.locator('#calendarDayTitle').textContent(), /5/);
       assert.equal(await reader.locator('.calendar-activity').count(), 5);
@@ -105,26 +135,25 @@ const headers = require('../vercel.json').headers.find(rule => rule.source === '
       assert.match(await reader.locator('[data-calendar-day-items]').textContent(), /No hay actividades/);
       await page.keyboard.press('Escape');
       assert.equal(await reader.isVisible(), false);
-      await page.waitForFunction(date => document.activeElement?.dataset.dashboardDate === date, prefix + '05');
-      assert.equal(await busy.evaluate(el => el === document.activeElement), true);
+      await page.waitForFunction(() => document.activeElement?.hasAttribute('data-calendar-expand'));
       await calendar.locator('[data-calendar-expand]').click();
       await reader.locator('[data-calendar-edit-day]').click();
       await page.locator('body.agenda-open .agenda-board').waitFor();
       await page.locator('[data-agenda-close]').click();
+      await calendar.locator('[data-dashboard-calendar-view="month"]').click();
       if (width > 500) {
         await calendar.evaluate(el => { el.style.width = '360px'; });
         await page.waitForFunction(() => document.querySelector('[data-dashboard-calendar]').dataset.monthCapacity === '0');
         assert.match(await busy.locator('.dashboard-calendar__count').textContent(), /5/);
       }
       await busy.click();
-      await reader.locator('[data-calendar-reader-close]').click();
       await calendar.locator('[data-dashboard-calendar-view="week"]').click();
       assert.equal(await calendar.locator('[data-dashboard-date]').count(), 7);
       assert.equal(await calendar.locator('[data-calendar-legend]').isVisible(), false);
       await calendar.screenshot({ path: path.join(output, 'week-' + width + '.png') });
       await busy.click();
-      assert.match(await reader.locator('h4').allTextContents().then(titles => titles.join(' ')), /Repasar integrales y resolver todos los ejercicios de la guia/);
-      await reader.locator('[data-calendar-reader-close]').click();
+      assert.match(await calendar.locator('h4').allTextContents().then(titles => titles.join(' ')), /Repasar integrales y resolver todos los ejercicios de la guia/);
+      await calendar.screenshot({path:path.join(output, 'schedule-dark-'+width+'.png')});
       await page.goto(base + '/instalar.html?local=1');
       assert.deepEqual(await page.locator('[data-tour-target]').evaluateAll(nodes => nodes.map(el => el.dataset.tourTarget)), ['inbox','calendar','focus','progress']);
       assert.equal(await page.locator('.widget-gallery__item').count(), 4);
@@ -176,6 +205,7 @@ const headers = require('../vercel.json').headers.find(rule => rule.source === '
       await context.addInitScript(() => {
         const d = new Date(), date = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
         localStorage.setItem('estudiemos_calendar_view', 'month');
+        localStorage.setItem('estudiemos_home_layout_local', JSON.stringify({visible:{assistant:true,workspace:true},sizes:{assistant:{mobileHeight:456},workspace:{mobileHeight:543}}}));
         localStorage.setItem('bandeja_agenda', JSON.stringify(Array.from({length:30}, (_, i) => ({ id:'dense-'+i, title:'Actividad '+i+' con un titulo completo para leer sin recortes', subject:'Materia de prueba', date, type:'Tarea', note:'Informacion completa de la actividad '+i, horaInicio:'10:00', horaFin:'11:00' }))));
       });
       const page = await context.newPage(), errors = [];
@@ -185,6 +215,25 @@ const headers = require('../vercel.json').headers.find(rule => rule.source === '
       if (await page.locator('[data-home-view="calendar"]').isVisible()) await page.locator('[data-home-view="calendar"]').click();
       await calendar.waitFor({state:'visible'});
       await page.waitForTimeout(300);
+      assert.equal(await page.locator('[data-home-space="assistant"]').isVisible(),false);
+      assert.equal(await page.locator('[data-home-space="workspace"]').isVisible(),false);
+      assert.equal(await page.locator('[data-home-shortcut="space"]').isVisible(),false);
+      if (width < 500) {
+        await page.locator('[data-home-view="overview"]').click();
+        await page.locator('[data-home-view="overview"]').focus();
+        await page.keyboard.press('ArrowRight');
+        assert.equal(await page.locator('[data-home-view="calendar"]').getAttribute('aria-selected'),'true');
+        await page.locator('[data-home-view="overview"]').click();
+      }
+      await page.locator('[data-home-customize]').click();
+      await page.locator('.home-layout-manage').click();
+      await page.locator('[data-home-customizer] label:has([name="homeDensity"][value="compact"])').click();
+      const retained = await page.evaluate(() => JSON.parse(localStorage.estudiemos_home_layout_local));
+      assert.equal(retained.visible.assistant,true); assert.equal(retained.visible.workspace,true);
+      assert.equal(retained.sizes.assistant.mobileHeight,456); assert.equal(retained.sizes.workspace.mobileHeight,543);
+      await page.locator('[data-home-customizer] .home-customizer__done').click();
+      await page.locator('.home-layout-done').click();
+      if (width < 500) await page.locator('[data-home-view="calendar"]').click();
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth+1));
       if (width > 700) assert.ok(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight+1), 'desktop board must still fit the screen');
       await calendar.screenshot({path:path.join(output, `default-${width}x${height}.png`)});

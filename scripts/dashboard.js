@@ -14,6 +14,7 @@
     month: new Date().getMonth(),
     year: new Date().getFullYear(),
     date: toDateValue(new Date()),
+    scheduleMode: false,
     calendarView: localStorage.getItem(CALENDAR_VIEW_KEY) === "month" ? "month" : "week"
   };
 
@@ -213,11 +214,17 @@
       cells[Math.max(0,Math.min(cells.length-1,index+delta))]?.focus();
     });
     document.addEventListener("click", (event) => {
+      if (event.target.closest('[data-calendar-schedule]')) {
+        state.scheduleMode = true;
+        renderCalendar();
+        return;
+      }
       const expand = event.target.closest('[data-calendar-expand]');
       if (expand) return openCalendarReader(expand);
       if (event.target.closest('[data-calendar-reader-close]')) return document.querySelector('[data-calendar-reader]').close();
       if (event.target.closest('[data-calendar-edit-day]')) {
-        document.querySelector('[data-calendar-reader]').close();
+        const reader = document.querySelector('[data-calendar-reader]');
+        if (reader?.open) reader.close();
         // Open after the click finishes so the Inbox's outside-click handler does not close it.
         requestAnimationFrame(() => openAgenda({ date: state.date }));
         return;
@@ -246,11 +253,12 @@
       }
       const monthChange = event.target.closest("[data-dashboard-month-change]");
       if (monthChange) {
-        moveMonth(Number(monthChange.dataset.dashboardMonthChange) || 0);
+        moveMonth(Number(monthChange.dataset.dashboardMonthChange) || 0, Boolean(monthChange.closest('[data-calendar-reader]')));
         return;
       }
       const calendarView = event.target.closest("[data-dashboard-calendar-view]");
       if (calendarView) {
+        state.scheduleMode = false;
         state.calendarView = calendarView.dataset.dashboardCalendarView === "month" ? "month" : "week";
         localStorage.setItem(CALENDAR_VIEW_KEY, state.calendarView);
         window.dispatchEvent(new CustomEvent("estudiemos:calendar-view-change", { detail: { view: state.calendarView } }));
@@ -260,14 +268,18 @@
       const day = event.target.closest("[data-dashboard-date]");
       if (day) {
         if(Date.now()<suppressCalendarClickUntil) return;
+        const fromReader = Boolean(day.closest('[data-calendar-reader]'));
         const date = parseDateValue(day.dataset.dashboardDate);
         if (!date) return;
         state.date = day.dataset.dashboardDate;
         state.month = date.getMonth();
         state.year = date.getFullYear();
-        if (!day.closest('[data-calendar-reader]')) openCalendarReader(day);
+        if (!fromReader) state.scheduleMode = true;
         renderCalendar();
-        document.querySelector('[data-calendar-reader] [data-dashboard-date="' + state.date + '"]')?.focus({ preventScroll: true });
+        const target = fromReader
+          ? document.querySelector('[data-calendar-reader] [data-dashboard-date="' + state.date + '"]')
+          : document.querySelector('[data-calendar-schedule]');
+        target?.focus({ preventScroll: true });
         return;
       }
       if (event.target.closest("[data-dashboard-agenda-open]")) {
@@ -279,6 +291,15 @@
     });
 
     const noteForm = document.querySelector("[data-quick-note-form]");
+    function selectScheduleDate(event) {
+      const date = parseDateValue(event.target.value);
+      if (!date || toDateValue(date) === state.date) return;
+      state.date = toDateValue(date); state.month = date.getMonth(); state.year = date.getFullYear();
+      renderCalendar();
+    }
+    const scheduleDate = document.querySelector('[data-calendar-schedule-input]');
+    scheduleDate?.addEventListener('input', selectScheduleDate);
+    scheduleDate?.addEventListener('change', selectScheduleDate);
     noteForm?.elements.title.addEventListener("input", () => {
       noteForm.querySelector('[type="submit"]').disabled = !noteForm.elements.title.value.trim();
     });
@@ -309,6 +330,7 @@
       }
     });
     window.addEventListener("estudiemos:calendar-view-change", (event) => {
+      state.scheduleMode = false;
       state.calendarView = event.detail?.view === "month" ? "month" : "week";
       renderCalendar();
     });
@@ -521,15 +543,22 @@
     const cellCount = state.calendarView === "week" ? 7 : monthWeeks * 7;
     const today = toDateValue(new Date());
     document.querySelectorAll("[data-dashboard-calendar-view]").forEach((button) => {
-      const active = button.dataset.dashboardCalendarView === state.calendarView;
+      const active = button.dataset.dashboardCalendarView === state.calendarView && (!state.scheduleMode || Boolean(button.closest('[data-calendar-reader]')));
       button.classList.toggle("is-active", active);
       button.setAttribute("aria-pressed", String(active));
     });
+    const scheduleButton = document.querySelector('[data-calendar-schedule]');
+    scheduleButton?.classList.toggle('is-active', state.scheduleMode);
+    scheduleButton?.setAttribute('aria-pressed', String(state.scheduleMode));
+    const dateControl = document.querySelector('[data-calendar-schedule-date]');
+    if (dateControl) { dateControl.hidden = !state.scheduleMode; dateControl.querySelector('input').value = state.date; }
     document.querySelectorAll('[data-calendar-surface]').forEach(surface => {
       const grid = surface.querySelector('[data-dashboard-calendar]');
       const label = surface.querySelector('[data-dashboard-month]');
       if (!grid || !label) return;
       const focusedDate = grid.contains(document.activeElement) ? document.activeElement.dataset.dashboardDate : null;
+      const focusedTask = grid.contains(document.activeElement) ? document.activeElement.dataset.dashboardAgendaDone : null;
+      const schedule = state.scheduleMode && !surface.closest('[data-calendar-reader]');
       label.textContent = title.charAt(0).toUpperCase() + title.slice(1);
       surface.dataset.view = state.calendarView;
       grid.dataset.view = state.calendarView;
@@ -541,6 +570,24 @@
       grid.dataset.weekCapacity = String(weeklyCapacity);
       grid.dataset.monthCompact = String(grid.clientHeight / monthWeeks < 48);
       grid.dataset.weekCompact = String(grid.clientHeight / 7 < 44);
+      if (schedule) {
+        label.textContent = formatFullDate(state.date);
+        surface.dataset.view = 'schedule'; grid.dataset.view = 'schedule';
+        const dayItems = dated.get(state.date) || [];
+        grid.innerHTML = `<div class="calendar-schedule__summary" role="status">${dayItems.length} ${dayItems.length === 1 ? 'actividad' : 'actividades'}</div>${calendarActivities(dayItems)}`;
+        let footer = surface.querySelector('[data-calendar-schedule-footer]');
+        if (!footer) {
+          footer = document.createElement('footer'); footer.className = 'calendar-schedule__footer'; footer.dataset.calendarScheduleFooter = '';
+          footer.innerHTML = '<button class="calendar-reader__edit" type="button" data-calendar-edit-day>Editar o agregar</button>';
+          surface.appendChild(footer);
+        }
+        footer.hidden = false;
+        surface.querySelector('[data-calendar-legend]')?.setAttribute('hidden', '');
+        if (focusedTask) [...grid.querySelectorAll('[data-dashboard-agenda-done]')].find(input => input.dataset.dashboardAgendaDone === focusedTask)?.focus({ preventScroll: true });
+        return;
+      }
+      const footer = surface.querySelector('[data-calendar-schedule-footer]');
+      if (footer) footer.hidden = true;
       const cells = [];
       for (let index = 0; index < cellCount; index += 1) {
         const date = new Date(start.getFullYear(), start.getMonth(), start.getDate() + index);
@@ -552,6 +599,7 @@
         cells.push(`<button class="dashboard-calendar__day ${state.calendarView === "month" && date.getMonth() !== state.month ? "is-outside" : ""} ${value === today ? "is-today" : ""} ${value === state.date ? "is-selected" : ""} ${dayItems.length ? "has-items" : ""} ${hasStreak ? "has-study-streak" : ""}" type="button" data-dashboard-date="${value}" ${value === today ? 'aria-current="date"' : ''} aria-label="${escapeHtml(description)}"><span class="dashboard-calendar__number">${date.getDate()}</span>${hasStreak ? flameIcon() : ""}${content}</button>`);
       }
       grid.innerHTML = cells.join("");
+      if (state.calendarView === 'month') fitMonthPreviews(grid, dated);
       if (focusedDate) grid.querySelector(`[data-dashboard-date="${focusedDate}"]`)?.focus({ preventScroll: true });
       renderMonthLegend(grid, agenda, streakDays);
     });
@@ -560,7 +608,29 @@
 
   function monthCapacity(grid) {
     if (grid.clientWidth / 7 < 82) return 0;
-    return Math.min(2, Math.max(0, Math.floor((grid.clientHeight / (Number(grid.dataset.weeks) || 6) - 48) / 24)));
+    return Math.min(2, Math.max(0, Math.floor((grid.clientHeight / (Number(grid.dataset.weeks) || 6) - 40) / 50)));
+  }
+
+  function fitMonthPreviews(grid, dated) {
+    const days = [...grid.querySelectorAll('.dashboard-calendar__day')].filter(day => day.querySelector('.dashboard-calendar__month-events'));
+    for (const day of days) {
+      const events = day.querySelector('.dashboard-calendar__month-events');
+      const total = dated.get(day.dataset.dashboardDate)?.length || 0;
+      while (day.scrollHeight > day.clientHeight + 1) {
+        const entries = events.querySelectorAll('.dashboard-calendar__month-event');
+        if (!entries.length) break;
+        entries[entries.length - 1].remove();
+        if (entries.length === 1) {
+          events.remove();
+          const count = document.createElement('span'); count.className = 'dashboard-calendar__count';
+          count.textContent = `${total} act.`; day.appendChild(count);
+          break;
+        }
+        let more = events.querySelector('.dashboard-calendar__month-more');
+        if (!more) { more = document.createElement('span'); more.className = 'dashboard-calendar__month-more'; events.appendChild(more); }
+        more.textContent = `+${total - entries.length + 1} más`;
+      }
+    }
   }
 
   function weekCapacity(grid) {
@@ -574,15 +644,19 @@
     const focusId = container.contains(document.activeElement) ? document.activeElement.dataset.dashboardAgendaDone : null;
     dialog.querySelector('#calendarDayTitle').textContent = formatFullDate(state.date);
     dialog.querySelector('[data-calendar-day-count]').textContent = `${items.length} ${items.length === 1 ? 'actividad' : 'actividades'}`;
-    container.innerHTML = items.length ? items.slice().sort(compareCalendarItems).map(item => {
+    container.innerHTML = calendarActivities(items);
+    if (focusId) [...container.querySelectorAll('[data-dashboard-agenda-done]')].find(input => input.dataset.dashboardAgendaDone === focusId)?.focus({ preventScroll: true });
+  }
+
+  function calendarActivities(items) {
+    return items.length ? items.slice().sort(compareCalendarItems).map(item => {
       const alarm = item.alarm ? window.EstudiemosAlarmRules?.describe(item.alarm) : '';
       return `<article class="calendar-activity is-${calendarKind(item)} ${item.done ? 'is-done' : ''}">
         <div class="calendar-activity__time"><time>${escapeHtml(formatCalendarTime(item))}</time><span>${escapeHtml(item.type)}</span></div>
         <div class="calendar-activity__content"><h4>${escapeHtml(item.title)}</h4>${item.subject ? `<p class="calendar-activity__subject">${escapeHtml(item.subject)}</p>` : ''}${item.note ? `<p class="calendar-activity__note">${escapeHtml(item.note)}</p>` : ''}${alarm ? `<p class="calendar-activity__alarm">${escapeHtml(alarm)}</p>` : ''}
-          <div class="calendar-activity__actions">${isCompletable(item) ? `<label><input type="checkbox" data-dashboard-agenda-done="${escapeHtml(item.id)}" ${item.done ? 'checked' : ''}>${item.done ? 'Completada' : 'Marcar como hecha'}</label>` : ''}${window.EstudiemosInboxAlarms?.button(item) || ''}</div>
+          <div class="calendar-activity__actions">${isCompletable(item) ? `<label><input type="checkbox" data-dashboard-agenda-done="${escapeHtml(item.id)}" aria-label="${item.done ? 'Marcar como pendiente' : 'Marcar como hecha'}: ${escapeHtml(item.title)}" ${item.done ? 'checked' : ''}>${item.done ? 'Completada' : 'Marcar como hecha'}</label>` : ''}${window.EstudiemosInboxAlarms?.button(item) || ''}</div>
         </div></article>`;
     }).join('') : '<p class="calendar-reader__empty">No hay actividades para este día.</p>';
-    if (focusId) [...container.querySelectorAll('[data-dashboard-agenda-done]')].find(input => input.dataset.dashboardAgendaDone === focusId)?.focus({ preventScroll: true });
   }
 
   function calendarKind(item) {
@@ -594,7 +668,7 @@
   function renderMonthDay(items, capacity) {
     if (!items.length) return '';
     if (!capacity) return `<span class="dashboard-calendar__count">${items.length}<span> act.</span></span>`;
-    const entries = items.slice(0, capacity).map(item => `<span class="dashboard-calendar__month-event is-${calendarKind(item)} ${item.done ? 'is-done' : ''}"><time>${escapeHtml(item.horaInicio || '')}</time><span>${escapeHtml(item.title)}</span></span>`).join('');
+    const entries = items.slice(0, capacity).map(item => `<span class="dashboard-calendar__month-event is-${calendarKind(item)} ${item.done ? 'is-done' : ''}"><time>${escapeHtml(formatCalendarTime(item))}</time><span>${escapeHtml(item.title)}</span></span>`).join('');
     return `<span class="dashboard-calendar__month-events">${entries}${items.length > capacity ? `<span class="dashboard-calendar__month-more">+${items.length - capacity} más</span>` : ''}</span>`;
   }
 
@@ -633,9 +707,11 @@
       </div>`).join("");
   }
 
-  function moveMonth(direction) {
+  function moveMonth(direction, fromReader = false) {
     const current = parseDateValue(state.date) || new Date(state.year, state.month, 1);
-    const next = state.calendarView === "week"
+    const next = state.scheduleMode && !fromReader
+      ? new Date(current.getFullYear(), current.getMonth(), current.getDate() + direction)
+      : state.calendarView === "week"
       ? new Date(current.getFullYear(), current.getMonth(), current.getDate() + direction * 7)
       : new Date(state.year, state.month + direction, 1);
     state.year = next.getFullYear();

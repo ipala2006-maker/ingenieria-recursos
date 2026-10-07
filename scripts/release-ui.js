@@ -2,7 +2,7 @@
   if (window.EstudiemosReleaseUI) return;
   const style = document.createElement('link');
   style.rel = 'stylesheet';
-  style.href = new URL('../styles/release.css?v=20260928', document.currentScript.src).href;
+  style.href = new URL('../styles/release.css?v=20261007-hidden-tools', document.currentScript.src).href;
   document.head.appendChild(style);
   let dialog;
   function show(feature) {
@@ -17,21 +17,19 @@
     if (!dialog.open) dialog.showModal();
   }
   window.EstudiemosReleaseUI = Object.freeze({ show });
-  const aiSelector = '[data-general-ai-open],[data-home-open="assistant"],[data-agenda-assistant]';
-  const workspaceWidgetSelector = '[data-account-widget="workspace"],[data-account-desktop-widget="workspace"]';
+  const aiSelector = '[data-general-ai-open],[data-home-open="assistant"],[data-agenda-assistant],[data-home-space="assistant"]';
+  const workspaceSelector = '[data-account-widget="workspace"],[data-account-desktop-widget="workspace"],[data-home-space="workspace"],[data-home-shortcut="space"],[data-home-destination="space"],[data-home-view="space"]';
   function decorate() {
+    if (!window.EstudiemosRelease) return;
     document.querySelectorAll(aiSelector).forEach(button => {
-      if (window.EstudiemosRelease?.enabled('ai')) return;
-      const label = 'Trabajar con la IA · Próximamente';
-      if (button.title !== label) { button.title = label; button.setAttribute('aria-label', label); }
+      button.toggleAttribute('data-release-unavailable', !window.EstudiemosRelease.enabled('ai'));
     });
-    document.querySelectorAll(workspaceWidgetSelector).forEach(button => {
-      if (window.EstudiemosRelease?.enabled('workspace')) return;
-      button.disabled = true;
-      if (button.textContent !== 'Mi espacio · Próximamente') button.textContent = 'Mi espacio · Próximamente';
+    document.querySelectorAll(workspaceSelector).forEach(button => {
+      button.toggleAttribute('data-release-unavailable', !window.EstudiemosRelease.enabled('workspace'));
     });
   }
   decorate();
+  document.querySelector('script[data-release-config]')?.addEventListener('load', decorate);
   new MutationObserver(decorate).observe(document.body, { childList: true, subtree: true });
   document.addEventListener('click', event => {
     if (!window.EstudiemosRelease?.enabled('ai') && event.target.closest(aiSelector)) {

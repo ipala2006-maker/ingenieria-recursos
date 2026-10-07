@@ -18,7 +18,7 @@ function calendarHarness() {
 
 test('calendar preview density respects actual month rows and narrow tools', () => {
   const calendar = calendarHarness();
-  const grid = { clientWidth: 900, clientHeight: 400, dataset: { weeks: '5' } };
+  const grid = { clientWidth: 900, clientHeight: 460, dataset: { weeks: '5' } };
   assert.equal(calendar.monthCapacity(grid), 1);
   grid.dataset.weeks = '6';
   assert.equal(calendar.monthCapacity(grid), 0);

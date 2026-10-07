@@ -23,8 +23,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="apple-touch-icon" href="./assets/icon-180.png" />
     <title>Estudiemos</title>
-    <script src="./shared/release.js?v=20260928"></script>
-    <link rel="stylesheet" href="./styles/release.css?v=20260928" />
+    <script src="./shared/release.js?v=20261007-hidden-tools"></script>
+    <link rel="stylesheet" href="./styles/release.css?v=20261007-hidden-tools" />
     <script src="./scripts/theme-init.js?v=20260826-workspace-widget"></script>
     <link rel="stylesheet" href="./styles/app.css?v=20260906-referrals" />
     <link rel="stylesheet" href="./styles/workspace.css?v=20260906-referrals-2" />
@@ -36,7 +36,7 @@
     <link rel="stylesheet" href="./styles/home-console.css?v=20260914-custom-2" />
     <link rel="stylesheet" href="./styles/home-layout.css?v=20261003-swap" />
     <link rel="stylesheet" href="./styles/study-chart.css?v=20261003-refined" />
-    <link rel="stylesheet" href="./styles/calendar-month.css?v=20261007-day-reader" />
+    <link rel="stylesheet" href="./styles/calendar-month.css?v=20261007-schedules" />
   </head>
 
   <body class="workspace-home">
@@ -195,7 +195,9 @@
                   <div class="dashboard-calendar__views" aria-label="Vista del calendario">
                     <button type="button" data-dashboard-calendar-view="week">Semana</button>
                     <button type="button" data-dashboard-calendar-view="month">Mes</button>
+                    <button type="button" data-calendar-schedule aria-pressed="false">Horarios</button>
                   </div>
+                  <label class="calendar-schedule-date" data-calendar-schedule-date hidden><span class="sr-only">Día de los horarios</span><input type="date" data-calendar-schedule-input aria-label="Día de los horarios"></label>
                   <div class="dashboard-widget__nav">
                     <button type="button" data-dashboard-month-change="-1" aria-label="Período anterior">
                       <svg viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></svg>
@@ -244,14 +246,14 @@
     <!-- DATA SIEMPRE PRIMERO -->
     <script src="./data/data.js?v=20260804-quimica-completa"></script>
     <script src="./shared/home-layout-storage.js?v=20260929-device"></script>
-    <script src="./scripts/global-search.js?v=20261003-refined"></script>
+    <script src="./scripts/global-search.js?v=20261007-hidden-tools"></script>
 
     <script src="./shared/plans.js?v=20260827-real-plans"></script>
     <script src="./scripts/workspace.js?v=20260911-commercial-hidden"></script>
-    <script src="./scripts/dashboard.js?v=20261007-day-reader"></script>
+    <script src="./scripts/dashboard.js?v=20261007-schedules"></script>
     <script type="module" src="./scripts/study-home.js?v=20261003-refined"></script>
     <script src="./shared/home-board.js?v=20260928-edges"></script>
-    <script src="./scripts/home-customizer.js?v=20261003-swap"></script>
+    <script src="./scripts/home-customizer.js?v=20261007-available-tools"></script>
 
     <script src="./scripts/page-shell.js?v=20260831-launch-audit"></script>
 
