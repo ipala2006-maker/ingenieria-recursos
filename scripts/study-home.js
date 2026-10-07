@@ -172,6 +172,10 @@ if (home) {
     write('[data-home-phase]', state.phase === 'study' ? 'Estudio' : 'Descanso');
     host.dataset.timerPhase = state.phase;
     write('[data-home-block]', `Bloque ${state.block} de ${state.blocks}`);
+    write('[data-home-block-short]', `${state.block}/${state.blocks}`);
+    const skipLabel = state.phase === 'study' && state.config.break > 0 ? 'Pasar al descanso' : `Pasar al bloque ${state.block >= state.blocks ? 1 : state.block + 1}`;
+    const skip = home.querySelector('[data-home-skip]');
+    skip.disabled = false; skip.title = skipLabel; skip.setAttribute('aria-label', skipLabel);
     write('[data-home-timer-state]', state.running ? 'Sesión en curso' : state.alarm ? 'Bloque finalizado' : 'A tu ritmo');
     home.querySelector('[data-home-timer]').dataset.running=String(state.running);
     home.querySelector('[data-home-adjust="-1"]').disabled=remaining<=60;
@@ -244,6 +248,7 @@ if (home) {
     cloneIcon('[data-pomodoro-alarm-preview]', '[data-home-bell]');
     cloneIcon('[data-pomodoro-reset]', '[data-progress-reset]');
     cloneIcon('[data-pomodoro-reset]', '[data-home-reset]');
+    cloneIcon('[data-pomodoro-skip]', '[data-home-skip]');
     cloneIcon('[data-pomodoro-close]', '[data-home-session-close]');
     cloneIcon('[data-pomodoro-config-toggle] svg:last-child', '[data-home-alarm-chevron]');
     cloneIcon('[data-pomodoro-step="-1"]', '[data-home-config-step="-1"],[data-home-adjust="-1"]');
@@ -298,6 +303,7 @@ if (home) {
     if (open === 'assistant') openAssistant();
     else if (open) document.querySelector(open === 'pomodoro' ? '.topbar [data-pomodoro-open]' : '.topbar [data-streak-open]')?.click();
     if (event.target.closest('[data-home-timer]')) window.EstudiemosStudy?.toggle();
+    if (event.target.closest('[data-home-skip]')) window.EstudiemosStudy?.skip();
     if(event.target.closest('[data-home-reset]'))document.querySelector('[data-pomodoro-reset]')?.click();
     const adjust = event.target.closest('[data-home-adjust],[data-home-config-step]');
     if(adjust)adjustControl(adjust);

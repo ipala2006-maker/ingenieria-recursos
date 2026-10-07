@@ -297,7 +297,7 @@
     if (document.querySelector('script[src*="scripts/pomodoro.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/pomodoro.js?v=20261003-refined`;
+    script.src = `${rootPath}scripts/pomodoro.js?v=20261007-skip-phase`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -305,7 +305,7 @@
   function loadDashboardScript() {
     if (document.querySelector('script[src*="scripts/dashboard.js"]')) return;
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/dashboard.js?v=20261007-schedules`;
+    script.src = `${rootPath}scripts/dashboard.js?v=20261007-compact-events`;
     script.defer = true;
     document.head.appendChild(script);
   }

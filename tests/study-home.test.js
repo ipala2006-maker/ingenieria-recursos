@@ -111,3 +111,84 @@ test('historical ranges stay detached, bounded and use real recorded days', () =
   const days=context.studyHistory();days.at(-1).minutes=999;
   assert.equal(context.streakState.days.day0,35);
 });
+
+function skippableTimer(overrides = {}) {
+  let credited = 0, notified = 0, saved = 0, ticker = false;
+  const context = {
+    Date:{now:()=>700000},
+    state:{running:true,phase:'study',currentBlock:2,config:{study:25,break:5,blocks:4},remaining:900,endAt:1600000,studyCreditAt:100000,pendingStudySeconds:0,completedToday:0,autoStart:true,...overrides},
+    adoptTimerState:()=>false, stopAlarm:()=>{}, stopTicker:()=>{ticker=false;},
+    startTickerIfNeeded:()=>{ticker=true;}, normalizeDailyCount:()=>{},
+    notifyCompletion:()=>{notified++;}, saveState:()=>{saved++;}, syncWakeLock:()=>{}, render:()=>{},
+    safeEndTime:seconds=>700000+seconds*1000,
+    durationSeconds:phase=>context.state.config[phase]*60,
+    recordStudyPresenceSeconds:seconds=>{credited+=seconds;}
+  };
+  vm.createContext(context);
+  vm.runInContext(source.slice(source.indexOf('  function captureStudyProgress('),source.indexOf('  function streakSummary()')),context);
+  vm.runInContext(source.slice(source.indexOf('  function skipPhase()'),source.indexOf('  function reconcileTimer(')),context);
+  return {context,credited:()=>credited,notified:()=>notified,saved:()=>saved,ticker:()=>ticker};
+}
+
+test('skipping running study keeps the next rest running and only credits elapsed time',()=>{
+  const t=skippableTimer();
+  t.context.skipPhase();
+  assert.equal(t.context.state.phase,'break');
+  assert.equal(t.context.state.currentBlock,2);
+  assert.equal(t.context.state.remaining,300);
+  assert.equal(t.context.state.endAt,1000000);
+  assert.equal(t.context.state.running,true);
+  assert.equal(t.credited(),600);
+  assert.equal(t.context.state.completedToday,0);
+  assert.equal(t.context.state.studyCreditAt,0);
+  assert.equal(t.notified(),0);
+  assert.equal(t.saved(),1);
+  assert.equal(t.ticker(),true);
+});
+
+test('skipping rest advances the block, never credits rest and restarts the study deadline',()=>{
+  const t=skippableTimer({phase:'break'});
+  t.context.skipPhase();
+  assert.equal(t.context.state.phase,'study');
+  assert.equal(t.context.state.currentBlock,3);
+  assert.equal(t.context.state.remaining,1500);
+  assert.equal(t.context.state.endAt,2200000);
+  assert.equal(t.context.state.studyCreditAt,700000);
+  assert.equal(t.credited(),0);
+  assert.equal(t.notified(),0);
+});
+
+test('a paused skip stays paused even with auto-start enabled and wraps after the last block',()=>{
+  const t=skippableTimer({phase:'break',currentBlock:4,running:false,endAt:0});
+  t.context.skipPhase();
+  assert.equal(t.context.state.phase,'study');
+  assert.equal(t.context.state.currentBlock,1);
+  assert.equal(t.context.state.running,false);
+  assert.equal(t.context.state.endAt,0);
+  assert.equal(t.credited(),0);
+  assert.equal(t.ticker(),false);
+});
+
+test('zero-minute rests advance directly to study, for skips and natural completion',()=>{
+  const t=skippableTimer({config:{study:25,break:0,blocks:4}});
+  t.context.skipPhase();
+  assert.equal(t.context.state.phase,'study');
+  assert.equal(t.context.state.currentBlock,3);
+  assert.equal(t.context.state.remaining,1500);
+  t.context.advancePhase(true);
+  assert.equal(t.context.state.phase,'study');
+  assert.equal(t.context.state.currentBlock,4);
+  assert.equal(t.context.state.completedToday,1);
+  assert.equal(t.notified(),1);
+});
+
+test('skip adopts the latest shared timer before changing its phase',()=>{
+  const t=skippableTimer();
+  t.context.adoptTimerState=()=>{Object.assign(t.context.state,{phase:'break',currentBlock:3,running:false});};
+  t.context.skipPhase();
+  assert.equal(t.context.state.phase,'study');
+  assert.equal(t.context.state.currentBlock,4);
+  assert.equal(t.credited(),0);
+  assert.equal(t.context.state.running,false);
+  assert.match(source,/skip: skipPhase/);
+});

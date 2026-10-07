@@ -24,13 +24,16 @@
   renderDashboard();
   if (window.ResizeObserver) {
     let calendarResizeFrame = 0;
+    const calendarSizes = new WeakMap();
     const observer = new ResizeObserver(() => {
       cancelAnimationFrame(calendarResizeFrame);
       calendarResizeFrame = requestAnimationFrame(() => {
-        const changed = [...document.querySelectorAll('[data-dashboard-calendar]')].some(grid =>
-          grid.clientWidth && (state.calendarView === 'month'
-            ? grid.dataset.monthCapacity !== String(monthCapacity(grid)) || grid.dataset.monthCompact !== String(grid.clientHeight / Number(grid.dataset.weeks) < 48)
-            : grid.dataset.weekCapacity !== String(weekCapacity(grid)) || grid.dataset.weekCompact !== String(grid.clientHeight / 7 < 44)));
+        let changed = false;
+        for (const grid of document.querySelectorAll('[data-dashboard-calendar]')) {
+          if (!grid.clientWidth) continue;
+          const size = `${grid.clientWidth}x${grid.clientHeight}`;
+          if (calendarSizes.get(grid) !== size) { calendarSizes.set(grid, size); changed = true; }
+        }
         if (changed) renderCalendar();
       });
     });
@@ -608,7 +611,7 @@
 
   function monthCapacity(grid) {
     if (grid.clientWidth / 7 < 82) return 0;
-    return Math.min(2, Math.max(0, Math.floor((grid.clientHeight / (Number(grid.dataset.weeks) || 6) - 40) / 50)));
+    return Math.min(3, Math.max(0, Math.floor((grid.clientHeight / (Number(grid.dataset.weeks) || 6) - 34) / 36)));
   }
 
   function fitMonthPreviews(grid, dated) {

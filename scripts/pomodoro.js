@@ -82,7 +82,7 @@
   if (state.running) requestWakeLock();
 
   // All home controls share the existing timer, persistence and native sync.
-  window.EstudiemosStudy = Object.freeze({ snapshot: homeSnapshot, history: studyHistory, toggle: toggleTimer, configure: applyConfigValue, seek: setRemaining, alarm: configureAlarm, previewAlarm });
+  window.EstudiemosStudy = Object.freeze({ snapshot: homeSnapshot, history: studyHistory, toggle: toggleTimer, skip: skipPhase, configure: applyConfigValue, seek: setRemaining, alarm: configureAlarm, previewAlarm });
   window.dispatchEvent(new CustomEvent("estudiemos:study-ready"));
 
   function homeSnapshot() {
@@ -582,7 +582,7 @@
     else if (stepButton) changeConfig(stepButton.dataset.pomodoroKey, Number(stepButton.dataset.pomodoroStep));
     else if (toggleButton) toggleTimer();
     else if (resetButton) resetTimer();
-    else if (skipButton) advancePhase(false);
+    else if (skipButton) skipPhase();
     else if (configButton) toggleConfigPanel(configButton);
     else if (soundSettingsButton) toggleSoundPanel(soundSettingsButton);
     else if (ambientButton) toggleAmbient();
@@ -993,7 +993,7 @@
       if (event.target.closest("[data-pip-close]")) targetWindow.close();
       else if (event.target.closest("[data-pip-reset]")) resetTimer();
       else if (event.target.closest("[data-pip-toggle]")) toggleTimer();
-      else if (event.target.closest("[data-pip-skip]")) advancePhase(false);
+      else if (event.target.closest("[data-pip-skip]")) skipPhase();
       else if (event.target.closest("[data-pip-alarm-preview]")) previewAlarm();
       else if (event.target.closest("[data-pip-step]")) {
         const button = event.target.closest("[data-pip-step]");
@@ -1222,7 +1222,12 @@
     render();
   }
 
-  function advancePhase(completed, shouldNotify = true) {
+  function skipPhase() {
+    adoptTimerState();
+    advancePhase(false, false, state.running);
+  }
+
+  function advancePhase(completed, shouldNotify = true, continueRunning = false) {
     captureStudyProgress();
     flushStudyCredit();
     if (!completed) stopAlarm();
@@ -1234,7 +1239,7 @@
       state.completedToday += 1;
     }
 
-    if (previousPhase === "study") {
+    if (previousPhase === "study" && state.config.break > 0) {
       state.phase = "break";
     } else {
       state.phase = "study";
@@ -1247,7 +1252,7 @@
     state.remaining = durationSeconds(state.phase);
 
     if (completed && shouldNotify) notifyCompletion(previousPhase);
-    if (completed && state.autoStart && state.remaining > 0) {
+    if (((completed && state.autoStart) || continueRunning) && state.remaining > 0) {
       state.running = true;
       state.endAt = safeEndTime(state.remaining);
       state.studyCreditAt = state.phase === "study" ? Date.now() : 0;
