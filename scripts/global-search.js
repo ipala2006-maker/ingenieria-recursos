@@ -8,13 +8,13 @@
   if (!document.querySelector('script[data-release-ui]')) {
     const releaseUi = document.createElement('script');
     releaseUi.dataset.releaseUi = '';
-    releaseUi.src = rootPath + 'scripts/release-ui.js?v=20260928';
+    releaseUi.src = rootPath + 'scripts/release-ui.js?v=20261007-hidden-tools';
     document.head.appendChild(releaseUi);
   }
   if (!window.EstudiemosRelease && !document.querySelector('script[data-release-config]')) {
     const releaseConfig = document.createElement('script');
     releaseConfig.dataset.releaseConfig = '';
-    releaseConfig.src = rootPath + 'shared/release.js?v=20260928';
+    releaseConfig.src = rootPath + 'shared/release.js?v=20261007-hidden-tools';
     document.head.appendChild(releaseConfig);
   }
   const workspaceHome = document.body.classList.contains("workspace-home") || document.body.classList.contains("productivity-page");
@@ -201,7 +201,7 @@
   function loadProductInterface() {
     if (document.querySelector('script[src*="scripts/product-ui.js"]')) return;
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/product-ui.js?v=20260929-device`;
+    script.src = `${rootPath}scripts/product-ui.js?v=20261007-available-tools`;
     document.head.appendChild(script);
   }
 
@@ -275,7 +275,7 @@
     if (document.querySelector('script[src*="scripts/bandeja.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/bandeja.js?v=20260914-conversation`;
+    script.src = `${rootPath}scripts/bandeja.js?v=20261007-available-tools`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -305,7 +305,7 @@
   function loadDashboardScript() {
     if (document.querySelector('script[src*="scripts/dashboard.js"]')) return;
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/dashboard.js?v=20260912-alarm-sync`;
+    script.src = `${rootPath}scripts/dashboard.js?v=20261007-schedules`;
     script.defer = true;
     document.head.appendChild(script);
   }

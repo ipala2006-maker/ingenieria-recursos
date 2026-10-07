@@ -14,3 +14,5 @@
 [data-home-ai-form].release-pending { background:transparent; border:0; box-shadow:none; min-height:0; }
 .product-home-navigation [data-home-view="space"] { white-space:normal; }
 html.theme-light .release-dialog { background:#fff; color:#1c293b; }
+[data-release-unavailable] { display:none !important; }
+.product-home-navigation:has([data-release-unavailable]) { grid-template-columns:none; grid-auto-flow:column; grid-auto-columns:1fr; }

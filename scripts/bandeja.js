@@ -586,7 +586,7 @@
     }
     if (document.getElementById("agendaDate")) document.getElementById("agendaDate").value = selectedAgendaDate;
     renderAgenda();
-    setTimeout(() => document.querySelector("[data-agenda-assistant]")?.focus(), 0);
+    setTimeout(() => document.querySelector(window.EstudiemosRelease?.enabled('ai') ? '[data-agenda-assistant]' : '[data-agenda-create]')?.focus(), 0);
   }
 
   function closeAgendaBoard(options = {}) {

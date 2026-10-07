@@ -25,6 +25,7 @@
   const isVisible = key => {
     if (key === 'overview') return true;
     const mapped = key === 'space' ? 'workspace' : key;
+    if (mapped === 'workspace' && !window.EstudiemosRelease?.enabled('workspace')) return false;
     try {
       const value = window.EstudiemosHomeLayout?.read() || {};
       return value.visible?.[mapped] !== false;
@@ -33,7 +34,7 @@
   for (const [key,label,panel] of views) {
     const button = document.createElement('button');
     button.type = 'button';
-    button.textContent = key === 'space' && !window.EstudiemosRelease?.enabled('workspace') ? label + ' · Próximamente' : label;
+    button.textContent = label;
     button.id = `home-tab-${key}`;
     button.dataset.homeView = key;
     button.setAttribute('role', 'tab');
@@ -67,7 +68,7 @@
   };
   window.addEventListener('estudiemos:home-navigate', event => {
     const view = views.find(([key]) => key === event.detail?.view);
-    if (!view) return;
+    if (!view || !isVisible(view[0])) return;
     if (mobile.matches) nav.querySelector(`[data-home-view="${view[0]}"]`).click();
     else view[2].scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block:'nearest' });
     view[2].setAttribute('tabindex','-1');
@@ -75,7 +76,7 @@
   });
   nav.addEventListener('click', event => {
     const button = event.target.closest('[data-home-view]');
-    if (!button) return;
+    if (!button || !isVisible(button.dataset.homeView)) return;
     if (current === button.dataset.homeView) return;
     current = button.dataset.homeView;
     history.pushState({ ...(history.state || {}), homeView:current }, '', location.href);
@@ -86,8 +87,9 @@
     const direction = {ArrowLeft:-1,ArrowRight:1}[event.key];
     if (direction === undefined && !['Home','End'].includes(event.key)) return;
     event.preventDefault();
-    const index = views.findIndex(([key]) => key === current);
-    current = views[event.key === 'Home' ? 0 : event.key === 'End' ? views.length - 1 : (index + direction + views.length) % views.length][0];
+    const visibleViews = views.filter(([key]) => isVisible(key));
+    const index = visibleViews.findIndex(([key]) => key === current);
+    current = visibleViews[event.key === 'Home' ? 0 : event.key === 'End' ? visibleViews.length - 1 : (index + direction + visibleViews.length) % visibleViews.length][0];
     history.replaceState({ ...(history.state || {}), homeView:current }, '', location.href);
     render();
     nav.querySelector(`[data-home-view="${current}"]`).focus();

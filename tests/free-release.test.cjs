@@ -13,6 +13,20 @@ test('free launch flags are disabled for everyone and cannot be changed as prefe
   assert.ok(Object.isFrozen(release.features));
 });
 
+test('paused tools are excluded from the available home spaces without disabling live tools', () => {
+  assert.equal(release.homeSpaceEnabled('assistant'), false);
+  assert.equal(release.homeSpaceEnabled('workspace'), false);
+  for (const key of ['focus','progress','inbox','calendar','shortcuts']) assert.equal(release.homeSpaceEnabled(key), true);
+});
+
+test('the same saved tool definitions can be reactivated by a later release', () => {
+  const source = fs.readFileSync(path.join(root,'shared/release.js'),'utf8');
+  const sandbox = {module:{exports:{}}};
+  vm.runInNewContext(source.replace('workspace: false, ai: false','workspace: true, ai: true'),sandbox);
+  assert.equal(sandbox.module.exports.homeSpaceEnabled('assistant'), true);
+  assert.equal(sandbox.module.exports.homeSpaceEnabled('workspace'), true);
+});
+
 for (const route of ['agenda-ai', 'assistant-router', 'workspace-ai']) {
   test(`${route} returns coming soon without network, quota or model calls`, async () => {
     const file = path.join(root, 'api', route + '.js');

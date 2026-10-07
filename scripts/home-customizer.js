@@ -3,12 +3,14 @@
   if(!dialog||!trigger||!page||!board)return;
   const layoutStorage=window.EstudiemosHomeLayout,KEY=layoutStorage.key,spaces=[['focus','Pomodoro',240],['progress','Tu progreso',300],['assistant','Organizador IA',260],['shortcuts','Accesos rápidos',64],['workspace','Mi espacio',280],['calendar','Calendario',340],['inbox','Inbox',280]];
   const mobile=matchMedia('(max-width:700px), (min-width:701px) and (max-width:900px) and (max-height:899px)');
+  const available=key=>window.EstudiemosRelease?.homeSpaceEnabled?.(key) ?? (key==='assistant'?window.EstudiemosRelease?.enabled('ai')===true:key==='workspace'?window.EstudiemosRelease?.enabled('workspace')===true:true);
+  const effectiveVisibility=visible=>Object.fromEntries(spaces.map(([key])=>[key,available(key)&&visible[key]!==false]));
   const reduced=matchMedia('(prefers-reduced-motion:reduce)'),nodes=new Map(spaces.map(([key])=>[key,document.querySelector(`[data-home-space="${key}"]`)])),list=dialog.querySelector('[data-home-customizer-spaces]');
   let editing=false,gesture=null,frame=0,lastLayout=null,undoValue=null,armed=null;
   const clone=value=>JSON.parse(JSON.stringify(value));
   const clamp=(n,min,max,fallback)=>Number.isFinite(Number(n))&&n!=null?Math.max(min,Math.min(max,Number(n))):fallback;
   document.body.classList.add('home-resizable');
-  list.innerHTML=spaces.map(([key,label,min])=>`<div class="home-customizer__item"><label class="home-customizer__space"><strong>${label}</strong><input type="checkbox" value="${key}" aria-label="Mostrar ${label}"></label>${key==='shortcuts'?'':`<div class="home-customizer__dimensions" data-dimensions="${key}"><label>Alto<input type="range" min="${min}" max="720" step="1" data-height="${key}" aria-label="Alto de ${label}"><output data-size-label="${key}"></output></label></div><div class="home-customizer__position" data-position="${key}">${[['x','Horizontal'],['y','Vertical'],['w','Ancho'],['h','Alto']].map(([field,name])=>`<label>${name}<input type="number" min="0" step="8" data-box="${key}" data-field="${field}" aria-label="${name} de ${label}"></label>`).join('')}</div>`}</div>`).join('');
+  list.innerHTML=spaces.filter(([key])=>available(key)).map(([key,label,min])=>`<div class="home-customizer__item"><label class="home-customizer__space"><strong>${label}</strong><input type="checkbox" value="${key}" aria-label="Mostrar ${label}"></label>${key==='shortcuts'?'':`<div class="home-customizer__dimensions" data-dimensions="${key}"><label>Alto<input type="range" min="${min}" max="720" step="1" data-height="${key}" aria-label="Alto de ${label}"><output data-size-label="${key}"></output></label></div><div class="home-customizer__position" data-position="${key}">${[['x','Horizontal'],['y','Vertical'],['w','Ancho'],['h','Alto']].map(([field,name])=>`<label>${name}<input type="number" min="0" step="8" data-box="${key}" data-field="${field}" aria-label="${name} de ${label}"></label>`).join('')}</div>`}</div>`).join('');
   function button(className,text,label){const b=document.createElement('button');b.type='button';b.className=className;b.textContent=text;b.hidden=true;if(label){b.title=label;b.setAttribute('aria-label',label);}trigger.after(b);return b;}
   list.querySelectorAll('[data-box]').forEach(input=>{input.step='1';});
   list.querySelectorAll('[data-position]').forEach(fields=>{
@@ -37,18 +39,19 @@
   }
   function apply(value=read(),animate=false){
     document.body.dataset.homeDensity=value.density;document.body.classList.toggle('home-board',!mobile.matches);
-    for(const [key,node] of nodes){if(!node)continue;node.classList.toggle('home-space-disabled',!value.visible[key]);node.setAttribute('aria-hidden',String(!value.visible[key]));
+    const visible=effectiveVisibility(value.visible);
+    for(const [key,node] of nodes){if(!node)continue;node.classList.toggle('home-space-disabled',!visible[key]);node.setAttribute('aria-hidden',String(!visible[key]));
       if(key==='shortcuts')continue;
       if(mobile.matches){for(const prop of ['left','top','width','height'])node.style.removeProperty(prop);node.style.setProperty('--home-tool-height',`${value.sizes[key].mobileHeight}px`);delete node.dataset.boardCompact;}
     }
-    document.body.dataset.homeToolCount=String(['focus','progress','assistant'].filter(k=>value.visible[k]).length);
+    document.body.dataset.homeToolCount=String(['focus','progress','assistant'].filter(k=>visible[k]).length);
     if(mobile.matches){lastLayout=null;return;}
-    lastLayout=board.freeLayout(value.placement,value.tree,page.clientWidth,Math.max(1,page.clientHeight-64),value.visible);
+    lastLayout=board.freeLayout(value.placement,value.tree,page.clientWidth,Math.max(1,page.clientHeight-64),visible);
     for(const [key,r] of Object.entries(lastLayout.boxes)){const node=nodes.get(key);moveBox(node,r,animate);node.dataset.boardCompact=r.h<280?'true':'false';}
   }
   function form(value=read()){
     for(const [key] of spaces){
-      list.querySelector(`input[value="${key}"]`).checked=value.visible[key];const input=list.querySelector(`[data-height="${key}"]`);if(!input)continue;
+      const toggle=list.querySelector(`input[value="${key}"]`);if(!toggle)continue;toggle.checked=value.visible[key];const input=list.querySelector(`[data-height="${key}"]`);if(!input)continue;
       input.value=value.sizes[key].mobileHeight;list.querySelector(`[data-size-label="${key}"]`).textContent=`${input.value} px`;
       list.querySelector(`[data-dimensions="${key}"]`).hidden=!mobile.matches||!value.visible[key];list.querySelector(`[data-position="${key}"]`).hidden=mobile.matches||!value.visible[key];
       const box=lastLayout?.boxes[key];if(box)for(const field of ['x','y','w','h'])list.querySelector(`[data-box="${key}"][data-field="${field}"]`).value=Math.round(box[field]);
@@ -149,7 +152,7 @@
     if(e.target.type==='checkbox'){
       const key=e.target.value;
       const stored=value.placement;
-      const desktop=lastLayout||(stored&&Number.isFinite(stored.width)&&stored.width>0&&Number.isFinite(stored.height)&&stored.height>0?board.freeLayout(stored,value.tree,stored.width,stored.height,before.visible):null);
+      const desktop=lastLayout||(stored&&Number.isFinite(stored.width)&&stored.width>0&&Number.isFinite(stored.height)&&stored.height>0?board.freeLayout(stored,value.tree,stored.width,stored.height,effectiveVisibility(before.visible)):null);
       if(e.target.checked&&desktop&&key!=='shortcuts'){
         value.placement=board.remember(desktop,value.placement,value.tree);
         const preferred=value.placement.boxes[key],rect=board.firstSpace(preferred,desktop.boxes,key,desktop.width,desktop.height);
@@ -168,7 +171,7 @@
   list.addEventListener('change',changeBox);
   list.addEventListener('focusout',changeBox);
   dialog.querySelectorAll('[name="homeDensity"]').forEach(input=>input.addEventListener('change',()=>{const value=read();value.density=input.value;apply(value);save(value);}));
-  dialog.querySelector('[data-home-customizer-reset]').addEventListener('click',()=>{const value=read();value.placement=null;value.tree=board.defaults();value.density='comfortable';spaces.forEach(([k,,min])=>{value.visible[k]=true;value.sizes[k].mobileHeight=min;});apply(value,true);save(value);form(value);});
+  dialog.querySelector('[data-home-customizer-reset]').addEventListener('click',()=>{const value=read();value.placement=null;value.tree=board.defaults();value.density='comfortable';spaces.filter(([k])=>available(k)).forEach(([k,,min])=>{value.visible[k]=true;value.sizes[k].mobileHeight=min;});apply(value,true);save(value);form(value);});
   dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close();});
   function restoreRemote(){if(!gesture){undoValue=null;undo.disabled=true;select(null);apply(undefined,true);}}
   window.addEventListener('storage',e=>{if(e.key===KEY)restoreRemote();});window.addEventListener('estudiemos:cloud-restored',restoreRemote);
