@@ -37,6 +37,9 @@
   let dragState = null;
   let draggedPosition = null;
   let pipWindow = null;
+  let pipOpening = false;
+  let pipDial = null;
+  let pipDialPreview = null;
   let videoPip = null;
   let videoPipDrawTimer = 0;
   let videoPipOpening = false;
@@ -916,22 +919,28 @@
       pipWindow.focus();
       return;
     }
+    if (pipOpening) return;
 
+    pipOpening = true;
     try {
       prepareAudio();
       pipWindow = await window.documentPictureInPicture.requestWindow({
-        width: 360,
-        height: 450,
+        width: 320,
+        height: 360,
         disallowReturnToOpener: false
       });
-      buildFloatingTimer(pipWindow);
-      pipWindow.addEventListener("pagehide", () => {
-        pipWindow = null;
+      const targetWindow = pipWindow;
+      buildFloatingTimer(targetWindow);
+      targetWindow.addEventListener("pagehide", () => {
+        if (pipWindow !== targetWindow) return;
+        pipWindow = null; pipDial = null; pipDialPreview = null;
       }, { once: true });
       closeMenu();
       render();
     } catch (error) {
-      pipWindow = null;
+      pipWindow = null; pipDial = null; pipDialPreview = null;
+    } finally {
+      pipOpening = false;
     }
   }
 
@@ -946,28 +955,37 @@
     doc.body.innerHTML = `
       <main class="floating-timer" data-pip-root>
         <header>
-          <div><small>TEMPORIZADOR POMODORO</small><strong data-pip-cycle></strong></div>
-          <button type="button" data-pip-close aria-label="Cerrar ventana flotante" title="Cerrar">${icon("close")}</button>
+          <div class="floating-heading"><strong data-pip-phase>Estudio</strong><small data-pip-cycle></small></div>
+          <nav aria-label="Ventana flotante">
+            <button type="button" data-pip-settings-toggle aria-label="Configurar sesión" title="Configurar sesión" aria-expanded="false" aria-controls="floating-settings">${icon("settings")}</button>
+            <button type="button" data-pip-close aria-label="Cerrar ventana flotante" title="Cerrar">${icon("close")}</button>
+          </nav>
         </header>
         <section class="floating-core">
-          <div class="floating-phase" data-pip-phase></div>
-          <div class="floating-clock">
+          <div class="floating-stage">
+          <div class="floating-clock" data-pip-dial role="slider" tabindex="0" aria-label="Minutos restantes" aria-valuemin="1" aria-valuemax="59" aria-valuenow="25" aria-valuetext="25 minutos restantes">
             <svg viewBox="0 0 220 220" aria-hidden="true">
               <circle class="track" cx="110" cy="110" r="96"></circle>
               <circle class="progress" data-pip-progress cx="110" cy="110" r="96"></circle>
             </svg>
-            <div><strong data-pip-time>25:00</strong><span data-pip-label>Bloque 1</span></div>
+            <div class="floating-clock__text"><strong data-pip-time>25:00</strong><span data-pip-label>Bloque 1</span></div>
+            <div class="floating-clock__orbit" aria-hidden="true"><i></i></div>
           </div>
-          <div class="floating-controls">
+          </div>
+          <div class="floating-actions">
+          <div class="floating-controls" aria-label="Controles del temporizador">
             <button type="button" data-pip-reset aria-label="Reiniciar bloque" title="Reiniciar">${icon("reset")}</button>
             <button class="primary" type="button" data-pip-toggle>${icon("play")}<span>Empezar</span></button>
             <button type="button" data-pip-skip aria-label="Siguiente bloque" title="Siguiente">${icon("skip")}</button>
           </div>
+          <div class="floating-adjust">
+            <button type="button" data-pip-adjust="-1" aria-label="Restar un minuto" title="Restar un minuto">${icon("minus")}</button>
+            <span data-pip-remaining>25 min</span>
+            <button type="button" data-pip-adjust="1" aria-label="Sumar un minuto" title="Sumar un minuto">${icon("plus")}</button>
+          </div>
+          </div>
         </section>
-        <button class="floating-disclosure" type="button" data-pip-settings-toggle aria-expanded="false">
-          ${icon("settings")}<span>Configuración del temporizador</span>${icon("chevronDown")}
-        </button>
-        <section class="floating-settings" data-pip-settings-panel hidden>
+        <section class="floating-settings" id="floating-settings" data-pip-settings-panel aria-label="Configuración de la sesión" hidden>
           <div class="floating-config">
             ${floatingNumberControl("blocks", "Bloques", "")}
             ${floatingNumberControl("study", "Estudio", "min")}
@@ -994,6 +1012,7 @@
       else if (event.target.closest("[data-pip-reset]")) resetTimer();
       else if (event.target.closest("[data-pip-toggle]")) toggleTimer();
       else if (event.target.closest("[data-pip-skip]")) skipPhase();
+      else if (event.target.closest("[data-pip-adjust]")) setRemaining(remainingSeconds() + Number(event.target.closest("[data-pip-adjust]").dataset.pipAdjust) * 60);
       else if (event.target.closest("[data-pip-alarm-preview]")) previewAlarm();
       else if (event.target.closest("[data-pip-step]")) {
         const button = event.target.closest("[data-pip-step]");
@@ -1007,12 +1026,30 @@
       }
     });
     doc.addEventListener("change", handleFloatingChange);
+    doc.addEventListener("keydown", event => {
+      if (event.key === "Escape" && !doc.querySelector("[data-pip-settings-panel]").hidden) {
+        event.preventDefault(); toggleFloatingSection(targetWindow, "settings");
+      } else if (event.code === "Space" && (event.target === doc.body || event.target.matches("[data-pip-dial]"))) {
+        event.preventDefault(); toggleTimer();
+      }
+    });
     doc.addEventListener("wheel", (event) => {
       const wheel = event.target.closest("[data-pip-wheel]");
       if (!wheel) return;
       event.preventDefault();
       changeConfig(wheel.dataset.pipWheel, event.deltaY < 0 ? 1 : -1);
     }, { passive: false });
+    const dial = doc.querySelector("[data-pip-dial]");
+    dial.addEventListener("estudiemos:dial-input", event => {
+      doc.querySelector("[data-pip-progress]").style.strokeDashoffset = String(603.19 * (1 - event.detail.angle / 360));
+    });
+    import(new URL("timer-dial.js?v=20260909-depth2", SCRIPT_URL).href).then(({ attachTimerDial }) => {
+      if (pipWindow !== targetWindow || targetWindow.closed) return;
+      pipDial = attachTimerDial(dial, {
+        read: preciseRemainingSeconds, commit: setRemaining,
+        preview: seconds => { pipDialPreview = seconds; renderTimerOnly(); }
+      });
+    }).catch(() => {});
   }
 
   function floatingNumberControl(key, label, suffix) {
@@ -1040,6 +1077,7 @@
     button.setAttribute("aria-expanded", String(open));
     const root = doc.querySelector("[data-pip-root]");
     root?.classList.toggle(settings ? "settings-open" : "sound-open", open);
+    if (settings) doc.querySelector(".floating-core").hidden = open;
     if (!settings && open) root?.classList.add("settings-open");
     if (settings && !open) {
       const soundButton = doc.querySelector("[data-pip-sound-toggle]");
@@ -1051,12 +1089,9 @@
       }
       root?.classList.remove("sound-open");
     }
-    try {
-      const settingsOpen = !doc.querySelector("[data-pip-settings-panel]")?.hidden;
-      const soundOpen = !doc.querySelector("[data-pip-sound-panel]")?.hidden;
-      targetWindow.resizeTo(settingsOpen ? 390 : 360, soundOpen ? 720 : settingsOpen ? 625 : 450);
-    } catch (error) {}
     renderPipControls();
+    if (settings && open) panel.querySelector("input")?.focus();
+    else button.focus();
   }
 
   function handleFloatingChange(event) {
@@ -1094,27 +1129,68 @@
 
   function floatingTimerStyles() {
     return `
-      :root{color-scheme:dark;--bg:#0b1020;--panel:#111827;--border:#273248;--text:#f3f6fb;--muted:#9ba8bd;--accent:#8ab4f8;--phase:#8ab4f8;font-family:"Space Grotesk",Inter,system-ui,sans-serif}
+      :root{color-scheme:dark;--bg:#0b1020;--panel:#111827;--border:#273248;--text:#f3f6fb;--muted:#9ba8bd;--accent:#8ab4f8;--phase:#8ab4f8;font-family:Inter,system-ui,sans-serif}
       :root[data-theme="light"]{color-scheme:light;--bg:#edf1f5;--panel:#f7f9fb;--border:#d2dae5;--text:#263244;--muted:#657387;--accent:#1a73e8;--phase:#1a73e8}
-      *{box-sizing:border-box}[hidden]{display:none!important}body{margin:0;height:100vh;overflow:hidden;background:var(--bg);color:var(--text)}
-      button,select,input{font:inherit}.floating-timer{container-type:size;width:100%;height:100vh;overflow:hidden;padding:13px;display:flex;flex-direction:column;background:var(--panel)}
-      header{display:flex;align-items:center;justify-content:space-between;gap:12px}header div{display:grid;gap:3px}header small{color:var(--muted);font-size:10px;font-weight:800}header strong{font-size:15px}
-      header button,.floating-controls>button{display:grid;place-items:center;border:1px solid var(--border);border-radius:999px;background:transparent;color:var(--muted);cursor:pointer}header button{width:34px;height:34px}
-      button svg{width:17px;height:17px;fill:currentColor}.floating-core{flex:1;min-height:0;display:grid;grid-template-rows:auto minmax(0,1fr) auto;align-items:center}.floating-phase{margin-top:10px;padding:7px 10px;border:1px solid var(--border);border-radius:10px;color:var(--phase);font-size:11px;font-weight:800;text-align:center}
-      .floating-clock{position:relative;width:190px;width:min(190px,54cqw,46cqh);height:auto;aspect-ratio:1;margin:10px auto;align-self:center;transition:width .16s ease,margin .16s ease}.floating-clock svg{display:block;width:100%;height:100%;transform:rotate(-90deg)}.floating-clock circle{fill:none;stroke-width:9}.track{stroke:var(--border)}.progress{stroke:var(--phase);stroke-linecap:round;stroke-dasharray:603.19;stroke-dashoffset:603.19;transition:stroke-dashoffset .12s linear}
-      .floating-clock>div{position:absolute;inset:0;display:grid;place-content:center;text-align:center}.floating-clock strong{font-size:clamp(28px,11cqw,42px);line-height:1}.floating-clock span{margin-top:7px;color:var(--muted);font-size:12px;font-weight:700}
-      .floating-controls{width:min(100%,320px);margin:0 auto;display:grid;grid-template-columns:42px minmax(0,1fr) 42px;align-items:center;gap:10px}.floating-controls>button{height:42px}.floating-controls .primary{display:flex;justify-content:center;gap:8px;border-radius:11px;border-color:transparent;background:var(--accent);color:#08101f;font-weight:800}.floating-controls .primary.is-alarm{background:#ff7185;color:#25070d}
-      .floating-disclosure{width:100%;min-height:36px;display:grid;grid-template-columns:17px minmax(0,1fr) 16px;align-items:center;gap:8px;margin-top:8px;padding:6px 9px;border:1px solid var(--border);border-radius:10px;background:transparent;color:var(--muted);font-size:11px;font-weight:800;text-align:left;cursor:pointer}.floating-disclosure svg:last-child{transition:transform .16s ease}.floating-disclosure.is-open svg:last-child{transform:rotate(180deg)}
-      .floating-settings{margin-top:5px;padding:7px;border:1px solid var(--border);border-radius:11px;background:color-mix(in srgb,var(--panel) 84%,var(--bg))}.floating-config{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.floating-number{min-width:0;display:grid;gap:2px;color:var(--muted);font-size:10px;font-weight:800;text-align:center}.floating-number>div{display:grid;grid-template-rows:15px 9px 25px 9px 15px;overflow:hidden;border:1px solid var(--border);border-radius:9px;background:var(--bg)}.floating-number button{height:15px;display:grid;place-items:center;border:0;background:transparent;color:var(--muted);cursor:pointer}.floating-number button svg{width:11px;height:11px}.floating-number button:disabled{opacity:.2}.floating-number small{font-size:9px;line-height:9px;color:var(--muted)}.floating-number input{width:100%;height:25px;border:0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);outline:0;background:color-mix(in srgb,var(--accent) 8%,transparent);color:var(--text);font-weight:900;text-align:center;appearance:textfield}.floating-number input::-webkit-inner-spin-button{appearance:none}
-      .floating-summary{min-height:28px;display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px;padding:5px 7px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);color:var(--muted);font-size:10px;font-weight:750}.floating-summary strong{min-width:22px;height:22px;display:grid;place-items:center;border-radius:999px;background:color-mix(in srgb,var(--accent) 13%,transparent);color:var(--text)}.floating-auto{min-height:29px;display:flex;align-items:center;gap:7px;margin-top:5px;padding:5px 7px;border:1px solid var(--border);border-radius:9px;color:var(--muted);font-size:10px;font-weight:750}.floating-auto input{accent-color:var(--accent)}
-      .floating-sounds{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;margin-top:5px;padding:7px;border:1px solid var(--border);border-radius:9px}.floating-sounds>label{min-width:0;display:grid;grid-template-columns:52px minmax(0,1fr);align-items:center;gap:6px;color:var(--muted);font-size:9px;font-weight:750}.floating-sounds select{min-width:0;height:29px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);padding:4px 7px;font-size:10px;font-weight:700}.floating-play{min-height:29px;display:flex;align-items:center;justify-content:center;gap:5px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text);font-size:10px;font-weight:800;cursor:pointer}.floating-volume{grid-column:1/-1}.floating-volume input{width:100%;accent-color:var(--accent)}.floating-spotify{grid-column:1/-1}.floating-spotify iframe{display:block;width:100%;height:80px;border:0;border-radius:8px}
-      .settings-open .floating-core{flex:0 0 auto}.settings-open .floating-clock{width:118px;margin:6px auto 5px}.settings-open .floating-clock strong{font-size:30px}.settings-open .floating-clock span{margin-top:4px;font-size:10px}.settings-open .floating-phase{margin-top:6px;padding:5px}.settings-open .floating-controls{grid-template-columns:36px minmax(0,1fr) 36px;gap:7px}.settings-open .floating-controls>button{height:36px}.settings-open header button{width:30px;height:30px}.settings-open header strong{font-size:13px}.sound-open .floating-clock{width:94px}.sound-open .floating-clock strong{font-size:25px}
-      @media(max-height:560px){.floating-timer{padding:9px}.floating-clock{width:min(154px,54cqw,46cqh);margin:8px auto}.floating-disclosure{margin-top:5px}.settings-open .floating-clock{width:92px}.floating-settings{padding:5px}.floating-sounds{padding:5px}}
-      @media(max-width:320px),(max-height:350px){.floating-timer{padding:8px}.floating-timer header,.floating-phase,.floating-disclosure,.floating-settings{display:none!important}.floating-core,.settings-open .floating-core{flex:1;min-height:0;display:grid;grid-template-rows:minmax(0,1fr) auto;align-items:center}.floating-clock,.settings-open .floating-clock,.sound-open .floating-clock{grid-row:1;width:min(172px,64cqw,calc(100cqh - 64px));min-width:82px;margin:auto}.floating-clock strong,.settings-open .floating-clock strong,.sound-open .floating-clock strong{font-size:clamp(27px,15cqw,42px)}.floating-clock span{margin-top:5px;font-size:10px}.floating-controls,.settings-open .floating-controls,.sound-open .floating-controls{grid-row:2;width:min(100%,220px);grid-template-columns:minmax(112px,220px);justify-content:center;gap:0}.floating-controls>button:not(.primary){display:none}.floating-controls .primary{width:100%;height:40px;border-radius:12px;font-size:clamp(13px,5cqw,17px)}}
-      @media(max-width:185px){.floating-controls .primary span{display:none}.floating-controls,.settings-open .floating-controls,.sound-open .floating-controls{grid-template-columns:54px}.floating-controls .primary{border-radius:999px}.floating-clock,.settings-open .floating-clock,.sound-open .floating-clock{width:min(118px,72cqw,calc(100cqh - 58px))}.floating-clock strong,.settings-open .floating-clock strong,.sound-open .floating-clock strong{font-size:24px}}
-      .floating-number>div{grid-template-columns:26px minmax(0,1fr) 26px;grid-template-rows:40px;border:0;border-radius:6px;box-shadow:inset 0 1px #ffffff0a,inset 0 -2px 4px #0002}.floating-number button{height:40px}.floating-number input{height:40px;border:0;background:transparent;font-size:19px;font-weight:550}.floating-number button svg{fill:none;stroke:currentColor;width:13px;height:13px}.floating-number>span{font-size:11px;margin-bottom:5px}.floating-settings,.floating-sounds,.floating-auto{border:0;border-radius:0;background:transparent;padding-inline:0}.floating-settings{overflow:auto;min-height:0}.floating-sounds{grid-template-columns:1fr;gap:10px}.floating-sounds>label{grid-template-columns:60px 1fr;font-size:11px}.floating-sounds select,.floating-play{min-height:36px;font-size:12px}.floating-disclosure{border:0;border-top:1px solid var(--border);border-radius:0}.floating-clock{filter:drop-shadow(0 4px 5px #0002)}.floating-controls .primary{border-radius:8px;box-shadow:inset 0 1px #ffffff30,0 3px 8px #0002}.floating-clock strong{font-size:36px}.floating-timer *{letter-spacing:0}.floating-phase{border:0;background:transparent}.floating-timer :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-      @media(max-width:320px),(max-height:350px){.floating-clock strong,.settings-open .floating-clock strong{font-size:32px}.floating-controls .primary{font-size:14px}}
-      @media(max-height:205px){.floating-timer{padding:6px}.floating-clock,.settings-open .floating-clock,.sound-open .floating-clock{width:min(124px,56cqw,calc(100cqh - 48px))}.floating-clock strong{font-size:27px}.floating-controls .primary{height:34px}}
+      *{box-sizing:border-box;letter-spacing:0}[hidden]{display:none!important}
+      body{margin:0;height:100dvh;overflow:hidden;background:var(--panel);color:var(--text)}
+      button,select,input{font:inherit}button{cursor:pointer;touch-action:manipulation;box-shadow:none}
+      button:disabled{opacity:.35;cursor:default}button svg{width:17px;height:17px;fill:currentColor;flex:none}
+      .floating-timer{height:100dvh;padding:12px;display:flex;flex-direction:column;gap:10px;overflow:hidden}
+      header{display:flex;align-items:center;justify-content:space-between;gap:6px;flex:none;min-height:32px}
+      .floating-heading{min-width:0;display:flex;align-items:baseline;gap:8px;white-space:nowrap}
+      header strong{font-size:13px;font-weight:600;color:var(--phase)}header small{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+      header nav{display:flex;gap:4px}header button{width:32px;height:32px;padding:0;display:grid;place-items:center;border:0;border-radius:6px;background:transparent;color:var(--muted)}
+      button:hover:not(:disabled){background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--text)}
+      button:active:not(:disabled){background:color-mix(in srgb,var(--accent) 20%,transparent)}
+      :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+      .floating-core{flex:1;min-height:0;display:grid;grid-template-rows:minmax(0,1fr) auto;gap:12px}
+      .floating-stage{container-type:size;min-width:0;min-height:0;display:grid;place-items:center}
+      .floating-clock{container:clock / inline-size;position:relative;width:min(270px,calc(100cqw - 12px),calc(100cqh - 12px));aspect-ratio:1;touch-action:none;user-select:none;cursor:grab;border-radius:50%;--dial-angle:150deg}
+      .floating-clock.is-adjusting{cursor:grabbing}
+      .floating-clock>svg{display:block;width:100%;height:100%;transform:rotate(-90deg);pointer-events:none}
+      .floating-clock circle{fill:none;stroke-width:6}.track{stroke:var(--border)}
+      .progress{stroke:var(--phase);stroke-linecap:round;stroke-dasharray:603.19;stroke-dashoffset:603.19;transition:stroke-dashoffset .2s linear,stroke .15s ease}
+      .is-adjusting .progress{transition:none}
+      .floating-clock__text{position:absolute;inset:15%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;pointer-events:none}
+      .floating-clock strong{font-size:min(54px,25cqw);font-weight:650;line-height:1.05;white-space:nowrap;font-variant-numeric:tabular-nums}
+      .floating-clock span{font-size:min(12px,9cqw);line-height:1.2;white-space:nowrap;color:var(--muted)}
+      .floating-clock__orbit{position:absolute;inset:6.36%;transform:rotate(var(--dial-angle));pointer-events:none}
+      .floating-clock__orbit i{position:absolute;top:0;left:50%;width:11px;height:11px;border-radius:50%;background:var(--phase);transform:translate(-50%,-50%);box-shadow:0 0 0 3px var(--panel)}
+      .floating-actions{min-width:0;display:grid;justify-items:center;gap:8px}
+      .floating-controls{display:grid;grid-template-columns:40px minmax(40px,1fr) 40px;gap:8px;width:min(100%,320px)}
+      .floating-controls>button{min-height:44px;padding:0;display:flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--muted)}
+      .floating-controls .primary{background:var(--accent);border-color:transparent;color:#08101f;font-size:13px;font-weight:650}
+      :root[data-theme="light"] .floating-controls .primary{color:#fff}
+      .floating-controls .primary:hover{background:var(--accent);color:#08101f;filter:brightness(1.06)}
+      :root[data-theme="light"] .floating-controls .primary:hover{color:#fff}
+      .floating-controls .primary.is-alarm{background:#ff7185;color:#25070d}
+      .floating-adjust{display:grid;grid-template-columns:32px minmax(58px,1fr) 32px;align-items:center;width:min(100%,180px)}
+      .floating-adjust button{height:32px;padding:0;border:0;border-radius:6px;background:transparent;color:var(--muted);display:grid;place-items:center}
+      .floating-adjust span{text-align:center;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+      .floating-settings{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:2px 3px 6px;scrollbar-width:thin}
+      .floating-config{display:grid;gap:12px}
+      .floating-number{display:grid;grid-template-columns:minmax(0,1fr) 138px 24px;align-items:center;gap:6px}
+      .floating-number>span{font-size:12px;color:var(--muted)}.floating-number>small{font-size:10px;color:var(--muted)}
+      .floating-number>div{display:grid;grid-template-columns:36px minmax(0,1fr) 36px;min-width:0;border:1px solid var(--border);border-radius:6px;overflow:hidden}
+      .floating-number button{height:40px;padding:0;border:0;background:transparent;color:var(--muted);display:grid;place-items:center}
+      .floating-number input{width:100%;min-width:0;height:40px;border:0;background:transparent;color:var(--text);text-align:center;appearance:textfield;font-size:18px;font-variant-numeric:tabular-nums}
+      .floating-number input::-webkit-inner-spin-button{appearance:none}
+      .floating-summary{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border);color:var(--muted);font-size:11px}
+      .floating-summary strong{color:var(--text);font-size:12px}
+      .floating-auto{display:flex;align-items:center;gap:8px;min-height:40px;margin:8px 0;color:var(--text);font-size:12px}
+      input[type="checkbox"]{width:16px;height:16px;accent-color:var(--accent);flex:none}
+      .floating-sounds{display:grid;gap:12px;padding-top:12px;border-top:1px solid var(--border)}
+      .floating-sounds>label{display:grid;grid-template-columns:60px minmax(0,1fr);align-items:center;gap:10px;font-size:12px;color:var(--muted)}
+      .floating-sounds select{min-width:0;height:40px;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:12px}
+      .floating-sounds .floating-volume{display:grid;grid-template-columns:1fr;gap:8px}
+      .floating-volume input{width:100%;accent-color:var(--accent)}
+      .floating-play{min-height:40px;display:flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text);font-size:12px}
+      @container clock (max-width:85px){.floating-clock span{display:none}.floating-clock__text{inset:12%;gap:2px}}
+      @media(max-width:260px){.floating-timer{padding:8px;gap:6px}.floating-controls .primary span{display:none}.floating-controls{grid-template-columns:36px minmax(36px,1fr) 36px;gap:6px}.floating-number{grid-template-columns:minmax(0,1fr) 100px}.floating-number>small{display:none}.floating-number>div{grid-template-columns:28px minmax(0,1fr) 28px}.floating-number>span{font-size:11px}}
+      @media(max-height:260px) and (min-width:280px){.floating-core{grid-template-columns:minmax(0,1fr) minmax(128px,1fr);grid-template-rows:minmax(0,1fr);gap:12px}.floating-actions{align-content:center}.floating-controls .primary span{display:none}}
+      @media(max-height:220px) and (max-width:279px){.floating-adjust{display:none}.floating-core{gap:6px}.floating-controls>button{min-height:36px}}
+      @media(max-height:190px) and (max-width:279px){.floating-clock{width:100%;height:100%;aspect-ratio:auto;pointer-events:none;border-radius:6px}.floating-clock>svg,.floating-clock__orbit,.floating-clock span{display:none}.floating-clock__text{inset:0}.floating-clock strong{font-size:28px}}
+      @media(max-width:200px){header small{display:none}.floating-timer{padding:6px}.floating-clock__orbit i{width:8px;height:8px}}
       @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
     `;
   }
@@ -1412,7 +1488,7 @@
       topButton.title = state.running ? `${compactTime(remaining)} - ${state.phase === "study" ? `Bloque ${state.currentBlock}` : "Descanso"}` : "Temporizador Pomodoro";
     }
     syncVideoPipControlState();
-    renderPipTimer(timeText, progress);
+    renderPipTimer(timeText);
     if (window.EstudiemosStudy) window.dispatchEvent(new CustomEvent("estudiemos:study-update"));
   }
 
@@ -1426,15 +1502,28 @@
     const cycle = doc.querySelector("[data-pip-cycle]");
     const phase = doc.querySelector("[data-pip-phase]");
     const toggle = doc.querySelector("[data-pip-toggle]");
-    if (cycle) cycle.textContent = `Bloque ${state.currentBlock} de ${state.config.blocks}`;
-    if (phase) phase.textContent = state.phase === "study" ? "ESTUDIO" : "DESCANSO";
+    const settingsOpen = !doc.querySelector("[data-pip-settings-panel]").hidden;
+    if (cycle) cycle.textContent = settingsOpen ? "" : `${state.currentBlock}/${state.config.blocks}`;
+    if (phase) phase.textContent = settingsOpen ? "Tu sesión" : state.phase === "study" ? "Estudio" : "Descanso";
+    const settings = doc.querySelector("[data-pip-settings-toggle]");
+    settings.title = settingsOpen ? "Volver al temporizador" : "Configurar sesión";
+    settings.setAttribute("aria-label", settings.title);
+    const skip = doc.querySelector("[data-pip-skip]");
+    skip.title = state.phase === "study" && state.config.break > 0 ? "Pasar al descanso" : `Pasar al bloque ${state.currentBlock >= state.config.blocks ? 1 : state.currentBlock + 1}`;
+    skip.setAttribute("aria-label", skip.title);
     if (toggle) {
       toggle.classList.toggle("is-alarm", alarmActive);
-      toggle.innerHTML = alarmActive
+      const mode = alarmActive ? "alarm" : state.running ? "running" : "paused";
+      toggle.setAttribute("aria-label", alarmActive ? "Silenciar alarma" : state.running ? "Pausar temporizador" : "Empezar temporizador");
+      toggle.title = toggle.getAttribute("aria-label");
+      if (toggle.dataset.mode !== mode) {
+        toggle.dataset.mode = mode;
+        toggle.innerHTML = alarmActive
         ? `${icon("bellOff")}<span>Silenciar</span>`
         : state.running
           ? `${icon("pause")}<span>Pausar</span>`
           : `${icon("play")}<span>Empezar</span>`;
+      }
     }
 
     doc.querySelectorAll("[data-pip-value]").forEach((input) => {
@@ -1484,18 +1573,22 @@
     }
   }
 
-  function renderPipTimer(timeText, progress) {
+  function renderPipTimer(timeText) {
     const doc = getPipDocument();
     if (!doc) return;
     const time = doc.querySelector("[data-pip-time]");
     const label = doc.querySelector("[data-pip-label]");
-    const circle = doc.querySelector("[data-pip-progress]");
+    const remaining = pipDialPreview ?? remainingSeconds();
+    if (pipDialPreview !== null) timeText = `${String(Math.floor(remaining / 60)).padStart(2, "0")}:${String(Math.ceil(remaining % 60)).padStart(2, "0")}`;
     if (time) {
-      time.textContent = timeText;
-      time.style.fontSize = timeText.length > 9 ? "27px" : timeText.length > 6 ? "34px" : "42px";
+      if (time.textContent !== timeText) time.textContent = timeText;
     }
-    if (label) label.textContent = state.phase === "study" ? `Bloque ${state.currentBlock}` : "Descanso";
-    if (circle) circle.style.strokeDashoffset = String(603.19 * (1 - progress));
+    if (label) label.textContent = alarmActive ? "Finalizado" : state.running ? "En curso" : "En pausa";
+    doc.querySelector("[data-pip-remaining]").textContent = `${Math.ceil(remaining / 60)} min`;
+    doc.querySelectorAll("[data-pip-adjust]").forEach(button => {
+      button.disabled = Number(button.dataset.pipAdjust) < 0 ? remaining <= 60 : remaining >= MAX_MINUTES * 60;
+    });
+    pipDial?.update();
   }
 
   function getPipDocument() {
