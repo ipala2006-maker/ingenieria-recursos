@@ -202,11 +202,6 @@
                 ${icon("chevronDown")}
               </summary>
 
-              <div class="agenda-selected-day">
-                <p class="tray-kicker">Día seleccionado</p>
-                <h3 id="agendaSelectedLabel"></h3>
-              </div>
-
               <form id="agendaForm" class="agenda-form agenda-form--quick">
                 <label class="tray-field">
                   Nueva tarea
@@ -216,6 +211,10 @@
               </form>
             </details>
 
+            <div class="agenda-selected-day">
+              <p class="tray-kicker">Día seleccionado</p>
+              <h3 id="agendaSelectedLabel"></h3>
+            </div>
             <div class="agenda-filter" aria-label="Filtrar Inbox">
               <button class="agenda-filter__btn is-active" type="button" data-agenda-filter="day">Este día</button>
               <button class="agenda-filter__btn" type="button" data-agenda-filter="pending">Pendientes</button>
@@ -783,7 +782,7 @@
       id: `agenda:${Date.now()}`,
       title,
       type: typeInput?.value || "Tarea",
-      date: dateInput?.value || selectedAgendaDate,
+      date: window.EstudiemosInboxAlarms?.readDate(document.getElementById('agendaForm')) || "",
       subject: subjectInput?.value || "",
       note: noteInput?.value.trim() || "",
       horaInicio: "",
@@ -798,6 +797,7 @@
     if (dateInput) dateInput.value = selectedAgendaDate;
     if (noteInput) noteInput.value = "";
     document.getElementById('agendaForm')?.reset();
+    agendaFilter = "pending";
     updateAgendaSubmitState();
     renderAgenda();
   }
@@ -1428,6 +1428,8 @@
   }
 
   function focusAgendaForm() {
+    const form = document.getElementById('agendaForm');
+    if (form) form.dataset.noteDateHint = selectedAgendaDate;
     closeAgendaAssistant();
     const manual = document.querySelector("[data-agenda-manual]");
     if (manual) manual.open = true;

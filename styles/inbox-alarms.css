@@ -47,6 +47,7 @@
 .inbox-alarm-fields :focus-visible { outline:2px solid #8bb5ff; outline-offset:3px; }
 .inbox-alarm-fields [hidden],.inbox-alarm-notice[hidden] { display:none!important; }
 .inbox-alarm-fields [data-alarm-options] { display:grid; gap:12px; padding:8px 0; }
+.inbox-note-date { padding:4px 0 12px; }
 .inbox-alarm-fields label:not(.inbox-alarm-switch) { display:grid; gap:6px; min-width:0; }
 .inbox-alarm-date { display:grid; grid-template-columns:minmax(0,1.4fr) minmax(0,1fr); gap:10px; }
 .inbox-alarm-fields input:not([type=checkbox]),.inbox-alarm-fields select { box-sizing:border-box; width:100%; min-width:0; max-width:100%; min-height:40px; padding:8px; font:inherit; color:inherit; background:var(--bg,#0f1724); border:1px solid #8b9bb54a; border-radius:6px; }
