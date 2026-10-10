@@ -17,7 +17,7 @@
   let setupStage = sessionStorage.getItem('estudiemos_alarm_setup_stage')==='connect'?'connect':'install';
   let audio, soundTimer, currentId, returnFocus, checking = false, lastNative = '', accountReady = false, waitingForAccount = false;
   const style = document.createElement('link');
-  style.rel = 'stylesheet'; style.href = new URL('styles/inbox-alarms.css?v=20260929-setup', root); document.head.appendChild(style);
+  style.rel = 'stylesheet'; style.href = new URL('styles/inbox-alarms.css?v=20261010-optional-date', root); document.head.appendChild(style);
   const escape = value => String(value || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   // Reuse the existing icon set's bell geometry (also used by Pomodoro).
   const bell = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>';
@@ -63,12 +63,14 @@
   };
   document.addEventListener('keydown', event => { if (event.key === 'Escape' && !notice.hidden) stopAlert(); });
   function items() { try { const v = JSON.parse(localStorage.getItem(KEY) || '[]'); return Array.isArray(v) ? v : []; } catch (_) { return []; } }
-  function controls() {
+  function controls(withDate = false) {
     const windows = /Windows/i.test(navigator.userAgent);
     return `<fieldset class="inbox-alarm-fields">
+      ${withDate ? `<label class="inbox-alarm-switch"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 11h18"/></svg><span>Agregar fecha<small data-note-date-summary>Sin fecha</small></span><input type="checkbox" role="switch" name="inboxDateEnabled" aria-label="Agregar fecha"></label>
+      <div class="inbox-note-date" data-note-date-options hidden><label>Fecha de la anotación<input type="date" name="inboxNoteDate" min="2020-01-01" max="2100-12-31"></label></div>` : ''}
       <label class="inbox-alarm-switch">${bell}<span>Programar alarma<small data-alarm-summary>Sin alarma</small></span><input type="checkbox" role="switch" name="inboxAlarmEnabled" aria-label="Activar alarma"></label>
       <div data-alarm-options hidden>
-        <div class="inbox-alarm-date"><label>Día<input type="date" name="inboxAlarmDate" min="2020-01-01" max="2100-12-31"></label><label>Hora<input type="time" name="inboxAlarmTime"></label></div>
+        <div class="inbox-alarm-date"><label>Día de la alarma<input type="date" name="inboxAlarmDate" min="2020-01-01" max="2100-12-31"></label><label>Hora<input type="time" name="inboxAlarmTime"></label></div>
         <label>Repetir<select name="inboxAlarmRepeat" aria-label="Repetir">${rules.repeats.map(r => `<option value="${r}">${rules.labels[r]}</option>`).join('')}</select></label>
         <small>Se sincroniza con tu cuenta y avisa en cada dispositivo activado. Hora local de cada dispositivo. Al completar la tarea, deja de sonar.</small>
         <small data-alarm-permission-status role="status" ${windows?'hidden':''}></small>
@@ -88,10 +90,24 @@
     form.elements.inboxAlarmDate.value = a?.date || rules.dateKey(soon);
     form.elements.inboxAlarmTime.value = a?.time || `${String(soon.getHours()).padStart(2, '0')}:${String(soon.getMinutes()).padStart(2, '0')}`;
     form.elements.inboxAlarmRepeat.value = a?.repeat || 'none';
+    if (form.elements.inboxDateEnabled) {
+      form.elements.inboxDateEnabled.checked = false;
+      form.elements.inboxNoteDate.value = '';
+      form.elements.inboxNoteDate.setCustomValidity('');
+    }
+    form.elements.inboxAlarmTime.setCustomValidity('');
     form.querySelector('[data-alarm-native]').checked = nativeReady() || !!a?.windows;
     reveal(form);
   }
   function reveal(form) {
+    const dateEnabled = form.elements.inboxDateEnabled?.checked;
+    if (form.elements.inboxNoteDate) {
+      const date = form.elements.inboxNoteDate;
+      date.disabled = !dateEnabled; date.required = !!dateEnabled;
+      form.querySelector('[data-note-date-options]').hidden = !dateEnabled;
+      const value = date.value;
+      form.querySelector('[data-note-date-summary]').textContent = dateEnabled && value ? value.split('-').reverse().join('/') : 'Sin fecha';
+    }
     const enabled = form.elements.inboxAlarmEnabled.checked;
     const description = rules.describe({date:form.elements.inboxAlarmDate.value,time:form.elements.inboxAlarmTime.value,repeat:form.elements.inboxAlarmRepeat.value});
     form.querySelector('[data-alarm-summary]').textContent = enabled ? description : 'Sin alarma';
@@ -195,15 +211,26 @@
     if (!alarm || !rules.next(alarm)) throw new Error('Elegí una fecha y hora futuras para la alarma.');
     return alarm;
   }
+  function readDate(form) {
+    if (!form?.elements.inboxDateEnabled?.checked) return '';
+    const date = rules.normalize({date:form.elements.inboxNoteDate?.value, time:'12:00', repeat:'none'})?.date;
+    if (!date) throw new Error('Elegí una fecha válida para la anotación.');
+    return date;
+  }
   function mount() {
     document.querySelectorAll('[data-quick-note-form],#agendaForm,[data-alarm-editor]').forEach(form => {
       if (form.querySelector('.inbox-alarm-fields')) return;
       const slot = form.querySelector('[data-alarm-slot]') || form.querySelector('[type="submit"]');
-      const wrapper = document.createElement('div'); wrapper.className = 'inbox-alarm-form'; wrapper.innerHTML = controls();
+      const wrapper = document.createElement('div'); wrapper.className = 'inbox-alarm-form'; wrapper.innerHTML = controls(form.matches('[data-quick-note-form],#agendaForm'));
       if (slot.hasAttribute('data-alarm-slot')) slot.appendChild(wrapper); else slot.before(wrapper);
       fill(form, null);
       form.addEventListener('reset', () => queueMicrotask(() => fill(form, null)));
       form.addEventListener('submit', e => {
+        form.elements.inboxNoteDate?.setCustomValidity('');
+        try { readDate(form); } catch (error) {
+          e.preventDefault(); e.stopImmediatePropagation();
+          form.elements.inboxNoteDate.setCustomValidity(error.message); form.reportValidity(); return;
+        }
         form.elements.inboxAlarmTime.setCustomValidity('');
         try { readForm(form); } catch (error) {
           e.preventDefault(); e.stopImmediatePropagation();
@@ -283,9 +310,19 @@
       renderNativeStatus();
     }
     const form = e.target.closest('form');
+    if (e.target.name === 'inboxDateEnabled' || e.target.name === 'inboxNoteDate') {
+      form.elements.inboxNoteDate.setCustomValidity('');
+      if (e.target.name === 'inboxDateEnabled' && e.target.checked && !form.elements.inboxNoteDate.value) {
+        form.elements.inboxNoteDate.value = form.dataset.noteDateHint || rules.dateKey(new Date());
+      }
+      if (!form.elements.inboxAlarmEnabled.checked && form.elements.inboxNoteDate.value) form.elements.inboxAlarmDate.value = form.elements.inboxNoteDate.value;
+      reveal(form);
+    }
     if (e.target.name?.startsWith('inboxAlarm')) {
       form.elements.inboxAlarmTime.setCustomValidity(''); reveal(form);
       if (e.target.name === 'inboxAlarmEnabled' && e.target.checked) {
+        if (form.elements.inboxDateEnabled?.checked) form.elements.inboxAlarmDate.value = form.elements.inboxNoteDate.value;
+        reveal(form);
         if(!/Windows/i.test(navigator.userAgent) && !window.EstudiemosMobileNotifications?.handled())requestPermission();else enableSound();
         const native = form.querySelector('[data-alarm-native]');
         if (native && !native.checked && /Windows/i.test(navigator.userAgent)) {
@@ -358,7 +395,7 @@
     window.RainmeterAPI.Bang(`[!WriteKeyValue Alarms Count ${chunks.length} "#@#InboxAlarms.inc"]`);
     lastNative = text;
   }
-  window.EstudiemosInboxAlarms = { readForm, button, open, check, showSetup };
+  window.EstudiemosInboxAlarms = { readForm, readDate, button, open, check, showSetup };
   window.addEventListener('estudiemos:mobile-notifications', () => document.querySelectorAll('form:has(.inbox-alarm-fields)').forEach(renderPermission));
   const entry=new URL(location.href);
   if(entry.searchParams.get('alarms-setup')==='1'){setupStage='connect';entry.searchParams.delete('alarms-setup');history.replaceState(history.state,'',entry.pathname+entry.search+entry.hash);showSetup();}

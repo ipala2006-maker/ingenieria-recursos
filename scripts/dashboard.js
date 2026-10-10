@@ -391,7 +391,7 @@
       id: `agenda:${Date.now()}:note:${randomId()}`,
       title: title.slice(0, 90),
       type: "Tarea",
-      date: "",
+      date: window.EstudiemosInboxAlarms?.readDate(form) || "",
       subject: "",
       note: "",
       horaInicio: "",

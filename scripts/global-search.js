@@ -275,7 +275,7 @@
     if (document.querySelector('script[src*="scripts/bandeja.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/bandeja.js?v=20261007-available-tools`;
+    script.src = `${rootPath}scripts/bandeja.js?v=20261010-optional-note`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -287,7 +287,7 @@
     rules.src = `${rootPath}shared/inbox-alarms.js?v=20260930-lead30`;
     rules.onload = () => {
       const ui = document.createElement('script');
-      ui.src = `${rootPath}scripts/inbox-alarms.js?v=20261001-bundle`;
+      ui.src = `${rootPath}scripts/inbox-alarms.js?v=20261010-optional-note`;
       document.head.appendChild(ui);
     };
     document.head.appendChild(rules);
@@ -305,7 +305,7 @@
   function loadDashboardScript() {
     if (document.querySelector('script[src*="scripts/dashboard.js"]')) return;
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/dashboard.js?v=20261007-compact-events`;
+    script.src = `${rootPath}scripts/dashboard.js?v=20261010-optional-note`;
     script.defer = true;
     document.head.appendChild(script);
   }
