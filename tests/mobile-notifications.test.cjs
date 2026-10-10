@@ -118,7 +118,10 @@ test('database enforces ownership, recurrence, deduplication and cancels complet
 test('service worker shows system notification with no open client and prevents foreign-account disclosure', async () => {
   const handlers = {}, notices = [], cache = new Map();
   const self = { location: { origin: 'https://estudiemos-app.vercel.app' }, registration: { scope: 'https://estudiemos-app.vercel.app/', showNotification: async (title, options) => notices.push({ title, options }) }, addEventListener: (name, fn) => { handlers[name] = fn; } };
-  vm.runInNewContext(fs.readFileSync(path.join(root, 'service-worker.js'), 'utf8'), { self, URL, Response, caches: { open: async () => ({ put: async (key, value) => cache.set(key, value), match: async key => cache.get(key)?.clone(), delete: async key => cache.delete(key) }) } });
+  vm.runInNewContext(fs.readFileSync(path.join(root, 'service-worker.js'), 'utf8'), { self, URL, Response,
+    importScripts: filename => assert.equal(filename,'./shared/study-goal.js?v=20261010-daily-goal'),
+    EstudiemosStudyGoal:require('../shared/study-goal'),
+    caches: { open: async () => ({ put: async (key, value) => cache.set(key, value), match: async key => cache.get(key)?.clone(), delete: async key => cache.delete(key) }) } });
   let wait;
   handlers.message({ data: { type: 'ESTUDIEMOS_PUSH_OWNER', owner: user }, source: { url: self.registration.scope }, waitUntil: p => wait=p }); await wait;
   for (const owner of [other, user]) { handlers.push({ data: { json: () => ({ owner, title: 'Pilot task', body: 'Reminder' }) }, waitUntil: p => wait=p }); await wait; }

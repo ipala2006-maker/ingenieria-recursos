@@ -4,6 +4,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const os=require('node:os');
 const {spawnSync}=require('node:child_process');
+const vm=require('node:vm');
 const {PGlite}=require('@electric-sql/pglite');
 const goals=require('../shared/study-goal');
 const root=path.resolve(__dirname,'..');
@@ -28,6 +29,16 @@ test('changing goals retains earned history and merges independently from progre
   assert.equal(merged.goal.minutes,45);assert.equal(merged.dailyGoals['2026-10-09'].minutes,15);
   state.days[today]=45;assert.equal(goals.summary(state,new Date(today+'T12:00:00')).currentStreak,3);
   assert.equal(goals.merge(state,{}).goal.minutes,45);
+});
+
+test('service-worker widget uses the same personal goal, not a fixed 25-minute rule',()=>{
+  const context={URL,importScripts(){},EstudiemosStudyGoal:goals,self:{registration:{scope:'https://estudiemos-app.vercel.app/'},addEventListener(){}}};
+  vm.runInNewContext(fs.readFileSync(path.join(root,'service-worker.js'),'utf8'),context);
+  const date=goals.dateKey(new Date()),state={days:{[date]:14},goal:{minutes:15,updatedAt:1}};
+  assert.match(context.buildStreakWidgetData(state).todayProgress,/14\/15/);
+  state.days[date]=15;
+  assert.match(context.buildStreakWidgetData(state).todayProgress,/Completaste/);
+  assert.match(context.buildStreakWidgetData(state).streakDays,/^1 /);
 });
 
 test('SQL projection is owner-filtered, server-only, bounded and matches custom streaks',async()=>{
