@@ -49,7 +49,7 @@ const readItems = page => page.evaluate(() => JSON.parse(localStorage.getItem('b
         for (const file of ['index.html', 'pages/bandeja.html', 'scripts/dashboard.js', 'scripts/bandeja.js', 'scripts/inbox-alarms.js', 'scripts/global-search.js', 'styles/inbox-alarms.css']) {
           const response = await context.request.get(`${base}/${file}?version=${process.env.RELEASE_VERSION || 'optional-note'}`);
           assert.equal(response.status(), 200, file);
-          const hash = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
+          const hash = bytes => crypto.createHash('sha256').update(bytes.toString('utf8').replace(/\r\n/g, '\n')).digest('hex');
           assert.equal(hash(await response.body()), hash(fs.readFileSync(path.join(root, file))), `Live file differs: ${file}`);
         }
       }
