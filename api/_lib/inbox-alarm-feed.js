@@ -2,6 +2,7 @@ const crypto = require('node:crypto');
 const {adminRequest,authenticateBearer} = require('./supabase-admin');
 const {isSameOriginRequest,requireJsonRequest} = require('./request-security');
 const rules = require('../../shared/inbox-alarms');
+const goals = require('../../shared/study-goal');
 const seconds = () => Math.floor(Date.now()/1000);
 const secret = () => {
   if(!process.env.SUPABASE_SECRET_KEY)throw new Error('Alarm connection is not configured');
@@ -20,12 +21,20 @@ function verify(token,scope) {
     return data.scope===scope && typeof data.sub==='string' && /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(data.sub) && Number.isSafeInteger(data.exp) && data.exp>seconds()?data:null;
   }catch(_){return null;}
 }
-async function snapshot(userId) {
+async function snapshot(userId, requestedDate) {
   const rows=await adminRequest('/rest/v1/rpc/get_windows_alarm_snapshot', {
     method:'POST', body:JSON.stringify({p_user_id:userId})
   });
   const items=rows?.[0]?.alarm_items || [];
-  return {version:1,updatedAt:rows?.[0]?.updated_at || null,items:(Array.isArray(items)?items:[]).slice(0,500).flatMap(item=>{
+  const date = goals.validDate(requestedDate) ? requestedDate : new Date().toISOString().slice(0,10);
+  let study = null;
+  try {
+    const value = await adminRequest('/rest/v1/rpc/get_windows_study_goal', {method:'POST',body:JSON.stringify({p_user_id:userId,p_date:date})});
+    if (value?.date===date && Number.isSafeInteger(value.minutes) && value.minutes>=0 && value.minutes<=1440 && goals.validMinutes(value.goalMinutes) && typeof value.configured==='boolean') {
+      study={date,minutes:value.minutes,goalMinutes:value.goalMinutes,configured:value.configured};
+    }
+  } catch (_) { /* Existing alarms remain available while this optional projection is migrated. */ }
+  return {version:1,study,updatedAt:rows?.[0]?.updated_at || null,items:(Array.isArray(items)?items:[]).slice(0,500).flatMap(item=>{
     const alarm=rules.normalize(item?.alarm);
     if(!alarm||item.done||typeof item.id!=='string')return [];
     // Consent belongs to the connected Windows device, not the device creating the task.
@@ -61,7 +70,7 @@ module.exports = async function alarmFeed(request,response) {
   }
   const feed=verify(String(request.headers.authorization||'').replace(/^Bearer /i,''),'alarm-feed');
   if(!feed)return response.status(401).json({error:'Volvé a conectar las alarmas desde Estudiemos.'});
-  return response.status(200).json(await snapshot(feed.sub));
+  return response.status(200).json(await snapshot(feed.sub,request.query.localDate));
 };
 module.exports.verify=verify;
 module.exports.sign=sign;

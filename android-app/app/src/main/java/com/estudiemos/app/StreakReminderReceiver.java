@@ -112,8 +112,9 @@ public class StreakReminderReceiver extends BroadcastReceiver {
         ) return;
 
         StreakWidgetProvider.StreakSummary summary = StreakWidgetProvider.readSummary(context);
-        if (summary.activeToday) return;
+        if (summary.activeToday) { clearWhenComplete(context); return; }
         SharedPreferences prefs = context.getSharedPreferences(StreakWidgetProvider.PREFS, Context.MODE_PRIVATE);
+        if (!prefs.getBoolean(StreakWidgetProvider.KEY_GOAL_CONFIGURED, false)) return;
         String today = LocalDate.now().toString();
         String noticeKey = today + "|" + (slotId == null ? "" : slotId);
         if (noticeKey.equals(prefs.getString(KEY_LAST_NOTICE, ""))) return;
@@ -126,7 +127,7 @@ public class StreakReminderReceiver extends BroadcastReceiver {
                     "Racha de estudio",
                     NotificationManager.IMPORTANCE_HIGH
             );
-            channel.setDescription("Recordatorios para completar 25 minutos de estudio al día.");
+            channel.setDescription("Recordatorios para completar tu objetivo diario de estudio.");
             channel.enableVibration(true);
             channel.setVibrationPattern(new long[] { 0, 280, 140, 280 });
             manager.createNotificationChannel(channel);
@@ -141,7 +142,7 @@ public class StreakReminderReceiver extends BroadcastReceiver {
                 openIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
-        String body = "Todavía estás a tiempo de mantener tu racha. 25 min alcanzan.";
+        String body = "Te faltan " + Math.max(0, summary.threshold - summary.todayMinutes) + " min para completar tu objetivo de hoy.";
         android.app.Notification notification = new android.app.Notification.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle("Momento de estudiar")
@@ -156,5 +157,11 @@ public class StreakReminderReceiver extends BroadcastReceiver {
                 .build();
         manager.notify(NOTIFICATION_ID, notification);
         prefs.edit().putString(KEY_LAST_NOTICE, noticeKey).apply();
+    }
+
+    static void clearWhenComplete(Context context) {
+        if (!StreakWidgetProvider.readSummary(context).activeToday) return;
+        NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (manager != null) manager.cancel(NOTIFICATION_ID);
     }
 }

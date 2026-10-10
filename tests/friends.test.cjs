@@ -10,6 +10,7 @@ async function database(){
   const db=new PGlite();
   await db.exec('create role anon; create role authenticated; create role service_role; create schema auth; create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz); create table public.user_states(user_id uuid primary key,state jsonb);');
   await db.exec(fs.readFileSync(path.join(root,'supabase/friends.sql'),'utf8'));
+  await db.exec(fs.readFileSync(path.join(root,'supabase/study-goals.sql'),'utf8'));
   for(const [i,id] of ids.entries())await db.query('insert into auth.users values($1,$2,now())',[id,`student${i+1}@example.test`]);
   return db;
 }

@@ -40,6 +40,7 @@ const readItems = page => page.evaluate(() => JSON.parse(localStorage.getItem('b
         return route.continue();
       });
       await context.addInitScript(() => {
+        localStorage.setItem('estudiemos_pomodoro_streak', JSON.stringify({days:{},goal:{minutes:25,updatedAt:1}}));
         window.__permissionRequests = 0;
         if ('Notification' in window) Notification.requestPermission = async () => { window.__permissionRequests++; return 'denied'; };
       });

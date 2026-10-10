@@ -1,32 +1,49 @@
-param([switch]$DryRun)
-$ErrorActionPreference = "SilentlyContinue"
-$today = Get-Date -Format "yyyy-MM-dd"
-$stateFile = Join-Path ([Environment]::GetFolderPath("MyDocuments")) "Rainmeter\Skins\Estudiemos\@Resources\ReminderState.inc"
-$minutes = 0
-
-if (Test-Path -LiteralPath $stateFile) {
-  $savedDate = ((Select-String -LiteralPath $stateFile -Pattern '^TodayDate=(.*)$').Matches.Groups[1].Value).Trim()
-  $savedMinutes = ((Select-String -LiteralPath $stateFile -Pattern '^TodayMinutes=(.*)$').Matches.Groups[1].Value).Trim()
-  if ($savedDate -eq $today) {
-    $parsedMinutes = 0
-    if ([int]::TryParse($savedMinutes, [ref]$parsedMinutes)) {
-      $minutes = [Math]::Max(0, $parsedMinutes)
+param(
+  [switch]$DryRun,
+  [string]$InputPath,
+  [datetime]$Now = (Get-Date),
+  [string]$StateDirectory = (Join-Path $env:LOCALAPPDATA 'Estudiemos\Windows\InboxAlarms')
+)
+$ErrorActionPreference = 'Stop'
+$study = $null
+$today = $Now.ToString('yyyy-MM-dd')
+try {
+  if ($InputPath) {
+    $snapshot = Get-Content -LiteralPath $InputPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    $study = $snapshot.study
+  } elseif (!$DryRun) {
+    $feedPath = Join-Path $StateDirectory 'feed.dpapi'
+    if (Test-Path -LiteralPath $feedPath) {
+      [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+      Import-Module (Join-Path $PSHOME 'Modules\Microsoft.PowerShell.Security\Microsoft.PowerShell.Security.psd1')
+      $secure = Get-Content -LiteralPath $feedPath -Raw | ConvertTo-SecureString
+      $credential = New-Object Management.Automation.PSCredential('alarm-feed', $secure)
+      $snapshot = Invoke-RestMethod -Uri ('https://estudiemos-app.vercel.app/api/widget-link?alarmFeed=1&localDate=' + $today) -Headers @{Authorization=('Bearer ' + $credential.GetNetworkCredential().Password)} -TimeoutSec 12
+      if ($snapshot.version -eq 1) { $study = $snapshot.study }
     }
   }
+} catch {
+  # Offline or disconnected accounts cannot confirm that their goal is still pending.
+  $study = $null
+} finally { $credential = $null; $secure = $null }
+$minutes = 0
+$goal = 25
+$configured = $false
+if ($study -and $study.date -eq $today -and $study.configured -eq $true -and
+    [string]$study.minutes -match '^\d{1,4}$' -and [string]$study.goalMinutes -match '^\d{1,3}$') {
+  $minutes = [int]$study.minutes
+  $goal = [int]$study.goalMinutes
+  $configured = $minutes -le 1440 -and $goal -ge 1 -and $goal -le 720
 }
-
-if ($DryRun) { @{minutes=$minutes;wouldNotify=($minutes -lt 25)} | ConvertTo-Json -Compress; return }
-if ($minutes -ge 25) { exit 0 }
-
-Add-Type -AssemblyName System.Windows.Forms
-Add-Type -AssemblyName System.Drawing
-$notice = New-Object System.Windows.Forms.NotifyIcon
-$notice.Icon = [System.Drawing.SystemIcons]::Information
-$notice.Visible = $true
-$notice.BalloonTipIcon = [System.Windows.Forms.ToolTipIcon]::Info
-$notice.BalloonTipTitle = "Momento de estudiar"
-$notice.BalloonTipText = "Todavía estás a tiempo de mantener tu racha. 25 min alcanzan."
-$notice.ShowBalloonTip(15000)
-Start-Sleep -Seconds 16
-$notice.Dispose()
+$wouldNotify = $configured -and $minutes -lt $goal
+if ($DryRun) {
+  @{minutes=$minutes;goalMinutes=$goal;configured=$configured;wouldNotify=$wouldNotify} | ConvertTo-Json -Compress
+  return
+}
+. (Join-Path $PSScriptRoot 'StudyToast.ps1')
+if ($configured -and $minutes -ge $goal) {
+  Clear-EstudiemosStudyToast
+} elseif ($wouldNotify) {
+  Show-EstudiemosToast -Title 'Momento de estudiar' -Body ('Te faltan {0} min para completar tu objetivo de hoy.' -f ($goal - $minutes))
+}
 

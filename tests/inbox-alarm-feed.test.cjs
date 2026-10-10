@@ -8,9 +8,9 @@ const file=path.resolve(__dirname,'../api/_lib/inbox-alarm-feed.js');
 const id='00000000-0000-4000-8000-000000000001';
 const other='00000000-0000-4000-8000-000000000002';
 function setup(){
-  let rows=[],user={id};const calls=[];const localRequire=createRequire(file);
+  let rows=[],study=null,user={id};const calls=[];const localRequire=createRequire(file);
   const sandbox={module:{exports:{}},Buffer,Date,process:{env:{SUPABASE_SECRET_KEY:'test-secret-not-a-live-key'}},require(name){
-    if(name==='./supabase-admin')return {authenticateBearer:async token=>token==='Bearer session'?user:null,adminRequest:async (url,options)=>{calls.push({url,...options});return rows;}};
+    if(name==='./supabase-admin')return {authenticateBearer:async token=>token==='Bearer session'?user:null,adminRequest:async (url,options)=>{calls.push({url,...options});if(url.endsWith('get_windows_study_goal')){if(study instanceof Error)throw study;return study;}return rows;}};
     if(name==='./request-security')return {isSameOriginRequest:req=>req.headers.origin!=='https://foreign.example',requireJsonRequest:()=>true};
     return localRequire(name);
   }};
@@ -19,7 +19,7 @@ function setup(){
   async function call(method,body={},query={},headers={}){const result={headers:{}};const res={setHeader:(k,v)=>result.headers[k]=v,status(code){result.status=code;return this;},json(value){result.body=JSON.parse(JSON.stringify(value));return result;}};
     await api({method,body,query,headers},res);return result;
   }
-  return {api,call,calls,setRows(value){rows=value;},setUser(value){user=value;}};
+  return {api,call,calls,setRows(value){rows=value;},setStudy(value){study=value;},setUser(value){user=value;}};
 }
 test('native feed connects only with authenticated explicit consent, confirms only the same user',async()=>{
   const {api,call,setUser}=setup();
@@ -83,4 +83,15 @@ test('alarm RPC is server-only, owner-filtered and never grants table reads',()=
   assert.match(sql,/grant execute on function public\.get_windows_alarm_snapshot\(uuid\) to service_role/i);
   assert.doesNotMatch(sql,/grant\s+select|disable\s+row\s+level\s+security/i);
   assert.match(sql,/entry\.position <= 500/);
+});
+
+test('connected PCs receive only their local-day aggregate and keep alarms if progress is unavailable',async()=>{
+  const {api,call,calls,setStudy}=setup(),date='2026-10-10';
+  setStudy({date,minutes:45,goalMinutes:45,configured:true,email:'PRIVATE',days:{private:1}});
+  const feed=await call('GET',{}, {alarmFeed:'1',localDate:date},{authorization:`Bearer ${api.sign(id,'alarm-feed',60)}`});
+  assert.deepEqual(feed.body.study,{date,minutes:45,goalMinutes:45,configured:true});
+  assert.deepEqual(JSON.parse(calls[1].body),{p_user_id:id,p_date:date});
+  for(const value of [null,new Error('unavailable'),{date,minutes:-1,goalMinutes:45,configured:true},{date,minutes:0,goalMinutes:0,configured:true}]){
+    setStudy(value);assert.equal((await api.snapshot(id,date)).study,null);
+  }
 });

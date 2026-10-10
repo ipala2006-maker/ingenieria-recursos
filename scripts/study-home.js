@@ -183,7 +183,7 @@ if (home) {
     write('[data-home-today]', duration(state.todayMinutes));
     write('[data-home-week]', duration(state.weekMinutes));
     write('[data-home-streak]', `${state.currentStreak} ${state.currentStreak === 1 ? 'día' : 'días'} de racha`);
-    write('[data-home-presence]', state.todayActive ? 'Objetivo diario completo' : `${Math.floor(state.todayMinutes)} de 25 min hoy`);
+    write('[data-home-presence]', state.todayActive ? 'Objetivo diario completo' : `${Math.floor(state.todayMinutes)} de ${state.goalMinutes} min hoy`);
     write('[data-home-date]', new Date().toLocaleDateString('es-AR', { weekday:'long', day:'numeric', month:'long' }));
     const history = window.EstudiemosStudy.history(range,period);
     const signature = JSON.stringify(history);

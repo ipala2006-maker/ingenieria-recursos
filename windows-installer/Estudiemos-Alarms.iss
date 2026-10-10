@@ -1,7 +1,7 @@
 [Setup]
 AppId={{10257322-F14A-47E1-9C71-03CB33D39726}
 AppName=Alarmas de Estudiemos
-AppVersion=1.6.3.4
+AppVersion=1.6.5.0
 ChangesAssociations=yes
 AppPublisher=Estudiemos
 DefaultDirName={localappdata}\Estudiemos\Windows\AlarmService
@@ -19,11 +19,15 @@ Compression=lzma2
 OutputDir=..\downloads
 OutputBaseFilename=Activar-Alarmas-Estudiemos
 SetupIconFile=..\assets\estudiemos.ico
-VersionInfoVersion=1.6.3.4
+VersionInfoVersion=1.6.5.0
 VersionInfoDescription=Alarmas a pantalla completa de Estudiemos
 [Languages]
 Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
 [Files]
+Source: "StudyToast.ps1"; DestDir: "{app}"; Flags: ignoreversion
+Source: "AppLauncher.vbs"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\assets\icon-180.png"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\assets\estudiemos.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "AlarmLauncher.vbs"; DestDir: "{app}"; Flags: ignoreversion
 Source: "InboxAlarm.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "InstallInboxAlarm.ps1"; DestDir: "{app}"; Flags: ignoreversion
@@ -34,7 +38,11 @@ Source: "InboxAlarm.ps1"; Flags: dontcopy
 Source: "InstallInboxAlarm.ps1"; Flags: dontcopy
 Source: "ConnectInboxAlarms.ps1"; Flags: dontcopy
 Source: "ReadAlarmConnection.ps1"; Flags: dontcopy
+[Icons]
+Name: "{userprograms}\Estudiemos Alarmas"; Filename: "{sys}\wscript.exe"; Parameters: """{app}\AppLauncher.vbs"""; WorkingDir: "{app}"; IconFilename: "{app}\estudiemos.ico"; AppUserModelID: "Estudiemos.Study"; AppUserModelToastActivatorCLSID: "77039F73-07C3-4E4C-9DFA-B3A4809C5C79"
 [Registry]
+Root: HKCU; Subkey: "Software\Classes\AppUserModelId\Estudiemos.Study"; ValueName: "DisplayName"; ValueType: string; ValueData: "Estudiemos"
+Root: HKCU; Subkey: "Software\Classes\AppUserModelId\Estudiemos.Study"; ValueName: "IconUri"; ValueType: string; ValueData: "{app}\icon-180.png"
 Root: HKCU; Subkey: "Software\Classes\estudiemos-alarms"; ValueType: string; ValueData: "URL:Estudiemos Alarmas"
 Root: HKCU; Subkey: "Software\Classes\estudiemos-alarms"; ValueName: "URL Protocol"; ValueType: string; ValueData: ""
 Root: HKCU; Subkey: "Software\Classes\estudiemos-alarms\shell\open\command"; ValueType: string; ValueData: "{sys}\wscript.exe ""{app}\AlarmLauncher.vbs"" ""%1"""

@@ -1346,7 +1346,7 @@
     if (dateInput && !dateInput.value) dateInput.value = selectedAgendaDate;
 
     const byDate = groupAgendaByDate(items);
-    const streakDays = readStreakDays();
+    const streak = readStreakProgress();
     const firstDay = new Date(agendaYear, agendaMonth, 1);
     const startOffset = (firstDay.getDay() + 6) % 7;
     const startDate = agendaView === "week"
@@ -1371,7 +1371,7 @@
       const isSelected = date === selectedAgendaDate;
       const isToday = date === toDateValue(new Date());
       const isOutside = agendaView === "month" && currentDate.getMonth() !== agendaMonth;
-      const hasStreak = (streakDays[date] || 0) >= 25;
+      const hasStreak = window.EstudiemosStudyGoal.active(streak, date);
 
       cells.push(`
         <button class="agenda-day ${isOutside ? "is-outside" : ""} ${isSelected ? "is-selected" : ""} ${isToday ? "is-today" : ""} ${hasStreak ? "has-study-streak" : ""}" type="button" data-agenda-date="${escapeAttr(date)}" aria-label="${escapeAttr(formatFullDate(date))}${hasStreak ? ", presencia de estudio registrada" : ""}">
@@ -1442,10 +1442,10 @@
     });
   }
 
-  function readStreakDays() {
+  function readStreakProgress() {
     try {
       const value = JSON.parse(localStorage.getItem(STORAGE_KEYS.streak) || "{}");
-      return value?.days && typeof value.days === "object" ? value.days : {};
+      return value && typeof value === 'object' ? value : {};
     } catch (_) {
       return {};
     }

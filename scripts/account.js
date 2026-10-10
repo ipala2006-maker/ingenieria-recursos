@@ -40,6 +40,7 @@
   let applyingNativeSession = false;
   let syncTimer = 0;
   let syncing = false;
+  let synchronizedUserId = '';
   let syncRequested = false;
   let applyingCloud = false;
   let lastPullAt = 0;
@@ -71,6 +72,7 @@
     sync: () => synchronize("manual"),
     refresh: () => synchronize("widget"),
     getUser: () => session?.user || null,
+    isSynchronized: () => Boolean(session?.user?.id && synchronizedUserId === session.user.id),
     getSession: () => session,
     getClient: () => client,
     whenReady: () => readyPromise,
@@ -742,6 +744,8 @@
       }
 
       localStorage.setItem(LINKED_USER_KEY, userId);
+      synchronizedUserId = userId;
+      window.dispatchEvent(new CustomEvent('estudiemos:account-synced', { detail: { userId } }));
       lastPullAt = Date.now();
       updateSyncLabel("Sincronizado");
       updateAccountIndicator(true);
@@ -878,7 +882,7 @@
       const right = Array.isArray(cloudStreak.reminderSlots?.[date]) ? cloudStreak.reminderSlots[date] : [];
       reminderSlots[date] = Array.from(new Set([...left, ...right]));
     });
-    merged.values[key] = JSON.stringify({ version: 2, days, carrySeconds, reminderSlots });
+    merged.values[key] = JSON.stringify({ version: 3, days, carrySeconds, reminderSlots, ...window.EstudiemosStudyGoal.merge(localStreak, cloudStreak) });
 
     const devicesKey = "estudiemos_android_devices";
     const devices = new Map();

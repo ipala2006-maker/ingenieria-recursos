@@ -205,10 +205,13 @@
     const today = dateValue(new Date());
     const streak = readStreak();
     const minutes = Math.max(0, Math.floor(Number(streak?.days?.[today]) || 0));
+    const goal = window.EstudiemosStudyGoal.read(streak);
     try {
       window.RainmeterAPI.Bang(
         `[!WriteKeyValue Reminder TodayDate "${today}" "#@#ReminderState.inc"]` +
-        `[!WriteKeyValue Reminder TodayMinutes "${minutes}" "#@#ReminderState.inc"]`
+        `[!WriteKeyValue Reminder TodayMinutes "${minutes}" "#@#ReminderState.inc"]` +
+        `[!WriteKeyValue Reminder GoalMinutes "${goal.minutes}" "#@#ReminderState.inc"]` +
+        `[!WriteKeyValue Reminder GoalConfigured "${goal.configured ? 1 : 0}" "#@#ReminderState.inc"]`
       );
     } catch (_) {}
   }
@@ -528,12 +531,12 @@
             <span><small>Semana</small><strong>${formatStudyTime(totalMinutes)}</strong></span>
           </div>
         </header>
-        <p>${todayMinutes >= 25 ? "Completaste tu presencia de hoy." : `Hoy llevás ${todayMinutes}/25 minutos.`}</p>
+        <p>${todayMinutes >= streak.goalMinutes ? "Completaste tu objetivo de hoy." : `Hoy llevás ${todayMinutes}/${streak.goalMinutes} minutos.`}</p>
         <div class="streak-widget-chart" data-widget-progress="${escapeHtml(JSON.stringify(days))}" role="group" aria-label="Tiempo de estudio de los últimos siete días">
           ${days.map((day,index)=>`<button type="button" data-widget-study-day="${index}" aria-pressed="${index===6}" style="--bar:${Math.max(2,day.minutes/ceiling*100)}%" title="${formatShortDate(day.date)} · ${formatStudyTime(day.minutes)}" aria-label="${formatLongDate(day.date)}: ${formatStudyTime(day.minutes)}"><span>${day.label}</span></button>`).join('')}
         </div>
         <div class="widget-study-detail" data-widget-study-detail role="status">Hoy · ${formatStudyTime(todayMinutes)}</div>
-        <button class="streak-action" data-widget-open-pomodoro>${todayMinutes >= 25 ? "Abrir Pomodoro" : "Estudiar 25 minutos"}</button>
+        <button class="streak-action" data-widget-open-pomodoro>${todayMinutes >= streak.goalMinutes ? "Abrir Pomodoro" : "Seguir estudiando"}</button>
       </section>`;
   }
 
@@ -557,9 +560,10 @@
     try {
       const value = JSON.parse(localStorage.getItem(STREAK_KEY) || "{}");
       const days = value.days && typeof value.days === "object" ? value.days : {};
-      return { current: calculateCurrentStreak(days), days };
+      const summary = window.EstudiemosStudyGoal.summary({ ...value, days });
+      return { ...value, current: summary.currentStreak, goalMinutes: summary.goalMinutes, days };
     } catch (_) {
-      return { current: 0, days: {} };
+      return { current: 0, days: {}, goalMinutes: 25 };
     }
   }
 
@@ -642,6 +646,7 @@
     streak.carrySeconds = streak.carrySeconds && typeof streak.carrySeconds === "object" ? streak.carrySeconds : {};
     const today = dateValue(new Date());
     const totalSeconds = Math.max(0, Number(streak.carrySeconds[today]) || 0) + seconds;
+    window.EstudiemosStudyGoal.recordDay(streak, today);
     const minutes = Math.floor(totalSeconds / 60);
     streak.carrySeconds[today] = totalSeconds % 60;
     if (minutes) streak.days[today] = Math.max(0, Number(streak.days[today]) || 0) + minutes;
@@ -682,19 +687,6 @@
     value.updatedAt = Math.max(Date.now(), Number(value.updatedAt || 0) + 1);
     localStorage.setItem(POMODORO_KEY, JSON.stringify(value));
     window.dispatchEvent(new CustomEvent("estudiemos:pomodoro-widget-action", { detail: value }));
-  }
-
-  function calculateCurrentStreak(days) {
-    const today = new Date();
-    const todayActive = (Number(days[dateValue(today)]) || 0) >= 25;
-    const cursor = new Date(today);
-    if (!todayActive) cursor.setDate(cursor.getDate() - 1);
-    let current = 0;
-    while (current < 730 && (Number(days[dateValue(cursor)]) || 0) >= 25) {
-      current += 1;
-      cursor.setDate(cursor.getDate() - 1);
-    }
-    return current;
   }
 
   function formatStudyTime(minutes) {
