@@ -536,7 +536,7 @@
       map.get(item.date).push(item);
       return map;
     }, new Map());
-    const streakDays = readStreakDays();
+    const streak = readStreakProgress();
     const first = new Date(state.year, state.month, 1);
     const offset = (first.getDay() + 6) % 7;
     const start = state.calendarView === "week"
@@ -595,16 +595,16 @@
       for (let index = 0; index < cellCount; index += 1) {
         const date = new Date(start.getFullYear(), start.getMonth(), start.getDate() + index);
         const value = toDateValue(date);
-        const hasStreak = (streakDays[value] || 0) >= 25;
+        const hasStreak = window.EstudiemosStudyGoal.active(streak, value);
         const dayItems = (dated.get(value) || []).slice().sort(compareCalendarItems);
         const content = state.calendarView === "week" ? renderWeekDay(date, dayItems, weeklyCapacity) : renderMonthDay(dayItems, capacity);
-        const description = [formatFullDate(value), ...dayItems.map(item => `${formatCalendarTime(item)}: ${item.title}`), hasStreak ? '25 minutos de estudio registrados' : ''].filter(Boolean).join(', ');
+        const description = [formatFullDate(value), ...dayItems.map(item => `${formatCalendarTime(item)}: ${item.title}`), hasStreak ? 'Objetivo de estudio completo' : ''].filter(Boolean).join(', ');
         cells.push(`<button class="dashboard-calendar__day ${state.calendarView === "month" && date.getMonth() !== state.month ? "is-outside" : ""} ${value === today ? "is-today" : ""} ${value === state.date ? "is-selected" : ""} ${dayItems.length ? "has-items" : ""} ${hasStreak ? "has-study-streak" : ""}" type="button" data-dashboard-date="${value}" ${value === today ? 'aria-current="date"' : ''} aria-label="${escapeHtml(description)}"><span class="dashboard-calendar__number">${date.getDate()}</span>${hasStreak ? flameIcon() : ""}${content}</button>`);
       }
       grid.innerHTML = cells.join("");
       if (state.calendarView === 'month') fitMonthPreviews(grid, dated);
       if (focusedDate) grid.querySelector(`[data-dashboard-date="${focusedDate}"]`)?.focus({ preventScroll: true });
-      renderMonthLegend(grid, agenda, streakDays);
+      renderMonthLegend(grid, agenda, streak);
     });
     renderCalendarDetail(dated.get(state.date) || []);
   }
@@ -675,7 +675,7 @@
     return `<span class="dashboard-calendar__month-events">${entries}${items.length > capacity ? `<span class="dashboard-calendar__month-more">+${items.length - capacity} más</span>` : ''}</span>`;
   }
 
-  function renderMonthLegend(grid, agenda, streakDays) {
+  function renderMonthLegend(grid, agenda, streak) {
     let legend = grid.parentElement.querySelector('[data-calendar-legend]');
     if (!legend) {
       legend = document.createElement('div');
@@ -689,8 +689,8 @@
     const items = agenda.filter(item => item.date.startsWith(prefix));
     const kinds = new Set(items.map(calendarKind));
     const references = [['class', 'Clase'], ['exam', 'Examen'], ['task', 'Tarea']].filter(([kind]) => kinds.has(kind));
-    const hasStudy = Object.entries(streakDays).some(([day, minutes]) => day.startsWith(prefix) && minutes >= 25);
-    legend.innerHTML = `<span class="dashboard-calendar__month-total">${items.length ? `${items.length} ${items.length === 1 ? 'actividad' : 'actividades'} este mes` : 'Sin actividades este mes'}</span>${references.length || hasStudy ? `<span class="dashboard-calendar__references">${references.map(([kind, title]) => `<span class="is-${kind}"><i aria-hidden="true"></i>${title}</span>`).join('')}${hasStudy ? `<span>${flameIcon()}25 min de estudio</span>` : ''}</span>` : ''}`;
+    const hasStudy = Object.keys(streak.days || {}).some(day => day.startsWith(prefix) && window.EstudiemosStudyGoal.active(streak, day));
+    legend.innerHTML = `<span class="dashboard-calendar__month-total">${items.length ? `${items.length} ${items.length === 1 ? 'actividad' : 'actividades'} este mes` : 'Sin actividades este mes'}</span>${references.length || hasStudy ? `<span class="dashboard-calendar__references">${references.map(([kind, title]) => `<span class="is-${kind}"><i aria-hidden="true"></i>${title}</span>`).join('')}${hasStudy ? `<span>${flameIcon()}Objetivo de estudio completo</span>` : ''}</span>` : ''}`;
   }
 
   function renderAgenda() {
@@ -790,10 +790,10 @@
     }));
   }
 
-  function readStreakDays() {
+  function readStreakProgress() {
     try {
       const value = JSON.parse(localStorage.getItem(STREAK_KEY) || "{}");
-      return value?.days && typeof value.days === "object" ? value.days : {};
+      return value && typeof value === 'object' ? value : {};
     } catch (_) {
       return {};
     }

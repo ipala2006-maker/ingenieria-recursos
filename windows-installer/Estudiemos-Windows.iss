@@ -1,4 +1,4 @@
-#define AppVersion "1.6.4.1"
+#define AppVersion "1.6.5.0"
 #define RainmeterInstaller "Rainmeter-4.5.26.exe"
 #ifndef OutputBaseName
   #define OutputBaseName "Estudiemos-Widgets-para-Windows"
@@ -46,6 +46,10 @@ Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
 [Files]
 Source: "AppLauncher.vbs"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\assets\estudiemos.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\assets\icon-180.png"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\assets\icon-180.png"; DestDir: "{app}\AlarmService"; Flags: ignoreversion
+Source: "StudyToast.ps1"; DestDir: "{app}"; Flags: ignoreversion
+Source: "StudyToast.ps1"; DestDir: "{app}\AlarmService"; Flags: ignoreversion
 Source: "vendor\{#RainmeterInstaller}"; Flags: dontcopy
 Source: "WidgetLauncher.vbs"; DestDir: "{app}"; Flags: ignoreversion
 Source: "AlarmLauncher.vbs"; DestDir: "{app}"; Flags: ignoreversion
@@ -65,10 +69,12 @@ Source: "..\windows-rainmeter\Plugins\64bit\WebView2.dll"; DestDir: "{code:GetRa
 
 [Icons]
 Name: "{userdesktop}\Estudiemos"; Filename: "{sys}\wscript.exe"; Parameters: """{app}\AppLauncher.vbs"""; WorkingDir: "{app}"; IconFilename: "{app}\estudiemos.ico"; Comment: "Abrir Estudiemos"
-Name: "{userprograms}\Estudiemos"; Filename: "{sys}\wscript.exe"; Parameters: """{app}\AppLauncher.vbs"""; WorkingDir: "{app}"; IconFilename: "{app}\estudiemos.ico"; Comment: "Abrir Estudiemos"
+Name: "{userprograms}\Estudiemos"; Filename: "{sys}\wscript.exe"; Parameters: """{app}\AppLauncher.vbs"""; WorkingDir: "{app}"; IconFilename: "{app}\estudiemos.ico"; Comment: "Abrir Estudiemos"; AppUserModelID: "Estudiemos.Study"; AppUserModelToastActivatorCLSID: "77039F73-07C3-4E4C-9DFA-B3A4809C5C79"
 Name: "{userstartup}\Rainmeter"; Filename: "{code:GetRainmeterExecutable}"; WorkingDir: "{code:GetRainmeterDirectory}"; Comment: "Iniciar los widgets de Estudiemos con Windows"
 
 [Registry]
+Root: HKCU; Subkey: "Software\Classes\AppUserModelId\Estudiemos.Study"; ValueName: "DisplayName"; ValueType: string; ValueData: "Estudiemos"
+Root: HKCU; Subkey: "Software\Classes\AppUserModelId\Estudiemos.Study"; ValueName: "IconUri"; ValueType: string; ValueData: "{app}\icon-180.png"
 Root: HKCU; Subkey: "Software\Classes\estudiemos-alarms"; ValueType: string; ValueData: "URL:Estudiemos Alarmas"
 Root: HKCU; Subkey: "Software\Classes\estudiemos-alarms"; ValueName: "URL Protocol"; ValueType: string; ValueData: ""
 Root: HKCU; Subkey: "Software\Classes\estudiemos-alarms\shell\open\command"; ValueType: string; ValueData: "{sys}\wscript.exe ""{app}\AlarmService\AlarmLauncher.vbs"" ""%1"""

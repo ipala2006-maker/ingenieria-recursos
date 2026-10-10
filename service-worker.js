@@ -1,3 +1,4 @@
+importScripts('./shared/study-goal.js?v=20261010-daily-goal');
 const WINDOWS_WIDGET_TAGS = ["estudiemos-inbox", "estudiemos-calendar", "estudiemos-streak"];
 const WINDOWS_WIDGET_STATE_URL = new URL("./widgets/runtime-state.json", self.registration.scope).href;
 const WINDOWS_WIDGET_CACHE = "estudiemos-windows-widget-data-v1";
@@ -180,7 +181,8 @@ function buildCalendarWidgetData(agenda) {
 
 function buildStreakWidgetData(streak) {
   const days = streak?.days && typeof streak.days === "object" ? streak.days : {};
-  const current = calculateCurrentStreak(days);
+  const summary = EstudiemosStudyGoal.summary(streak);
+  const current = summary.currentStreak;
   const todayMinutes = Math.max(0, Number(days[dateValue(new Date())]) || 0);
   let activeDays = 0;
   const weekMinutes = [];
@@ -189,7 +191,7 @@ function buildStreakWidgetData(streak) {
     date.setDate(date.getDate() - offset);
     const minutes = Math.max(0, Number(days[dateValue(date)]) || 0);
     weekMinutes.unshift(minutes);
-    if (minutes >= 25) activeDays += 1;
+    if (EstudiemosStudyGoal.active(streak, dateValue(date))) activeDays += 1;
   }
   const totalMinutes = weekMinutes.reduce((sum, value) => sum + value, 0);
   const maximum = Math.max(1, ...weekMinutes);
@@ -197,22 +199,11 @@ function buildStreakWidgetData(streak) {
   const weekChart = weekMinutes.map((value) => bars[Math.min(bars.length - 1, Math.round((value / maximum) * (bars.length - 1)))]).join("  ");
   return {
     streakDays: `${current} ${current === 1 ? "día" : "días"}`,
-    todayProgress: todayMinutes >= 25 ? "Completaste tu presencia de hoy." : `Hoy llevás ${todayMinutes}/25 minutos.`,
+    todayProgress: summary.todayActive ? "Completaste tu objetivo de hoy." : `Hoy llevás ${todayMinutes}/${summary.goalMinutes} minutos.`,
     weekSummary: `Últimos 7 días: ${activeDays} ${activeDays === 1 ? "activo" : "activos"}.`,
     weekChart,
     weekHours: `${formatStudyTime(totalMinutes)} esta semana`
   };
-}
-
-function calculateCurrentStreak(days) {
-  const cursor = new Date();
-  if ((Number(days[dateValue(cursor)]) || 0) < 25) cursor.setDate(cursor.getDate() - 1);
-  let current = 0;
-  while (current < 730 && (Number(days[dateValue(cursor)]) || 0) >= 25) {
-    current += 1;
-    cursor.setDate(cursor.getDate() - 1);
-  }
-  return current;
 }
 
 function formatStudyTime(minutes) {

@@ -222,7 +222,7 @@ if (!$InputPath -and (Test-Path -LiteralPath $feedPath)) {
     Import-Module (Join-Path $PSHOME 'Modules\Microsoft.PowerShell.Security\Microsoft.PowerShell.Security.psd1') -ErrorAction Stop
     $secure = Get-Content -LiteralPath $feedPath -Raw | ConvertTo-SecureString
     $credential = New-Object System.Management.Automation.PSCredential('alarm-feed', $secure)
-    $snapshot = Invoke-RestMethod -Uri 'https://estudiemos-app.vercel.app/api/widget-link?alarmFeed=1' -Headers @{Authorization=('Bearer ' + $credential.GetNetworkCredential().Password)} -TimeoutSec 12
+    $snapshot = Invoke-RestMethod -Uri ('https://estudiemos-app.vercel.app/api/widget-link?alarmFeed=1&localDate=' + $Now.ToString('yyyy-MM-dd')) -Headers @{Authorization=('Bearer ' + $credential.GetNetworkCredential().Password)} -TimeoutSec 12
     if ($snapshot.version -ne 1 -or @($snapshot.items).Count -gt 500) { throw 'Invalid alarm feed.' }
     $snapshot | ConvertTo-Json -Depth 8 -Compress | Set-Content -LiteralPath $cachePath -Encoding UTF8
     @{status='connected';checkedAt=(Get-Date).ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $StateDirectory 'sync-status.json') -Encoding UTF8
@@ -262,6 +262,14 @@ if ($content -ne (Get-Content -LiteralPath $InputPath -Raw)) { exit 0 }
 $snapshot = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($encoded)) | ConvertFrom-Json
 }
 if ($snapshot.version -ne 1 -or @($snapshot.items).Count -gt 500) { throw 'Invalid alarm snapshot.' }
+if (!$DryRun -and (Test-Path -LiteralPath (Join-Path $PSScriptRoot 'StudyToast.ps1'))) {
+  . (Join-Path $PSScriptRoot 'StudyToast.ps1')
+  $study = $snapshot.study
+  if ($study -and $study.configured -eq $true -and $study.date -eq $Now.ToString('yyyy-MM-dd') -and
+      [string]$study.minutes -match '^\d{1,4}$' -and [string]$study.goalMinutes -match '^\d{1,3}$' -and
+      [int]$study.goalMinutes -ge 1 -and [int]$study.goalMinutes -le 720 -and [int]$study.minutes -le 1440 -and
+      [int]$study.minutes -ge [int]$study.goalMinutes) { Clear-EstudiemosStudyToast }
+}
 New-Item -ItemType Directory -Path $StateDirectory -Force | Out-Null
 $mutex = New-Object Threading.Mutex($false, ('Local\EstudiemosInboxAlarm-' + [Security.Principal.WindowsIdentity]::GetCurrent().User.Value))
 if (!$mutex.WaitOne(0)) { $mutex.Dispose(); exit 0 }
@@ -302,17 +310,12 @@ try {
   if (!$due.Count) { exit 0 }
   Add-Type -AssemblyName System.Windows.Forms
   Add-Type -AssemblyName System.Drawing
-  $notice = New-Object Windows.Forms.NotifyIcon
-  $notice.Icon = [Drawing.SystemIcons]::Information
-  $notice.Visible = $true
-  $notice.BalloonTipTitle = 'Estudiemos - Alarma de Inbox'
-  $notice.BalloonTipText = (@($due | Select-Object -First 4 | ForEach-Object { $_.title }) -join "`n")
-  $notice.add_BalloonTipClicked({ Start-Process 'https://estudiemos-app.vercel.app/?agenda=1' })
-  $notice.ShowBalloonTip(20000)
+  if (Get-Command Show-EstudiemosToast -ErrorAction SilentlyContinue) {
+    Show-EstudiemosToast -Title 'Alarma de Inbox' -Body (@($due | Select-Object -First 4 | ForEach-Object { $_.title }) -join "`n") -Tag 'inbox-alarm' -Group 'inbox'
+  }
   foreach ($item in $due) { $delivered[$item.key] = $Now.Ticks }
   $temp = Join-Path $StateDirectory 'delivered.tmp'
   $delivered | ConvertTo-Json -Compress | Set-Content -LiteralPath $temp -Encoding UTF8
   Move-Item -LiteralPath $temp -Destination $statePath -Force
   Show-FullScreenInboxAlarm -DueItems @($due)
-  $notice.Dispose()
 } finally { $mutex.ReleaseMutex(); $mutex.Dispose() }

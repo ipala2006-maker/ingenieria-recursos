@@ -25,6 +25,8 @@ public class StreakWidgetProvider extends AppWidgetProvider {
     static final String PREFS = "estudiemos_widget";
     static final String KEY_DAYS = "pomodoro_streak_days";
     static final String KEY_THRESHOLD = "pomodoro_streak_threshold";
+    static final String KEY_DAILY_GOALS = "pomodoro_daily_goals";
+    static final String KEY_GOAL_CONFIGURED = "pomodoro_goal_configured";
     static final int DEFAULT_THRESHOLD = 25;
     private static final String ACTION_CHART = "com.estudiemos.app.STREAK_CHART";
 
@@ -69,13 +71,7 @@ public class StreakWidgetProvider extends AppWidgetProvider {
             if (!"pomodoro-streak-sync".equals(message.optString("type"))) return;
             JSONObject days = message.optJSONObject("days");
             if (days == null) return;
-            int threshold = Math.max(1, Math.min(180, message.optInt("threshold", DEFAULT_THRESHOLD)));
-            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                    .edit()
-                    .putString(KEY_DAYS, days.toString())
-                    .putInt(KEY_THRESHOLD, threshold)
-                    .apply();
-            updateAll(context);
+            storeProgress(context, message, days);
         } catch (Exception ignored) {
             // The widget keeps the last valid local history.
         }
@@ -86,25 +82,44 @@ public class StreakWidgetProvider extends AppWidgetProvider {
             JSONObject history = new JSONObject(rawHistory);
             JSONObject days = history.optJSONObject("days");
             if (days == null) return;
-            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                    .edit()
-                    .putString(KEY_DAYS, days.toString())
-                    .putInt(KEY_THRESHOLD, DEFAULT_THRESHOLD)
-                    .apply();
-            updateAll(context);
+            storeProgress(context, history, days);
         } catch (Exception ignored) {
             // The widget keeps the last valid local history.
         }
+    }
+
+    private static void storeProgress(Context context, JSONObject history, JSONObject days) {
+        JSONObject goal = history.optJSONObject("goal");
+        int minutes = goal == null ? DEFAULT_THRESHOLD : goal.optInt("minutes", DEFAULT_THRESHOLD);
+        boolean configured = goal != null && goal.optLong("updatedAt", 0) > 0 && minutes >= 1 && minutes <= 720;
+        JSONObject dailyGoals = history.optJSONObject("dailyGoals");
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .putString(KEY_DAYS, days.toString())
+                .putInt(KEY_THRESHOLD, configured ? minutes : DEFAULT_THRESHOLD)
+                .putBoolean(KEY_GOAL_CONFIGURED, configured)
+                .putString(KEY_DAILY_GOALS, dailyGoals == null ? "{}" : dailyGoals.toString()).apply();
+        updateAll(context);
+        StreakReminderReceiver.clearWhenComplete(context);
+    }
+
+    private static int thresholdForDate(JSONObject goals, LocalDate date, LocalDate today, int current) {
+        if (date.equals(today)) return current;
+        JSONObject entry = goals.optJSONObject(date.toString());
+        int value = entry == null ? DEFAULT_THRESHOLD : entry.optInt("minutes", DEFAULT_THRESHOLD);
+        return value >= 1 && value <= 720 ? value : DEFAULT_THRESHOLD;
     }
 
     static StreakSummary readSummary(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         int threshold = Math.max(1, prefs.getInt(KEY_THRESHOLD, DEFAULT_THRESHOLD));
         JSONObject days;
+        JSONObject goals;
         try {
             days = new JSONObject(prefs.getString(KEY_DAYS, "{}"));
+            goals = new JSONObject(prefs.getString(KEY_DAILY_GOALS, "{}"));
         } catch (Exception ignored) {
             days = new JSONObject();
+            goals = new JSONObject();
         }
 
         LocalDate today = LocalDate.now();
@@ -112,7 +127,7 @@ public class StreakWidgetProvider extends AppWidgetProvider {
         boolean activeToday = todayMinutes >= threshold;
         LocalDate cursor = activeToday ? today : today.minusDays(1);
         int streak = 0;
-        while (minutesFor(days, cursor) >= threshold && streak < 730) {
+        while (minutesFor(days, cursor) >= thresholdForDate(goals, cursor, today, threshold) && streak < 730) {
             streak += 1;
             cursor = cursor.minusDays(1);
         }
@@ -122,7 +137,7 @@ public class StreakWidgetProvider extends AppWidgetProvider {
         for (int offset = 0; offset < 7; offset += 1) {
             int minutes = minutesFor(days, today.minusDays(offset));
             weekMinutes[6 - offset] = minutes;
-            if (minutes >= threshold) activeLast7 += 1;
+            if (minutes >= thresholdForDate(goals, today.minusDays(offset), today, threshold)) activeLast7 += 1;
         }
         return new StreakSummary(streak, activeLast7, todayMinutes, threshold, activeToday, weekMinutes);
     }
@@ -139,6 +154,8 @@ public class StreakWidgetProvider extends AppWidgetProvider {
                 .edit()
                 .remove(KEY_DAYS)
                 .remove(KEY_THRESHOLD)
+                .remove(KEY_DAILY_GOALS)
+                .remove(KEY_GOAL_CONFIGURED)
                 .apply();
         updateAll(context);
     }
