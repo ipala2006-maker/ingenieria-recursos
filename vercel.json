@@ -1,5 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    { "source": "/amistad/:token", "destination": "/api/account-config?friendInvitation=:token" }
+  ],
   "functions": {
     "api/widget-push.js": {
       "maxDuration": 60
