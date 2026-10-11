@@ -3,6 +3,7 @@ const { isPublicSupabaseKey } = require("./_lib/public-config");
 
 module.exports = async function handler(request, response) {
   setSecurityHeaders(response);
+  if (request.query && Object.hasOwn(request.query, 'friendInvitation')) return require('./_lib/friend-invitation')(request,response);
   if (request.query?.friends === '1') return require('./_lib/friends')(request,response);
   if (request.method !== "GET") {
     response.setHeader("Allow", "GET");

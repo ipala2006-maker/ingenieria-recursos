@@ -18,6 +18,11 @@ const ids=['00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-00000
     vm.runInNewContext(fs.readFileSync(path.join(root,'api/_lib/friends.js'),'utf8'),sandbox);
     server=http.createServer(async(req,res)=>{
       const url=new URL(req.url,'http://localhost');
+      if(/^\/amistad\/[^/]+$/.test(url.pathname)){
+        req.query={friendInvitation:url.pathname.split('/').pop()};
+        res.status=code=>{res.statusCode=code;return res;};res.send=body=>res.end(body);res.json=data=>{res.setHeader('Content-Type','application/json');return res.send(JSON.stringify(data));};
+        await require('../api/account-config')(req,res);return;
+      }
       if(url.pathname==='/api/account-config'&&url.searchParams.get('friends')==='1'){
         let raw='';for await(const chunk of req)raw+=chunk;
         req.body=raw?JSON.parse(raw):{};res.status=code=>{res.statusCode=code;return res;};res.json=data=>res.end(JSON.stringify(data));
@@ -36,7 +41,7 @@ const ids=['00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-00000
     for(const [i,id] of ids.entries()){
       const context=await browser.newContext({serviceWorkers:'block',timezoneId:'UTC',viewport:i?{width:390,height:844}:{width:1366,height:768}});
       await context.route('**/*',route=>new URL(route.request().url()).origin===new URL(base).origin?route.continue():route.abort());
-      await context.addInitScript(id=>{window.EstudiemosAccount={getUser:()=>({id}),getSession:()=>({access_token:id}),getClient:()=>null,whenReady:async()=>{},open:()=>{}};localStorage.setItem('estudiemos_theme','dark');},id);
+      await context.addInitScript(id=>{window.EstudiemosAccount={getUser:()=>({id}),getSession:()=>({access_token:id}),getClient:()=>null,whenReady:async()=>({session:{user:{id}}}),isSynchronized:()=>true,open:()=>{}};localStorage.setItem('estudiemos_theme','dark');localStorage.setItem('estudiemos_pomodoro_streak',JSON.stringify({days:{},goal:{minutes:25,updatedAt:1}}));Object.defineProperty(navigator,'clipboard',{value:{writeText:async text=>{window.copiedInvitation=text;}}});Object.defineProperty(navigator,'share',{writable:true,value:async data=>{window.sharedInvitation=data;}});},id);
       const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));await page.goto(base);await page.locator('[data-friends-open]').click();await page.locator('[data-content]').waitFor({state:'visible'});pages.push(page);
     }
     const [alice,bob]=pages;
@@ -47,6 +52,15 @@ const ids=['00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-00000
     await bob.getByRole('button',{name:'Cerrar amigos',exact:true}).click();
     await alice.getByRole('button',{name:'Agregar amigos',exact:true}).click();
     assert.equal(await alice.locator('[data-invite-form],#friendInvite,.friends-paste').count(),0,'links are handled automatically, with no paste form');
+    await alice.locator('[data-copy]').click();await alice.getByText('Invitación copiada.',{exact:false}).waitFor();
+    const copied=await alice.evaluate(()=>window.copiedInvitation);
+    assert.match(copied,/¡Estudiemos juntos! Te invito a ser mi amigo en Estudiemos/);assert.match(copied,/\/amistad\/[a-f0-9]{32}$/);
+    await alice.locator('[data-native-share]').click();
+    const shared=await alice.evaluate(()=>window.sharedInvitation);assert.equal(shared.title,'Solicitud de amistad en Estudiemos');assert.ok(copied.endsWith(shared.url));assert.ok(copied.startsWith(shared.text));
+    await alice.evaluate(()=>{navigator.share=async()=>{throw new DOMException('Canceled','AbortError');};window.copiedInvitation=null;});
+    await alice.locator('[data-native-share]').click();assert.equal(await alice.evaluate(()=>window.copiedInvitation),null,'canceling native share never copies or sends an invitation');
+    await alice.evaluate(()=>{navigator.clipboard.writeText=async()=>{throw new Error('Denied');};});
+    await alice.locator('[data-copy]').click();await alice.locator('[data-invitation-fallback]').waitFor();assert.equal(await alice.locator('[data-invitation-fallback]').inputValue(),copied);
     await alice.locator('#friendContact').fill('STUDENT2@example.test');
     await alice.locator('[data-contact-form]').getByRole('button',{name:'Enviar solicitud',exact:true}).click();
     await alice.getByText('Si corresponde a una cuenta confirmada',{exact:false}).waitFor();
@@ -69,6 +83,15 @@ const ids=['00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-00000
     await bob.locator('[data-back]').click();
     await alice.getByRole('button',{name:'Mi nombre y privacidad',exact:true}).click();await alice.locator('#friendName').fill('alex');await alice.locator('[data-share]').check();await alice.getByRole('button',{name:'Guardar cambios'}).click();await alice.getByText('Nombre y privacidad guardados.').waitFor();await alice.locator('[data-back]').click();
     const link=await alice.locator('[data-my-link]').inputValue();
+    const token=new URL(link).pathname.split('/').pop(),legacyLink=base+'#friend='+token;
+    const preview=await (await fetch(link,{headers:{'User-Agent':'facebookexternalhit/1.1'}})).text();
+    assert.match(preview,/og:title" content="Solicitud de amistad en Estudiemos/);assert.ok(preview.includes('https://estudiemos-app.vercel.app/amistad/'+token));
+    const noJSContext=await browser.newContext({javaScriptEnabled:false,viewport:{width:390,height:844}}),noJS=await noJSContext.newPage();
+    await noJS.goto(link);assert.equal(await noJS.title(),'Solicitud de amistad en Estudiemos');
+    assert.equal(await noJS.locator('[data-invitation-open]').getAttribute('href'),'/#friend='+token);
+    assert.ok(await noJS.locator('body').evaluate(el=>el.scrollWidth<=innerWidth),'invitation fallback fits mobile');
+    await noJS.screenshot({path:path.join(output,'invitation-fallback-mobile.png')});await noJSContext.close();
+    assert.equal((await db.query('select count(*)::int as n from friend_links')).rows[0].n,0,'preview crawlers cannot create a request');
     await bob.goto(link);await bob.getByText('Solicitud enviada. Tu amigo tiene que aceptarla.',{exact:true}).waitFor();
     assert.equal(await bob.locator('[data-outgoing] .friends-request').count(),1,'opening an invitation automatically creates a request');
     assert.equal(await bob.evaluate(()=>localStorage.getItem('estudiemos_friend_invite_v2')),null,'success consumes pending invite');
@@ -93,7 +116,7 @@ const ids=['00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-00000
     await bob.getByRole('button',{name:'Cerrar amigos',exact:true}).click();assert.equal(await bob.locator('.friends-dialog').isVisible(),false);
     const guestContext=await browser.newContext({serviceWorkers:'block',viewport:{width:390,height:844}});
     await guestContext.route('**/*',route=>new URL(route.request().url()).origin===new URL(base).origin?route.continue():route.abort());
-    await guestContext.addInitScript(()=>{window.EstudiemosAccount={getUser:()=>null,getSession:()=>null,whenReady:async()=>{},getClient:()=>null,open:()=>{}};});
+    await guestContext.addInitScript(()=>{window.EstudiemosAccount={getUser:()=>null,getSession:()=>null,whenReady:async()=>({session:null}),getClient:()=>null,open:()=>{}};localStorage.setItem('estudiemos_pomodoro_streak',JSON.stringify({days:{},goal:{minutes:25,updatedAt:1}}));});
     await db.query('delete from friend_links');
     const guest=await guestContext.newPage();guest.on('pageerror',e=>errors.push(e.message));await guest.goto(link);await guest.getByRole('button',{name:'Iniciar sesión',exact:true}).waitFor();
     assert.ok(!guest.url().includes('friend='),'invitation is removed from the address bar');
@@ -105,11 +128,11 @@ const ids=['00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-00000
     await guest.getByRole('button',{name:'Cancelar',exact:true}).click();await guest.getByText('Solicitud cancelada.',{exact:true}).waitFor();
     // Retry retains the invitation if the request fails, but not after a successful retry.
     await guest.route('**/api/account-config?friends=1',route=>route.request().postDataJSON()?.action==='request'?route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({message:'Conexión interrumpida.'})}):route.continue());
-    await guest.evaluate(url=>{location.hash=new URL(url).hash;},link);await guest.getByText('Conexión interrumpida.',{exact:true}).waitFor();
+    await guest.evaluate(url=>{location.hash=new URL(url).hash;},legacyLink);await guest.getByText('Conexión interrumpida.',{exact:true}).waitFor();
     assert.ok(await guest.evaluate(()=>localStorage.getItem('estudiemos_friend_invite_v2')));
     await guest.unroute('**/api/account-config?friends=1');await guest.getByRole('button',{name:'Volver a intentar'}).click();await guest.getByText('Solicitud enviada. Tu amigo tiene que aceptarla.',{exact:true}).waitFor();
     assert.equal(await guest.evaluate(()=>localStorage.getItem('estudiemos_friend_invite_v2')),null);
-    const ownLink=await guest.locator('[data-my-link]').inputValue();await guest.evaluate(url=>{location.hash=new URL(url).hash;},ownLink);await guest.getByText('Este es tu propio enlace.',{exact:false}).waitFor();
+    const ownLink=await guest.locator('[data-my-link]').inputValue();await guest.evaluate(url=>{location.hash='friend='+new URL(url).pathname.split('/').pop();},ownLink);await guest.getByText('Este es tu propio enlace.',{exact:false}).waitFor();
     assert.equal(await guest.evaluate(()=>localStorage.getItem('estudiemos_friend_invite_v2')),null);
     await guest.evaluate(()=>{location.hash='friend='+'0'.repeat(32);});await guest.locator('[data-status].is-error').waitFor();assert.equal(await guest.evaluate(()=>localStorage.getItem('estudiemos_friend_invite_v2')),null,'invalid token is not retried forever');
     const lateId='00000000-0000-4000-8000-000000000003';ids.push(lateId);await db.query('insert into auth.users(id) values($1)',[lateId]);
@@ -118,14 +141,14 @@ const ids=['00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-00000
       if(url.pathname==='/fixture.html')return route.fulfill({contentType:'text/html; charset=utf-8',body:'<!doctype html><html><head><meta charset="utf-8"></head><body><nav class="topbar__nav"></nav><script src="/scripts/page-shell.js"></script><script src="/scripts/friends.js"></script></body></html>'});
       return url.origin===new URL(base).origin?route.continue():route.abort();
     });
-    const late=await lateContext.newPage();late.on('pageerror',e=>errors.push(e.message));await late.goto(base+'fixture.html'+new URL(link).hash);await late.getByRole('button',{name:'Iniciar sesión',exact:true}).waitFor();
+    const late=await lateContext.newPage();late.on('pageerror',e=>errors.push(e.message));await late.goto(base+'fixture.html'+new URL(legacyLink).hash);await late.getByRole('button',{name:'Iniciar sesión',exact:true}).waitFor();
     await late.evaluate(id=>{window.EstudiemosAccount={getUser:()=>({id}),getSession:()=>({access_token:id}),whenReady:async()=>{}};window.dispatchEvent(new Event('estudiemos:account-ready'));},lateId);
     await late.getByText('Solicitud enviada. Tu amigo tiene que aceptarla.',{exact:true}).waitFor();
     assert.equal(await late.locator('[data-outgoing] .friends-request').count(),1,'account script can arrive after the invitation script');
     // A saved request belongs to its original account, not the next one using this browser.
-    await late.evaluate(({token,userId})=>{localStorage.setItem('estudiemos_friend_invite_v2',JSON.stringify({token,userId,expires:Date.now()+86400000}));window.dispatchEvent(new Event('estudiemos:account-change'));},{token:new URL(link).hash.slice(8),userId:ids[1]});
+    await late.evaluate(({token,userId})=>{localStorage.setItem('estudiemos_friend_invite_v2',JSON.stringify({token,userId,expires:Date.now()+86400000}));window.dispatchEvent(new Event('estudiemos:account-change'));},{token,userId:ids[1]});
     await late.getByText('Volvé a abrir la invitación con esta cuenta.',{exact:true}).waitFor();assert.equal(await late.evaluate(()=>localStorage.getItem('estudiemos_friend_invite_v2')),null);
-    await late.evaluate(token=>{localStorage.setItem('estudiemos_friend_invite_v2',JSON.stringify({token,userId:'',expires:Date.now()-1}));},new URL(link).hash.slice(8));await late.reload();assert.equal(await late.locator('.friends-dialog').isVisible(),false,'expired invites do not reopen or send');
+    await late.evaluate(token=>{localStorage.setItem('estudiemos_friend_invite_v2',JSON.stringify({token,userId:'',expires:Date.now()-1}));},token);await late.reload();assert.equal(await late.locator('.friends-dialog').isVisible(),false,'expired invites do not reopen or send');
     // A populated list stays readable and searchable, including long aliases and private streaks.
     const sqlCall=async(user,action,data={})=>(await db.query('select friends_action($1,$2,$3) as result',[user,action,data])).rows[0].result;
     for(let n=10;n<16;n++){

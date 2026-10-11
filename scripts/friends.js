@@ -2,7 +2,7 @@
   if (window.EstudiemosFriends || location.pathname.endsWith('/widget.html')) return;
   const root = new URL('../', document.currentScript.src);
   const endpoint = new URL('api/account-config?friends=1', root);
-  const css = document.createElement('link'); css.rel='stylesheet'; css.href=new URL('styles/friends.css?v=20261003-identity',root); document.head.append(css);
+  const css = document.createElement('link'); css.rel='stylesheet'; css.href=new URL('styles/friends.css?v=20261010-invitation',root); document.head.append(css);
   const pendingKey='estudiemos_friend_invite_v2';
   let model=null,busy=false,epoch=0,owner='',lastFocus=null,panel='friends',view='all',resumeLogin=false,notice='';
   let memoryPending=null;
@@ -43,7 +43,7 @@
         <form data-contact-form><label for="friendContact">Usuario o correo de tu amigo</label><div class="friends-inline"><input id="friendContact" type="text" maxlength="254" placeholder="@usuario o nombre@correo.com" autocomplete="off" autocapitalize="none" spellcheck="false" required><button type="submit">Enviar solicitud</button></div></form>
         <p class="friends-caption">La solicitud aparece en Amigos de su cuenta de Estudiemos.</p>
         <div class="friends-invite-divider"><span>O compartí tu enlace</span></div><p class="friends-caption">Al abrirlo e iniciar sesión, se envía la solicitud automáticamente. Solo queda aceptarla.</p>
-        <button type="button" class="friends-primary friends-copy" data-copy>${icon('link')} Copiar mi invitación</button><input data-my-link readonly aria-label="Tu enlace de invitación">
+        <div class="friends-share-actions"><button type="button" class="friends-primary friends-copy" data-native-share hidden>${icon('users-round')} Compartir invitación</button><button type="button" class="friends-copy" data-copy>${icon('link')} Copiar mi invitación</button></div><input data-my-link readonly aria-label="Tu enlace de invitación"><textarea data-invitation-fallback readonly aria-label="Mensaje de invitación para copiar" hidden></textarea>
       </section>
       <section data-panel="settings" hidden><h3>Mi nombre y privacidad</h3><form data-profile>
         <label for="friendName">Nombre de usuario</label><input id="friendName" minlength="3" maxlength="25" pattern="@?[A-Za-z0-9_]{3,24}" required autocomplete="nickname" autocapitalize="none" spellcheck="false" aria-describedby="friendUsernameHint" placeholder="@tu_usuario">
@@ -134,7 +134,8 @@
   }
   function draw(){
     q('[data-signed-out]').hidden=true;q('[data-content]').hidden=false;
-    q('#friendName').value=model.me.username||normalizeHandle(model.me.name);q('[data-share]').checked=model.me.share;q('[data-my-link]').value=new URL(`#friend=${model.me.invite}`,root).href;
+    q('#friendName').value=model.me.username||normalizeHandle(model.me.name);q('[data-share]').checked=model.me.share;q('[data-my-link]').value=new URL(`amistad/${model.me.invite}`,root).href;
+    q('[data-invitation-fallback]').hidden=true;
     q('[data-count]').textContent=`${model.friends.length} ${model.friends.length===1?'amigo':'amigos'}`;q('[data-search]').hidden=model.friends.length<6;
     drawList();
     const count=model.incoming.length+model.outgoing.length;q('[data-requests]').hidden=!count;q('[data-request-count]').textContent=String(count);
@@ -156,11 +157,23 @@
   q('[data-refresh]').onclick=()=>{notice='';refresh();};q('[data-retry]').onclick=()=>refresh();
   q('[data-profile]').onsubmit=e=>{e.preventDefault();const username=normalizeHandle(q('#friendName').value);refresh('profile',{name:username,username,share:q('[data-share]').checked,timezone:Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC'},'Nombre y privacidad guardados.');};
   q('[data-contact-form]').onsubmit=e=>{e.preventDefault();const value=q('#friendContact').value.trim();if(value.indexOf('@')>0)refresh('request_email',{email:value});else refresh('request_username',{username:value});};
-  q('[data-copy]').onclick=async()=>{try{await navigator.clipboard.writeText(q('[data-my-link]').value);status('Enlace copiado.');}catch(_){q('[data-my-link]').select();status('Seleccioné tu enlace para que puedas copiarlo.');}};
+  const invitationMessage='¡Estudiemos juntos! Te invito a ser mi amigo en Estudiemos.\nAbrí este enlace para enviar la solicitud:';
+  async function copyInvitation(){
+    const message=invitationMessage+'\n'+q('[data-my-link]').value;
+    try{await navigator.clipboard.writeText(message);status('Invitación copiada. Ya podés enviársela a tu amigo.');}
+    catch(_){const fallback=q('[data-invitation-fallback]');fallback.value=message;fallback.hidden=false;fallback.focus();fallback.select();status('Tu invitación está lista. Copiá este mensaje para enviarlo.');}
+  }
+  q('[data-copy]').onclick=copyInvitation;
+  q('[data-native-share]').hidden=typeof navigator.share!=='function';
+  q('[data-copy]').classList.toggle('friends-primary',typeof navigator.share!=='function');
+  q('[data-native-share]').onclick=async()=>{
+    try{await navigator.share({title:'Solicitud de amistad en Estudiemos',text:invitationMessage,url:q('[data-my-link]').value});}
+    catch(error){if(error.name!=='AbortError')await copyInvitation();}
+  };
   q('[data-rotate]').onclick=()=>{if(confirm('¿Cambiar tu enlace? Los anteriores dejarán de permitir nuevas solicitudes. Tus amigos actuales no cambian.'))refresh('rotate',{},'Enlace de invitación actualizado.');};
   function accountChanged(){
     const next=account()?.getUser()?.id||'';
-    if(next!==owner){owner=next;epoch++;model=null;notice='';lock(false);q('[data-content]').hidden=true;q('[data-list]').replaceChildren();q('#friendName').value='';q('#friendContact').value='';q('[data-my-link]').value='';q('#friendSearch').value='';q('[data-count]').textContent='Tu círculo de estudio';showPanel('friends');status('');}
+    if(next!==owner){owner=next;epoch++;model=null;notice='';lock(false);q('[data-content]').hidden=true;q('[data-list]').replaceChildren();q('#friendName').value='';q('#friendContact').value='';q('[data-my-link]').value='';q('[data-invitation-fallback]').value='';q('[data-invitation-fallback]').hidden=true;q('#friendSearch').value='';q('[data-count]').textContent='Tu círculo de estudio';showPanel('friends');status('');}
     if(next && (resumeLogin||pending())){resumeLogin=false;open();}else if(dialog.open)refresh();
   }
   window.addEventListener('estudiemos:account-change',accountChanged);window.addEventListener('estudiemos:account-ready',accountChanged);
