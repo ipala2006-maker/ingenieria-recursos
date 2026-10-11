@@ -38,7 +38,7 @@
   loadAccountScript();
   if (!document.querySelector('script[data-friends]')) {
     const friends = document.createElement('script'); friends.dataset.friends = '';
-    friends.src = rootPath + 'scripts/friends.js?v=20261010-invitation';
+    friends.src = rootPath + 'scripts/friends.js?v=20261010-install-suggestion';
     document.head.appendChild(friends);
   }
   loadPomodoroScript();
@@ -368,7 +368,7 @@
     if (document.querySelector('script[src*="scripts/install-app.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/install-app.js?v=20261001-bundle`;
+    script.src = `${rootPath}scripts/install-app.js?v=20261010-invitation`;
     script.defer = true;
     document.head.appendChild(script);
   }

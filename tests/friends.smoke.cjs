@@ -65,6 +65,7 @@ const ids=['00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-00000
     await alice.locator('[data-contact-form]').getByRole('button',{name:'Enviar solicitud',exact:true}).click();
     await alice.getByText('Si corresponde a una cuenta confirmada',{exact:false}).waitFor();
     assert.equal(await alice.locator('[data-outgoing] .friends-request').count(),1);
+    assert.equal(await alice.locator('[data-install-suggestion]').isVisible(),false,'manual contact requests do not interrupt with an install suggestion');
     await bob.locator('[data-friends-open]').click();await bob.locator('[data-incoming] .friends-request').waitFor();
     assert.equal(await bob.locator('[data-incoming] .friends-request').count(),1,'email request arrives in the recipient app without a link or manual refresh');
     await bob.locator('[data-incoming]').getByRole('button',{name:'Aceptar',exact:true}).waitFor();
@@ -93,9 +94,16 @@ const ids=['00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-00000
     await noJS.screenshot({path:path.join(output,'invitation-fallback-mobile.png')});await noJSContext.close();
     assert.equal((await db.query('select count(*)::int as n from friend_links')).rows[0].n,0,'preview crawlers cannot create a request');
     await bob.goto(link);await bob.getByText('Solicitud enviada. Tu amigo tiene que aceptarla.',{exact:true}).waitFor();
+    await bob.locator('[data-install-suggestion]').waitFor();
+    await bob.screenshot({path:path.join(output,'friend-install-suggestion-mobile.png')});
+    await bob.setViewportSize({width:320,height:640});assert.ok(await bob.locator('.friends-dialog').evaluate(el=>el.scrollWidth<=el.clientWidth+1));
+    await bob.screenshot({path:path.join(output,'friend-install-suggestion-320.png')});await bob.setViewportSize({width:390,height:844});
+    await bob.getByRole('button',{name:'Ahora no',exact:true}).click();assert.equal(await bob.locator('[data-install-suggestion]').isVisible(),false);
+    assert.equal(await bob.evaluate(id=>localStorage.getItem('estudiemos_friend_install_v1:'+id),ids[1]),'dismissed');
     assert.equal(await bob.locator('[data-outgoing] .friends-request').count(),1,'opening an invitation automatically creates a request');
     assert.equal(await bob.evaluate(()=>localStorage.getItem('estudiemos_friend_invite_v2')),null,'success consumes pending invite');
     await bob.goto(link);await bob.getByText('Esta invitación ya estaba procesada.',{exact:false}).waitFor();
+    assert.equal(await bob.locator('[data-install-suggestion]').isVisible(),false,'reopening the same link does not insist on installation');
     assert.equal((await db.query('select count(*)::int as n from friend_links')).rows[0].n,1,'repeat opens are idempotent');
     await alice.locator('[data-refresh]').click();await alice.getByRole('button',{name:'Aceptar',exact:true}).click();await alice.getByText('Solicitud aceptada.',{exact:true}).waitFor();
     await bob.locator('[data-refresh]').click();await bob.locator('[data-list]').getByText('1 día de racha',{exact:true}).waitFor();
@@ -114,7 +122,7 @@ const ids=['00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-00000
     await bob.getByRole('button',{name:'Iniciar sesión',exact:true}).waitFor();
     assert.equal(await bob.locator('[data-content]').isVisible(),false,'logout hides all prior-account data');
     await bob.getByRole('button',{name:'Cerrar amigos',exact:true}).click();assert.equal(await bob.locator('.friends-dialog').isVisible(),false);
-    const guestContext=await browser.newContext({serviceWorkers:'block',viewport:{width:390,height:844}});
+    const guestContext=await browser.newContext({serviceWorkers:'block',viewport:{width:390,height:844},userAgent:'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140.0.0.0 Safari/537.36'});
     await guestContext.route('**/*',route=>new URL(route.request().url()).origin===new URL(base).origin?route.continue():route.abort());
     await guestContext.addInitScript(()=>{window.EstudiemosAccount={getUser:()=>null,getSession:()=>null,whenReady:async()=>({session:null}),getClient:()=>null,open:()=>{}};localStorage.setItem('estudiemos_pomodoro_streak',JSON.stringify({days:{},goal:{minutes:25,updatedAt:1}}));});
     await db.query('delete from friend_links');
@@ -125,6 +133,13 @@ const ids=['00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-00000
     await guest.evaluate(id=>{window.EstudiemosAccount.getUser=()=>({id});window.EstudiemosAccount.getSession=()=>({access_token:id});window.dispatchEvent(new CustomEvent('estudiemos:account-ready'));},ids[1]);
     await guest.getByText('Solicitud enviada. Tu amigo tiene que aceptarla.',{exact:true}).waitFor();
     assert.equal(await guest.locator('[data-outgoing] .friends-request').count(),1,'invite survives reload and account-ready resumes after login');
+    await guest.locator('[data-install-suggestion]').waitFor();
+    await guest.route('**/downloads/Estudiemos-Para-Windows.exe',route=>route.fulfill({contentType:'application/octet-stream',headers:{'Content-Disposition':'attachment; filename="Estudiemos-Para-Windows.exe"'},body:'Disposable installer fixture; never run.'}));
+    const downloaded=guest.waitForEvent('download');downloaded.catch(()=>{});await guest.locator('[data-friend-install]').click();await downloaded;
+    await guest.getByText('Incluye la app, los widgets y el soporte de alarmas.',{exact:false}).waitFor();
+    assert.equal(await guest.locator('.friends-dialog').isVisible(),false,'install guide is not hidden under the friends modal');
+    assert.equal((await db.query('select count(*)::int as n from friend_links')).rows[0].n,1,'the request stays saved after choosing installation');
+    await guest.getByRole('button',{name:'Entendido',exact:true}).click();await guest.locator('[data-friends-open]').click();await guest.locator('[data-outgoing] .friends-request').waitFor();
     await guest.getByRole('button',{name:'Cancelar',exact:true}).click();await guest.getByText('Solicitud cancelada.',{exact:true}).waitFor();
     // Retry retains the invitation if the request fails, but not after a successful retry.
     await guest.route('**/api/account-config?friends=1',route=>route.request().postDataJSON()?.action==='request'?route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({message:'Conexión interrumpida.'})}):route.continue());
@@ -159,7 +174,26 @@ const ids=['00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-00000
     await alice.locator('[data-back]').click();await alice.locator('[data-refresh]').click();await alice.locator('[data-search]').waitFor({state:'visible'});
     await alice.screenshot({path:path.join(output,'friends-populated-desktop.png')});await alice.locator('#friendSearch').fill('Fernández');assert.equal(await alice.locator('.friends-row').count(),1);await alice.locator('#friendSearch').fill('');
     await alice.setViewportSize({width:320,height:640});await alice.screenshot({path:path.join(output,'friends-populated-mobile.png')});assert.ok(await alice.locator('.friends-dialog').evaluate(el=>el.scrollWidth<=el.clientWidth+1));
-    assert.deepEqual(errors,[]);console.log('PASS: automatic link, idempotency, sign-in/reload, late account-ready, account binding, expiry, hashchange, retry, invalid/self links, acceptance, ranking privacy, populated search, desktop/mobile/light.');
+    for(const [n,platform,userAgent] of [
+      [50,'iphone','Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1'],
+      [51,'android','Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 Chrome/140.0.0.0 Mobile Safari/537.36']
+    ]){
+      const id=`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`;ids.push(id);await db.query('insert into auth.users values($1,$2,now())',[id,platform+'@example.test']);
+      const context=await browser.newContext({serviceWorkers:'block',viewport:{width:390,height:844},userAgent});
+      await context.route('**/*',route=>new URL(route.request().url()).origin===new URL(base).origin?route.continue():route.abort());
+      await context.addInitScript(({id,platform})=>{window.EstudiemosAccount={getUser:()=>({id}),getSession:()=>({access_token:id}),getClient:()=>null,whenReady:async()=>({session:{user:{id}}}),isSynchronized:()=>true,open:()=>{}};localStorage.setItem('estudiemos_theme','dark');localStorage.setItem('estudiemos_pomodoro_streak',JSON.stringify({days:{},goal:{minutes:25,updatedAt:1}}));if(platform==='android')Object.defineProperty(document,'referrer',{get:()=> 'android-app://com.whatsapp'});},{id,platform});
+      const page=await context.newPage();let downloads=0;page.on('download',()=>downloads++);page.on('pageerror',e=>errors.push(e.message));
+      await page.goto(link);await page.getByText('Solicitud enviada. Tu amigo tiene que aceptarla.',{exact:true}).waitFor();await page.locator('[data-install-suggestion]').waitFor();
+      assert.equal(downloads,0,'opening an invitation cannot download an installer');assert.ok(await page.locator('.friends-dialog').evaluate(el=>el.scrollWidth<=el.clientWidth+1));
+      await page.screenshot({path:path.join(output,'friend-install-suggestion-'+platform+'.png')});
+      if(platform==='iphone'){
+        await page.locator('[data-friend-install]').click();await page.getByText('En iPhone no se descarga desde App Store.',{exact:false}).waitFor();
+        assert.equal(await page.locator('.friends-dialog').isVisible(),false);assert.equal(downloads,0,'iPhone shows the Safari guide, not a Windows/Android download');
+        await page.screenshot({path:path.join(output,'friend-install-iphone-guide.png')});
+      }
+      await context.close();
+    }
+    assert.deepEqual(errors,[]);console.log('PASS: automatic link, sign-in/reload, requests/privacy, install suggestion/dismissal, Windows explicit package, iPhone guide, Android browser, mobile/light.');
   }catch(error){
     for(const [i,context] of (browser?.contexts()||[]).entries())for(const page of context.pages()){
       await page.screenshot({path:path.join(output,`failure-${i}.png`)}).catch(()=>{});

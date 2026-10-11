@@ -139,7 +139,7 @@
   function isInstalledContext() {
     return isNativeAndroidApp()
       || window.navigator.standalone === true
-      || document.referrer.startsWith("android-app://")
+      || /^android-app:\/\/com\.estudiemos\.app(?:\/|$)/.test(document.referrer)
       || ["standalone", "window-controls-overlay", "fullscreen"].some((mode) => window.matchMedia(`(display-mode: ${mode})`).matches);
   }
 
