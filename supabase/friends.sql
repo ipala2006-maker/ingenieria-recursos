@@ -64,8 +64,8 @@ returns jsonb language plpgsql security definer set search_path='' as $$
 declare target uuid; mine jsonb; people jsonb; incoming jsonb; outgoing jsonb; blocked jsonb; zone text; target_email text; handle text;
 begin
   if not exists(select 1 from auth.users where id=p_user) then raise exception 'AUTH_REQUIRED'; end if;
-  if p_action not in ('list','profile','request','request_email','request_username','accept','decline','remove','block','unblock','rotate') then raise exception 'INVALID_ACTION'; end if;
-  if p_action='request' then
+  if p_action not in ('list','profile','request','accept_invite','request_email','request_username','accept','decline','remove','block','unblock','rotate') then raise exception 'INVALID_ACTION'; end if;
+  if p_action in ('request','accept_invite') then
     select user_id into target from public.friend_profiles where invite=p_data->>'invite';
     if target is null or target=p_user then raise exception 'INVALID_INVITE'; end if;
   elsif p_action='request_email' then
@@ -121,12 +121,16 @@ begin
     update public.friend_profiles set name=trim(p_data->>'name'),share_streak=(p_data->>'share')::boolean,timezone=zone where user_id=p_user;
   elsif p_action='rotate' then
     update public.friend_profiles set invite=replace(gen_random_uuid()::text,'-','') where user_id=p_user;
-  elsif p_action in ('request','request_email','request_username','accept') and target is not null then
+  elsif p_action in ('request','accept_invite','request_email','request_username','accept') and target is not null then
     if exists(select 1 from public.friend_blocks where (owner=p_user and friend_blocks.blocked=target) or (owner=target and friend_blocks.blocked=p_user)) then raise exception 'INVALID_INVITE'; end if;
-    if p_action in ('request','request_email','request_username') and not exists(select 1 from public.friend_links where (sender=p_user and recipient=target) or (sender=target and recipient=p_user))
+    if p_action in ('request','accept_invite','request_email','request_username') and not exists(select 1 from public.friend_links where (sender=p_user and recipient=target) or (sender=target and recipient=p_user))
       and ((select count(*) from public.friend_links where sender=p_user or recipient=p_user)>=100
       or (select count(*) from public.friend_links where sender=target or recipient=target)>=100) then raise exception 'FRIEND_LIMIT'; end if;
-    if p_action in ('request','request_email','request_username') then
+    if p_action in ('request','accept_invite') then
+      -- The private link is the owner's invitation; opening it is the recipient's consent.
+      insert into public.friend_links(sender,recipient,accepted) values(target,p_user,true)
+        on conflict (least(sender,recipient),greatest(sender,recipient)) do update set accepted=true;
+    elsif p_action in ('request_email','request_username') then
       insert into public.friend_links(sender,recipient) values(p_user,target) on conflict do nothing;
     else
       update public.friend_links set accepted=true where sender=target and recipient=p_user and not accepted;

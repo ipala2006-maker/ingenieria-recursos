@@ -1,6 +1,6 @@
 const { authenticateBearer, adminRequest } = require('./supabase-admin');
 const { setSecurityHeaders, isSameOriginRequest, requireJsonRequest, rejectOversizedBody, enforceRateLimit } = require('./request-security');
-const actions = new Set(['profile','request','request_email','request_username','accept','decline','remove','block','unblock','rotate']);
+const actions = new Set(['profile','request','accept_invite','request_email','request_username','accept','decline','remove','block','unblock','rotate']);
 const normalizeUsername=value=>value.trim().toLowerCase().replace(/^@/,'');
 const errors = {
   TOO_MANY_ACTIONS:'Hiciste varios cambios seguidos. Esperá un minuto e intentá de nuevo.',
@@ -37,7 +37,7 @@ module.exports = async function friends(request,response) {
       data.username=normalizeUsername(body.username);
       if(data.username && !/^[a-z0-9_]{3,24}$/.test(data.username)) return response.status(400).json({message:errors.INVALID_USERNAME});
     }
-  } else if(action==='request') {
+  } else if(action==='request'||action==='accept_invite') {
     if(typeof body.invite!=='string' || !/^[a-f0-9]{32}$/.test(body.invite)) return response.status(400).json({message:errors.INVALID_INVITE});
     data.invite=body.invite;
   } else if(action==='request_email') {
@@ -51,7 +51,7 @@ module.exports = async function friends(request,response) {
     data.id=body.id;
   }
   try {
-    const result=await adminRequest('/rest/v1/rpc/friends_action',{method:'POST',body:JSON.stringify({p_user:user.id,p_action:action,p_data:data})});
+    const result=await adminRequest('/rest/v1/rpc/friends_action',{method:'POST',body:JSON.stringify({p_user:user.id,p_action:action==='request'?'accept_invite':action,p_data:data})});
     return response.status(200).json(result);
   } catch(error) {
     if(['TOO_MANY_ACTIONS','EMAIL_REQUEST_LIMIT'].includes(error.message)) {
