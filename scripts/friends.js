@@ -2,10 +2,11 @@
   if (window.EstudiemosFriends || location.pathname.endsWith('/widget.html')) return;
   const root = new URL('../', document.currentScript.src);
   const endpoint = new URL('api/account-config?friends=1', root);
-  const css = document.createElement('link'); css.rel='stylesheet'; css.href=new URL('styles/friends.css?v=20261010-invitation',root); document.head.append(css);
+  const css = document.createElement('link'); css.rel='stylesheet'; css.href=new URL('styles/friends.css?v=20261010-install-suggestion',root); document.head.append(css);
   const pendingKey='estudiemos_friend_invite_v2';
   let model=null,busy=false,epoch=0,owner='',lastFocus=null,panel='friends',view='all',resumeLogin=false,notice='';
   let memoryPending=null;
+  let installSuggested=false;
   function account(){return window.EstudiemosAccount;}
   function pending(){
     try{memoryPending=JSON.parse(localStorage.getItem(pendingKey));}catch(_){}
@@ -51,7 +52,12 @@
         <label class="friends-toggle"><span>Compartir mi racha<small>Solo con amigos aceptados. Podés ocultarla cuando quieras.</small></span><input type="checkbox" role="switch" data-share></label>
         <button type="submit">Guardar cambios</button><button type="button" data-rotate>Cambiar enlace de invitación</button>
       </form><div data-blocked></div></section>
-      <section data-panel="friends"><section data-requests hidden><h3>Solicitudes <span data-request-count></span></h3><div data-incoming></div><div data-outgoing></div></section>
+      <section data-panel="friends">
+        <section class="friends-install-suggestion" data-install-suggestion hidden aria-labelledby="friendInstallTitle">
+          <img src="${new URL('assets/icon-192.png',root)}" alt="" width="40" height="40">
+          <div><h3 id="friendInstallTitle">Llevá Estudiemos con vos</h3><p>Tu grupo de estudio, también en tu pantalla de inicio.</p><div class="friends-install-actions"><button type="button" class="friends-primary" data-friend-install>Instalar Estudiemos</button><button type="button" data-friend-install-later>Ahora no</button></div></div>
+        </section>
+        <section data-requests hidden><h3>Solicitudes <span data-request-count></span></h3><div data-incoming></div><div data-outgoing></div></section>
         <div class="friends-section-head"><div class="friends-views" role="group" aria-label="Vista de amigos"><button type="button" data-view="all" aria-pressed="true">Todos</button><button type="button" data-view="ranking" aria-pressed="false">Ranking</button></div><button type="button" class="friends-icon" data-refresh aria-label="Actualizar amigos" title="Actualizar">${icon('refresh-cw')}</button></div>
         <label data-search hidden>Buscar amigos<input id="friendSearch" type="search" placeholder="Nombre o @usuario" autocomplete="off"></label>
         <p class="friends-caption" data-ranking-caption hidden>Días consecutivos · Solo rachas compartidas</p><ol class="friends-list" data-list></ol>
@@ -59,6 +65,18 @@
     </div>`;
   document.body.append(dialog);
   const q=s=>dialog.querySelector(s);
+  function updateInstallSuggestion(){
+    const user=account()?.getUser()?.id;
+    let dismissed=false;try{dismissed=Boolean(localStorage.getItem('estudiemos_friend_install_v1:'+user));}catch(_){}
+    const installed=document.documentElement.classList.contains('app-installed')||navigator.standalone===true||Boolean(window.EstudiemosAndroid&&typeof window.EstudiemosAndroid.postMessage==='function')||/^android-app:\/\/com\.estudiemos\.app(?:\/|$)/.test(document.referrer)||['standalone','window-controls-overlay','fullscreen'].some(mode=>matchMedia(`(display-mode: ${mode})`).matches);
+    q('[data-install-suggestion]').hidden=!installSuggested||!user||dismissed||installed;
+  }
+  function dismissInstallSuggestion(){
+    installSuggested=false;
+    const user=account()?.getUser()?.id;
+    if(user)try{localStorage.setItem('estudiemos_friend_install_v1:'+user,'dismissed');}catch(_){}
+    q('[data-install-suggestion]').hidden=true;
+  }
   const status=(value,error=false)=>{q('[data-status]').textContent=value;q('[data-status]').hidden=!value;q('[data-status]').classList.toggle('is-error',error);q('[data-retry]').hidden=!error;};
   const text=(tag,value,className)=>{const node=document.createElement(tag);node.textContent=value;if(className)node.className=className;return node;};
   const button=(label,callback)=>{const b=text('button',label);b.type='button';b.disabled=busy;b.addEventListener('click',callback);return b;};
@@ -91,7 +109,8 @@
           try{result=await call('request',{invite:invitation.token});}catch(error){if(error.status===400)clearPending(invitation.token);throw error;}
           if(current!==epoch || account()?.getUser()?.id!==user)return;
           clearPending(invitation.token);showPanel('friends');
-          notice=result.outgoing.some(p=>!previous.has(p.id))?'Solicitud enviada. Tu amigo tiene que aceptarla.':'Esta invitación ya estaba procesada. Revisá tus amigos y solicitudes.';
+          installSuggested=result.outgoing.some(p=>!previous.has(p.id));
+          notice=installSuggested?'Solicitud enviada. Tu amigo tiene que aceptarla.':'Esta invitación ya estaba procesada. Revisá tus amigos y solicitudes.';
         }
       }
       if(message)notice=message;
@@ -134,6 +153,7 @@
   }
   function draw(){
     q('[data-signed-out]').hidden=true;q('[data-content]').hidden=false;
+    updateInstallSuggestion();
     q('#friendName').value=model.me.username||normalizeHandle(model.me.name);q('[data-share]').checked=model.me.share;q('[data-my-link]').value=new URL(`amistad/${model.me.invite}`,root).href;
     q('[data-invitation-fallback]').hidden=true;
     q('[data-count]').textContent=`${model.friends.length} ${model.friends.length===1?'amigo':'amigos'}`;q('[data-search]').hidden=model.friends.length<6;
@@ -152,6 +172,17 @@
   }
   q('[data-close]').onclick=()=>dialog.close();dialog.addEventListener('close',()=>lastFocus?.focus());
   q('[data-login]').onclick=()=>{resumeLogin=true;dialog.close();account()?.open();};
+  q('[data-friend-install-later]').onclick=()=>{dismissInstallSuggestion();q('[data-refresh]').focus();};
+  q('[data-friend-install]').onclick=()=>{
+    if(!installSuggested||q('[data-install-suggestion]').hidden||busy||!model||account()?.getUser()?.id!==owner)return;
+    const installer=document.querySelector('button[data-app-install]');
+    dismissInstallSuggestion();dialog.close();
+    // Keep the platform-specific installer and its user activation in the same click.
+    if(installer&&!installer.disabled)installer.click();
+    else location.assign(new URL('instalar.html',root).href);
+  };
+  window.addEventListener('appinstalled',dismissInstallSuggestion);
+  ['standalone','window-controls-overlay','fullscreen'].forEach(mode=>matchMedia(`(display-mode: ${mode})`).addEventListener?.('change',updateInstallSuggestion));
   q('[data-invite-toggle]').onclick=()=>showPanel(panel==='invite'?'friends':'invite');q('[data-settings-toggle]').onclick=()=>showPanel(panel==='settings'?'friends':'settings');q('[data-back]').onclick=()=>{notice='';status('');showPanel('friends');};
   dialog.querySelectorAll('[data-view]').forEach(n=>n.onclick=()=>{view=n.dataset.view;drawList();});q('#friendSearch').oninput=drawList;
   q('[data-refresh]').onclick=()=>{notice='';refresh();};q('[data-retry]').onclick=()=>refresh();
@@ -173,7 +204,7 @@
   q('[data-rotate]').onclick=()=>{if(confirm('¿Cambiar tu enlace? Los anteriores dejarán de permitir nuevas solicitudes. Tus amigos actuales no cambian.'))refresh('rotate',{},'Enlace de invitación actualizado.');};
   function accountChanged(){
     const next=account()?.getUser()?.id||'';
-    if(next!==owner){owner=next;epoch++;model=null;notice='';lock(false);q('[data-content]').hidden=true;q('[data-list]').replaceChildren();q('#friendName').value='';q('#friendContact').value='';q('[data-my-link]').value='';q('[data-invitation-fallback]').value='';q('[data-invitation-fallback]').hidden=true;q('#friendSearch').value='';q('[data-count]').textContent='Tu círculo de estudio';showPanel('friends');status('');}
+    if(next!==owner){owner=next;epoch++;model=null;notice='';installSuggested=false;q('[data-install-suggestion]').hidden=true;lock(false);q('[data-content]').hidden=true;q('[data-list]').replaceChildren();q('#friendName').value='';q('#friendContact').value='';q('[data-my-link]').value='';q('[data-invitation-fallback]').value='';q('[data-invitation-fallback]').hidden=true;q('#friendSearch').value='';q('[data-count]').textContent='Tu círculo de estudio';showPanel('friends');status('');}
     if(next && (resumeLogin||pending())){resumeLogin=false;open();}else if(dialog.open)refresh();
   }
   window.addEventListener('estudiemos:account-change',accountChanged);window.addEventListener('estudiemos:account-ready',accountChanged);
