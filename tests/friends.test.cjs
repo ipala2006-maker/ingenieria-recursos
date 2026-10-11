@@ -104,7 +104,7 @@ test('email verification, generic misses, validation and persistent guessing lim
     assert.equal((await call(db,a,'request_email',{email:'student3@example.test'})).outgoing.length,1);
   }finally{await db.close();}
 });
-test('friends require acceptance; privacy applies in SQL, including hiding again and removal',async()=>{
+test('contact requests require recipient acceptance; privacy applies in SQL, including hiding again and removal',async()=>{
   const db=await database();try{
     const [a,b,c]=ids;
     const alice=await call(db,a),bob=await call(db,b);
@@ -112,11 +112,11 @@ test('friends require acceptance; privacy applies in SQL, including hiding again
     await call(db,b,'profile',{name:'Bob',share:true,timezone:'UTC'});
     const rows=(await db.query("select to_char((now() at time zone 'UTC')::date-i,'YYYY-MM-DD') as day from generate_series(0,2)i")).rows;
     await db.query('insert into user_states values($1,$2)',[b,{values:{estudiemos_pomodoro_streak:JSON.stringify({days:Object.fromEntries(rows.map(r=>[r.day,25]))}),bandeja_agenda:[{title:'PRIVATE'}]}}]);
-    let result=await call(db,a,'request',{invite:bob.me.invite});
+    let result=await call(db,a,'request_email',{email:'student2@example.test'});
     assert.equal(result.outgoing.length,1);assert.deepEqual(result.friends,[]);assert.ok(!JSON.stringify(result).includes('streak":3'));
     await assert.rejects(call(db,a,'accept',{id:b}),/REQUEST_NOT_FOUND/);
     await assert.rejects(call(db,c,'accept',{id:a}),/REQUEST_NOT_FOUND/);
-    await call(db,b,'request',{invite:alice.me.invite});
+    await call(db,b,'request_email',{email:'student1@example.test'});
     assert.equal((await call(db,b)).incoming.length,1,'reciprocal request does not silently accept');
     await call(db,b,'accept',{id:a});
     result=await call(db,a);assert.equal(result.friends[0].streak,3);assert.equal(result.friends[0].name,'Bob');
@@ -143,12 +143,88 @@ test('block, unblock, cancellation and link rotation preserve control without di
     assert.deepEqual((await call(db,a)).blocked,[]);
     assert.equal((await call(db,b)).blocked[0].id,a);
     await call(db,b,'unblock',{id:a});
-    await call(db,a,'request',{invite:bob.me.invite});await call(db,a,'decline',{id:b});
+    await call(db,a,'request_email',{email:'student2@example.test'});await call(db,a,'decline',{id:b});
     assert.deepEqual((await call(db,b)).incoming,[]);
     const rotated=await call(db,b,'rotate');assert.notEqual(rotated.me.invite,bob.me.invite);
     await assert.rejects(call(db,a,'request',{invite:bob.me.invite}),/INVALID_INVITE/);
     await call(db,a,'request',{invite:rotated.me.invite});
-    assert.equal((await call(db,b)).incoming.length,1);
+    assert.equal((await call(db,b)).friends[0].id,a);
+    assert.deepEqual((await call(db,b)).incoming,[]);
+  }finally{await db.close();}
+});
+
+test('opening a private link accepts its owner invitation, without either person receiving a new request',async()=>{
+  const db=await database();try{
+    const [a,b,c]=ids,alice=await call(db,a);
+    let bob=await call(db,b,'accept_invite',{invite:alice.me.invite,id:c,p_user:c});
+    assert.equal(bob.friends[0].id,a);assert.deepEqual(bob.incoming,[]);assert.deepEqual(bob.outgoing,[]);
+    const result=await call(db,a);
+    assert.equal(result.friends[0].id,b);assert.deepEqual(result.incoming,[]);assert.deepEqual(result.outgoing,[]);
+    assert.deepEqual((await call(db,c)).friends,[],'a forged target cannot redirect the invitation');
+    const link=(await db.query('select sender,recipient,accepted from friend_links')).rows[0];
+    assert.deepEqual(link,{sender:a,recipient:b,accepted:true},'the sharer remains the inviter');
+    await call(db,b,'accept_invite',{invite:alice.me.invite});
+    await call(db,b,'request',{invite:alice.me.invite});
+    assert.equal((await db.query('select count(*)::int as n from friend_links')).rows[0].n,1,'legacy clients and repeats are idempotent');
+    await assert.rejects(call(db,a,'accept',{id:b}),/REQUEST_NOT_FOUND/);
+    await assert.rejects(call(db,b,'accept_invite',{invite:bob.me.invite}),/INVALID_INVITE/);
+    await assert.rejects(call(db,b,'accept_invite',{invite:'0'.repeat(32)}),/INVALID_INVITE/);
+    await assert.rejects(call(db,'00000000-0000-4000-8000-000000000099','accept_invite',{invite:alice.me.invite}),/AUTH_REQUIRED/);
+  }finally{await db.close();}
+});
+
+test('a link resolves an existing pending request in either direction, but contact requests never auto-accept',async()=>{
+  const db=await database();try{
+    const [a,b,c]=ids,alice=await call(db,a);
+    const bob=await call(db,b,'profile',{name:'Bob',username:'bob_studies',share:false,timezone:'UTC'});
+    await call(db,a,'request_username',{username:'bob_studies'});
+    const incoming=await call(db,b,'request_email',{email:'student1@example.test'});
+    assert.equal(incoming.incoming[0].id,a);assert.deepEqual(incoming.friends,[]);
+    assert.deepEqual((await call(db,a)).incoming,[],'sender cannot accept their own contact request');
+    await assert.rejects(call(db,a,'accept',{id:b}),/REQUEST_NOT_FOUND/);
+    const accepted=await call(db,b,'accept_invite',{invite:alice.me.invite});
+    assert.equal(accepted.friends[0].id,a);assert.deepEqual(accepted.incoming,[]);
+    await call(db,a,'remove',{id:b});
+    await call(db,b,'request_email',{email:'student1@example.test'});
+    await call(db,b,'accept_invite',{invite:alice.me.invite});
+    assert.equal((await call(db,a)).friends[0].id,b);assert.deepEqual((await call(db,a)).incoming,[]);
+    assert.equal((await db.query('select count(*)::int as n from friend_links')).rows[0].n,1);
+    await call(db,b,'block',{id:a});
+    await assert.rejects(call(db,b,'accept_invite',{invite:alice.me.invite}),/INVALID_INVITE/);
+    await assert.rejects(call(db,a,'accept_invite',{invite:bob.me.invite}),/INVALID_INVITE/);
+    assert.deepEqual((await call(db,c)).friends,[]);
+  }finally{await db.close();}
+});
+
+test('the incremental migration preserves pending contacts, blocks, profiles and custom daily goals',async()=>{
+  const db=await database();try{
+    const [a,b,c]=ids;
+    await call(db,a,'request_email',{email:'student2@example.test'});
+    await call(db,a,'request_email',{email:'student3@example.test'});await call(db,a,'block',{id:c});
+    const before=await call(db,a);
+    const streak=await db.query("select pg_get_functiondef('public.friend_streak(uuid,text)'::regprocedure) as definition");
+    const migration=fs.readFileSync(path.join(root,'supabase/friend-invite-acceptance.sql'),'utf8');
+    const canonical=fs.readFileSync(path.join(root,'supabase/friends.sql'),'utf8').split('create or replace function public.friends_action(')[1];
+    assert.equal(migration.split('create or replace function public.friends_action(')[1].trim(),canonical.replace(/\r\n/g,'\n').trim(),'incremental and fresh installs use the same action function');
+    await db.exec(migration);await db.exec(migration);
+    assert.deepEqual(await call(db,a),before);
+    assert.deepEqual(await db.query("select pg_get_functiondef('public.friend_streak(uuid,text)'::regprocedure) as definition"),streak);
+    assert.equal((await call(db,b)).incoming[0].id,a);
+  }finally{await db.close();}
+});
+
+test('link acceptance retains friend limits and charges the opener, not the inviter',async()=>{
+  const db=await database();try{
+    const [a,b,c]=ids,alice=await call(db,a);await call(db,b);
+    await db.exec("insert into auth.users(id) select ('00000000-0000-4000-8000-'||lpad(i::text,12,'0'))::uuid from generate_series(100,199)i; insert into friend_profiles(user_id) select id from auth.users on conflict do nothing;");
+    await db.query('insert into friend_links(sender,recipient,accepted) select $1,user_id,true from friend_profiles where user_id not in ($1,$2,$3,$4)',[a,...ids.slice(1)]);
+    await assert.rejects(call(db,b,'accept_invite',{invite:alice.me.invite}),/FRIEND_LIMIT/);
+    await db.query('delete from friend_links where recipient=$1',['00000000-0000-4000-8000-000000000100']);
+    await db.query('update friend_profiles set action_count=20,action_window=now() where user_id=$1',[a]);
+    assert.equal((await call(db,b,'accept_invite',{invite:alice.me.invite})).friends[0].id,a,'inviter rate limit does not stop an invited user');
+    await assert.rejects(call(db,c,'accept_invite',{invite:alice.me.invite}),/FRIEND_LIMIT/);
+    await db.query('update friend_profiles set action_count=20,action_window=now() where user_id=$1',[b]);
+    await assert.rejects(call(db,b,'accept_invite',{invite:alice.me.invite}),/TOO_MANY_ACTIONS/);
   }finally{await db.close();}
 });
 test('streak matches local 25-minute rule, tolerates invalid history, and enforces profile validation and write limits',async()=>{
@@ -176,9 +252,12 @@ test('API authenticates server-side, ignores forged actor and returns only gener
   vm.runInNewContext(fs.readFileSync(path.join(root,'api/_lib/friends.js'),'utf8'),handler);
   const response={status(code){this.code=code;return this;},json(body){this.body=body;return this;}};
   const req={method:'POST',headers:{authorization:'Bearer pilot'},body:{action:'request',invite:'a'.repeat(32),p_user:ids[1],id:ids[1]}};
-  await handler.module.exports(req,response);assert.equal(response.code,200);assert.equal(calls[0].p_user,ids[0]);assert.deepEqual(Object.keys(calls[0].p_data),['invite']);
+  await handler.module.exports(req,response);assert.equal(response.code,200);assert.equal(calls[0].p_user,ids[0]);assert.equal(calls[0].p_action,'accept_invite');assert.deepEqual(Object.keys(calls[0].p_data),['invite']);
   actor=null;await handler.module.exports(req,response);assert.equal(response.code,401);assert.equal(calls.length,1);
   actor=ids[0];req.body.invite='bad';await handler.module.exports(req,response);assert.equal(response.code,400);
+  req.body={action:'accept_invite',invite:'a'.repeat(32),p_user:ids[1],id:ids[1]};
+  await handler.module.exports(req,response);assert.equal(response.code,200);
+  assert.deepEqual(calls.at(-1),{p_user:ids[0],p_action:'accept_invite',p_data:{invite:'a'.repeat(32)}});
   req.body={action:'request_email',email:' STUDENT2@EXAMPLE.TEST ',p_user:ids[1],id:ids[1]};
   await handler.module.exports(req,response);assert.equal(response.code,200);
   assert.deepEqual(calls.at(-1),{p_user:ids[0],p_action:'request_email',p_data:{email:'student2@example.test'}});

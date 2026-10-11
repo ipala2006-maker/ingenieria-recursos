@@ -37,13 +37,13 @@
     <button type="button" class="friends-icon" data-settings-toggle aria-label="Mi nombre y privacidad" title="Mi nombre y privacidad" aria-expanded="false">${icon('settings-2')}</button>
     <button type="button" class="friends-icon" data-close aria-label="Cerrar amigos" title="Cerrar">${icon('x')}</button></div></header>
     <p data-status role="status" aria-live="polite" hidden></p><button type="button" data-retry hidden>Volver a intentar</button>
-    <section data-signed-out hidden><h3>Conectá con tu grupo</h3><p>Iniciá sesión para enviar la solicitud y ver a tus amigos.</p><button type="button" class="friends-primary" data-login>Iniciar sesión</button></section>
+    <section data-signed-out hidden><h3>Conectá con tu grupo</h3><p>Iniciá sesión para conectar con tu amigo y ver tu grupo de estudio.</p><button type="button" class="friends-primary" data-login>Iniciar sesión</button></section>
     <div data-content hidden>
       <button type="button" class="friends-back" data-back hidden>${icon('arrow-left')} Mis amigos</button>
       <section data-panel="invite" hidden><h3>Agregar amigos</h3>
         <form data-contact-form><label for="friendContact">Usuario o correo de tu amigo</label><div class="friends-inline"><input id="friendContact" type="text" maxlength="254" placeholder="@usuario o nombre@correo.com" autocomplete="off" autocapitalize="none" spellcheck="false" required><button type="submit">Enviar solicitud</button></div></form>
         <p class="friends-caption">La solicitud aparece en Amigos de su cuenta de Estudiemos.</p>
-        <div class="friends-invite-divider"><span>O compartí tu enlace</span></div><p class="friends-caption">Al abrirlo e iniciar sesión, se envía la solicitud automáticamente. Solo queda aceptarla.</p>
+        <div class="friends-invite-divider"><span>O compartí tu enlace</span></div><p class="friends-caption">Tu amigo abre el enlace e inicia sesión. Ya quedan conectados, sin otra solicitud.</p>
         <div class="friends-share-actions"><button type="button" class="friends-primary friends-copy" data-native-share hidden>${icon('users-round')} Compartir invitación</button><button type="button" class="friends-copy" data-copy>${icon('link')} Copiar mi invitación</button></div><input data-my-link readonly aria-label="Tu enlace de invitación"><textarea data-invitation-fallback readonly aria-label="Mensaje de invitación para copiar" hidden></textarea>
       </section>
       <section data-panel="settings" hidden><h3>Mi nombre y privacidad</h3><form data-profile>
@@ -104,13 +104,13 @@
         else if(invitation.token===result.me.invite){clearPending(invitation.token);notice='Este es tu propio enlace. Compartilo con otra persona.';showPanel('invite');}
         else {
           // Bind before sending so a pending invitation cannot switch accounts during login.
-          savePending({...invitation,userId:user});status('Enviando solicitud…');
-          const previous=new Set(result.outgoing.map(p=>p.id));
-          try{result=await call('request',{invite:invitation.token});}catch(error){if(error.status===400)clearPending(invitation.token);throw error;}
+          savePending({...invitation,userId:user});status('Aceptando invitación…');
+          const previous=new Set(result.friends.map(p=>p.id));
+          try{result=await call('accept_invite',{invite:invitation.token});}catch(error){if(error.status===400)clearPending(invitation.token);throw error;}
           if(current!==epoch || account()?.getUser()?.id!==user)return;
           clearPending(invitation.token);showPanel('friends');
-          installSuggested=result.outgoing.some(p=>!previous.has(p.id));
-          notice=installSuggested?'Solicitud enviada. Tu amigo tiene que aceptarla.':'Esta invitación ya estaba procesada. Revisá tus amigos y solicitudes.';
+          installSuggested=result.friends.some(p=>!previous.has(p.id));
+          notice=installSuggested?'¡Ya son amigos! La invitación quedó aceptada.':'Ya son amigos. Esta invitación ya estaba aceptada.';
         }
       }
       if(message)notice=message;
@@ -160,7 +160,7 @@
     drawList();
     const count=model.incoming.length+model.outgoing.length;q('[data-requests]').hidden=!count;q('[data-request-count]').textContent=String(count);
     const incoming=q('[data-incoming]'),outgoing=q('[data-outgoing]');incoming.replaceChildren();outgoing.replaceChildren();
-    for(const p of model.incoming){const row=text('div','','friends-request');const actions=text('div','','friends-request-actions');const accept=button('Aceptar',()=>refresh('accept',{id:p.id},'Solicitud aceptada.'));accept.className='friends-primary';const more=document.createElement('details');more.className='friends-row-menu';const summary=text('summary','•••');summary.setAttribute('aria-label',`Opciones de la solicitud de ${p.name}`);more.append(summary,button('Rechazar',()=>refresh('decline',{id:p.id},'Solicitud rechazada.')),button('Bloquear',()=>confirmAction('block',p)));actions.append(accept,more);row.append(avatar(p.name),identity(p),actions);incoming.append(row);}
+    for(const p of model.incoming){const row=text('div','','friends-request');const person=identity(p);person.append(text('span','Te envió una solicitud'));const actions=text('div','','friends-request-actions');const accept=button('Aceptar',()=>refresh('accept',{id:p.id},'Solicitud aceptada.'));accept.className='friends-primary';const more=document.createElement('details');more.className='friends-row-menu';const summary=text('summary','•••');summary.setAttribute('aria-label',`Opciones de la solicitud de ${p.name}`);more.append(summary,button('Rechazar',()=>refresh('decline',{id:p.id},'Solicitud rechazada.')),button('Bloquear',()=>confirmAction('block',p)));actions.append(accept,more);row.append(avatar(p.name),person,actions);incoming.append(row);}
     for(const p of model.outgoing){const row=text('div','','friends-request');const person=identity(p);person.append(text('span','Solicitud enviada'));row.append(avatar(p.name),person,button('Cancelar',()=>refresh('decline',{id:p.id},'Solicitud cancelada.')));outgoing.append(row);}
     const blocked=q('[data-blocked]');blocked.replaceChildren();if(model.blocked.length)blocked.append(text('h3','Bloqueados'));
     for(const p of model.blocked){const row=text('div','','friends-inline');row.append(text('span',p.name),button('Desbloquear',()=>refresh('unblock',{id:p.id},'Usuario desbloqueado.')));blocked.append(row);}
@@ -188,7 +188,7 @@
   q('[data-refresh]').onclick=()=>{notice='';refresh();};q('[data-retry]').onclick=()=>refresh();
   q('[data-profile]').onsubmit=e=>{e.preventDefault();const username=normalizeHandle(q('#friendName').value);refresh('profile',{name:username,username,share:q('[data-share]').checked,timezone:Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC'},'Nombre y privacidad guardados.');};
   q('[data-contact-form]').onsubmit=e=>{e.preventDefault();const value=q('#friendContact').value.trim();if(value.indexOf('@')>0)refresh('request_email',{email:value});else refresh('request_username',{username:value});};
-  const invitationMessage='¡Estudiemos juntos! Te invito a ser mi amigo en Estudiemos.\nAbrí este enlace para enviar la solicitud:';
+  const invitationMessage='¡Estudiemos juntos! Te invito a ser mi amigo en Estudiemos.\nAbrí este enlace e iniciá sesión para aceptar mi invitación:';
   async function copyInvitation(){
     const message=invitationMessage+'\n'+q('[data-my-link]').value;
     try{await navigator.clipboard.writeText(message);status('Invitación copiada. Ya podés enviársela a tu amigo.');}
@@ -201,7 +201,7 @@
     try{await navigator.share({title:'Solicitud de amistad en Estudiemos',text:invitationMessage,url:q('[data-my-link]').value});}
     catch(error){if(error.name!=='AbortError')await copyInvitation();}
   };
-  q('[data-rotate]').onclick=()=>{if(confirm('¿Cambiar tu enlace? Los anteriores dejarán de permitir nuevas solicitudes. Tus amigos actuales no cambian.'))refresh('rotate',{},'Enlace de invitación actualizado.');};
+  q('[data-rotate]').onclick=()=>{if(confirm('¿Cambiar tu enlace? Los anteriores dejarán de permitir nuevas amistades. Tus amigos actuales no cambian.'))refresh('rotate',{},'Enlace de invitación actualizado.');};
   function accountChanged(){
     const next=account()?.getUser()?.id||'';
     if(next!==owner){owner=next;epoch++;model=null;notice='';installSuggested=false;q('[data-install-suggestion]').hidden=true;lock(false);q('[data-content]').hidden=true;q('[data-list]').replaceChildren();q('#friendName').value='';q('#friendContact').value='';q('[data-my-link]').value='';q('[data-invitation-fallback]').value='';q('[data-invitation-fallback]').hidden=true;q('#friendSearch').value='';q('[data-count]').textContent='Tu círculo de estudio';showPanel('friends');status('');}
