@@ -32,7 +32,17 @@ const types={'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg
         if(url.pathname.startsWith('/api/'))return route.fulfill({json:{enabled:false}});
         return route.continue();
       });
+      await context.addInitScript(()=>{
+        window.studyNotices=[];window.closedStudyNotices=[];
+        const registration={scope:location.origin+'/',getNotifications:async()=>window.studyNotices.filter(n=>!n.closed),showNotification:async(title,options)=>{
+          window.studyNotices.push({title,...options,close(){this.closed=true;window.closedStudyNotices.push(this.tag);}});
+        }};
+        class Notification {static permission='granted';static requestPermission=async()=> 'granted';}
+        window.Notification=Notification;
+        Object.defineProperty(navigator,'serviceWorker',{value:{ready:Promise.resolve(registration),register:async()=>registration,getRegistration:async()=>registration,getRegistrations:async()=>[registration],addEventListener(){},controller:null}});
+      });
       const page=await context.newPage(),errors=[];page.on('pageerror',error=>errors.push(error.message));
+      await page.clock.install({time:new Date('2026-10-14T22:29:45Z')});
       await page.goto(base+'/?version='+(process.env.RELEASE_VERSION||'daily-goal'));
       const dialog=page.locator('[data-study-goal-dialog]');
       await dialog.waitFor({state:'visible'});
@@ -42,6 +52,9 @@ const types={'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg
       await page.screenshot({path:path.join(output,`${engine}-${width}-goal.png`)});
       await dialog.locator('[type=submit]').click();
       await dialog.waitFor({state:'hidden'});
+      await page.clock.runFor(60000);
+      await page.waitForFunction(()=>window.studyNotices.length===1);
+      assert.match(await page.evaluate(()=>window.studyNotices[0].body),/15 min/,'pending goals still get reminders');
       assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('estudiemos_pomodoro_streak')).goal.minutes),15);
       assert.match(await page.locator('[data-home-presence]').innerText(),/15 min/);
       await page.reload();await page.waitForFunction(()=>Boolean(window.EstudiemosStudy&&window.EstudiemosAccount));
@@ -54,6 +67,9 @@ const types={'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg
       await dialog.locator('input').fill('45');await dialog.locator('[type=submit]').click();
       assert.match(await page.locator('[data-streak-goal-label]').textContent(),/45/);
       await page.evaluate(()=>{
+        for(const tag of ['estudiemos-streak-2026-10-14-19:30','estudiemos-pomodoro','estudiemos-inbox-pilot'])window.studyNotices.push({tag,close(){this.closed=true;window.closedStudyNotices.push(this.tag);}});
+      });
+      await page.evaluate(()=>{
         const date=window.EstudiemosStudyGoal.dateKey(new Date());
         const state=JSON.parse(localStorage.getItem('estudiemos_pomodoro_streak'));
         state.days[date]=45;localStorage.setItem('estudiemos_pomodoro_streak',JSON.stringify(state));
@@ -61,12 +77,16 @@ const types={'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg
       });
       assert.equal(await page.evaluate(()=>window.EstudiemosStudy.snapshot().todayActive),true);
       assert.equal(await page.evaluate(()=>window.EstudiemosStudy.snapshot().currentStreak),1);
+      await page.waitForFunction(()=>window.closedStudyNotices.includes('estudiemos-streak-2026-10-14-19:30'));
+      assert.equal(await page.evaluate(()=>window.studyNotices.filter(n=>!n.closed).length),2,'only Inbox and Pomodoro notifications remain');
+      await page.clock.fastForward(150*60000);
+      assert.equal(await page.evaluate(()=>window.studyNotices.length),3,'the 22:00 reminder is suppressed after reaching the goal');
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'no horizontal overflow');
       await page.goto(base+'/widget.html?view=streak');
       await page.locator('.widget-streak').waitFor({state:'visible'});
       assert.match(await page.locator('.widget-streak').innerText(),/45 min/);
       assert.deepEqual(errors,[],`${engine} ${width}: no page errors`);
-      console.log(`PASS ${engine} ${width}: onboarding, persistence, edit, completion, widget`);
+      console.log(`PASS ${engine} ${width}: onboarding, persistence, edit, completion, reminder suppression/cleanup, widget`);
       await context.close();
     }
   }finally{if(browser)await browser.close();await new Promise(resolve=>server.close(resolve));}

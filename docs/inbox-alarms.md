@@ -77,6 +77,21 @@ En Windows se ofrece la activacion nativa sin pedir un permiso web que no la
 resolveria. En otras plataformas se solicita el permiso web. No modifica
 permisos del SO ni elimina advertencias de seguridad del instalador.
 
+## Recordatorios Del Objetivo Diario
+
+Los avisos "Momento de estudiar" son distintos de las alarmas de Inbox y del
+final del Pomodoro. Al cumplir el objetivo diario dejan de enviarse y se
+retiran los recordatorios de estudio anteriores; las otras alarmas no se
+cancelan. El dia siguiente vuelve a evaluarse con su propio progreso.
+
+En la web, antes de recordar a una cuenta conectada se espera el inicio de
+sesion y una sincronizacion confirmada. Si falla o esta en curso, se omite ese
+intento en vez de usar progreso viejo de otra pestana o dispositivo. La
+condicion se comprueba tambien despues de esperar al sistema de notificaciones.
+Las pestanas abiertas deben recargarse una vez para incorporar esta correccion.
+Windows conserva su comprobacion nativa del dia local y objetivo personal;
+esta correccion web no exige reinstalar ni volver a conectar las alarmas.
+
 ## Otros Dispositivos
 
 La configuracion se guarda y sincroniza en `bandeja_agenda`. Con la app abierta
