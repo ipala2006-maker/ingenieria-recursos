@@ -58,7 +58,7 @@ test('username validation, verification, removal and shared lookup limit',async(
     assert.deepEqual((await call(db,a,'request_username',{username:'pilot_user'})).outgoing,[]);
     await db.query('update auth.users set email_confirmed_at=now() where id=$1',[b]);
     assert.deepEqual((await call(db,b,'request_username',{username:'pilot_user'})).outgoing,[],'own handle is a no-op');
-    await call(db,b,'profile',{...profile,username:''});assert.equal((await call(db,b)).me.username,null);
+    await call(db,b,'profile',{...profile,username:''});assert.match((await call(db,b)).me.username,/^[a-z]+\d{2,3}$/);
     assert.deepEqual((await call(db,a,'request_username',{username:'pilot_user'})).outgoing,[]);
     for(let i=0;i<8;i++)await call(db,a,'request_email',{email:`missing${i}@example.test`});
     await assert.rejects(call(db,a,'request_username',{username:'missing_user'}),/EMAIL_REQUEST_LIMIT/);

@@ -20,3 +20,18 @@ La imagen se mantiene en `tools/friend-invite-preview.html`. Para regenerarla en
 En una base existente, ejecutar `supabase/friend-invite-acceptance.sql` antes de publicar el cliente actualizado. Reemplaza solo `friends_action`: no borra solicitudes, amistades, bloqueos ni perfiles; tampoco reemplaza la funcion de objetivos diarios. Es idempotente. `accept_invite` es la accion explicita; `request` sigue como alias para clientes anteriores. Una solicitud pendiente entre las mismas cuentas se convierte en amistad al abrir el enlace, en cualquiera de las dos direcciones. Un enlace propio, rotado o bloqueado nunca conecta.
 
 Pruebas: `node --test tests/friend-invitation.test.js tests/friends.test.cjs` y `node tests/friends.smoke.cjs` (tambien `FRIENDS_BROWSER=webkit`).
+
+## Usuarios Automaticos
+
+Un perfil de Amigos sin usuario recibe dos palabras inglesas y dos numeros
+(por ejemplo, `calmorbit42`). Si hay muchas colisiones, el generador puede usar
+tres numeros. El nombre es unico, se guarda en la cuenta y se conserva en
+todos los dispositivos. Se puede cambiar desde Amigos > Mi nombre y privacidad.
+No se genera a partir del correo, telefono ni otros datos personales; no usa IA.
+
+Aplicar `supabase/friend-random-usernames.sql` para actualizar instalaciones
+existentes. Asigna nombres a los perfiles sin usuario y registra el trigger
+para perfiles nuevos, incluidos destinatarios de solicitudes que todavia no
+abrieron Amigos. No cambia nombres elegidos, amistades, enlaces, solicitudes,
+bloqueos, privacidad, horarios ni objetivos diarios. Puede repetirse sin
+regenerar nombres. La funcion del trigger no se puede invocar desde clientes.

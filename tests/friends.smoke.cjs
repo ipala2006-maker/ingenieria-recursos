@@ -46,6 +46,11 @@ const ids=['00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-00000
     }
     const [alice,bob]=pages;
     await bob.getByRole('button',{name:'Mi nombre y privacidad',exact:true}).click();
+    const automaticUsername=await bob.locator('#friendName').inputValue();
+    assert.match(automaticUsername,/^[a-z]+\d{2,3}$/,'unnamed students get a readable English username');
+    await bob.reload();await bob.locator('[data-friends-open]').click();await bob.locator('[data-content]').waitFor({state:'visible'});
+    await bob.getByRole('button',{name:'Mi nombre y privacidad',exact:true}).click();
+    assert.equal(await bob.locator('#friendName').inputValue(),automaticUsername,'the generated username survives reload');
     await bob.locator('#friendName').fill('@BRUNO_ESTUDIA');
     await bob.getByRole('button',{name:'Guardar cambios'}).click();await bob.getByText('Nombre y privacidad guardados.').waitFor();
     await bob.locator('[data-back]').click();
