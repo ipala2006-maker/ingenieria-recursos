@@ -705,10 +705,10 @@
   }
 
   async function synchronize(reason) {
-    if (!client || !session) return;
+    if (!client || !session) return false;
     if (syncing) {
       syncRequested = true;
-      return;
+      return false;
     }
     syncing = true;
     updateSyncLabel("Sincronizando...");
@@ -750,10 +750,12 @@
       updateSyncLabel("Sincronizado");
       updateAccountIndicator(true);
       if (reason === "manual") setStatus("Tus dispositivos ya tienen la misma información.", "success");
+      return true;
     } catch (error) {
       updateSyncLabel("Pendiente de sincronizar");
       updateAccountIndicator(false);
       if (reason === "manual") setStatus("No pudimos sincronizar ahora. Tus datos siguen guardados en este dispositivo.", "error");
+      return false;
     } finally {
       syncing = false;
       if (syncRequested) {

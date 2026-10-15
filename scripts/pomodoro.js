@@ -52,6 +52,9 @@
   let streakChartValues = [];
   let streakChartSelected = -1;
   let streakReminderTimer = 0;
+  let streakReminderBusy = false;
+  let streakReminderCleanupKey = '';
+  const streakReminderNotices = new Set();
   let goalPromptedFor = '';
   let goalReturnFocus = null;
   let goalAutomatic = false;
@@ -497,6 +500,7 @@
         return;
       }
       if (event.key === STREAK_STORAGE_KEY) streakState = loadStreakState();
+      clearCompletedStreakReminders();
       reconcileTimer(false);
       render();
       startTickerIfNeeded();
@@ -525,6 +529,7 @@
     });
     window.addEventListener("estudiemos:cloud-restored", () => {
       streakState = loadStreakState();
+      clearCompletedStreakReminders();
       if (goalAutomatic && goals.read(streakState).configured) document.querySelector('[data-study-goal-dialog]')?.close();
       render();
       syncStreakWithAndroid();
@@ -535,6 +540,8 @@
       const identity = event.detail?.user?.id || 'guest';
       if (identity === goalUserId) return;
       goalUserId = identity;
+      streakReminderCleanupKey = '';
+      clearStreakReminders();
       document.querySelector('[data-study-goal-dialog]')?.close();
       goalPromptedFor = '';
     });
@@ -2049,6 +2056,14 @@
 
   async function showDeviceNotification(title, body, overrides = {}) {
     if (!("Notification" in window) || Notification.permission !== "granted") return false;
+    const relevant = () => !overrides.isRelevant || overrides.isRelevant();
+    if (!relevant()) return false;
+    const showDirect = () => {
+      if (!relevant()) return false;
+      const notification = new Notification(title, options);
+      overrides.onDirect?.(notification);
+      return true;
+    };
     const options = {
       body,
       icon: new URL("../assets/icon-192.png", SCRIPT_URL).href,
@@ -2062,13 +2077,13 @@
     };
     try {
       const registration = serviceWorkerRegistration || await navigator.serviceWorker?.ready;
+      if (!relevant()) return false;
       if (registration) await registration.showNotification(title, options);
-      else new Notification(title, options);
+      else return showDirect();
       return true;
     } catch (error) {
       try {
-        new Notification(title, options);
-        return true;
+        return showDirect();
       } catch (notificationError) {
         return false;
       }
@@ -2113,6 +2128,7 @@
       }));
     } catch (error) {}
     syncStreakWithAndroid();
+    clearCompletedStreakReminders();
   }
 
   function recordStudyPresence(minutes) {
@@ -2393,29 +2409,69 @@
     renderNotificationAlert();
   }
 
-  async function maybeShowStreakReminder() {
-    if (window.EstudiemosAndroid) return;
-    const summary = streakSummary();
-    if (summary.todayActive || !goals.read(streakState).configured) return;
-    if (!("Notification" in window) || Notification.permission !== "granted") return;
-    const now = new Date();
-    const minutes = now.getHours() * 60 + now.getMinutes();
-    const delivered = Array.isArray(streakState.reminderSlots[summary.today])
-      ? streakState.reminderSlots[summary.today]
-      : [];
-    const eligible = STREAK_REMINDER_SLOTS.filter((slot) => slot.minutes <= minutes && !delivered.includes(slot.id));
-    if (!eligible.length) return;
+  async function clearStreakReminders() {
+    for (const notification of streakReminderNotices) {
+      try { notification.close(); } catch (_) {}
+    }
+    streakReminderNotices.clear();
+    try {
+      const registration = serviceWorkerRegistration || await navigator.serviceWorker?.getRegistration?.();
+      const notifications = await registration?.getNotifications?.() || [];
+      notifications.filter(n => n.tag?.startsWith('estudiemos-streak-')).forEach(n => n.close());
+    } catch (_) {}
+  }
 
-    const latest = eligible[eligible.length - 1];
-    const shown = await showDeviceNotification(
-      "Momento de estudiar",
-      `Te faltan ${Math.max(0, summary.goalMinutes - summary.todayMinutes)} min para completar tu objetivo de hoy.`,
-      { tag: `estudiemos-streak-${summary.today}-${latest.id}`, requireInteraction: true }
-    );
-    if (!shown) return;
-    streakState.reminderSlots[summary.today] = Array.from(new Set([...delivered, ...eligible.map((slot) => slot.id)]));
-    pruneReminderHistory();
-    saveStreakState();
+  function clearCompletedStreakReminders() {
+    const summary = streakSummary();
+    const key = `${goalUserId}:${summary.today}`;
+    if (!summary.todayActive) { streakReminderCleanupKey = ''; return; }
+    if (streakReminderCleanupKey === key) return;
+    streakReminderCleanupKey = key;
+    clearStreakReminders();
+  }
+
+  async function maybeShowStreakReminder() {
+    if (window.EstudiemosAndroid || streakReminderBusy) return;
+    if (streakSummary().todayActive) { await clearStreakReminders(); return; }
+    if (!("Notification" in window) || Notification.permission !== "granted") return;
+    const account = window.EstudiemosAccount;
+    if (!account) return;
+    streakReminderBusy = true;
+    try {
+      await account.whenReady?.();
+      let summary = streakSummary();
+      const now = new Date(), minutes = now.getHours() * 60 + now.getMinutes();
+      const previousSlots = Array.isArray(streakState.reminderSlots[summary.today]) ? streakState.reminderSlots[summary.today] : [];
+      const hasEligibleSlot = STREAK_REMINDER_SLOTS.some(slot => slot.minutes <= minutes && !previousSlots.includes(slot.id));
+      if (summary.todayActive) { await clearStreakReminders(); return; }
+      if (!goals.read(streakState).configured || !hasEligibleSlot) return;
+      const userId = account.getUser()?.id || '';
+      // An old tab must pull progress from other devices before deciding to remind.
+      if (userId && await account.refresh() !== true) return;
+      if ((account.getUser()?.id || '') !== userId) return;
+      streakState = loadStreakState();
+      summary = streakSummary();
+      if (summary.todayActive) { await clearStreakReminders(); return; }
+      const relevant = () => (account.getUser()?.id || '') === userId && streakSummary().today === summary.today && !streakSummary().todayActive && goals.read(streakState).configured;
+      if (!relevant()) return;
+      const delivered = Array.isArray(streakState.reminderSlots[summary.today]) ? streakState.reminderSlots[summary.today] : [];
+      const eligible = STREAK_REMINDER_SLOTS.filter(slot => slot.minutes <= minutes && !delivered.includes(slot.id));
+      if (!eligible.length) return;
+      const latest = eligible[eligible.length - 1];
+      const shown = await showDeviceNotification(
+        "Momento de estudiar",
+        `Te faltan ${Math.max(0, summary.goalMinutes - summary.todayMinutes)} min para completar tu objetivo de hoy.`,
+        { tag: `estudiemos-streak-${summary.today}-${latest.id}`, requireInteraction: true, isRelevant: relevant,
+          onDirect: notification => { streakReminderNotices.add(notification); notification.addEventListener('close', () => streakReminderNotices.delete(notification), { once: true }); } }
+      );
+      if (!relevant()) { await clearStreakReminders(); return; }
+      if (!shown) return;
+      streakState.reminderSlots[summary.today] = Array.from(new Set([...delivered, ...eligible.map(slot => slot.id)]));
+      pruneReminderHistory();
+      saveStreakState();
+    } catch (_) {
+      // Without a confirmed state, skip this reminder instead of guessing.
+    } finally { streakReminderBusy = false; }
   }
 
   function pruneReminderHistory() {
