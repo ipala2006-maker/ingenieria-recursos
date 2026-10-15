@@ -48,7 +48,7 @@
       </section>
       <section data-panel="settings" hidden><h3>Mi nombre y privacidad</h3><form data-profile>
         <label for="friendName">Nombre de usuario</label><input id="friendName" minlength="3" maxlength="25" pattern="@?[A-Za-z0-9_]{3,24}" required autocomplete="nickname" autocapitalize="none" spellcheck="false" aria-describedby="friendUsernameHint" placeholder="@tu_usuario">
-        <small id="friendUsernameHint" class="friends-caption">Es el nombre que ven tus amigos y tambien tu @usuario. Usá 3–24 letras sin tildes, números o guion bajo.</small>
+        <small id="friendUsernameHint" class="friends-caption">Podés cambiar el usuario sugerido. Usá 3–24 letras sin tildes, números o guion bajo.</small>
         <label class="friends-toggle"><span>Compartir mi racha<small>Solo con amigos aceptados. Podés ocultarla cuando quieras.</small></span><input type="checkbox" role="switch" data-share></label>
         <button type="submit">Guardar cambios</button><button type="button" data-rotate>Cambiar enlace de invitación</button>
       </form><div data-blocked></div></section>
