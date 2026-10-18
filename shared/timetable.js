@@ -30,5 +30,31 @@
     const entry = normalize(candidate);
     return entry ? list(items).filter(item => item.id !== entry.id && item.days.some(day => entry.days.includes(day)) && entry.start < item.end && entry.end > item.start) : [];
   }
-  return Object.freeze({ KEY, MAX_ITEMS, COLORS, time, normalize, list, forDay, overlaps });
+  function date(value) {
+    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+    const parsed = new Date(value + 'T12:00:00');
+    return Number.isFinite(parsed.getTime()) && dateKey(parsed) === value ? parsed : null;
+  }
+  const dateKey = value => `${value.getFullYear()}-${String(value.getMonth()+1).padStart(2,'0')}-${String(value.getDate()).padStart(2,'0')}`;
+  function occurrences(items, from, until = from) {
+    const start = date(from), end = date(until);
+    if (!start || !end || start > end) return [];
+    const schedules = list(items), result = [];
+    const byDay = Array.from({length:7}, (_, day) => forDay(schedules, day));
+    // Calendar projections are bounded, read-only views, never persisted tasks.
+    for (let index = 0, day = new Date(start); day <= end && index < 62; index++, day.setDate(day.getDate()+1)) {
+      const key = dateKey(day);
+      for (const item of byDay[day.getDay()]) result.push({
+        id: `weekly:${item.id}:${key}`, scheduleId: item.id, title: item.title,
+        date: key, horaInicio: item.start, horaFin: item.end, type: 'Horario fijo',
+        color: item.color, note: item.place, done: false
+      });
+    }
+    return result;
+  }
+  function eventClass(item) {
+    return item?.scheduleId && COLORS.includes(item.color) ? `is-recurring timetable-color--${item.color}` : '';
+  }
+  function read(storage) { try { return list(JSON.parse(storage.getItem(KEY) || '[]')); } catch (_) { return []; } }
+  return Object.freeze({ KEY, MAX_ITEMS, COLORS, time, normalize, list, forDay, overlaps, occurrences, eventClass, read });
 });

@@ -37,9 +37,12 @@
     localStorage.setItem(rules.KEY, JSON.stringify(rules.list(items)));
     window.dispatchEvent(new CustomEvent('estudiemos:data-change', { detail: { key: rules.KEY } }));
   }
-  function open() {
+  function open(options = {}) {
     if (dialog.open) return;
+    if (Number.isInteger(options.day) && options.day >= 0 && options.day <= 6) selectedDay = options.day;
     returnFocus = document.activeElement; owner = identity(); reset(); render(); dialog.showModal(); dialog.querySelector('[data-timetable-close]').focus();
+    if (options.id) edit(options.id);
+    else if (options.create) form.elements.title.focus();
   }
   function reset() {
     editingId = ''; form.reset(); form.elements.start.value = '08:00'; form.elements.end.value = '10:00';
@@ -102,10 +105,14 @@
     event.preventDefault(); const index = days.findIndex(([day]) => day === selectedDay);
     selectedDay = days[event.key === 'Home' ? 0 : event.key === 'End' ? 6 : (index + (event.key === 'ArrowRight' ? 1 : 6)) % 7][0]; render(); dialog.querySelector(`[data-timetable-day="${selectedDay}"]`).focus();
   });
-  dialog.addEventListener('close', () => { if (returnFocus?.isConnected) returnFocus.focus({ preventScroll: true }); });
+  dialog.addEventListener('close', () => {
+    const target = returnFocus?.isConnected ? returnFocus : document.querySelector('[data-calendar-reader][open] [data-calendar-reader-close]') || document.querySelector('[data-calendar-expand]');
+    target?.focus({ preventScroll: true });
+  });
   function refresh() { if (identity() !== owner) { if (dialog.open) dialog.close(); reset(); owner = identity(); } if (dialog.open) render(); }
   window.addEventListener('estudiemos:cloud-restored', refresh); window.addEventListener('estudiemos:account-synced', refresh);
   window.addEventListener('storage', event => { if ([rules.KEY, 'estudiemos_cloud_user'].includes(event.key)) refresh(); });
   window.addEventListener('estudiemos:data-change', event => { if (event.detail?.key === rules.KEY) refresh(); });
   reset();
+  window.dispatchEvent(new CustomEvent('estudiemos:timetable-ready'));
 })();

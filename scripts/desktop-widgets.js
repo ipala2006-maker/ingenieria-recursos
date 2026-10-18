@@ -7,6 +7,7 @@
   function installDesign(doc) {
     const link=doc.createElement('link');link.rel='stylesheet';link.href=designUrl;doc.head.appendChild(link);
     const chartLink=doc.createElement('link');chartLink.rel='stylesheet';chartLink.href=chartStyleUrl;doc.head.appendChild(chartLink);
+    const calendarLink=doc.createElement('link');calendarLink.rel='stylesheet';calendarLink.href=new URL('../styles/calendar-integration.css?v=20261018',designUrl).href;doc.head.appendChild(calendarLink);
   }
 
   const AGENDA_KEY = "bandeja_agenda";
@@ -435,12 +436,6 @@
   }
 
   function calendarMarkup() {
-    const items = readAgenda().filter((item) => item.date);
-    const byDate = items.reduce((result, item) => {
-      if (!result[item.date]) result[item.date] = [];
-      result[item.date].push(item);
-      return result;
-    }, {});
     const first = new Date(state.year, state.month, 1);
     const focus = parseDateValue(state.date) || new Date();
     const start = state.calendarView === "week"
@@ -449,6 +444,15 @@
     const today = dateValue(new Date());
     const days = [];
     const cellCount = state.calendarView === "week" ? 7 : 42;
+    const end = new Date(start.getFullYear(), start.getMonth(), start.getDate()+cellCount-1);
+    const rules = window.EstudiemosTimetableRules;
+    const recurring = rules?.occurrences(rules.read(localStorage), dateValue(start), dateValue(end)) || [];
+    const items = [...readAgenda().filter(item => item.date), ...recurring];
+    const byDate = items.reduce((result, item) => {
+      if (!result[item.date]) result[item.date] = [];
+      result[item.date].push(item);
+      return result;
+    }, {});
     for (let index = 0; index < cellCount; index += 1) {
       const date = new Date(start.getFullYear(), start.getMonth(), start.getDate() + index);
       const value = dateValue(date);
@@ -820,7 +824,7 @@
     const end = item.horaFin || item.endTime || "";
     const time = start ? (end ? `${start}-${end}` : start) : "Todo el día";
     const title = calendarEntryTitle(item);
-    return `<em class="calendar-entry" title="${escapeHtml(`${time} · ${title}`)}"><b class="calendar-entry__time">${escapeHtml(time)}</b> <i class="calendar-entry__title">${escapeHtml(title)}</i></em>`;
+    return `<em class="calendar-entry ${window.EstudiemosTimetableRules?.eventClass(item) || ''}" title="${escapeHtml(`${time} · ${title}`)}"><b class="calendar-entry__time">${escapeHtml(time)}</b> <i class="calendar-entry__title">${escapeHtml(title)}</i></em>`;
   }
 
   function sortCalendarItems(items) {

@@ -149,7 +149,8 @@ const headers = require('../vercel.json').headers.find(rule => rule.source === '
       await busy.click();
       await calendar.locator('[data-dashboard-calendar-view="week"]').click();
       assert.equal(await calendar.locator('[data-dashboard-date]').count(), 7);
-      assert.equal(await calendar.locator('[data-calendar-legend]').isVisible(), false);
+      assert.equal(await calendar.locator('[data-calendar-legend]').isVisible(), true);
+      assert.equal(await calendar.locator('[data-calendar-filter]').inputValue(), 'all');
       await calendar.screenshot({ path: path.join(output, 'week-' + width + '.png') });
       await busy.click();
       assert.match(await calendar.locator('h4').allTextContents().then(titles => titles.join(' ')), /Repasar integrales y resolver todos los ejercicios de la guia/);
