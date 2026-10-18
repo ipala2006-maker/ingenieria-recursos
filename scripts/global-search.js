@@ -290,7 +290,7 @@
     if (document.querySelector('script[src*="scripts/bandeja.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/bandeja.js?v=20261018-calendar`;
+    script.src = `${rootPath}scripts/bandeja.js?v=20261019-calendar`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -320,7 +320,7 @@
   function loadDashboardScript() {
     if (document.querySelector('script[src*="scripts/dashboard.js"]')) return;
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/dashboard.js?v=20261018-calendar`;
+    script.src = `${rootPath}scripts/dashboard.js?v=20261019-calendar`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -358,7 +358,7 @@
     if (document.querySelector('script[src*="scripts/account.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/account.js?v=20261018-weekly-timetable`;
+    script.src = `${rootPath}scripts/account.js?v=20261019-calendar`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -366,7 +366,7 @@
   function loadTimetableScript() {
     if (document.querySelector('script[data-timetable-ui]')) return;
     const ui = document.createElement('script'); ui.dataset.timetableUi = '';
-    ui.src = rootPath + 'scripts/timetable.js?v=20261018-calendar';
+    ui.src = rootPath + 'scripts/timetable.js?v=20261019-calendar';
     document.head.appendChild(ui);
   }
 

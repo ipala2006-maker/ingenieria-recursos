@@ -11,6 +11,7 @@
     "bandeja_recientes",
     "bandeja_agenda",
     "bandeja_horarios",
+    "bandeja_calendario_papelera",
     "estudiemos_pomodoro_streak",
     "estudiemos_workspace_changed",
     "estudiemos_android_devices",
@@ -793,9 +794,8 @@
       } else {
         values[key] = raw || (key === "estudiemos_theme" ? "dark" : key === "estudiemos_workspace_changed" ? "0" : "{}");
       }
-      // A device opening Mi semana for the first time must not upload an empty
-      // schedule with the timestamp of an unrelated, newer local change.
-      changedAt[key] = Number(savedChangedAt[key]) || (key === "bandeja_horarios" ? 0 : fallbackAt) || 0;
+      // New private calendar lists must not inherit an unrelated change timestamp.
+      changedAt[key] = Number(savedChangedAt[key]) || (["bandeja_horarios", "bandeja_calendario_papelera"].includes(key) ? 0 : fallbackAt) || 0;
     });
     return { version: 2, values, changedAt };
   }

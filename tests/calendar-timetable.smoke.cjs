@@ -65,13 +65,13 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
       await calendar.locator('[data-calendar-edit-schedule=algebra]').click();
       const timetable=page.locator('[data-timetable]'),form=timetable.locator('form');
       await timetable.waitFor({state:'visible'});assert.equal(await form.locator('[name=title]').inputValue(),'Álgebra');
-      await form.locator('[name=start]').fill('09:00');await form.locator('[data-timetable-color=rose]').click();await form.locator('[type=submit]').click();await timetable.locator('[data-timetable-close]').click();
+      await form.locator('[name=start]').fill('09:00');await form.locator('[data-timetable-color=rose]').click();await form.locator('[type=submit]').click();await timetable.waitFor({state:'hidden'});
       assert.match(await calendar.locator('.calendar-activity.timetable-color--rose').textContent(),/09:00-10:00/);
       assert.equal(await page.evaluate(()=>JSON.parse(localStorage.bandeja_agenda).length),1);
       await calendar.locator('[data-calendar-expand]').click();const reader=page.locator('[data-calendar-reader]');await reader.waitFor({state:'visible'});
       assert.equal(await reader.locator('.calendar-activity').count(),3);
-      await reader.locator('[data-calendar-add]').click();await tools.locator('[data-calendar-add-weekly]').click();
-      await form.locator('[name=title]').fill('Física');await form.locator('[name=start]').fill('14:00');await form.locator('[name=end]').fill('15:30');await form.locator('[type=submit]').click();await timetable.locator('[data-timetable-close]').click();
+      await reader.locator('[data-calendar-add]').click();await tools.locator('[data-calendar-create-options] [data-calendar-add-weekly]').click();
+      await form.locator('[name=title]').fill('Física');await form.locator('[name=start]').fill('14:00');await form.locator('[name=end]').fill('15:30');await form.locator('[type=submit]').click();await timetable.waitFor({state:'hidden'});
       assert.equal(await reader.locator('.calendar-activity').count(),4);
       await reader.screenshot({path:path.join(out,'expanded-'+width+'.png')});
       await reader.locator('[data-calendar-add]').click();await tools.locator('[data-calendar-add-note]').click();
@@ -95,8 +95,8 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
       await calendar.locator('[data-dashboard-date="'+today+'"]').click();assert.match(await calendar.textContent(),/Programación actualizada/);
       const physicsId=await page.evaluate(()=>JSON.parse(localStorage.bandeja_horarios).find(item=>item.title==='Física').id);
       await calendar.locator('[data-calendar-edit-schedule="'+physicsId+'"]').click();
-      await timetable.locator('.timetable__day.is-selected [data-timetable-delete="'+physicsId+'"]').click();
-      await timetable.locator('[data-timetable-close]').click();
+      await timetable.locator('[data-timetable-delete]').click();
+      await timetable.waitFor({state:'hidden'});
       assert.equal(await calendar.locator('.calendar-activity.is-recurring').count(),2);
       assert.equal(await page.evaluate(()=>JSON.parse(localStorage.bandeja_agenda).length),2,'deleting a weekly schedule never deletes dated notes');
       await calendar.locator('[data-calendar-filter]').selectOption('all');await calendar.locator('[data-calendar-edit-day]').click();
