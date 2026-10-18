@@ -55,3 +55,26 @@ test('a newly upgraded device cannot overwrite a saved week with an unrelated lo
   context.readKeyChangedAt=()=>({bandeja_horarios:123});
   assert.equal(context.capture().changedAt.bandeja_horarios,123);
 });
+
+test('calendar occurrences cover month/week/year boundaries without changing stored schedules', () => {
+  const schedule = entry({days:[0,1,2,3,4,5,6]});
+  const before = JSON.stringify(schedule);
+  const events = rules.occurrences([schedule], '2026-12-30', '2027-01-03');
+  assert.deepEqual(events.map(event=>event.date),['2026-12-30','2026-12-31','2027-01-01','2027-01-02','2027-01-03']);
+  assert.equal(new Set(events.map(event=>event.id)).size,5);
+  assert.equal(events[0].scheduleId,schedule.id); assert.equal(events[0].color,'teal');
+  assert.equal(events[0].horaInicio,'08:00'); assert.equal(events[0].horaFin,'10:00');
+  assert.equal(events[0].alarm,undefined); assert.equal(JSON.stringify(schedule),before);
+  assert.equal(rules.occurrences([schedule],'2028-02-28','2028-03-01').length,3);
+});
+
+test('calendar projection is bounded, rejects invalid dates and uses the original chosen colors only', () => {
+  const schedule = entry({days:[0,1,2,3,4,5,6]});
+  assert.equal(rules.occurrences([schedule],'2026-01-01','2027-01-01').length,62);
+  for (const [from,until] of [['2026-02-30','2026-03-01'],['2026-03-10','2026-03-01'],['<img>','2026-03-01']]) assert.equal(rules.occurrences([schedule],from,until).length,0);
+  assert.equal(rules.eventClass({scheduleId:'one',color:'teal'}),'is-recurring timetable-color--teal');
+  assert.equal(rules.eventClass({scheduleId:'one',color:'blue" onload="alert(1)'}),'');
+  const events=rules.occurrences([entry({days:[1,3,5]})],'2026-10-19','2026-10-25');
+  assert.deepEqual(events.map(event=>event.date),['2026-10-19','2026-10-21','2026-10-23']);
+  assert.deepEqual(rules.read({getItem:()=>'{malformed'}),[]);
+});

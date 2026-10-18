@@ -12,6 +12,13 @@
     document.head.appendChild(goals);
     return;
   }
+  if (!window.EstudiemosTimetableRules) {
+    const rules = document.createElement('script');
+    rules.src = rootPath + 'shared/timetable.js?v=20261018-calendar';
+    rules.onload = initialize;
+    document.head.appendChild(rules);
+    return;
+  }
   if (!document.querySelector('script[data-release-ui]')) {
     const releaseUi = document.createElement('script');
     releaseUi.dataset.releaseUi = '';
@@ -283,7 +290,7 @@
     if (document.querySelector('script[src*="scripts/bandeja.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/bandeja.js?v=20261018-weekly-timetable`;
+    script.src = `${rootPath}scripts/bandeja.js?v=20261018-calendar`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -313,7 +320,7 @@
   function loadDashboardScript() {
     if (document.querySelector('script[src*="scripts/dashboard.js"]')) return;
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/dashboard.js?v=20261018-week-fit`;
+    script.src = `${rootPath}scripts/dashboard.js?v=20261018-calendar`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -357,21 +364,17 @@
   }
 
   function loadTimetableScript() {
-    if (document.querySelector('script[data-timetable-rules]')) return;
-    const rules = document.createElement('script'); rules.dataset.timetableRules = '';
-    rules.src = rootPath + 'shared/timetable.js?v=20261018';
-    rules.onload = () => {
-      const ui = document.createElement('script'); ui.src = rootPath + 'scripts/timetable.js?v=20261018';
-      document.head.appendChild(ui);
-    };
-    document.head.appendChild(rules);
+    if (document.querySelector('script[data-timetable-ui]')) return;
+    const ui = document.createElement('script'); ui.dataset.timetableUi = '';
+    ui.src = rootPath + 'scripts/timetable.js?v=20261018-calendar';
+    document.head.appendChild(ui);
   }
 
   function loadDesktopWidgetsScript() {
     if (document.querySelector('script[src*="scripts/desktop-widgets.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/desktop-widgets.js?v=20261010-daily-goal`;
+    script.src = `${rootPath}scripts/desktop-widgets.js?v=20261018-calendar`;
     script.async = false;
     document.head.appendChild(script);
   }

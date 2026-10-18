@@ -71,3 +71,17 @@ test('user text remains escaped in month, week and complete day details', () => 
   assert.match(html, /&lt;svg/);
   assert.doesNotMatch(html, /<(img|script|iframe|svg)\b/);
 });
+
+test('a recurring calendar event keeps its chosen color and editor without becoming a task or alarm', () => {
+  const calendar=calendarHarness();
+  calendar.window.EstudiemosTimetableRules=require('../shared/timetable');
+  const item={id:'weekly:one:2026-10-18',scheduleId:'one',title:'Algebra',color:'rose',type:'Horario fijo',date:'2026-10-18',horaInicio:'08:00',horaFin:'10:00'};
+  assert.match(calendar.renderWeekDay(new Date(),[item],1),/is-recurring timetable-color--rose/);
+  assert.match(calendar.renderMonthDay([item],1),/is-recurring timetable-color--rose/);
+  const nodes={'#calendarDayTitle':{},'[data-calendar-day-count]':{},'[data-calendar-day-items]':{contains:()=>false}};
+  calendar.document.querySelector=()=>({open:true,querySelector:key=>nodes[key]});
+  calendar.window.EstudiemosInboxAlarms={button:()=>{throw Error('Recurring schedules must not offer a task alarm');}};
+  calendar.renderCalendarDetail([item]);
+  assert.match(nodes['[data-calendar-day-items]'].innerHTML,/data-calendar-edit-schedule="one"/);
+  assert.doesNotMatch(nodes['[data-calendar-day-items]'].innerHTML,/checkbox|data-inbox-alarm/);
+});

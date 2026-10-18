@@ -63,9 +63,11 @@
     if (event.key === STORAGE_KEYS.streak) renderAgenda();
   });
   window.addEventListener("estudiemos:data-change", (event) => {
-    if ([STORAGE_KEYS.streak, STORAGE_KEYS.agenda].includes(event.detail?.key)) renderAgenda();
+    if ([STORAGE_KEYS.streak, STORAGE_KEYS.agenda, 'bandeja_horarios'].includes(event.detail?.key)) renderAgenda();
   });
   window.addEventListener('estudiemos:alarms-ready', renderAgenda);
+  window.addEventListener('estudiemos:timetable-ready', renderAgenda);
+  window.addEventListener('storage', event => { if (event.key === 'bandeja_horarios') renderAgenda(); });
 
   function addTray() {
     const shell = document.createElement("aside");
@@ -299,6 +301,7 @@
 
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
+        if (document.querySelector('dialog[open]')) return;
         if (document.body.classList.contains("agenda-open")) {
           closeAgendaBoard();
           return;
@@ -1271,7 +1274,10 @@
     renderAgendaCalendar(items);
     if (!container) return;
 
-    const visibleItems = items.filter((item) => {
+    const start = startOfAgendaWeek(parseDateValue(selectedAgendaDate) || new Date());
+    const end = new Date(start.getFullYear(), start.getMonth(), start.getDate()+6);
+    const recurring = window.EstudiemosTimetableRules?.occurrences(window.EstudiemosTimetableRules.read(localStorage), toDateValue(start), toDateValue(end)) || [];
+    const visibleItems = [...items, ...recurring].sort(compareAgendaItems).filter((item) => {
       if (agendaFilter === "day") return item.date === selectedAgendaDate;
       if (agendaFilter === "done") return isCompletableAgendaItem(item) && item.done;
       if (agendaFilter === "all") return true;
@@ -1288,7 +1294,7 @@
     }
 
     container.innerHTML = visibleItems.map((item) => `
-      <article class="agenda-item ${agendaTypeClass(item.type)} ${item.done ? "is-done" : ""}">
+      <article class="agenda-item ${agendaTypeClass(item.type)} ${window.EstudiemosTimetableRules?.eventClass(item) || ''} ${item.done ? "is-done" : ""}">
         ${isCompletableAgendaItem(item) ? `<label class="agenda-item__check">
           <input type="checkbox" data-agenda-done="${escapeAttr(item.id)}" ${item.done ? "checked" : ""} />
           <span>
@@ -1308,8 +1314,7 @@
           ${item.subject ? `<span>${escapeHtml(item.subject)}</span>` : ""}
           ${item.alarm ? `<span>${escapeHtml(window.EstudiemosAlarmRules?.describe(item.alarm) || '')}</span>` : ''}
         </div>
-        <button class="bandeja-remove-btn agenda-item__remove" type="button" data-agenda-remove="${escapeAttr(item.id)}" aria-label="Quitar ${escapeAttr(item.title)}">${icon("close")}</button>
-        ${window.EstudiemosInboxAlarms?.button(item) || ''}
+        ${item.scheduleId ? `<button type="button" class="calendar-activity__edit" data-calendar-edit-schedule="${escapeAttr(item.scheduleId)}" data-calendar-day="${item.date}">Editar horario</button>` : `<button class="bandeja-remove-btn agenda-item__remove" type="button" data-agenda-remove="${escapeAttr(item.id)}" aria-label="Quitar ${escapeAttr(item.title)}">${icon("close")}</button>${window.EstudiemosInboxAlarms?.button(item) || ''}`}
       </article>
     `).join("");
   }
@@ -1346,7 +1351,6 @@
     selectedLabel.textContent = formatFullDate(selectedAgendaDate);
     if (dateInput && !dateInput.value) dateInput.value = selectedAgendaDate;
 
-    const byDate = groupAgendaByDate(items);
     const streak = readStreakProgress();
     const firstDay = new Date(agendaYear, agendaMonth, 1);
     const startOffset = (firstDay.getDay() + 6) % 7;
@@ -1354,6 +1358,9 @@
       ? startOfAgendaWeek(selectedDate)
       : new Date(agendaYear, agendaMonth, 1 - startOffset);
     const cellCount = agendaView === "week" ? 7 : 42;
+    const endDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate()+cellCount-1);
+    const recurring = window.EstudiemosTimetableRules?.occurrences(window.EstudiemosTimetableRules.read(localStorage), toDateValue(startDate), toDateValue(endDate)) || [];
+    const byDate = groupAgendaByDate([...items, ...recurring].sort(compareAgendaItems));
     const cells = [];
 
     grid.dataset.view = agendaView;
@@ -1380,7 +1387,7 @@
           ${hasStreak ? `<span class="agenda-day__streak" aria-hidden="true">${icon("streak")}</span>` : ""}
           <span class="agenda-day__items">
             ${dayItems.slice(0, 3).map((item) => `
-              <span class="agenda-event-pill ${agendaTypeClass(item.type)}" title="${escapeAttr(formatAgendaCalendarSummary(item))}" aria-label="${escapeAttr(formatAgendaCalendarSummary(item))}">
+              <span class="agenda-event-pill ${agendaTypeClass(item.type)} ${window.EstudiemosTimetableRules?.eventClass(item) || ''}" title="${escapeAttr(formatAgendaCalendarSummary(item))}" aria-label="${escapeAttr(formatAgendaCalendarSummary(item))}">
                 <i aria-hidden="true"></i>
                 <span>${escapeHtml(formatAgendaCalendarSummary(item))}</span>
               </span>
@@ -1541,7 +1548,7 @@
   }
 
   function isCompletableAgendaItem(item) {
-    return item?.type !== "Clase";
+    return !item?.scheduleId && item?.type !== "Clase";
   }
 
   function normalizeAgendaType(type) {
