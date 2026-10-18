@@ -19,11 +19,16 @@ const headers = require('../vercel.json').headers.find(rule=>rule.source==='/(.*
   let browser;
   try {
     await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
-    const base = 'http://127.0.0.1:'+server.address().port;
+    const base = process.env.TEST_BASE_URL || 'http://127.0.0.1:'+server.address().port;
     browser = process.env.TEST_WEBKIT==='1'?await webkit.launch():await chromium.launch({channel:'chrome',args:['--enable-unsafe-swiftshader']});
     for(const width of [1440,1024,390,320]) {
       const context = await browser.newContext({viewport:{width,height:900},timezoneId:'America/Argentina/Buenos_Aires',serviceWorkers:'block',isMobile:width<500,hasTouch:width<500});
-      await context.route('**/*',route=>new URL(route.request().url()).origin===base?route.continue():route.abort());
+      await context.route('**/*',route=>{
+        const url=new URL(route.request().url());
+        if(url.origin!==new URL(base).origin)return route.abort();
+        if(url.pathname.startsWith('/api/'))return route.fulfill({contentType:'application/json',body:'{"enabled":false}'});
+        return route.continue();
+      });
       await context.addInitScript(()=>{
         localStorage.setItem('bandeja_agenda',JSON.stringify([{id:'exam',title:'Parcial',date:'2026-10-18',type:'Parcial'}]));
         localStorage.setItem('estudiemos_pomodoro_streak',JSON.stringify({goal:{minutes:45,updatedAt:1},days:{}}));

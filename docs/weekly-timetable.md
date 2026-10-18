@@ -1,6 +1,6 @@
 # Mi semana
 
-- Abrir **Mi semana** desde el icono de calendario de la barra superior, el calendario de Inicio o Inbox.
+- Abrir **Mi semana** desde el icono de calendario de la barra superior o desde Inbox.
 - Escribir la materia/actividad, seleccionar todos sus dias y elegir inicio y fin. El lugar y el color son opcionales.
 - Cada horario se repite en la semana habitual sin crear cientos de notas ni alarmas. Una misma materia con horas diferentes puede tener varios horarios.
 - El lapiz cambia el horario en todos sus dias. La papelera elimina ese horario, sin tocar otros horarios de la misma materia ni fechas puntuales.

@@ -313,7 +313,7 @@
   function loadDashboardScript() {
     if (document.querySelector('script[src*="scripts/dashboard.js"]')) return;
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/dashboard.js?v=20261010-daily-goal`;
+    script.src = `${rootPath}scripts/dashboard.js?v=20261018-week-fit`;
     script.defer = true;
     document.head.appendChild(script);
   }
