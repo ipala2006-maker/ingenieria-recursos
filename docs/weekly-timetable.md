@@ -1,9 +1,11 @@
 # Horarios dentro del calendario
 
 - El calendario es la unica vista de los horarios. Ya no hay un apartado Mi semana, un tablero semanal duplicado ni un acceso independiente en la barra superior o Inbox.
-- Desde el + del calendario elegir **Horario fijo**. El editor compacto permite guardar y volver directamente al calendario.
+- **Programar** o el + abre el programador dentro del calendario, junto a su vista, no en una ventana independiente. Actividades / Programar cambia el panel lateral; en celular el editor usa el espacio completo.
 - Escribir la materia/actividad, seleccionar todos sus dias y elegir inicio y fin. El lugar y el color son opcionales.
-- Cada horario se repite en la semana habitual sin crear cientos de notas ni alarmas. Una misma materia con horas diferentes puede tener varios horarios.
+- Se puede elegir **No repetir**, **Cada dia** o **Cada semana**. Una actividad puntual admite todo el dia o inicio y fin; una semanal permite marcar varios dias de una vez. El periodo tiene fecha inicial opcional y, si se activa Hasta una fecha, un ultimo dia incluido. Los horarios antiguos sin limites conservan ese comportamiento.
+- La vista previa aparece en el calendario con borde discontinuo y sin guardar. Cancelar, cerrar o cambiar de cuenta descarta esa vista sin modificar datos.
+- Cada horario se repite sin crear cientos de notas ni alarmas. Una misma materia con horas diferentes puede tener varios horarios.
 - **Editar horario** en el detalle de una actividad cambia el horario en todos sus dias. Su papelera elimina solo ese horario, sin tocar otras materias ni fechas puntuales.
 - Las actividades con fecha y las alarmas siguen en Calendario e Inbox. Los datos anteriores no se migran ni eliminan automaticamente.
 - **Configurar calendario** abre una lista de configuracion, con el nombre, dias, horas y color de cada horario. No es otra vista del calendario.
@@ -13,7 +15,9 @@
 ## Calendario integrado
 
 - Los mismos horarios aparecen en las vistas Dia, Semana y Mes del calendario y en el detalle de Inbox, conservando el color elegido y la etiqueta Horario fijo.
-- El boton + del calendario permite elegir Anotacion con fecha u Horario fijo. La anotacion usa el dia seleccionado, sin activar una alarma automaticamente. Las fechas y alarmas siguen siendo opcionales en las anotaciones normales de Inbox.
+- El programador usa inicialmente el dia seleccionado. Una actividad sin repeticion se guarda en la agenda y nunca activa una alarma automaticamente. Las notas sin fecha y las alarmas opcionales de Inbox siguen funcionando como antes.
+- Tanto actividades puntuales como repetitivas admiten los cinco colores. El color se conserva en Dia, Semana, Mes, Inbox y widget PC, incluso al completar una tarea desde Inbox.
+- Se pueden convertir actividades entre puntuales y repetitivas, guardando ambas listas antes de emitir cambios y revirtiendo fallos de almacenamiento. Si la actividad puntual tiene alarma, se pide quitarla antes de convertirla: no se descarta silenciosamente.
 - El selector Todo / Horarios fijos / Anotaciones cambia solo la vista; no modifica ni borra datos. Colores muestra la referencia de cada materia y los tipos de actividades puntuales.
 - Editar horario abre el editor del calendario. Guardar o eliminar se refleja en todos los dias, dispositivos y calendarios web, incluidos los widgets de escritorio, sin duplicar tareas ni generar alarmas.
 - Los horarios son proyecciones locales de hasta 62 dias por vista. Nunca se guardan como notas fechadas ni se completan como pendientes.
@@ -29,8 +33,8 @@
 
 ## Verificacion
 
-`node --test tests/timetable.test.js` valida limites, horas, dias, superposiciones y el contrato de sincronizacion.
+`node --test tests/timetable.test.js` valida limites, horas, dias, periodos inclusivos y fechas invalidas, colores, superposiciones y el contrato de sincronizacion.
 
-`node tests/timetable.smoke.cjs` prueba crear varios dias, editar, borrar, recargar, contenido como datos y cambio de cuenta, en 1440/1024/390/320 px, oscuro y claro. `TEST_WEBKIT=1` ejecuta el mismo recorrido en WebKit.
+`node tests/timetable.smoke.cjs` conserva el acceso al recorrido completo del calendario.
 
-`node tests/calendar-timetable.smoke.cjs` recorre proyecciones, colores, filtros, crear y editar desde el calendario, fecha de la anotacion, cambios en vivo, Inbox y widget PC. `TEST_WEBKIT=1` prueba WebKit; `TEST_BASE_URL` permite probar la publicacion con APIs simuladas, sin cuentas reales.
+`node tests/calendar-timetable.smoke.cjs` recorre actividades puntuales, diarias y semanales; limites del periodo; vista previa no persistida; crear, editar, convertir y cancelar; preservacion de alarmas; colores, filtros, Inbox, limpieza recuperable, cambio de cuenta y widget PC en 1440/1024/390/320 px, claro y oscuro. `TEST_WEBKIT=1` prueba WebKit; `TEST_BASE_URL` permite probar la publicacion con APIs simuladas, sin cuentas reales.

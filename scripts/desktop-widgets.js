@@ -7,7 +7,7 @@
   function installDesign(doc) {
     const link=doc.createElement('link');link.rel='stylesheet';link.href=designUrl;doc.head.appendChild(link);
     const chartLink=doc.createElement('link');chartLink.rel='stylesheet';chartLink.href=chartStyleUrl;doc.head.appendChild(chartLink);
-    const calendarLink=doc.createElement('link');calendarLink.rel='stylesheet';calendarLink.href=new URL('../styles/calendar-integration.css?v=20261018',designUrl).href;doc.head.appendChild(calendarLink);
+    const calendarLink=doc.createElement('link');calendarLink.rel='stylesheet';calendarLink.href=new URL('../styles/calendar-integration.css?v=20261019-planner',designUrl).href;doc.head.appendChild(calendarLink);
   }
 
   const AGENDA_KEY = "bandeja_agenda";
