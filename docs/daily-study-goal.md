@@ -5,10 +5,13 @@
 - El dia cuenta al llegar al objetivo, no por abrir la app ni por adelantar el aro del Pomodoro. Solo se acredita estudio real; los descansos no suman.
 - Cada dia conserva su objetivo historico. Los dias anteriores a esta funcion mantienen la regla anterior de 25 minutos.
 - Cumplir el objetivo detiene los recordatorios de estudio hasta el dia siguiente. No cancela las alarmas de Inbox.
+- Solo hay cinco franjas diarias: 12:00, 14:30, 17:00, 19:30 y 22:00 (hora local). Una tolerancia de cinco minutos cubre la suspension breve del sistema; no se recuperan avisos atrasados al abrir la app.
+- Con la conexion de Windows vigente, Windows entrega los recordatorios y la web no los duplica. Sin esa conexion, la web sigue disponible como alternativa si el usuario concedio permisos.
+- Android confirma el progreso de la cuenta antes de avisar. Si no se puede consultar, omite ese aviso; no deduce que falta estudiar a partir de un cache desactualizado. Las consultas demoradas no restan minutos ganados en el dispositivo.
 
 ## Windows
 
-El instalador 1.6.5.0 registra la identidad `Estudiemos.Study` y un acceso de Inicio para notificaciones nativas ToastGeneric, con el logo de Estudiemos. No usa globos de WinForms ni suplanta a Edge. Windows controla su tipografia y respeta No molestar y los permisos del usuario.
+El instalador 1.6.6.0 registra la identidad `Estudiemos.Study` y un acceso de Inicio para notificaciones nativas ToastGeneric, con el logo de Estudiemos. No usa globos de WinForms ni suplanta a Edge. Windows controla su tipografia y respeta No molestar y los permisos del usuario.
 
 Las cinco tareas de racha mantienen sus horarios y preferencias. `StreakReminder.ps1` consulta el progreso del propietario mediante la conexion de alarmas ya autorizada, cifrada por DPAPI. No usa claves privadas en el instalador. Si no hay conexion, objetivo elegido o progreso reciente, no envia recordatorios basados en datos dudosos. La comprobacion periodica de Inbox retira los recordatorios pendientes al detectar el objetivo cumplido y mantiene las alarmas a pantalla completa.
 

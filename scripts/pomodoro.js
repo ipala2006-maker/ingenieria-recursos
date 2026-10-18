@@ -2431,6 +2431,18 @@
   }
 
   async function maybeShowStreakReminder() {
+    if (navigator.locks?.request) {
+      const owner = window.EstudiemosAccount?.getUser()?.id || 'guest';
+      return navigator.locks.request(`estudiemos-study-reminder-${owner}`, { ifAvailable: true }, async lock => {
+        if (!lock) return;
+        streakState = loadStreakState();
+        return checkStreakReminder();
+      });
+    }
+    return checkStreakReminder();
+  }
+
+  async function checkStreakReminder() {
     if (window.EstudiemosAndroid || streakReminderBusy) return;
     if (streakSummary().todayActive) { await clearStreakReminders(); return; }
     if (!("Notification" in window) || Notification.permission !== "granted") return;
@@ -2442,7 +2454,8 @@
       let summary = streakSummary();
       const now = new Date(), minutes = now.getHours() * 60 + now.getMinutes();
       const previousSlots = Array.isArray(streakState.reminderSlots[summary.today]) ? streakState.reminderSlots[summary.today] : [];
-      const hasEligibleSlot = STREAK_REMINDER_SLOTS.some(slot => slot.minutes <= minutes && !previousSlots.includes(slot.id));
+      const due = slot => minutes >= slot.minutes && minutes < slot.minutes + 5;
+      const hasEligibleSlot = STREAK_REMINDER_SLOTS.some(slot => due(slot) && !previousSlots.includes(slot.id));
       if (summary.todayActive) { await clearStreakReminders(); return; }
       if (!goals.read(streakState).configured || !hasEligibleSlot) return;
       const userId = account.getUser()?.id || '';
@@ -2452,10 +2465,13 @@
       streakState = loadStreakState();
       summary = streakSummary();
       if (summary.todayActive) { await clearStreakReminders(); return; }
-      const relevant = () => (account.getUser()?.id || '') === userId && streakSummary().today === summary.today && !streakSummary().todayActive && goals.read(streakState).configured;
+      // Windows owns delivery once connected; the browser must not echo its five notices.
+      const nativeOwnsReminder = () => window.EstudiemosInboxAlarms?.nativeReady?.() === true;
+      if (nativeOwnsReminder()) { await clearStreakReminders(); return; }
+      const relevant = () => (account.getUser()?.id || '') === userId && streakSummary().today === summary.today && !streakSummary().todayActive && goals.read(streakState).configured && !nativeOwnsReminder() && STREAK_REMINDER_SLOTS.some(slot => { const now = new Date(); const minute = now.getHours() * 60 + now.getMinutes(); return minute >= slot.minutes && minute < slot.minutes + 5; });
       if (!relevant()) return;
       const delivered = Array.isArray(streakState.reminderSlots[summary.today]) ? streakState.reminderSlots[summary.today] : [];
-      const eligible = STREAK_REMINDER_SLOTS.filter(slot => slot.minutes <= minutes && !delivered.includes(slot.id));
+      const eligible = STREAK_REMINDER_SLOTS.filter(slot => due(slot) && !delivered.includes(slot.id));
       if (!eligible.length) return;
       const latest = eligible[eligible.length - 1];
       const shown = await showDeviceNotification(

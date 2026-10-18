@@ -144,6 +144,7 @@
             <button class="agenda-general-ai-btn" type="button" data-general-ai-open aria-label="Abrir asistente de Estudiemos" title="Asistente">${icon("sparkles")}</button>
             <button class="agenda-widget-sync-btn" type="button" data-agenda-widget-sync hidden>${icon("calendar")}<span>Widgets</span></button>
             <button class="agenda-create-btn" type="button" data-agenda-create>${icon("plus")}<span>Anotar</span></button>
+            <button class="agenda-create-btn" type="button" data-timetable-open>${icon("calendar")}<span>Mi semana</span></button>
             <button class="tray-close" type="button" data-agenda-close aria-label="Cerrar Inbox y calendario">${icon("lineClose")}</button>
           </div>
         </header>

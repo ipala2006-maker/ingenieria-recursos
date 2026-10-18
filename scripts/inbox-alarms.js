@@ -395,7 +395,7 @@
     window.RainmeterAPI.Bang(`[!WriteKeyValue Alarms Count ${chunks.length} "#@#InboxAlarms.inc"]`);
     lastNative = text;
   }
-  window.EstudiemosInboxAlarms = { readForm, readDate, button, open, check, showSetup };
+  window.EstudiemosInboxAlarms = { readForm, readDate, button, open, check, showSetup, nativeReady };
   window.addEventListener('estudiemos:mobile-notifications', () => document.querySelectorAll('form:has(.inbox-alarm-fields)').forEach(renderPermission));
   const entry=new URL(location.href);
   if(entry.searchParams.get('alarms-setup')==='1'){setupStage='connect';entry.searchParams.delete('alarms-setup');history.replaceState(history.state,'',entry.pathname+entry.search+entry.hash);showSetup();}

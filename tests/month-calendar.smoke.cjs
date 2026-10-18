@@ -44,7 +44,7 @@ const headers = require('../vercel.json').headers.find(rule => rule.source === '
         localStorage.setItem('bandeja_agenda', JSON.stringify(items));
         localStorage.setItem('estudiemos_calendar_view', 'month');
         localStorage.setItem('estudiemos_home_layout_local', JSON.stringify({ visible: { focus:false, progress:false, assistant:false, shortcuts:false, workspace:false, inbox:false, calendar:true } }));
-        localStorage.setItem('estudiemos_pomodoro_streak', JSON.stringify({ days: { [day(5)]: 30 } }));
+        localStorage.setItem('estudiemos_pomodoro_streak', JSON.stringify({ days: { [day(5)]: 30 }, goal: {minutes:25,updatedAt:1} }));
         history.replaceState({homeView:'space'}, '');
       });
       const page = await context.newPage(), errors = [];
@@ -206,6 +206,7 @@ const headers = require('../vercel.json').headers.find(rule => rule.source === '
         const d = new Date(), date = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
         localStorage.setItem('estudiemos_calendar_view', 'month');
         localStorage.setItem('estudiemos_home_layout_local', JSON.stringify({visible:{assistant:true,workspace:true},sizes:{assistant:{mobileHeight:456},workspace:{mobileHeight:543}}}));
+        localStorage.setItem('estudiemos_pomodoro_streak', JSON.stringify({days:{},goal:{minutes:25,updatedAt:1}}));
         localStorage.setItem('bandeja_agenda', JSON.stringify(Array.from({length:30}, (_, i) => ({ id:'dense-'+i, title:'Actividad '+i+' con un titulo completo para leer sin recortes', subject:'Materia de prueba', date, type:'Tarea', note:'Informacion completa de la actividad '+i, horaInicio:'10:00', horaFin:'11:00' }))));
       });
       const page = await context.newPage(), errors = [];
@@ -267,6 +268,10 @@ const headers = require('../vercel.json').headers.find(rule => rule.source === '
       assert.ok(await rowsFit(), 'next month must fit too');
       await calendar.locator('[data-dashboard-calendar-view="week"]').click();
       await page.waitForTimeout(250);
+      if (!(await rowsFit())) {
+        console.log(await calendar.locator('[data-dashboard-calendar]').evaluate(grid => ({height:grid.clientHeight,dataset:{...grid.dataset},rows:getComputedStyle(grid).gridTemplateRows,child:[...grid.children].map(day=>({height:day.getBoundingClientRect().height,minHeight:getComputedStyle(day).minHeight,bottom:day.getBoundingClientRect().bottom-grid.getBoundingClientRect().bottom,right:day.getBoundingClientRect().right-grid.getBoundingClientRect().right}))})));
+        await calendar.screenshot({path:path.join(output, `clipped-week-${width}x${height}.png`)});
+      }
       assert.ok(await rowsFit(), 'all seven days must fit the small tool');
       await calendar.screenshot({path:path.join(output, `default-week-${width}x${height}.png`)});
       assert.deepEqual(errors, []);

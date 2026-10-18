@@ -572,7 +572,7 @@
       grid.dataset.monthCapacity = String(capacity);
       grid.dataset.weekCapacity = String(weeklyCapacity);
       grid.dataset.monthCompact = String(grid.clientHeight / monthWeeks < 48);
-      grid.dataset.weekCompact = String(grid.clientHeight / 7 < 44);
+      grid.dataset.weekCompact = String((grid.clientHeight - 18) / 7 < 50);
       if (schedule) {
         label.textContent = formatFullDate(state.date);
         surface.dataset.view = 'schedule'; grid.dataset.view = 'schedule';
