@@ -44,7 +44,7 @@ const headers = require('../vercel.json').headers.find(rule => rule.source === '
         localStorage.setItem('bandeja_agenda', JSON.stringify(items));
         localStorage.setItem('estudiemos_calendar_view', 'month');
         localStorage.setItem('estudiemos_home_layout_local', JSON.stringify({ visible: { focus:false, progress:false, assistant:false, shortcuts:false, workspace:false, inbox:false, calendar:true } }));
-        localStorage.setItem('estudiemos_pomodoro_streak', JSON.stringify({ days: { [day(5)]: 30 } }));
+        localStorage.setItem('estudiemos_pomodoro_streak', JSON.stringify({ days: { [day(5)]: 30 }, goal: {minutes:25,updatedAt:1} }));
         history.replaceState({homeView:'space'}, '');
       });
       const page = await context.newPage(), errors = [];

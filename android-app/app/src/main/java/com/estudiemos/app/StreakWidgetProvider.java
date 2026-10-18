@@ -27,6 +27,7 @@ public class StreakWidgetProvider extends AppWidgetProvider {
     static final String KEY_THRESHOLD = "pomodoro_streak_threshold";
     static final String KEY_DAILY_GOALS = "pomodoro_daily_goals";
     static final String KEY_GOAL_CONFIGURED = "pomodoro_goal_configured";
+    private static final String KEY_GOAL_UPDATED_AT = "pomodoro_goal_updated_at";
     static final int DEFAULT_THRESHOLD = 25;
     private static final String ACTION_CHART = "com.estudiemos.app.STREAK_CHART";
 
@@ -88,15 +89,32 @@ public class StreakWidgetProvider extends AppWidgetProvider {
         }
     }
 
-    private static void storeProgress(Context context, JSONObject history, JSONObject days) {
+    private static synchronized void storeProgress(Context context, JSONObject history, JSONObject days) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        // A delayed cloud response must not undo minutes earned on this device.
+        try {
+            JSONObject previous = new JSONObject(prefs.getString(KEY_DAYS, "{}"));
+            java.util.Iterator<String> keys = previous.keys();
+            while (keys.hasNext()) {
+                String key = keys.next();
+                if (key.matches("\\d{4}-\\d{2}-\\d{2}")) days.put(key, Math.max(days.optInt(key, 0), previous.optInt(key, 0)));
+            }
+        } catch (Exception ignored) {}
         JSONObject goal = history.optJSONObject("goal");
         int minutes = goal == null ? DEFAULT_THRESHOLD : goal.optInt("minutes", DEFAULT_THRESHOLD);
         boolean configured = goal != null && goal.optLong("updatedAt", 0) > 0 && minutes >= 1 && minutes <= 720;
+        long goalUpdatedAt = configured ? goal.optLong("updatedAt", 0) : 0;
+        if (prefs.getLong(KEY_GOAL_UPDATED_AT, 0) > goalUpdatedAt) {
+            minutes = prefs.getInt(KEY_THRESHOLD, DEFAULT_THRESHOLD);
+            configured = prefs.getBoolean(KEY_GOAL_CONFIGURED, false);
+            goalUpdatedAt = prefs.getLong(KEY_GOAL_UPDATED_AT, 0);
+        }
         JSONObject dailyGoals = history.optJSONObject("dailyGoals");
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
                 .putString(KEY_DAYS, days.toString())
                 .putInt(KEY_THRESHOLD, configured ? minutes : DEFAULT_THRESHOLD)
                 .putBoolean(KEY_GOAL_CONFIGURED, configured)
+                .putLong(KEY_GOAL_UPDATED_AT, goalUpdatedAt)
                 .putString(KEY_DAILY_GOALS, dailyGoals == null ? "{}" : dailyGoals.toString()).apply();
         updateAll(context);
         StreakReminderReceiver.clearWhenComplete(context);
@@ -156,6 +174,7 @@ public class StreakWidgetProvider extends AppWidgetProvider {
                 .remove(KEY_THRESHOLD)
                 .remove(KEY_DAILY_GOALS)
                 .remove(KEY_GOAL_CONFIGURED)
+                .remove(KEY_GOAL_UPDATED_AT)
                 .apply();
         updateAll(context);
     }

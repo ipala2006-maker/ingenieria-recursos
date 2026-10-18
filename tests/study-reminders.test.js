@@ -86,6 +86,39 @@ test('concurrent focus and interval events cannot duplicate a reminder', async (
   assert.equal(h.shown.length, 1);
 });
 
+test('only the five scheduled windows can notify, never a catch-up on opening the app', async () => {
+  for (const time of ['00:00', '11:59', '12:05', '13:00', '14:29', '14:35', '16:00', '17:05', '19:35', '22:05', '23:59']) {
+    const h = harness(); h.setNow(date + 'T' + time + ':00');
+    await h.context.maybeShowStreakReminder(); assert.equal(h.shown.length, 0, time);
+  }
+  for (const time of ['12:00', '14:30', '17:00', '19:30', '22:00']) {
+    const h = harness(); h.setNow(date + 'T' + time + ':00');
+    await h.context.maybeShowStreakReminder(); await h.context.maybeShowStreakReminder();
+    assert.equal(h.shown.length, 1, time);
+  }
+});
+
+test('a connected Windows device owns delivery; the browser does not send a duplicate', async () => {
+  const h = harness(); h.context.window.EstudiemosInboxAlarms = { nativeReady: () => true };
+  await h.context.maybeShowStreakReminder(); assert.equal(h.shown.length, 0);
+  h.context.window.EstudiemosInboxAlarms.nativeReady = () => false;
+  await h.context.maybeShowStreakReminder(); assert.equal(h.shown.length, 1, 'the browser remains a fallback when not connected');
+});
+
+test('a delayed notification service cannot deliver outside the scheduled window', async () => {
+  const h = harness(), ready = deferred(); h.context.navigator.serviceWorker.ready = ready.promise;
+  const waiting = h.context.maybeShowStreakReminder(); await new Promise(setImmediate);
+  h.setNow(date + 'T19:36:00'); ready.resolve(h.registration); await waiting;
+  assert.equal(h.shown.length, 0);
+});
+
+test('an active browser-tab lock suppresses a second tab before it synchronizes or shows', async () => {
+  const h = harness(); h.context.navigator.locks = { request: async (name, options, callback) => {
+    assert.match(name, /alice$/); assert.equal(options.ifAvailable, true); return callback(null);
+  } };
+  await h.context.maybeShowStreakReminder(); assert.equal(h.shown.length, 0);
+});
+
 test('clearing completed study notices never closes Inbox or Pomodoro alarms', async () => {
   const h = harness();
   h.existing.push(...['estudiemos-streak-2026-10-14-12:00', 'estudiemos-pomodoro', 'estudiemos-inbox-task'].map(tag => ({ tag, close: () => h.closed.push(tag) })));

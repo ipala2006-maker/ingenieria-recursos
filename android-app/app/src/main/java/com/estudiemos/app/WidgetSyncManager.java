@@ -114,6 +114,29 @@ final class WidgetSyncManager {
         });
     }
 
+    static void refreshStudyGoal(Context context, Runnable confirmed, Runnable finished) {
+        Context app = context.getApplicationContext();
+        String owner = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_USER_ID, "");
+        EXECUTOR.execute(() -> {
+            try {
+                Session session = ensureFreshSession(app);
+                if (session == null || owner.isEmpty()) return;
+                Response response = get(session, "/rest/v1/user_states?select=state&limit=1");
+                if (response.code < 200 || response.code >= 300) return;
+                JSONArray rows = new JSONArray(response.body);
+                JSONObject state = rows.length() > 0 ? rows.getJSONObject(0).optJSONObject("state") : null;
+                JSONObject values = state == null ? null : state.optJSONObject("values");
+                JSONObject streak = values == null ? null : asObject(values.opt("estudiemos_pomodoro_streak"));
+                if (streak == null || streak.optJSONObject("days") == null || streak.optJSONObject("goal") == null) return;
+                if (!owner.equals(app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_USER_ID, ""))) return;
+                StreakWidgetProvider.storeStreakHistory(app, streak.toString());
+                confirmed.run();
+            } catch (Exception ignored) {
+                // Without fresh account progress, do not send an obsolete study reminder.
+            } finally { finished.run(); }
+        });
+    }
+
     private static void schedule(Context context) {
         JobScheduler scheduler = context.getSystemService(JobScheduler.class);
         if (scheduler == null) return;

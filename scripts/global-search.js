@@ -36,6 +36,7 @@
   addThemeButton();
   loadDesktopWidgetsScript();
   loadAccountScript();
+  loadTimetableScript();
   if (!document.querySelector('script[data-friends]')) {
     const friends = document.createElement('script'); friends.dataset.friends = '';
     friends.src = rootPath + 'scripts/friends.js?v=20261014-random-usernames';
@@ -282,7 +283,7 @@
     if (document.querySelector('script[src*="scripts/bandeja.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/bandeja.js?v=20261010-daily-goal`;
+    script.src = `${rootPath}scripts/bandeja.js?v=20261018-weekly-timetable`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -294,7 +295,7 @@
     rules.src = `${rootPath}shared/inbox-alarms.js?v=20260930-lead30`;
     rules.onload = () => {
       const ui = document.createElement('script');
-      ui.src = `${rootPath}scripts/inbox-alarms.js?v=20261010-optional-note`;
+      ui.src = `${rootPath}scripts/inbox-alarms.js?v=20261018-reminder-owner`;
       document.head.appendChild(ui);
     };
     document.head.appendChild(rules);
@@ -304,7 +305,7 @@
     if (document.querySelector('script[src*="scripts/pomodoro.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/pomodoro.js?v=20261014-goal-reminders`;
+    script.src = `${rootPath}scripts/pomodoro.js?v=20261018-reminder-slots`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -350,9 +351,20 @@
     if (document.querySelector('script[src*="scripts/account.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/account.js?v=20261014-goal-reminders`;
+    script.src = `${rootPath}scripts/account.js?v=20261018-weekly-timetable`;
     script.defer = true;
     document.head.appendChild(script);
+  }
+
+  function loadTimetableScript() {
+    if (document.querySelector('script[data-timetable-rules]')) return;
+    const rules = document.createElement('script'); rules.dataset.timetableRules = '';
+    rules.src = rootPath + 'shared/timetable.js?v=20261018';
+    rules.onload = () => {
+      const ui = document.createElement('script'); ui.src = rootPath + 'scripts/timetable.js?v=20261018';
+      document.head.appendChild(ui);
+    };
+    document.head.appendChild(rules);
   }
 
   function loadDesktopWidgetsScript() {

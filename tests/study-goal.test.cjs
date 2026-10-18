@@ -89,3 +89,14 @@ test('Windows reminders suppress completed, unknown, malformed and other-day goa
     assert.equal(run.status,0,run.stderr);assert.match(run.stdout,/A &amp; B/);assert.match(run.stdout,/&lt;script&gt;/);assert.doesNotMatch(run.stdout,/<script>/);
   }finally{assert.equal(path.dirname(dir),os.tmpdir());fs.rmSync(dir,{recursive:true,force:true});}
 });
+
+test('Windows only evaluates the five daily slots, never a late catch-up', {skip:process.platform!=='win32'},()=>{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'estudiemos-slot-test-'));
+  try {
+    const file=path.join(dir,'snapshot.json'); fs.writeFileSync(file,JSON.stringify({study:{date:today,minutes:0,goalMinutes:45,configured:true}}));
+    for (const [time,expected] of [['11:59',false],['12:00',true],['12:04',true],['12:05',false],['14:30',true],['17:00',true],['19:30',true],['22:00',true],['23:00',false]]) {
+      const run=spawnSync('powershell.exe',['-NoProfile','-NonInteractive','-File',path.join(root,'windows-installer/StreakReminder.ps1'),'-DryRun','-InputPath',file,'-Now',today+'T'+time+':00'],{encoding:'utf8',windowsHide:true});
+      assert.equal(run.status,0,run.stderr); assert.equal(JSON.parse(run.stdout).wouldNotify,expected,time);
+    }
+  } finally { fs.rmSync(dir,{recursive:true,force:true}); }
+});

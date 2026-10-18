@@ -5,12 +5,16 @@ import android.app.AlarmManager;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.app.job.JobInfo;
+import android.app.job.JobScheduler;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.ComponentName;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.os.PersistableBundle;
 
 import java.time.LocalDate;
 import java.util.Calendar;
@@ -22,16 +26,24 @@ public class StreakReminderReceiver extends BroadcastReceiver {
     private static final String CHANNEL_ID = "study_streak_v2";
     private static final int NOTIFICATION_ID = 4201;
     private static final String EXTRA_SLOT = "reminder_slot";
-    private static final int[] SLOT_MINUTES = { 12 * 60, 14 * 60 + 30, 17 * 60, 19 * 60 + 30, 22 * 60 };
+    private static final int[] SLOT_MINUTES = StudyReminderRules.SLOTS;
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
+        if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction()) || Intent.ACTION_MY_PACKAGE_REPLACED.equals(intent.getAction()) || Intent.ACTION_TIME_CHANGED.equals(intent.getAction()) || Intent.ACTION_TIMEZONE_CHANGED.equals(intent.getAction())) {
             scheduleNext(context);
             return;
         }
         if (!ACTION_REMIND.equals(intent.getAction())) return;
-        showReminderIfNeeded(context, intent.getStringExtra(EXTRA_SLOT));
+        if (isEnabled(context)) {
+            JobScheduler scheduler = context.getSystemService(JobScheduler.class);
+            PersistableBundle data = new PersistableBundle();
+            data.putString(EXTRA_SLOT, intent.getStringExtra(EXTRA_SLOT));
+            data.putString("day", LocalDate.now().toString());
+            if (scheduler != null) scheduler.schedule(new JobInfo.Builder(4203,
+                    new ComponentName(context, StreakReminderJobService.class))
+                    .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY).setExtras(data).build());
+        }
         scheduleNext(context);
     }
 
@@ -105,7 +117,14 @@ public class StreakReminderReceiver extends BroadcastReceiver {
         );
     }
 
-    private static void showReminderIfNeeded(Context context, String slotId) {
+    static boolean currentSlot(String slotId, String day) {
+        Calendar now = Calendar.getInstance();
+        int minute = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE);
+        return StudyReminderRules.due(slotId, day, LocalDate.now(), minute);
+    }
+
+    static void showReminderIfNeeded(Context context, String slotId) {
+        if (!isEnabled(context) || !currentSlot(slotId, LocalDate.now().toString())) return;
         if (
                 Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                 context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED

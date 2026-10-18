@@ -1,4 +1,4 @@
-#define AppVersion "1.6.5.0"
+#define AppVersion "1.6.6.0"
 #define RainmeterInstaller "Rainmeter-4.5.26.exe"
 #ifndef OutputBaseName
   #define OutputBaseName "Estudiemos-Widgets-para-Windows"
