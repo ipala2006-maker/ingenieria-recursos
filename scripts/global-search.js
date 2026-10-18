@@ -14,7 +14,7 @@
   }
   if (!window.EstudiemosTimetableRules) {
     const rules = document.createElement('script');
-    rules.src = rootPath + 'shared/timetable.js?v=20261018-calendar';
+    rules.src = rootPath + 'shared/timetable.js?v=20261019-planner';
     rules.onload = initialize;
     document.head.appendChild(rules);
     return;
@@ -290,7 +290,7 @@
     if (document.querySelector('script[src*="scripts/bandeja.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/bandeja.js?v=20261019-calendar`;
+    script.src = `${rootPath}scripts/bandeja.js?v=20261019-planner`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -320,7 +320,7 @@
   function loadDashboardScript() {
     if (document.querySelector('script[src*="scripts/dashboard.js"]')) return;
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/dashboard.js?v=20261019-calendar`;
+    script.src = `${rootPath}scripts/dashboard.js?v=20261019-planner`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -366,7 +366,7 @@
   function loadTimetableScript() {
     if (document.querySelector('script[data-timetable-ui]')) return;
     const ui = document.createElement('script'); ui.dataset.timetableUi = '';
-    ui.src = rootPath + 'scripts/timetable.js?v=20261019-calendar';
+    ui.src = rootPath + 'scripts/timetable.js?v=20261019-planner';
     document.head.appendChild(ui);
   }
 
@@ -374,7 +374,7 @@
     if (document.querySelector('script[src*="scripts/desktop-widgets.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/desktop-widgets.js?v=20261018-calendar`;
+    script.src = `${rootPath}scripts/desktop-widgets.js?v=20261019-planner`;
     script.async = false;
     document.head.appendChild(script);
   }

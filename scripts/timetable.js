@@ -1,102 +1,173 @@
 (function () {
   if (window.EstudiemosTimetable || !window.EstudiemosTimetableRules) return;
-  const rules = window.EstudiemosTimetableRules;
+  const rules = window.EstudiemosTimetableRules, AGENDA_KEY = 'bandeja_agenda';
   const style = document.createElement('link');
-  style.rel = 'stylesheet'; style.href = new URL('../styles/timetable.css?v=20261019', document.currentScript.src); document.head.appendChild(style);
-  // Lucide: x, check, trash-2.
-  const paths = { close: '<path d="m18 6-12 12M6 6l12 12"/>', check: '<path d="m5 12 4 4L19 6"/>', trash: '<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/>' };
-  const icon = name => `<svg viewBox="0 0 24 24" aria-hidden="true">${paths[name]}</svg>`;
-  const days = [[1, 'Lun', 'Lunes'], [2, 'Mar', 'Martes'], [3, 'Mié', 'Miércoles'], [4, 'Jue', 'Jueves'], [5, 'Vie', 'Viernes'], [6, 'Sáb', 'Sábado'], [0, 'Dom', 'Domingo']];
-  const colorNames = ['Azul', 'Turquesa', 'Violeta', 'Rosa', 'Amarillo'];
-  let selectedDay = new Date().getDay(), editingId = '', returnFocus = null, owner = identity();
-  const dialog = document.createElement('dialog');
-  dialog.className = 'timetable'; dialog.dataset.timetable = ''; dialog.setAttribute('aria-labelledby', 'timetableTitle');
-  dialog.innerHTML = `<header class="timetable__head"><div><p>CALENDARIO · HORARIO FIJO</p><h2 id="timetableTitle">Nuevo horario</h2></div><button type="button" data-timetable-close aria-label="Cerrar horario" title="Cerrar">${icon('close')}</button></header>
-    <form data-timetable-form><input type="hidden" name="color" value="blue">
-    <label>Materia o actividad<input name="title" maxlength="90" required autocomplete="off" placeholder="Ej.: Análisis matemático"></label>
-    <fieldset><legend>Repetir cada semana</legend><div class="timetable__days">${days.map(([day, short, label]) => `<label title="${label}"><input type="checkbox" name="day" value="${day}" aria-label="${label}"><span>${short}</span></label>`).join('')}</div></fieldset>
-    <div class="timetable__times"><label>Desde<input name="start" type="time" required></label><label>Hasta<input name="end" type="time" required></label></div>
-    <fieldset><legend>Color en el calendario</legend><div class="timetable__colors">${rules.COLORS.map((color, index) => `<button type="button" data-timetable-color="${color}" class="timetable-color--${color}" aria-label="${colorNames[index]}" title="${colorNames[index]}" aria-pressed="${index === 0}"><span></span></button>`).join('')}</div></fieldset>
-    <label>Lugar (opcional)<input name="place" maxlength="90" autocomplete="off" placeholder="Aula, edificio o enlace"></label>
-    <div class="timetable__preview timetable-color--blue" data-timetable-preview><strong></strong><span></span></div>
-    <p class="timetable__status" data-timetable-conflict></p>
-    <p class="timetable__status" data-timetable-status role="status" aria-live="polite"></p>
-    <footer class="timetable__save"><button type="button" data-timetable-delete hidden title="Eliminar horario" aria-label="Eliminar horario">${icon('trash')}</button><button type="button" data-timetable-close>Cancelar</button><button type="submit" class="timetable__primary">${icon('check')}<span>Guardar</span></button></footer>
-    </form>`;
-  document.body.appendChild(dialog);
-  const form = dialog.querySelector('form'), status = dialog.querySelector('[data-timetable-status]');
-  window.EstudiemosTimetable = Object.freeze({ open });
+  style.rel = 'stylesheet'; style.href = new URL('../styles/timetable.css?v=20261019-planner', document.currentScript.src); document.head.appendChild(style);
+  const days = [[1,'Lun','Lunes'],[2,'Mar','Martes'],[3,'Mié','Miércoles'],[4,'Jue','Jueves'],[5,'Vie','Viernes'],[6,'Sáb','Sábado'],[0,'Dom','Domingo']];
+  const colors = ['Azul','Turquesa','Violeta','Rosa','Amarillo'];
+  let panel, form, status, owner = identity(), editingId = '', agendaId = '', active = false, draft = false;
+  window.EstudiemosTimetable = Object.freeze({open});
   function identity() { return window.EstudiemosAccount?.getUser()?.id || 'guest'; }
-  function read() { return rules.read(localStorage); }
-  function write(items) {
-    localStorage.setItem(rules.KEY, JSON.stringify(rules.list(items)));
-    window.dispatchEvent(new CustomEvent('estudiemos:data-change', { detail: { key: rules.KEY } }));
+  function agenda() {
+    const items = JSON.parse(localStorage.getItem(AGENDA_KEY) || '[]');
+    if (!Array.isArray(items)) throw new Error('No se pudo leer el calendario.');
+    return items;
+  }
+  function mount() {
+    if (form) return true;
+    panel = document.querySelector('[data-calendar-editor]');
+    if (!panel) return false;
+    panel.dataset.timetable = '';
+    panel.innerHTML = `<form data-timetable-form>
+      <header class="calendar-planner__head"><h3 data-timetable-title>Nueva actividad</h3><button type="button" data-timetable-delete hidden aria-label="Eliminar actividad" title="Eliminar actividad"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></svg></button></header>
+      <label>Actividad<input name="title" maxlength="90" required autocomplete="off" placeholder="Materia, tarea o evento"></label>
+      <div class="calendar-planner__row"><label>Repetir<select name="repeat"><option value="none">No repetir</option><option value="daily">Cada día</option><option value="weekly">Cada semana</option></select></label><label><span data-timetable-date-label>Fecha</span><input name="date" type="date" required></label></div>
+      <fieldset data-timetable-days hidden><legend>Días de la semana</legend><div class="timetable__days">${days.map(([day,label,name])=>`<label title="${name}"><input type="checkbox" name="day" value="${day}" aria-label="${name}"><span>${label}</span></label>`).join('')}</div></fieldset>
+      <div data-timetable-period hidden><label class="calendar-planner__toggle"><input type="checkbox" name="limited">Hasta una fecha</label><label data-timetable-until hidden>Último día<input name="until" type="date"></label></div>
+      <label class="calendar-planner__toggle" data-timetable-all-day><input type="checkbox" name="allDay">Todo el día</label>
+      <div class="calendar-planner__row" data-timetable-times><label>Hora de inicio<input name="start" type="time" required></label><label>Hora de fin<input name="end" type="time" required></label></div>
+      <fieldset><legend>Color</legend><input type="hidden" name="color" value="blue"><div class="timetable__colors">${rules.COLORS.map((color,index)=>`<button type="button" data-timetable-color="${color}" class="timetable-color--${color}" aria-label="${colors[index]}" title="${colors[index]}" aria-pressed="${index===0}"><span></span></button>`).join('')}</div></fieldset>
+      <div class="calendar-planner__row" data-timetable-type><label>Tipo<select name="type"><option value="Tarea">Actividad</option><option value="Clase">Clase</option><option value="Parcial">Examen</option><option value="Final">Final</option><option value="Entrega">Entrega</option><option value="Estudio">Estudio</option></select></label></div>
+      <details data-timetable-details><summary data-timetable-place-label>Detalle (opcional)</summary><label class="sr-only" for="calendarActivityDetail">Lugar o detalle</label><textarea id="calendarActivityDetail" name="place" maxlength="1200" rows="2" placeholder="Aula, lugar o un detalle"></textarea></details>
+      <div class="sr-only" data-timetable-preview><strong></strong><span></span></div>
+      <p class="calendar-planner__status" data-timetable-conflict></p>
+      <p class="calendar-planner__status" data-timetable-status role="status" aria-live="polite"></p>
+      <footer class="calendar-planner__actions"><button type="button" data-timetable-close>Cancelar</button><button type="submit"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>Guardar actividad</button></footer>
+    </form>`;
+    form = panel.querySelector('form'); status = form.querySelector('[data-timetable-status]');
+    form.addEventListener('input', update); form.addEventListener('change', update);
+    form.addEventListener('submit', save);
+    form.addEventListener('click', event=>{
+      const color = event.target.closest('[data-timetable-color]');
+      if (color) { form.elements.color.value = color.dataset.timetableColor; update(); }
+      if (event.target.closest('[data-timetable-close]')) cancel();
+      if (event.target.closest('[data-timetable-delete]')) remove();
+    });
+    return true;
   }
   function open(options = {}) {
-    if (dialog.open) return;
-    if (Number.isInteger(options.day) && options.day >= 0 && options.day <= 6) selectedDay = options.day;
-    returnFocus = document.activeElement; owner = identity(); reset();
-    if (options.id && !edit(options.id)) return;
-    dialog.showModal(); form.elements.title.focus();
-  }
-  function reset() {
-    editingId = ''; form.reset(); form.elements.start.value = '08:00'; form.elements.end.value = '10:00';
-    form.querySelector(`input[name="day"][value="${selectedDay}"]`).checked = true;
-    dialog.querySelector('#timetableTitle').textContent = 'Nuevo horario';
-    dialog.querySelector('[data-timetable-delete]').hidden = true; status.textContent = ''; chooseColor('blue');
-  }
-  function chooseColor(color) {
-    form.elements.color.value = color;
-    form.querySelectorAll('[data-timetable-color]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.timetableColor === color)));
-    preview();
-  }
-  function preview() {
-    const panel = form.querySelector('[data-timetable-preview]');
-    panel.className = `timetable__preview timetable-color--${form.elements.color.value}`;
-    panel.querySelector('strong').textContent = form.elements.title.value.trim() || 'Nueva actividad';
-    const labels = days.filter(([day]) => form.querySelector(`input[name="day"][value="${day}"]`).checked).map(([,label]) => label);
-    panel.querySelector('span').textContent = `${labels.join(' · ') || 'Elegí los días'} · ${form.elements.start.value || '--:--'}–${form.elements.end.value || '--:--'}`;
-    const candidate = {id:editingId || 'preview', title:form.elements.title.value, days:[...form.querySelectorAll('input[name="day"]:checked')].map(input=>Number(input.value)), start:form.elements.start.value, end:form.elements.end.value};
-    const overlap = rules.overlaps(read(), candidate)[0];
-    form.querySelector('[data-timetable-conflict]').textContent = overlap ? `Coincide con ${overlap.title}.` : '';
-  }
-  function edit(id) {
-    const item = read().find(item => item.id === id); if (!item) return false;
-    editingId = id;
-    for (const key of ['title', 'start', 'end', 'place']) form.elements[key].value = item[key];
-    form.querySelectorAll('input[name="day"]').forEach(input => { input.checked = item.days.includes(Number(input.value)); });
-    chooseColor(item.color); dialog.querySelector('#timetableTitle').textContent = 'Editar horario';
-    dialog.querySelector('[data-timetable-delete]').hidden = false; return true;
-  }
-  form.addEventListener('input', preview);
-  form.addEventListener('change', preview);
-  form.addEventListener('submit', event => {
-    event.preventDefault();
-    if (identity() !== owner) { dialog.close(); return; }
-    const candidate = rules.normalize({ id: editingId || crypto.randomUUID(), title: form.elements.title.value, days: [...form.querySelectorAll('input[name="day"]:checked')].map(input => Number(input.value)), start: form.elements.start.value, end: form.elements.end.value, place: form.elements.place.value, color: form.elements.color.value });
-    if (!candidate) { status.textContent = !form.querySelector('input[name="day"]:checked') ? 'Elegí al menos un día.' : 'El horario de fin debe ser posterior al de inicio.'; return; }
-    const items = read();
-    if (editingId && !items.some(item => item.id === editingId)) { status.textContent = 'Este horario ya se eliminó en otro dispositivo.'; return; }
-    if (!editingId && items.length >= rules.MAX_ITEMS) { status.textContent = 'Podés guardar hasta 100 horarios.'; return; }
-    try { write([...items.filter(item => item.id !== candidate.id), candidate]); }
-    catch (_) { status.textContent = 'No se pudo guardar. Tus datos anteriores siguen intactos.'; return; }
-    dialog.close();
-  });
-  dialog.addEventListener('click', event => {
-    if (event.target.closest('[data-timetable-close]')) dialog.close();
-    const color = event.target.closest('[data-timetable-color]'); if (color) chooseColor(color.dataset.timetableColor);
-    if (event.target.closest('[data-timetable-delete]')) {
-      if (identity() !== owner) { dialog.close(); return; }
-      try { write(read().filter(item => item.id !== editingId)); dialog.close(); }
-      catch (_) { status.textContent = 'No se pudo eliminar. Intentá de nuevo.'; }
+    if (!mount()) return;
+    if (options.retain && draft && identity() === owner) {
+      active = true; window.dispatchEvent(new CustomEvent('estudiemos:calendar-edit-open')); update(); form.elements.title.focus(); return;
     }
-  });
-  dialog.addEventListener('close', () => {
-    const target = returnFocus?.isConnected ? returnFocus : document.querySelector('[data-calendar-reader][open] [data-calendar-reader-close]') || document.querySelector('[data-calendar-expand]');
-    target?.focus({ preventScroll: true });
-  });
-  function refresh() { if (identity() !== owner) { if (dialog.open) dialog.close(); reset(); owner = identity(); } }
-  window.addEventListener('estudiemos:cloud-restored', refresh); window.addEventListener('estudiemos:account-synced', refresh); window.addEventListener('estudiemos:account-change', refresh);
-  window.addEventListener('storage', event => { if ([rules.KEY, 'estudiemos_cloud_user'].includes(event.key)) refresh(); });
-  reset(); window.dispatchEvent(new CustomEvent('estudiemos:timetable-ready'));
+    owner = identity(); editingId = options.id || ''; agendaId = options.agendaId || ''; form.reset(); status.textContent = '';
+    form.querySelector('[data-timetable-details]').open = false;
+    const selected = rules.date(options.date) || new Date();
+    form.elements.date.value = rules.dateKey(selected); form.elements.start.value = '08:00'; form.elements.end.value = '10:00';
+    form.querySelectorAll('[name=day]').forEach(input=>{input.checked=Number(input.value)===selected.getDay();});
+    form.elements.repeat.value = options.repeat || 'none';
+    try {
+      const item = editingId ? rules.read(localStorage).find(item=>item.id===editingId) : agendaId ? agenda().find(item=>item.id===agendaId) : null;
+      if ((editingId || agendaId) && !item) return;
+      if (item) {
+        form.elements.title.value = item.title; form.elements.color.value = rules.COLORS.includes(item.color) ? item.color : 'blue';
+        if (editingId) {
+          form.elements.repeat.value = item.days.length===7 ? 'daily' : 'weekly';
+          form.elements.date.value = item.startDate || ''; form.elements.until.value = item.endDate || ''; form.elements.limited.checked = Boolean(item.endDate);
+          form.elements.start.value = item.start; form.elements.end.value = item.end; form.elements.place.value = item.place || '';
+          form.querySelectorAll('[name=day]').forEach(input=>{input.checked=item.days.includes(Number(input.value));});
+        } else {
+          form.elements.date.value = item.date; form.elements.start.value = item.horaInicio || item.startTime || '08:00';
+          form.elements.end.value = item.horaFin || item.endTime || '10:00'; form.elements.allDay.checked = !(item.horaInicio || item.startTime);
+          form.elements.place.value = item.note || ''; form.elements.type.value = ['Tarea','Clase','Parcial','Final','Entrega','Estudio'].includes(item.type) ? item.type : 'Tarea';
+        }
+      }
+    } catch (_) { return; }
+    form.querySelector('[data-timetable-details]').open = Boolean(form.elements.place.value);
+    form.querySelector('[data-timetable-title]').textContent = editingId || agendaId ? 'Editar actividad' : 'Nueva actividad';
+    form.querySelector('[data-timetable-delete]').hidden = !(editingId || agendaId);
+    active = true; draft = true; window.dispatchEvent(new CustomEvent('estudiemos:calendar-edit-open')); update(); form.elements.title.focus();
+  }
+  function update() {
+    status.textContent = '';
+    const repeat = form.elements.repeat.value !== 'none', allDay = !repeat && form.elements.allDay.checked;
+    form.querySelector('[data-timetable-days]').hidden = form.elements.repeat.value !== 'weekly';
+    form.querySelector('[data-timetable-period]').hidden = !repeat; form.querySelector('[data-timetable-all-day]').hidden = repeat;
+    form.querySelector('[data-timetable-date-label]').textContent = repeat ? 'Desde (opcional)' : 'Fecha'; form.elements.date.required = !repeat;
+    form.querySelector('[data-timetable-until]').hidden = !repeat || !form.elements.limited.checked; form.elements.until.required = repeat && form.elements.limited.checked;
+    form.querySelector('[data-timetable-times]').hidden = allDay; form.elements.start.required = !allDay; form.elements.end.required = !allDay;
+    form.querySelector('[data-timetable-type]').hidden = repeat; form.elements.place.maxLength = repeat ? 90 : 1200;
+    form.querySelector('[data-timetable-place-label]').textContent = repeat ? 'Lugar (opcional)' : 'Detalle (opcional)';
+    form.querySelectorAll('[data-timetable-color]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.timetableColor===form.elements.color.value)));
+    const preview = form.querySelector('[data-timetable-preview]');
+    preview.querySelector('strong').textContent = form.elements.title.value.trim() || 'Nueva actividad';
+    const labels = days.filter(([day])=>form.querySelector('[name=day][value="'+day+'"]').checked).map(([,label])=>label);
+    const recurrence = !repeat ? 'Una sola vez' : form.elements.repeat.value==='daily' ? 'Cada día' : 'Cada semana · '+(labels.join(' · ') || 'Elegí los días');
+    const date = form.elements.date.value ? shortDate(form.elements.date.value) : 'Sin fecha de inicio';
+    preview.querySelector('span').textContent = [recurrence, allDay ? 'Todo el día' : form.elements.start.value+'–'+form.elements.end.value, date+(repeat && form.elements.limited.checked && form.elements.until.value ? ' → '+shortDate(form.elements.until.value) : '')].join(' · ');
+    const overlap = repeat ? rules.overlaps(rules.read(localStorage), weeklyCandidate())[0] : null;
+    form.querySelector('[data-timetable-conflict]').textContent = overlap ? 'Coincide con '+overlap.title+'.' : '';
+    if (active) {
+      const title = form.elements.title.value.trim() || 'Nueva actividad';
+      const schedule = repeat ? rules.normalize({...weeklyCandidate(),title}) : null;
+      const entry = !repeat && rules.date(form.elements.date.value) && (allDay || rules.time(form.elements.start.value) && rules.time(form.elements.end.value) && form.elements.end.value > form.elements.start.value) ? {id:'calendar-preview', title, date:form.elements.date.value, horaInicio:allDay?'':form.elements.start.value, horaFin:allDay?'':form.elements.end.value, type:form.elements.type.value, color:form.elements.color.value} : null;
+      window.dispatchEvent(new CustomEvent('estudiemos:calendar-edit-preview',{detail:schedule||entry?{schedule,entry,replaceId:editingId||agendaId,date:form.elements.date.value}:null}));
+    }
+  }
+  function shortDate(value) { const date=rules.date(value); return date ? new Intl.DateTimeFormat('es-AR',{day:'numeric',month:'short',year:'numeric'}).format(date) : value; }
+  function weeklyCandidate() {
+    return {id:editingId || agendaId || 'preview', title:form.elements.title.value, days:form.elements.repeat.value==='daily' ? [1,2,3,4,5,6,0] : [...form.querySelectorAll('[name=day]:checked')].map(input=>Number(input.value)), start:form.elements.start.value, end:form.elements.end.value, place:form.elements.place.value, color:form.elements.color.value, startDate:form.elements.date.value, endDate:form.elements.limited.checked ? form.elements.until.value : ''};
+  }
+  function commit(values) {
+    const previous=Object.fromEntries(Object.keys(values).map(key=>[key,localStorage.getItem(key)]));
+    try { for(const [key,value] of Object.entries(values))localStorage.setItem(key,JSON.stringify(value)); }
+    catch(error) {for(const [key,raw] of Object.entries(previous)) {if(raw===null)localStorage.removeItem(key);else localStorage.setItem(key,raw);}throw error;}
+    if(values[AGENDA_KEY]) {try {window.EstudiemosAndroid?.postMessage?.(JSON.stringify({type:'agenda-sync',items:values[AGENDA_KEY]}));}catch(_){}}
+    for(const key of Object.keys(values))window.dispatchEvent(new CustomEvent('estudiemos:data-change',{detail:{key}}));
+  }
+  function save(event) {
+    event.preventDefault(); if(!active || identity()!==owner)return cancel();
+    status.textContent = '';
+    try {
+      const repeat=form.elements.repeat.value!=='none', allDay=!repeat&&form.elements.allDay.checked;
+      if(!form.elements.title.value.trim())throw new Error('Escribí el nombre de la actividad.');
+      const notes=agenda(), schedules=rules.read(localStorage);
+      const original=editingId?schedules.find(item=>item.id===editingId):agendaId?notes.find(item=>item.id===agendaId):null;
+      if((editingId||agendaId)&&!original)throw new Error('Esta actividad se eliminó en otro dispositivo.');
+      if(!allDay && (!rules.time(form.elements.start.value)||!rules.time(form.elements.end.value)||form.elements.end.value<=form.elements.start.value))throw new Error('La hora de fin debe ser posterior a la de inicio.');
+      if(form.elements.date.value&&!rules.date(form.elements.date.value))throw new Error('Elegí una fecha válida.');
+      const id=editingId||agendaId||crypto.randomUUID(), values={};
+      let selected=form.elements.date.value || rules.dateKey(new Date());
+      if(repeat) {
+        if(agendaId&&original.alarm)throw new Error('Quitá la alarma de esta actividad antes de convertirla en un horario repetitivo.');
+        if(form.elements.place.value.trim().length>90)throw new Error('El lugar admite hasta 90 caracteres. Acortá el detalle antes de convertir esta actividad.');
+        const item=rules.normalize({...weeklyCandidate(),id});
+        if(!item)throw new Error(!form.querySelector('[name=day]:checked')&&form.elements.repeat.value==='weekly'?'Elegí al menos un día.':'Revisá el período: la fecha final no puede ser anterior al inicio.');
+        if(item.startDate&&item.endDate&&!rules.occurrences([item],item.startDate,item.endDate).length)throw new Error('No hay ningún día seleccionado dentro de ese período.');
+        if(!editingId&&schedules.length>=rules.MAX_ITEMS)throw new Error('Podés guardar hasta 100 horarios repetitivos.');
+        values[rules.KEY]=[...schedules.filter(item=>item.id!==editingId),item];
+        if(agendaId)values[AGENDA_KEY]=notes.filter(item=>item.id!==agendaId);
+        const end=new Date(rules.date(selected));end.setDate(end.getDate()+6);
+        selected=rules.occurrences([item],selected,rules.dateKey(end))[0]?.date||selected;
+      } else {
+        if(!rules.date(selected)||!form.elements.date.value)throw new Error('Elegí la fecha de la actividad.');
+        if(!agendaId&&notes.length>=500)throw new Error('Podés guardar hasta 500 anotaciones.');
+        const item={...(agendaId?original:{}),id,title:form.elements.title.value.trim(),date:selected,type:form.elements.type.value,horaInicio:allDay?'':form.elements.start.value,horaFin:allDay?'':form.elements.end.value,note:form.elements.place.value.trim(),color:form.elements.color.value,done:agendaId?Boolean(original.done):false,alarm:agendaId?original.alarm||null:null,createdAt:original?.createdAt||Date.now()};
+        values[AGENDA_KEY]=[...notes.filter(item=>item.id!==agendaId),item];
+        if(editingId)values[rules.KEY]=schedules.filter(item=>item.id!==editingId);
+      }
+      commit(values); active=false;draft=false;
+      window.dispatchEvent(new CustomEvent('estudiemos:calendar-edit-saved',{detail:{date:selected}}));
+    } catch(error) {status.textContent=error.message||'No se pudo guardar. Intentá de nuevo.';}
+  }
+  function remove() {
+    if(!active||identity()!==owner)return cancel();
+    try {
+      const key=editingId?rules.KEY:AGENDA_KEY,id=editingId||agendaId;
+      if(!id)return;commit({[key]:(editingId?rules.read(localStorage):agenda()).filter(item=>item.id!==id)});
+      active=false;draft=false;window.dispatchEvent(new CustomEvent('estudiemos:calendar-edit-saved'));
+    } catch(_) {status.textContent='No se pudo eliminar. Intentá de nuevo.';}
+  }
+  function cancel() {active=false;draft=false;window.dispatchEvent(new CustomEvent('estudiemos:calendar-edit-cancel'));}
+  function refresh() {
+    if(identity()===owner)return;
+    active=false;draft=false;owner=identity();if(form){form.reset();status.textContent='';}
+    window.dispatchEvent(new CustomEvent('estudiemos:calendar-edit-preview',{detail:null}));
+    document.querySelector('[data-calendar-reader][open]')?.close();
+  }
+  for(const name of ['estudiemos:cloud-restored','estudiemos:account-synced','estudiemos:account-change'])window.addEventListener(name,refresh);
+  window.addEventListener('storage',event=>{if(event.key==='estudiemos_cloud_user')refresh();});
+  window.addEventListener('estudiemos:calendar-closed',()=>{active=false;draft=false;});
+  window.addEventListener('estudiemos:calendar-ready',mount);
+  mount();window.dispatchEvent(new CustomEvent('estudiemos:timetable-ready'));
 })();

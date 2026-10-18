@@ -6,6 +6,28 @@ const vm = require('node:vm');
 const rules = require('../shared/timetable');
 const entry = (extra = {}) => ({ id:'class-1', title:'Algebra', days:[1,3,5], start:'08:00', end:'10:00', place:'Aula 2', color:'teal', ...extra });
 
+test('recurring periods include their boundaries and never leak outside the semester', () => {
+  const item=entry({startDate:'2026-10-20',endDate:'2026-10-30'});
+  assert.deepEqual(rules.normalize(item),item);
+  assert.deepEqual(rules.occurrences([item],'2026-10-18','2026-11-02').map(i=>i.date),['2026-10-21','2026-10-23','2026-10-26','2026-10-28','2026-10-30']);
+  assert.equal(rules.occurrences([item],'2026-11-01','2026-11-30').length,0);
+  assert.equal(rules.occurrences([entry({days:[0,1,2,3,4,5,6],startDate:'2028-02-28',endDate:'2028-03-01'})],'2028-02-01','2028-03-10').length,3);
+  for(const bad of [{startDate:'2026-02-30'},{endDate:'2026-13-01'},{startDate:'2026-10-30',endDate:'2026-10-20'},{startDate:{}},{endDate:7}])assert.equal(rules.normalize(entry(bad)),null);
+  assert.equal(rules.normalize(entry()).startDate,undefined,'legacy unbounded weeks remain unbounded');
+  assert.equal(rules.overlaps([item],entry({id:'later',startDate:'2026-11-01'})).length,0);
+});
+
+test('chosen colors apply to one-off activities too, without making them recurring', () => {
+  assert.equal(rules.eventClass({id:'note',color:'rose'}),'is-colored timetable-color--rose');
+  assert.equal(rules.eventClass({id:'note',color:'<script>'}),'');
+  const source=fs.readFileSync(path.join(__dirname,'../scripts/bandeja.js'),'utf8');
+  const fn=source.slice(source.indexOf('  function normalizeAgendaItem('),source.indexOf('  function compareAgendaItems('));
+  const context={window:{EstudiemosTimetableRules:rules},normalizeAgendaType:t=>t};
+  vm.runInNewContext(fn+';this.normalize=normalizeAgendaItem;',context);
+  assert.equal(context.normalize({id:'once',title:'Parcial',type:'Tarea',color:'rose'}).color,'rose');
+  assert.equal(context.normalize({id:'once',title:'Parcial',type:'Tarea',color:'bad'}).color,'');
+});
+
 test('one weekly schedule holds several days without expanding dated notes or alarms', () => {
   assert.deepEqual(rules.normalize(entry({ days:[5,1,1,3,0,99,'2'] })), entry({ days:[1,3,5,0] }));
   assert.equal(rules.forDay([entry()],1).length,1);

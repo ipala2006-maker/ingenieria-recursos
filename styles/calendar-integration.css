@@ -4,6 +4,7 @@
 .timetable-color--rose { --timetable-color:#e6a2b3; }
 .timetable-color--amber { --timetable-color:#dfbd64; }
 .is-recurring.timetable-color--blue,.is-recurring.timetable-color--teal,.is-recurring.timetable-color--violet,.is-recurring.timetable-color--rose,.is-recurring.timetable-color--amber { --event-color:var(--timetable-color); }
+.is-colored.timetable-color--blue,.is-colored.timetable-color--teal,.is-colored.timetable-color--violet,.is-colored.timetable-color--rose,.is-colored.timetable-color--amber { --event-color:var(--timetable-color); }
 .dashboard-calendar__event.is-recurring { padding:4px 7px; border-left:3px solid var(--event-color); border-radius:3px; background:color-mix(in srgb,var(--event-color) 8%,transparent); }
 .dashboard-calendar__event.is-recurring time { color:var(--muted); }
 .calendar-activity.is-recurring .calendar-activity__content { border-left-width:3px; }
@@ -13,6 +14,7 @@
 .calendar-month-colors i { --event-color:var(--accent); display:block; flex:1; height:3px; border-radius:1px; background:var(--event-color); }
 .calendar-month-colors .is-exam { --event-color:#e6ad54; }
 .calendar-month-colors .is-task { --event-color:#b0a2e8; }
+.calendar-month-colors .is-colored { --event-color:var(--timetable-color); }
 .dashboard-calendar__grid[data-month-compact=true] .calendar-month-colors { display:none; }
 .calendar-activity__edit { padding:6px 10px; min-height:36px; color:var(--text); background:transparent; border:1px solid var(--border); border-radius:5px; font:inherit; font-size:12px; cursor:pointer; }
 .calendar-tools-dialog { box-sizing:border-box; width:min(420px,calc(100% - 32px)); max-height:calc(100dvh - 32px); margin:auto; padding:20px; color:var(--text); background:var(--panel); border:1px solid var(--border); border-radius:8px; box-shadow:0 24px 64px #0005; overflow:auto; }
@@ -67,8 +69,10 @@
 .agenda-item.is-recurring { border-left:3px solid var(--timetable-color); background:color-mix(in srgb,var(--timetable-color) 7%,transparent); }
 .agenda-item.is-recurring .calendar-activity__edit { margin:0 0 10px 12px; }
 .calendar-entry.is-recurring { padding-left:6px; border-left:3px solid var(--timetable-color); background:color-mix(in srgb,var(--timetable-color) 8%,transparent); }
+.calendar-entry.is-colored,.agenda-item.is-colored { border-left:3px solid var(--timetable-color); }
+.agenda-event-pill.is-colored { --type:var(--timetable-color); border-left:3px solid var(--timetable-color); }
 @container month-calendar (max-width:420px) {
-  .dashboard-calendar__legend { display:grid; grid-template-columns:minmax(70px,1fr) auto auto; gap:4px; }
+  .dashboard-calendar__legend { display:grid; grid-template-columns:minmax(70px,1fr) auto auto auto; gap:4px; }
   .dashboard-calendar__legend select { width:100%; min-width:0; max-width:none; }
   .dashboard-calendar__legend .dashboard-calendar__month-total { grid-column:1/-1; width:auto; margin:2px 0 0; }
   .dashboard-calendar[data-view=week] .dashboard-calendar__month-total,.dashboard-calendar[data-view=schedule] .dashboard-calendar__month-total { display:none; }

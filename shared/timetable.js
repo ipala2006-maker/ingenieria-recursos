@@ -12,7 +12,9 @@
     const id = clean(value.id, 100), title = clean(value.title, 90);
     const days = [...new Set(Array.isArray(value.days) ? value.days.filter(day => Number.isInteger(day) && day >= 0 && day <= 6) : [])].sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7));
     if (!id || !title || !days.length || !time(value.start) || !time(value.end) || value.end <= value.start) return null;
-    return { id, title, days, start: value.start, end: value.end, place: clean(value.place, 90), color: COLORS.includes(value.color) ? value.color : 'blue' };
+    const startDate = value.startDate || '', endDate = value.endDate || '';
+    if ((startDate && !date(startDate)) || (endDate && !date(endDate)) || (startDate && endDate && endDate < startDate)) return null;
+    return { id, title, days, start: value.start, end: value.end, place: clean(value.place, 90), color: COLORS.includes(value.color) ? value.color : 'blue', ...(startDate ? {startDate} : {}), ...(endDate ? {endDate} : {}) };
   }
   function list(value) {
     if (!Array.isArray(value)) return [];
@@ -28,7 +30,7 @@
   }
   function overlaps(items, candidate) {
     const entry = normalize(candidate);
-    return entry ? list(items).filter(item => item.id !== entry.id && item.days.some(day => entry.days.includes(day)) && entry.start < item.end && entry.end > item.start) : [];
+    return entry ? list(items).filter(item => item.id !== entry.id && item.days.some(day => entry.days.includes(day)) && entry.start < item.end && entry.end > item.start && (!entry.endDate || !item.startDate || entry.endDate >= item.startDate) && (!item.endDate || !entry.startDate || item.endDate >= entry.startDate)) : [];
   }
   function date(value) {
     if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
@@ -44,17 +46,18 @@
     // Calendar projections are bounded, read-only views, never persisted tasks.
     for (let index = 0, day = new Date(start); day <= end && index < 62; index++, day.setDate(day.getDate()+1)) {
       const key = dateKey(day);
-      for (const item of byDay[day.getDay()]) result.push({
+      for (const item of byDay[day.getDay()].filter(item => (!item.startDate || key >= item.startDate) && (!item.endDate || key <= item.endDate))) result.push({
         id: `weekly:${item.id}:${key}`, scheduleId: item.id, title: item.title,
         date: key, horaInicio: item.start, horaFin: item.end, type: 'Horario fijo',
-        color: item.color, note: item.place, done: false
+        color: item.color, note: item.place, done: false,
+        ...(item.startDate ? {startDate:item.startDate} : {}), ...(item.endDate ? {endDate:item.endDate} : {})
       });
     }
     return result;
   }
   function eventClass(item) {
-    return item?.scheduleId && COLORS.includes(item.color) ? `is-recurring timetable-color--${item.color}` : '';
+    return COLORS.includes(item?.color) ? `${item.scheduleId ? 'is-recurring' : 'is-colored'} timetable-color--${item.color}` : '';
   }
   function read(storage) { try { return list(JSON.parse(storage.getItem(KEY) || '[]')); } catch (_) { return []; } }
-  return Object.freeze({ KEY, MAX_ITEMS, COLORS, time, normalize, list, forDay, overlaps, occurrences, eventClass, read });
+  return Object.freeze({ KEY, MAX_ITEMS, COLORS, time, date, dateKey, normalize, list, forDay, overlaps, occurrences, eventClass, read });
 });

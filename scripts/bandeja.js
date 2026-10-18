@@ -1498,6 +1498,7 @@
       horaFin: item.horaFin || item.endTime || "",
       done: Boolean(item.done),
       alarm: item.alarm || null,
+      color: window.EstudiemosTimetableRules?.COLORS.includes(item.color) ? item.color : '',
       createdAt: Number(item.createdAt) || 0
     };
   }
