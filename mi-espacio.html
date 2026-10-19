@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Tus apuntes y carpetas de Estudiemos, conectados a tu Google Drive.">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="color-scheme" content="light dark">
+  <meta name="referrer" content="no-referrer">
+  <title>Mi espacio | Estudiemos</title>
+  <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="./site.webmanifest">
+  <script src="./scripts/theme-init.js?v=20260826-workspace-widget"></script>
+  <script src="./shared/release.js?v=20261019-drive"></script>
+  <link rel="stylesheet" href="./styles/app.css?v=20260906-referrals">
+  <link rel="stylesheet" href="./styles/workspace.css?v=20260906-referrals-2">
+  <link rel="stylesheet" href="./styles/workspace-drive.css?v=20261019-drive">
+</head>
+<body class="workspace-home drive-library-page">
+  <header class="topbar"><a class="brand" href="./"><span class="brand__mark" aria-hidden="true">&sum;</span><span class="brand__text">Estudiemos</span></a><nav class="topbar__nav" aria-label="Cuenta y herramientas"></nav></header>
+  <main class="workspace-page">
+    <section class="workspace-section" data-drive-workspace aria-labelledby="workspaceSectionTitle">
+      <header class="workspace-section__head">
+        <div class="workspace-section__intro"><a class="drive-back" href="./">&larr; Volver al inicio</a><h1 id="workspaceSectionTitle">Mi espacio</h1><p>Tus apuntes y carpetas, en tu Google Drive.</p></div>
+        <button class="workspace-btn workspace-btn--primary" type="button" data-workspace-add disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Agregar</button>
+      </header>
+      <section class="workspace-browser" aria-label="Archivos y carpetas">
+        <header class="workspace-toolbar" hidden>
+          <nav class="workspace-breadcrumbs" aria-label="Ruta de carpetas" data-workspace-breadcrumbs></nav>
+          <div class="workspace-toolbar__controls">
+            <label class="workspace-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg><span class="sr-only">Buscar en Mi espacio</span><input type="search" placeholder="Buscar en Mi espacio" data-workspace-search maxlength="120"></label>
+            <label class="workspace-sort"><span class="sr-only">Ordenar archivos</span><select data-workspace-sort aria-label="Ordenar archivos"><option value="updated">Recientes</option><option value="name">Nombre</option><option value="type">Tipo</option></select></label>
+            <div class="workspace-view-toggle" role="group" aria-label="Vista de archivos"><button type="button" data-workspace-view="grid" aria-label="Cuadr&iacute;cula" title="Cuadr&iacute;cula" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><rect x="14" y="14" width="6" height="6"/></svg></button><button type="button" data-workspace-view="list" aria-label="Lista" title="Lista" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M3 6h1M3 12h1M3 18h1"/></svg></button></div>
+          </div>
+        </header>
+        <div class="workspace-dropzone" data-workspace-dropzone><div class="workspace-state" data-workspace-state><span class="workspace-spinner" aria-hidden="true"></span><p>Preparando tu espacio...</p></div><div class="workspace-items" data-workspace-items hidden></div></div>
+        <p class="workspace-status" data-workspace-status role="status" aria-live="polite"></p>
+      </section>
+      <input type="file" multiple hidden data-workspace-file-input accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.md,.rtf,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.webp,.heic,.zip,.rar,.7z,.json,.xml,.mp3,.m4a,.wav,.mp4,.mov,.webm">
+    </section>
+  </main>
+  <script src="./data/data.js?v=20260804-ai-profesores"></script>
+  <script src="./shared/study-goal.js?v=20261010-daily-goal"></script>
+  <script src="./scripts/global-search.js?v=20261019-drive"></script>
+  <script src="./shared/drive-files.js?v=20261019-drive"></script>
+  <script src="./scripts/workspace-drive.js?v=20261019-drive"></script>
+</body>
+</html>

@@ -208,6 +208,9 @@ public class MainActivity extends Activity {
             String type = payload.optString("type");
             if ("agenda-sync".equals(type)) {
                 AgendaWidgetProvider.storeAgendaAndUpdate(this, message.getData());
+            } else if ("drive-connect-browser".equals(type)) {
+                // Google does not allow OAuth inside embedded WebViews.
+                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://estudiemos-app.vercel.app/mi-espacio.html")));
             } else if ("inbox-notifications-enable".equals(type)) {
                 InboxAlarmReceiver.enable(this);
                 if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
@@ -475,6 +478,9 @@ public class MainActivity extends Activity {
         notifyNativeSessionToWeb();
         notifyPendingAgendaCompletions();
         notifyPomodoroStateToWeb();
+        if (webReady && webView != null) {
+            webView.evaluateJavascript("window.dispatchEvent(new CustomEvent('estudiemos:drive-resume'));", null);
+        }
     }
 
     @Override

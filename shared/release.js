@@ -4,7 +4,7 @@
   else root.EstudiemosRelease = release;
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   // A release decision, not a client preference or a subscription entitlement.
-  const features = Object.freeze({ workspace: false, ai: false });
-  const homeSpaceEnabled = key => key === 'assistant' ? features.ai : key === 'workspace' ? features.workspace : true;
+  const features = Object.freeze({ workspace: false, ai: false, driveWorkspace: true });
+  const homeSpaceEnabled = key => key === 'assistant' ? features.ai : key === 'workspace' ? features.driveWorkspace : true;
   return Object.freeze({ features, enabled: name => features[name] === true, homeSpaceEnabled });
 });

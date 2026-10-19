@@ -1,8 +1,13 @@
 # Herramientas guardadas para una etapa posterior
 
-IA y Mi espacio no se muestran en el inicio, la personalizacion, los accesos
-rapidos ni las opciones de widgets mientras sus funciones estan desactivadas.
+IA y la variante anterior de Mi espacio no se muestran en el inicio, la
+personalizacion, los accesos rapidos ni los widgets mientras estan desactivadas.
 No se borran implementaciones, preferencias ni datos de usuarios.
+
+Actualizacion de octubre: la nueva variante de Mi espacio con Google Drive usa
+`driveWorkspace`, independiente de `workspace`. El motor anterior de Supabase,
+sus archivos y widgets nativos siguen pausados y preservados. Ver
+`docs/google-drive-workspace.md` para configuracion y activacion real de Google.
 
 ## Conservado
 

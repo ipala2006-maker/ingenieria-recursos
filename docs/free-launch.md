@@ -1,5 +1,11 @@
 # Primera Version Gratuita
 
+Actualizacion: la nueva variante de Mi espacio con Google Drive usa una bandera
+independiente `driveWorkspace`. No reactiva el almacenamiento anterior ni la IA,
+no modifica planes ni activa pagos. Su conexion real requiere configurar Google;
+ver `docs/google-drive-workspace.md`. El estado original de pausa se conserva a
+continuacion como referencia para el motor anterior.
+
 Mi espacio y Trabajar con la IA aparecen como Proximamente para todos los
 usuarios, sin excepcion por cuenta o plan. Inbox, calendario, Pomodoro, racha,
 sincronizacion y alarmas manuales continuan disponibles. No se activaron pagos.

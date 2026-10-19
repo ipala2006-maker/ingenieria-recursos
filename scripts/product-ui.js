@@ -25,7 +25,7 @@
   const isVisible = key => {
     if (key === 'overview') return true;
     const mapped = key === 'space' ? 'workspace' : key;
-    if (mapped === 'workspace' && !window.EstudiemosRelease?.enabled('workspace')) return false;
+    if (mapped === 'workspace' && !window.EstudiemosRelease?.enabled('driveWorkspace')) return false;
     try {
       const value = window.EstudiemosHomeLayout?.read() || {};
       return value.visible?.[mapped] !== false;

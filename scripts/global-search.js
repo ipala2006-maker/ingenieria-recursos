@@ -22,13 +22,13 @@
   if (!document.querySelector('script[data-release-ui]')) {
     const releaseUi = document.createElement('script');
     releaseUi.dataset.releaseUi = '';
-    releaseUi.src = rootPath + 'scripts/release-ui.js?v=20261007-hidden-tools';
+    releaseUi.src = rootPath + 'scripts/release-ui.js?v=20261019-drive';
     document.head.appendChild(releaseUi);
   }
   if (!window.EstudiemosRelease && !document.querySelector('script[data-release-config]')) {
     const releaseConfig = document.createElement('script');
     releaseConfig.dataset.releaseConfig = '';
-    releaseConfig.src = rootPath + 'shared/release.js?v=20261007-hidden-tools';
+    releaseConfig.src = rootPath + 'shared/release.js?v=20261019-drive';
     document.head.appendChild(releaseConfig);
   }
   const workspaceHome = document.body.classList.contains("workspace-home") || document.body.classList.contains("productivity-page");
@@ -217,7 +217,7 @@
   function loadProductInterface() {
     if (document.querySelector('script[src*="scripts/product-ui.js"]')) return;
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/product-ui.js?v=20261007-available-tools`;
+    script.src = `${rootPath}scripts/product-ui.js?v=20261019-drive`;
     document.head.appendChild(script);
   }
 
@@ -313,7 +313,7 @@
     if (document.querySelector('script[src*="scripts/pomodoro.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/pomodoro.js?v=20261018-reminder-slots`;
+    script.src = `${rootPath}scripts/pomodoro.js?v=20261019-drive-onboarding`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -359,7 +359,7 @@
     if (document.querySelector('script[src*="scripts/account.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/account.js?v=20261019-calendar`;
+    script.src = `${rootPath}scripts/account.js?v=20261019-drive`;
     script.defer = true;
     document.head.appendChild(script);
   }
