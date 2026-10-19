@@ -3,7 +3,7 @@
 ## Uso
 
 - Inicio conserva su espacio personalizable y su pestana movil **Mi espacio**, sin abrir otra pagina para conectar. En escritorio agrega un acceso de carpeta; Cuenta tambien incluye el enlace a Mi espacio.
-- **Conectar Google Drive** inicia el consentimiento oficial. Se sugiere la cuenta con el correo de Estudiemos, pero el usuario puede elegir otra cuenta de Google.
+- **Conectar Google Drive** inicia el consentimiento oficial y muestra siempre el selector de Google. No presupone que el Drive usa el mismo correo que la cuenta de Estudiemos.
 - No se conecta Google por escribir un correo ni por instalar la app: Google exige consentimiento expreso. No se agrega este permiso al registro ni se impide usar las demas herramientas si se rechaza.
 - La autorizacion pertenece a la cuenta de Estudiemos. Se mantiene en sus dispositivos sin compartir contrasenas. En cada dispositivo se requiere iniciar sesion en esa misma cuenta de Estudiemos.
 - En Android 1.6.2 o posterior, Conectar abre el navegador externo, como requiere Google. Si ese navegador no tiene sesion de Estudiemos, hay que iniciarla alli. Despues de conectar, volver a la app; al recuperar el foco se vuelve a consultar la conexion. No se envia la sesion nativa por URL ni se permite OAuth dentro del WebView.

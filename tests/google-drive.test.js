@@ -75,6 +75,7 @@ test('pilot rollout is server-owned, requires verified identity and never reveal
 test('OAuth uses minimal scope, PKCE, offline consent and an encrypted secure one-time browser state',async()=>{
   const h=harness(), start=await h.request('start'), grant=h.grants[0];
   assert.equal(start.status,200);assert.deepEqual(Array.from(grant.scope),[scope]);assert.equal(grant.include_granted_scopes,false);assert.equal(grant.access_type,'offline');assert.equal(grant.code_challenge_method,'S256');
+  assert.equal(grant.prompt,'consent select_account');assert.ok(!Object.hasOwn(grant,'login_hint'),'Drive must be selectable independently from the Estudiemos email');
   assert.match(start.headers['Set-Cookie'],/Secure; HttpOnly; SameSite=Lax/);assert.match(start.headers['Set-Cookie'],/^__Host-/);assert.ok(!start.headers['Set-Cookie'].includes('alice'));
   const cookie=start.headers['Set-Cookie'].split(';')[0];
   const callback=await h.request('callback',{query:{drive:'callback',state:grant.state,code:'pilot-code'},headers:{cookie}});
