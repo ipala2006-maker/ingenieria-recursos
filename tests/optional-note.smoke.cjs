@@ -47,7 +47,7 @@ const readItems = page => page.evaluate(() => JSON.parse(localStorage.getItem('b
       const page = await context.newPage(), errors = [];
       page.on('pageerror', error => errors.push(error.message));
       if (live && width === 1440) {
-        for (const file of ['index.html', 'pages/bandeja.html', 'scripts/dashboard.js', 'scripts/bandeja.js', 'scripts/inbox-alarms.js', 'scripts/global-search.js', 'styles/inbox-alarms.css']) {
+        for (const file of ['index.html', 'pages/bandeja.html', 'scripts/dashboard.js', 'scripts/bandeja.js', 'scripts/inbox-alarms.js', 'scripts/global-search.js', 'scripts/note-colors.js', 'styles/note-colors.css', 'styles/inbox-alarms.css']) {
           const response = await context.request.get(`${base}/${file}?version=${process.env.RELEASE_VERSION || 'optional-note'}`);
           assert.equal(response.status(), 200, file);
           const hash = bytes => crypto.createHash('sha256').update(bytes.toString('utf8').replace(/\r\n/g, '\n')).digest('hex');
@@ -56,9 +56,11 @@ const readItems = page => page.evaluate(() => JSON.parse(localStorage.getItem('b
       }
       await page.goto(base + '/?version=' + (process.env.RELEASE_VERSION || 'optional-note'));
       await page.locator('[data-quick-note-form] [name=inboxDateEnabled]').waitFor({ state: 'attached' });
+      await page.locator('[data-quick-note-form] [name=noteColor]').first().waitFor({ state: 'attached' });
       const date = await page.evaluate(() => { const d = new Date(); d.setDate(d.getDate() + 2); return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-'); });
 
       async function defaults(form) {
+        assert.equal(await form.locator('[name=noteColor][value=""]').isChecked(), true);
         assert.equal(await form.locator('[name=inboxDateEnabled]').isChecked(), false);
         assert.equal(await form.locator('[name=inboxAlarmEnabled]').isChecked(), false);
         assert.equal(await form.locator('[name=inboxNoteDate]').isDisabled(), true);
@@ -67,6 +69,8 @@ const readItems = page => page.evaluate(() => JSON.parse(localStorage.getItem('b
       async function create(form, title, mode) {
         await defaults(form);
         await form.locator('[name=title],#agendaTitle').fill(title);
+        const color = ['teal', 'violet', 'rose'][mode];
+        await form.getByRole('radio', { name: ['Turquesa', 'Violeta', 'Rosa'][mode], exact: true }).check();
         if (mode > 0) {
           await form.locator('[name=inboxDateEnabled]').check();
           await form.locator('[name=inboxNoteDate]').fill(date);
@@ -82,6 +86,7 @@ const readItems = page => page.evaluate(() => JSON.parse(localStorage.getItem('b
         await page.waitForFunction(n => JSON.parse(localStorage.getItem('bandeja_agenda') || '[]').length === n + 1, count);
         const saved = (await readItems(page))[0];
         assert.equal(saved.title, title); assert.equal(saved.date, mode > 0 ? date : '');
+        assert.equal(saved.color, color);
         if (mode > 1) { assert.equal(saved.alarm.date, date); assert.equal(saved.alarm.time, '18:30'); assert.equal(saved.alarm.repeat, 'weekly'); }
         else assert.equal(saved.alarm, null);
       }
@@ -128,13 +133,71 @@ const readItems = page => page.evaluate(() => JSON.parse(localStorage.getItem('b
       await page.evaluate(() => window.dispatchEvent(new CustomEvent('estudiemos:open-agenda')));
       await page.locator('[data-agenda-create]').click();
       const manual = page.locator('#agendaForm');
+      assert.ok(await page.locator('[data-agenda-manual]').evaluate(el => {
+        const outer = el.getBoundingClientRect(), button = el.querySelector('[data-agenda-program]').getBoundingClientRect();
+        return button.bottom <= outer.bottom + 1;
+      }), 'Programar is not clipped by the note form');
+      await manual.locator('#agendaTitle').fill('Mi borrador sin guardar');
+      await manual.getByRole('radio', { name: 'Amarillo', exact: true }).check();
+      const selectedDate = await page.locator('.agenda-day.is-selected').getAttribute('data-agenda-date');
+      const reader = page.locator('[data-calendar-reader]'), planner = reader.locator('[data-timetable-form]');
+      const beforeProgram = await readItems(page);
+      await page.locator('[data-agenda-program]').click();
+      await planner.waitFor({ state: 'visible' });
+      assert.equal(await planner.locator('[name=date]').inputValue(), selectedDate);
+      await planner.locator('[name=repeat]').selectOption('weekly');
+      await planner.locator('[name=title]').fill('Mi horario desde Inbox');
+      await planner.locator('[name=limited]').check();
+      await planner.locator('[name=until]').fill('2030-12-20');
+      await planner.locator('[data-timetable-color=amber]').click();
+      await planner.locator('[type=submit]').click();
+      await planner.waitFor({ state: 'hidden' });
+      await reader.locator('[data-calendar-reader-close]').click();
+      assert.equal(await manual.locator('#agendaTitle').inputValue(), 'Mi borrador sin guardar');
+      assert.equal(await manual.getByRole('radio', { name: 'Amarillo', exact: true }).isChecked(), true);
+      assert.deepEqual(await readItems(page), beforeProgram);
+      await page.locator('[data-agenda-filter=day]').click();
+      await page.locator('#agendaList [data-calendar-edit-schedule]').first().click();
+      await planner.waitFor({ state: 'visible' });
+      assert.equal(await planner.locator('[name=title]').inputValue(), 'Mi horario desde Inbox');
+      assert.equal(await planner.locator('[name=repeat]').inputValue(), 'weekly');
+      assert.equal(await planner.locator('[name=color]').inputValue(), 'amber');
+      assert.equal(await planner.locator('[name=until]').inputValue(), '2030-12-20');
+      await planner.locator('[data-timetable-close]').click();
+      await reader.locator('[data-calendar-reader-close]').click();
+      await manual.evaluate(form => form.reset());
       for (const mode of [0, 1, 2]) {
         await create(manual, `Inbox mode ${mode}`, mode);
         assert.ok(await page.locator('#agendaList').getByText(`Inbox mode ${mode}`, { exact: true }).isVisible());
         assert.equal(await page.locator('[data-agenda-filter=pending]').getAttribute('class').then(c => c.includes('is-active')), true);
       }
       await defaults(manual);
+      const beforeRecolor = (await readItems(page)).find(item => item.title === 'Inbox mode 2');
+      await page.locator(`#agendaList [data-note-color-id="${beforeRecolor.id}"]`).click();
+      const picker = page.locator('.note-color-dialog');
+      await picker.getByRole('button', { name: 'Amarillo', exact: true }).click();
+      await picker.waitFor({ state: 'hidden' });
+      const afterRecolor = (await readItems(page)).find(item => item.id === beforeRecolor.id);
+      assert.deepEqual(afterRecolor, { ...beforeRecolor, color: 'amber' });
+      assert.ok(await page.locator('#agendaList .agenda-item.timetable-color--amber').count());
+      const undated = (await readItems(page)).find(item => item.title === 'Inbox mode 0');
+      await page.locator(`#agendaList [data-note-color-id="${undated.id}"]`).click();
+      await picker.getByRole('button', { name: 'Violeta', exact: true }).click();
+      await picker.waitFor({ state: 'hidden' });
+      assert.deepEqual((await readItems(page)).find(item => item.id === undated.id), { ...undated, color: 'violet' });
+      await page.locator(`#agendaList [data-note-color-id="${undated.id}"]`).click();
+      await picker.getByRole('button', { name: 'Sin color', exact: true }).click();
+      await picker.waitFor({ state: 'hidden' });
+      const { color: oldColor, ...neutral } = undated;
+      assert.deepEqual((await readItems(page)).find(item => item.id === undated.id), neutral);
+      for (const theme of ['dark', 'light']) {
+        await page.evaluate(theme => window.EstudiemosTheme.set(theme), theme);
+        await page.locator('#agendaForm').evaluate(form => { for (let el = form.parentElement; el; el = el.parentElement) el.scrollTop = 0; });
+        await page.screenshot({ path: path.join(output, `${engine}-${width}-inbox-${theme}.png`) });
+        assert.ok(await manual.evaluate(form => [...form.querySelectorAll('input,select,button,label')].every(el => { const r = el.getBoundingClientRect(); return r.width === 0 || r.left >= 0 && r.right <= innerWidth; })));
+      }
       await page.locator('[data-agenda-close]').click();
+      await page.waitForFunction(() => document.querySelector('.agenda-board').getAttribute('aria-hidden') === 'true');
       if (width < 500) await page.locator('[data-home-view=inbox]').click();
       const alarmItem = (await readItems(page)).find(item => item.title === 'Inbox mode 2');
       await page.locator(`[data-inbox-alarm-id="${alarmItem.id}"]`).filter({ visible: true }).first().click();
@@ -146,7 +209,7 @@ const readItems = page => page.evaluate(() => JSON.parse(localStorage.getItem('b
       const edited = (await readItems(page)).find(item => item.title === 'Inbox mode 2');
       assert.equal(edited.date, date); assert.equal(edited.alarm, null);
       assert.deepEqual(errors, []);
-      console.log(`PASS ${engine} ${width}: three modes in Home and Inbox, validation, reset, editor compatibility, no overflow`);
+      console.log(`PASS ${engine} ${width}: Inbox programming and editing, draft preserved, six colored note modes, recolor and clear preserve data, light/dark, no clipping or overflow`);
       await context.close();
     }
   } finally {

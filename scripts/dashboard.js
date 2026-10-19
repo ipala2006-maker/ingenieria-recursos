@@ -24,6 +24,7 @@
 
   addTopbarActions();
   addPanels();
+  window.dispatchEvent(new CustomEvent('estudiemos:note-forms-ready'));
   bindEvents();
   renderDashboard();
   if (window.ResizeObserver) {
@@ -532,6 +533,7 @@
       renderDashboard();
     });
     window.addEventListener('estudiemos:timetable-ready', renderCalendar);
+    window.addEventListener('estudiemos:note-colors-ready', renderAgenda);
     window.addEventListener("estudiemos:workspace-update", updateSpaceSummary);
     window.addEventListener("estudiemos:open-general-ai", (event) => {
       openPanel("assistant");
@@ -612,6 +614,7 @@
       horaFin: "",
       done: false,
       alarm: window.EstudiemosInboxAlarms?.readForm(form) || null,
+      ...(window.EstudiemosTimetableRules?.COLORS.includes(form.elements?.noteColor?.value) ? { color: form.elements.noteColor.value } : {}),
       createdAt: Date.now()
     });
     writeAgenda(items.slice(0, MAX_AGENDA_ITEMS));
@@ -925,11 +928,11 @@
       return;
     }
     container.innerHTML = items.map((item) => `
-      <div class="dashboard-agenda__item"><label>
+      <div class="dashboard-agenda__item ${eventColorClass(item)}"><label>
         <input type="checkbox" data-dashboard-agenda-done="${escapeHtml(item.id)}" aria-label="Marcar ${escapeHtml(item.title)} como hecha" />
         <span class="dashboard-agenda__copy"><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.subject || item.type)}</small></span>
         <span class="dashboard-agenda__date">${item.date ? shortDate(item.date) : "Sin fecha"}</span></label>
-        ${window.EstudiemosInboxAlarms?.button(item) || ''}
+        <div class="dashboard-agenda__actions">${window.EstudiemosNoteColors?.button(item) || ''}${window.EstudiemosInboxAlarms?.button(item) || ''}</div>
       </div>`).join("");
   }
 

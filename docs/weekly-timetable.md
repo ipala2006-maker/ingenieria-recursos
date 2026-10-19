@@ -1,6 +1,6 @@
 # Horarios dentro del calendario
 
-- El calendario es la unica vista de los horarios. Ya no hay un apartado Mi semana, un tablero semanal duplicado ni un acceso independiente en la barra superior o Inbox.
+- El calendario es la unica vista de los horarios. Ya no hay un apartado Mi semana ni un tablero semanal duplicado.
 - **Programar** o el + abre el programador dentro del calendario, junto a su vista, no en una ventana independiente. Actividades / Programar cambia el panel lateral; en celular el editor usa el espacio completo.
 - Escribir la materia/actividad, seleccionar todos sus dias y elegir inicio y fin. El lugar y el color son opcionales.
 - Se puede elegir **No repetir**, **Cada dia** o **Cada semana**. Una actividad puntual admite todo el dia o inicio y fin; una semanal permite marcar varios dias de una vez. El periodo tiene fecha inicial opcional y, si se activa Hasta una fecha, un ultimo dia incluido. Los horarios antiguos sin limites conservan ese comportamiento.
@@ -13,6 +13,9 @@
 - No requiere IA, servicios nuevos, pagos, permisos adicionales ni migracion de base de datos.
 
 ## Calendario integrado
+
+- **Inbox > Anotar > Programar actividad** abre el mismo programador completo, en el dia seleccionado, con horas, repeticion, periodo y colores. El borrador de nota rapida queda intacto al regresar. **Editar horario** funciona tambien desde la lista de Inbox.
+- Todas las notas rapidas tienen un selector de color, tanto en Inicio como en Inbox: sin fecha, con fecha y con alarma. El circulo de color de una nota existente permite cambiarlo o volver a Sin color sin modificar ningun otro dato. Los colores usan la sincronizacion privada existente y no requieren permisos adicionales.
 
 - Los mismos horarios aparecen en las vistas Dia, Semana y Mes del calendario y en el detalle de Inbox, conservando el color elegido y la etiqueta Horario fijo.
 - El programador usa inicialmente el dia seleccionado. Una actividad sin repeticion se guarda en la agenda y nunca activa una alarma automaticamente. Las notas sin fecha y las alarmas opcionales de Inbox siguen funcionando como antes.
@@ -38,3 +41,5 @@
 `node tests/timetable.smoke.cjs` conserva el acceso al recorrido completo del calendario.
 
 `node tests/calendar-timetable.smoke.cjs` recorre actividades puntuales, diarias y semanales; limites del periodo; vista previa no persistida; crear, editar, convertir y cancelar; preservacion de alarmas; colores, filtros, Inbox, limpieza recuperable, cambio de cuenta y widget PC en 1440/1024/390/320 px, claro y oscuro. `TEST_WEBKIT=1` prueba WebKit; `TEST_BASE_URL` permite probar la publicacion con APIs simuladas, sin cuentas reales.
+
+`node tests/optional-note.smoke.cjs` prueba Programar y Editar horario desde Inbox sin perder el borrador, notas de los tres modos con color, cambiar y quitar colores sin alterar alarmas, reinicio del formulario, claro/oscuro y ausencia de recortes en 1440/390/320 px. Admite las mismas variables de prueba. `node --test tests/note-colors.test.js` verifica preservacion de campos, validacion de colores, errores de guardado y aislamiento de cuenta.

@@ -44,6 +44,7 @@
   loadDesktopWidgetsScript();
   loadAccountScript();
   loadTimetableScript();
+  loadNoteColorsScript();
   if (!document.querySelector('script[data-friends]')) {
     const friends = document.createElement('script'); friends.dataset.friends = '';
     friends.src = rootPath + 'scripts/friends.js?v=20261014-random-usernames';
@@ -290,7 +291,7 @@
     if (document.querySelector('script[src*="scripts/bandeja.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/bandeja.js?v=20261019-planner`;
+    script.src = `${rootPath}scripts/bandeja.js?v=20261019-note-colors`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -320,7 +321,7 @@
   function loadDashboardScript() {
     if (document.querySelector('script[src*="scripts/dashboard.js"]')) return;
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/dashboard.js?v=20261019-planner`;
+    script.src = `${rootPath}scripts/dashboard.js?v=20261019-note-colors`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -368,6 +369,13 @@
     const ui = document.createElement('script'); ui.dataset.timetableUi = '';
     ui.src = rootPath + 'scripts/timetable.js?v=20261019-planner';
     document.head.appendChild(ui);
+  }
+
+  function loadNoteColorsScript() {
+    if (document.querySelector('script[data-note-colors-ui]')) return;
+    const script = document.createElement('script'); script.dataset.noteColorsUi = '';
+    script.src = rootPath + 'scripts/note-colors.js?v=20261019-note-colors';
+    document.head.appendChild(script);
   }
 
   function loadDesktopWidgetsScript() {
