@@ -82,7 +82,7 @@ module.exports = async function googleDrive(req, res) {
       const state = crypto.randomBytes(32).toString('base64url');
       const oauth = client(), codes = await oauth.generateCodeVerifierAsync();
       setCookie(res, seal({uid:user.id, email:user.email, email_confirmed_at:user.email_confirmed_at, state, verifier:codes.codeVerifier, exp:Date.now()+600000}, 'oauth'), 600);
-      const url = oauth.generateAuthUrl({scope:[SCOPE], access_type:'offline', prompt:'consent', include_granted_scopes:false, state, code_challenge:codes.codeChallenge, code_challenge_method:'S256', ...(user.email ? {login_hint:user.email} : {})});
+      const url = oauth.generateAuthUrl({scope:[SCOPE], access_type:'offline', prompt:'consent select_account', include_granted_scopes:false, state, code_challenge:codes.codeChallenge, code_challenge_method:'S256'});
       return res.status(200).json({url});
     }
     const saved = await record(user.id);
