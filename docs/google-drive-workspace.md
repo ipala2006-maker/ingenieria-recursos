@@ -34,7 +34,8 @@ Si faltan credenciales, el backend informa `enabled:false` sin revelar valores. 
 
 - Tabla privada aplicada en Supabase y permisos comprobados: RLS habilitado/forzado, sin SELECT para anon/authenticated; acceso del servidor conservado.
 - Vercel produccion ya tiene `DRIVE_TOKEN_ENCRYPTION_KEY` sensible y `GOOGLE_DRIVE_APP_ORIGIN`. No reemplazar la clave existente: hacerlo invalidaria las conexiones cifradas.
-- Faltan la identidad de Google con correo oficial de soporte, habilitar Drive API, crear el cliente OAuth y guardar `GOOGLE_DRIVE_CLIENT_ID` / `GOOGLE_DRIVE_CLIENT_SECRET` en Vercel. El selector de soporte del proyecto solo ofrece actualmente el correo personal del propietario; no se selecciono ni publico.
+- Google Drive API habilitada en el proyecto Estudiemos y confirmada en su consola, sin activar prueba gratuita, creditos ni facturacion.
+- Faltan la identidad de Google con correo oficial de soporte, crear el cliente OAuth y guardar `GOOGLE_DRIVE_CLIENT_ID` / `GOOGLE_DRIVE_CLIENT_SECRET` en Vercel. El selector de soporte del proyecto solo ofrece actualmente el correo personal del propietario; no se selecciono ni publico.
 - Falta consentimiento real de un titular, prueba real de archivo y desconexion, verificar publicacion OAuth y publicar la app. Las pruebas automatizadas usan datos simulados, no constituyen una conexion real.
 
 ## Seguridad
@@ -58,6 +59,7 @@ Si faltan credenciales, el backend informa `enabled:false` sin revelar valores. 
 - `node --test tests/google-drive.test.js tests/drive-files.test.js tests/drive-privacy.test.js`
 - `node tests/workspace-drive.smoke.cjs` (Chrome); `TEST_WEBKIT=1` para Safari/WebKit. Simula cuentas y Drive, nunca usa archivos reales.
 - Suite general del proyecto, comprobaciones de seguridad/CSP, compilacion Android y prueba real de Google antes de dar la integracion por activada.
+- En el commit de implementacion `0077fa9`, CI de seguridad y compilacion/pruebas Android finalizaron correctamente. Pruebas locales: 183 aprobadas; Chrome y WebKit a 1440, 390 y 320 px con Drive simulado.
 - Pendiente probar consentimiento real en iPhone/PWA y Android. El WebKit de pruebas en Windows fallo de forma intermitente al navegar por un enlace desde Inicio en un viewport movil; las vistas independientes y la pestana movil se verifican por separado. No se considera una prueba en un iPhone fisico.
 
 Fuentes: https://developers.google.com/identity/protocols/oauth2/web-server ; https://developers.google.com/workspace/drive/api/guides/api-specific-auth ; https://developers.google.com/workspace/drive/api/guides/manage-uploads ; https://developers.google.com/workspace/drive/api/guides/limits
