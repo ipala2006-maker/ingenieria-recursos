@@ -67,6 +67,8 @@
   });
   window.addEventListener('estudiemos:alarms-ready', renderAgenda);
   window.addEventListener('estudiemos:timetable-ready', renderAgenda);
+  window.addEventListener('estudiemos:calendar-ready', renderAgenda);
+  window.addEventListener('estudiemos:note-colors-ready', renderAgenda);
   window.addEventListener('storage', event => { if (event.key === 'bandeja_horarios') renderAgenda(); });
 
   function addTray() {
@@ -211,6 +213,7 @@
                 </label>
                 <button class="agenda-save-btn" type="submit" disabled>${icon("plus")}<span>Agregar</span></button>
               </form>
+              <button class="agenda-program-action" type="button" data-agenda-program disabled>${icon("calendar")}<span>Programar actividad</span></button>
             </details>
 
             <div class="agenda-selected-day">
@@ -360,6 +363,22 @@
 
     document.querySelector(".agenda-board")?.addEventListener("click", (event) => {
       if (event.target.closest(".agenda-board__panel")) event.stopPropagation();
+
+      const program = event.target.closest('[data-agenda-program]');
+      const editSchedule = event.target.closest('[data-calendar-edit-schedule]');
+      const noteColor = event.target.closest('[data-note-color-id]');
+      if (program) {
+        window.EstudiemosTimetable?.open({ date: selectedAgendaDate });
+        return;
+      }
+      if (editSchedule) {
+        window.EstudiemosTimetable?.open({ id: editSchedule.dataset.calendarEditSchedule, date: editSchedule.dataset.calendarDay || selectedAgendaDate });
+        return;
+      }
+      if (noteColor) {
+        window.EstudiemosNoteColors?.open(noteColor.dataset.noteColorId, noteColor);
+        return;
+      }
 
       const agendaRemove = event.target.closest("[data-agenda-remove]");
       const agendaDone = event.target.closest("[data-agenda-done]");
@@ -554,6 +573,7 @@
   }
 
   function shouldCloseMobileTray(event) {
+    if (event.target.closest('dialog')) return false;
     if (!document.body.classList.contains("tray-open")) return false;
     if (!window.matchMedia("(max-width: 1024px)").matches) return false;
     if (event.target.closest(".tray-shell")) return false;
@@ -564,6 +584,7 @@
   }
 
   function shouldCloseAgendaBoard(event) {
+    if (event.target.closest('dialog')) return false;
     if (!document.body.classList.contains("agenda-open")) return false;
     if (event.target.closest(".agenda-board__panel")) return false;
     if (event.target.closest(".quick-panel-shell")) return false;
@@ -792,6 +813,7 @@
       horaFin: "",
       done: false,
       alarm: window.EstudiemosInboxAlarms?.readForm(document.getElementById('agendaForm')) || null,
+      ...(window.EstudiemosTimetableRules?.COLORS.includes(document.getElementById('agendaForm')?.elements?.noteColor?.value) ? { color: document.getElementById('agendaForm').elements.noteColor.value } : {}),
       createdAt: Date.now()
     });
 
@@ -1261,6 +1283,8 @@
   }
 
   function renderAgenda() {
+    const program = document.querySelector('[data-agenda-program]');
+    if (program) program.disabled = !(window.EstudiemosTimetable && document.querySelector('[data-calendar-editor] form'));
     const container = document.getElementById("agendaList");
     refreshAgendaSubjectOptions();
     updateAgendaSubmitState();
@@ -1313,7 +1337,7 @@
           ${item.subject ? `<span>${escapeHtml(item.subject)}</span>` : ""}
           ${item.alarm ? `<span>${escapeHtml(window.EstudiemosAlarmRules?.describe(item.alarm) || '')}</span>` : ''}
         </div>
-        ${item.scheduleId ? `<button type="button" class="calendar-activity__edit" data-calendar-edit-schedule="${escapeAttr(item.scheduleId)}" data-calendar-day="${item.date}">Editar horario</button>` : `<button class="bandeja-remove-btn agenda-item__remove" type="button" data-agenda-remove="${escapeAttr(item.id)}" aria-label="Quitar ${escapeAttr(item.title)}">${icon("close")}</button>${window.EstudiemosInboxAlarms?.button(item) || ''}`}
+        ${item.scheduleId ? `<button type="button" class="calendar-activity__edit" data-calendar-edit-schedule="${escapeAttr(item.scheduleId)}" data-calendar-day="${item.date}">Editar horario</button>` : `<button class="bandeja-remove-btn agenda-item__remove" type="button" data-agenda-remove="${escapeAttr(item.id)}" aria-label="Quitar ${escapeAttr(item.title)}">${icon("close")}</button><div class="agenda-item__actions">${window.EstudiemosNoteColors?.button(item) || ''}${window.EstudiemosInboxAlarms?.button(item) || ''}</div>`}
       </article>
     `).join("");
   }
