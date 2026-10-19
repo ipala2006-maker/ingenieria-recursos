@@ -41,7 +41,9 @@ Si faltan credenciales, el backend informa `enabled:false` sin revelar valores. 
 - La Politica de Datos del Usuario de las APIs fue aceptada con confirmacion explicita. Google guardo la identidad Estudiemos, soporte y contacto `estudiemosapp@gmail.com`, publico externo. No se publico el correo personal como soporte.
 - Se creo un cliente web dedicado a Mi espacio con un solo redirect HTTPS exacto, sin origenes JavaScript adicionales. Se declaro unicamente `drive.file` y se agrego solo el Drive oficial como usuario de prueba de Google.
 - `GOOGLE_DRIVE_PILOT_EMAILS` restringe la activacion en produccion a la cuenta ya iniciada del responsable en Estudiemos; el correo de esa lista es privado y distinto del correo publico de soporte. Esta restriccion debe permanecer durante el despliegue y la prueba real, hasta completar la publicacion OAuth.
-- Falta consentimiento real de un titular, prueba real de archivo y desconexion, verificar publicacion OAuth y publicar la app. Las pruebas automatizadas usan datos simulados, no constituyen una conexion real.
+- Implementacion publicada mediante PR63 (main `2a5bdb0`); selector de cuenta independiente corregido y publicado mediante PR64 (main `238ae46`). El despliegue de produccion esta READY y conserva el piloto privado.
+- La prueba real llego al selector de Google y eligio la cuenta oficial correcta. Google exigio verificar la identidad por el telefono de recuperacion anterior debido a un cambio reciente de recuperacion. No se envio SMS, no se modificaron protecciones y no se concedio aun acceso a Drive. La verificacion debe completarla el titular en Chrome. Si el estado OAuth vence (10 minutos), volver a **Conectar Google Drive** despues de verificar la identidad.
+- Pendientes: consentimiento real `drive.file`, carpeta/archivo de prueba y desconexion; despues revisar publicacion OAuth y verificacion de marca antes de quitar el piloto. No habilitar globalmente ni considerar completa la integracion por las pruebas simuladas.
 
 ## Seguridad
 
@@ -64,7 +66,8 @@ Si faltan credenciales, el backend informa `enabled:false` sin revelar valores. 
 - `node --test tests/google-drive.test.js tests/drive-files.test.js tests/drive-privacy.test.js`
 - `node tests/workspace-drive.smoke.cjs` (Chrome); `TEST_WEBKIT=1` para Safari/WebKit. Simula cuentas y Drive, nunca usa archivos reales.
 - Suite general del proyecto, comprobaciones de seguridad/CSP, compilacion Android y prueba real de Google antes de dar la integracion por activada.
-- En el commit de implementacion `0077fa9`, CI de seguridad y compilacion/pruebas Android finalizaron correctamente. Pruebas locales: 183 aprobadas; Chrome y WebKit a 1440, 390 y 320 px con Drive simulado.
+- PR64: 17 pruebas de Drive/proveedor/RLS aprobadas; seguridad y CSP correctas y CI de seguridad finalizada correctamente. Chrome y WebKit a 1440, 390 y 320 px completaron los flujos simulados de conexion, archivos y desconexion. La suite general anterior completo 184 pruebas.
+- Compilacion Android firmada de PR63/main `2a5bdb0` finalizada correctamente (Actions run `39315696285`); el APK `android-latest` fue actualizado el 19 de octubre de 2026 a las 20:01 UTC. La publicacion web posterior cambia solo el selector del servidor y documentacion.
 - Pendiente probar consentimiento real en iPhone/PWA y Android. El WebKit de pruebas en Windows fallo de forma intermitente al navegar por un enlace desde Inicio en un viewport movil; las vistas independientes y la pestana movil se verifican por separado. No se considera una prueba en un iPhone fisico.
 
 Fuentes: https://developers.google.com/identity/protocols/oauth2/web-server ; https://developers.google.com/workspace/drive/api/guides/api-specific-auth ; https://developers.google.com/workspace/drive/api/guides/manage-uploads ; https://developers.google.com/workspace/drive/api/guides/limits
