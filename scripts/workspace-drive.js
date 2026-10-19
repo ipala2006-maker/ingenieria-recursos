@@ -1,0 +1,192 @@
+(function () {
+  if (!window.EstudiemosRelease?.enabled('driveWorkspace') || !window.EstudiemosDriveFiles) return;
+  const section = document.querySelector('[data-drive-workspace]') || document.querySelector('.workspace-section');
+  if (!section) return;
+  const rules = window.EstudiemosDriveFiles, $ = selector => section.querySelector(selector);
+  const escape = value => String(value || '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+  const icons = {
+    folder:'<path d="M3 6h6l2 2h10v12H3z"/>', file:'<path d="M6 3h8l4 4v14H6V3zm8 0v5h5M9 12h6m-6 4h6"/>', plus:'<path d="M12 5v14M5 12h14"/>',
+    cloud:'<path d="M7 18a5 5 0 0 1-1-10 6 6 0 0 1 11-2 6 6 0 0 1 1 12M12 11v10m-4-6 4-4 4 4"/>', more:'<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
+    close:'<path d="m6 6 12 12M18 6 6 18"/>', check:'<path d="m5 12 4 4L19 6"/>', back:'<path d="m14 6-6 6 6 6"/>'
+  };
+  const icon = name => '<svg viewBox="0 0 24 24" aria-hidden="true">' + icons[name] + '</svg>';
+  const size = value => { const n = Math.max(0,Number(value)||0); return n >= 1073741824 ? (n/1073741824).toFixed(1)+' GB' : n >= 1048576 ? (n/1048576).toFixed(1)+' MB' : Math.ceil(n/1024)+' KB'; };
+  let account, owner = '', epoch = 0, enabled = false, connected = false, busy = false, fs, token = '', expiresAt = 0, items = [], current = '', crumbs = [], dialog, returnFocus, query = '', searchTimer, lastLoad = 0, connectAfterLogin = false;
+  const body = $('[data-workspace-items]'), state = $('[data-workspace-state]'), status = $('[data-workspace-status]');
+  const full = document.body.classList.contains('drive-library-page');
+  if (!full && !document.querySelector('[data-drive-library-link]')) {
+    const link=document.createElement('a');link.href=new URL('../mi-espacio.html',document.currentScript.src).href;link.className='topbar__link topbar-icon-btn';link.dataset.driveLibraryLink='';link.title='Mi espacio';link.setAttribute('aria-label','Abrir Mi espacio');link.innerHTML=icon('folder');document.querySelector('.topbar__nav')?.appendChild(link);
+  }
+  const signal = new URL(location.href).searchParams.get('drive');
+  if (signal) { const url = new URL(location.href); url.searchParams.delete('drive'); history.replaceState(history.state,'',url.pathname+url.search+url.hash); }
+  const band = document.createElement('div'); band.className = 'drive-connection'; band.dataset.driveConnection = '';
+  band.innerHTML = `<span class="drive-connection__icon">${icon('cloud')}</span><div><strong>Google Drive</strong><small data-drive-account>Sin conectar</small></div><button type="button" class="workspace-tool-icon" data-drive-settings aria-label="Configurar conexi\u00f3n de Drive" title="Conexi\u00f3n de Drive">${icon('more')}</button>`;
+  section.querySelector('.workspace-browser').prepend(band); band.hidden = true;
+  const toolbar = section.querySelector('.workspace-toolbar');
+  document.addEventListener('click', event => {
+    if (event.target.closest('[data-drive-connect]')) connect();
+    if (event.target.closest('[data-drive-retry]')) load();
+    if (!section.contains(event.target)) return;
+    const target = event.target.closest('[data-workspace-add],[data-workspace-upload],[data-workspace-new-folder],[data-workspace-folder],[data-workspace-open],[data-workspace-menu],[data-workspace-view],[data-drive-settings]');
+    if (!target || busy) return;
+    if (target.matches('[data-drive-settings]')) connectionSettings();
+    if (target.matches('[data-workspace-add]')) addMenu();
+    if (target.matches('[data-workspace-upload]')) $('[data-workspace-file-input]')?.click();
+    if (target.matches('[data-workspace-new-folder]')) folderForm();
+    if (target.matches('[data-workspace-folder]')) navigate(target.dataset.workspaceFolder);
+    if (target.matches('[data-workspace-view]')) { body.classList.toggle('is-list',target.dataset.workspaceView==='list'); section.querySelectorAll('[data-workspace-view]').forEach(button => button.setAttribute('aria-pressed',String(button===target))); }
+    if (target.matches('[data-workspace-open]')) {
+      const item = items.find(item => item.id === target.dataset.workspaceOpen);
+      if (item?.mimeType === rules.FOLDER) { crumbs.push({id:item.id,name:item.name}); current=item.id; query=''; $('[data-workspace-search]').value=''; loadFiles(); }
+      else if (item) window.open(rules.openUrl(item),'_blank','noopener,noreferrer');
+    }
+    if (target.matches('[data-workspace-menu]')) itemMenu(items.find(item => item.id === target.dataset.workspaceMenu));
+  });
+  $('[data-workspace-search]')?.addEventListener('input', event => { query=event.target.value.trim(); clearTimeout(searchTimer); searchTimer=setTimeout(loadFiles,300); });
+  $('[data-workspace-sort]')?.addEventListener('change', render);
+  const input = document.querySelector('[data-workspace-file-input]');
+  input?.addEventListener('change',async () => { const files=Array.from(input.files||[]); input.value=''; await upload(files); });
+  const dropzone = $('[data-workspace-dropzone]');
+  dropzone?.addEventListener('dragover',event => {if(event.dataTransfer?.types.includes('Files')){event.preventDefault();dropzone.classList.add('is-dragging');}});
+  dropzone?.addEventListener('dragleave',() => dropzone.classList.remove('is-dragging'));
+  dropzone?.addEventListener('drop',event => {event.preventDefault();dropzone.classList.remove('is-dragging');if(connected)upload(Array.from(event.dataTransfer?.files||[]));});
+  function refreshOnReturn(force=false) {if(owner && enabled && !busy && (force || Date.now()-lastLoad>30000))load();}
+  window.addEventListener('focus',() => refreshOnReturn());
+  document.addEventListener('visibilitychange',() => {if(document.visibilityState==='visible')refreshOnReturn();});
+  window.addEventListener('estudiemos:drive-resume',() => refreshOnReturn(true));
+  window.addEventListener('estudiemos:account-change',() => { if(account?.getUser()?.id !== owner) initialize(); });
+  window.addEventListener('estudiemos-android-ready',render);
+  initialize();
+
+  function message(text='',error=false) {status.textContent=text;status.dataset.type=error?'error':'success';}
+  function currentUser(id,version) {return owner===id && epoch===version && account?.getUser()?.id===id;}
+  function clear() {epoch++; busy=false;token='';expiresAt=0;fs=null;connected=false;items=[];current='';crumbs=[];query='';body.replaceChildren();band.hidden=true;band.querySelector('[data-drive-account]').textContent='Sin conectar';$('[data-workspace-breadcrumbs]')?.replaceChildren();if($('[data-workspace-search]'))$('[data-workspace-search]').value='';dialog?.close();dialog?.replaceChildren();returnFocus=null;}
+  function show(title,copy,action='') {
+    body.hidden=true;state.hidden=false;state.innerHTML=`<span class="drive-state-icon">${icon('cloud')}</span><h3>${escape(title)}</h3><p>${escape(copy)}</p>${action}`;
+    toolbar.hidden=true; section.querySelector('[data-workspace-add]')?.setAttribute('disabled','');
+  }
+  function renderDisconnected() {
+    band.hidden=true;
+    const native=Boolean(window.EstudiemosAndroid);
+    show('Tus apuntes, en tu Drive','Acceso solo a los archivos de Estudiemos. Tu Drive y tus documentos siguen siendo tuyos.',`<button type="button" class="workspace-btn workspace-btn--primary drive-connect" data-drive-connect ${enabled?'':'disabled'}>${icon('cloud')}<span>${enabled ? native ? 'Conectar desde el navegador' : 'Conectar Google Drive' : 'Conexi\u00f3n en preparaci\u00f3n'}</span></button>${enabled?'<small class="drive-consent-note">Eleg\u00eds tu cuenta y autoriz\u00e1s el acceso en Google.</small>':''}`);
+  }
+  async function initialize() {
+    clear(); const initialEpoch=epoch;account=window.EstudiemosAccount;
+    if (!account) { await new Promise(resolve => { const timer=setTimeout(resolve,10000);window.addEventListener('estudiemos:account-ready',()=>{clearTimeout(timer);resolve();},{once:true}); }); account=window.EstudiemosAccount; }
+    if (!account) return show('No pudimos preparar Mi espacio','Revis\u00e1 tu conexi\u00f3n.', '<button class="workspace-btn" data-drive-retry>Reintentar</button>');
+    await account.whenReady();if(initialEpoch!==epoch)return; owner=account.getUser()?.id||'';
+    const id=owner, version=epoch;
+    try {
+      const config=await fetch('/api/account-config?drive=config',{cache:'no-store'}).then(response=>response.json());
+      if(epoch!==version)return;enabled=config.enabled===true;
+      if (!owner || !enabled) return renderDisconnected();
+      if (connectAfterLogin) {connectAfterLogin=false;return connect();}
+      const result=await api('status','GET');if(!currentUser(id,version))return;
+      connected=result.connected===true;
+      if(connected)await load();else renderDisconnected();
+      if (signal==='cancelled')message('No se conect\u00f3 Drive. Pod\u00e9s hacerlo m\u00e1s adelante.');
+      if (signal==='error')message('Google no complet\u00f3 la conexi\u00f3n. Volv\u00e9 a intentar.',true);
+    } catch(error) {if(epoch===version){renderDisconnected();message(error.message,true);}}
+  }
+  async function api(action,method='POST',values={}) {
+    const id=owner,version=epoch, session=account?.getSession();
+    if(!session?.access_token || !id)throw new Error('Ingres\u00e1 a tu cuenta de Estudiemos.');
+    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),20000);
+    let response;
+    try {response=await fetch('/api/account-config?drive='+action,{method,headers:{Authorization:'Bearer '+session.access_token,...(method==='POST'?{'Content-Type':'application/json'}:{})},...(method==='POST'?{body:JSON.stringify(values)}:{}),cache:'no-store',credentials:'same-origin',signal:controller.signal});}
+    finally {clearTimeout(timer);}
+    const result=await response.json().catch(()=>({}));
+    if(!currentUser(id,version))throw new Error('La cuenta cambi\u00f3.');
+    if(!response.ok){const error=new Error(result.message||'No pudimos conectar con Drive.');error.code=result.code;throw error;}
+    return result;
+  }
+  async function connect() {
+    if(busy || !enabled)return;
+    if(!owner){connectAfterLogin=true;return account?.open();}
+    if(window.EstudiemosAndroid){
+      lastLoad=0;
+      window.EstudiemosAndroid.postMessage(JSON.stringify({type:'drive-connect-browser'}));
+      message('Complet\u00e1 la conexi\u00f3n en Chrome y volv\u00e9 a la app. Si no se abre, actualiz\u00e1 Estudiemos o abr\u00ed estudiemos-app.vercel.app/mi-espacio.html en Chrome.');return;
+    }
+    busy=true;section.querySelectorAll('[data-drive-connect]').forEach(button=>{button.disabled=true;button.querySelector('span').textContent='Abriendo Google...';});
+    try {const result=await api('start');const url=new URL(result.url);if(url.origin!=='https://accounts.google.com'||url.pathname!=='/o/oauth2/v2/auth')throw new Error('No se pudo abrir Google.');location.assign(url.href);}
+    catch(error){busy=false;renderDisconnected();message(error.message,true);}
+  }
+  async function access(force=false) {
+    if(!force && token && expiresAt>Date.now()+120000)return token;
+    const result=await api('token','POST',{force});token=result.accessToken;expiresAt=result.expiresAt;return token;
+  }
+  async function load() {
+    if(busy)return;busy=true;lastLoad=Date.now();const id=owner,version=epoch;
+    show('Abriendo tu espacio...','');message('');
+    try {
+      const result=await api('status','GET');if(!result.connected){connected=false;token='';expiresAt=0;fs=null;items=[];body.replaceChildren();return renderDisconnected();}
+      if(!fs){fs=new rules.DriveFiles({userId:id,getToken:access,isCurrent:()=>currentUser(id,version)});await fs.initialize();current=fs.rootId;crumbs=[{id:current,name:'Mi espacio'}];}
+      items=await fs.list(current,query);if(!currentUser(id,version))return;
+      connected=true;render();
+    }catch(error){if(currentUser(id,version)){if(error.code==='DRIVE_CONNECT_REQUIRED'){connected=false;token='';fs=null;renderDisconnected();}else {if(error.status===404)fs=null;show('No pudimos abrir tu Drive','Tus archivos no se modificaron.','<button class="workspace-btn" data-drive-retry>Reintentar</button>');}message(error.message,true);}}
+    finally{if(currentUser(id,version))busy=false;}
+  }
+  async function loadFiles() {
+    if(!fs||!connected||busy)return;busy=true;const id=owner,version=epoch;
+    try{const result=await fs.list(current,query);if(!currentUser(id,version))return;items=result;render();}
+    catch(error){if(currentUser(id,version))message(error.message,true);}finally{if(currentUser(id,version))busy=false;}
+  }
+  function render() {
+    if(!connected || !fs)return renderDisconnected();
+    toolbar.hidden=false;band.hidden=false;state.hidden=true;body.hidden=false;
+    section.querySelector('[data-workspace-add]')?.removeAttribute('disabled');
+    band.querySelector('[data-drive-account]').textContent=fs.about?.user?.emailAddress||'Conectado';
+    const quota=fs.about?.storageQuota, free=quota?.limit?Math.max(0,Number(quota.limit)-Number(quota.usage||0)):null;
+    band.querySelector('strong').textContent=free===null?'Google Drive':'Google Drive \u00b7 '+size(free)+' disponibles';
+    $('[data-workspace-breadcrumbs]').innerHTML=crumbs.map((part,index)=>`${index?'<span aria-hidden="true">/</span>':''}<button type="button" data-workspace-folder="${escape(part.id)}">${escape(part.name)}</button>`).join('');
+    const sort=$('[data-workspace-sort]')?.value||'updated';
+    const visible=[...items].sort((a,b)=>Number(b.mimeType===rules.FOLDER)-Number(a.mimeType===rules.FOLDER)||(sort==='name'?a.name.localeCompare(b.name,'es'):sort==='type'?a.mimeType.localeCompare(b.mimeType):new Date(b.modifiedTime)-new Date(a.modifiedTime)));
+    body.innerHTML=visible.map(item=>`<article class="workspace-item"><button class="workspace-item__open" type="button" data-workspace-open="${escape(item.id)}" aria-label="Abrir ${escape(item.name)}"><span class="workspace-item__icon">${icon(item.mimeType===rules.FOLDER?'folder':'file')}</span><span class="workspace-item__copy"><span class="workspace-item__name" title="${escape(item.name)}">${escape(item.name)}</span><span class="workspace-item__meta">${item.mimeType===rules.FOLDER?'Carpeta':size(item.size)}</span></span></button><button class="workspace-item__menu" data-workspace-menu="${escape(item.id)}" type="button" aria-label="Opciones de ${escape(item.name)}" title="Opciones">${icon('more')}</button></article>`).join('')+`<button class="workspace-add-tile" data-workspace-add type="button">${icon('plus')}<span>${query?'Agregar archivo':'Agregar'}<small>Carpeta o archivo</small></span></button>`;
+    if(query&&!visible.length)message('No encontramos archivos con ese nombre.');
+  }
+  function navigate(id) {const index=crumbs.findIndex(part=>part.id===id);if(index<0)return;current=id;crumbs=crumbs.slice(0,index+1);query='';$('[data-workspace-search]').value='';loadFiles();}
+  function modal(title,content) {
+    if(!dialog){dialog=document.createElement('dialog');dialog.className='drive-dialog';dialog.setAttribute('aria-labelledby','driveDialogTitle');document.body.appendChild(dialog);dialog.addEventListener('click',event=>{if(event.target.closest('[data-drive-close]'))dialog.close();});dialog.addEventListener('close',()=>returnFocus?.isConnected&&returnFocus.focus());}
+    returnFocus=document.activeElement;
+    dialog.innerHTML=`<header><h2 id="driveDialogTitle">${escape(title)}</h2><button type="button" data-drive-close aria-label="Cerrar">${icon('close')}</button></header>${content}<p data-drive-dialog-status role="status"></p>`;
+    if(!dialog.open)dialog.showModal();return dialog;
+  }
+  function addMenu() {const d=modal('Agregar a Mi espacio',`<div class="drive-actions"><button type="button" data-drive-add-folder>${icon('folder')}Nueva carpeta</button><button type="button" data-drive-add-file>${icon('cloud')}Subir archivos</button></div>`);d.querySelector('[data-drive-add-folder]').onclick=folderForm;d.querySelector('[data-drive-add-file]').onclick=()=>{d.close();input.click();};}
+  function formDialog(title,label,value,submit) {
+    const d=modal(title,`<form><label>${label}<input name="name" maxlength="120" value="${escape(value)}" required autocomplete="off"></label><footer><button type="button" data-drive-close>Cancelar</button><button type="submit" class="workspace-btn workspace-btn--primary">Guardar</button></footer></form>`);
+    d.querySelector('form').addEventListener('submit',event=>{event.preventDefault();mutate(()=>submit(d.querySelector('input').value));});d.querySelector('input').focus();
+  }
+  function folderForm() {formDialog('Nueva carpeta','Nombre','',value=>fs.createFolder(value,current));}
+  function itemMenu(item) {
+    if(!item)return;const d=modal(item.name,`<div class="drive-actions"><button type="button" data-drive-rename>Cambiar nombre</button><button type="button" data-drive-move>Mover a otra carpeta</button><button type="button" data-drive-trash>Enviar a la papelera de Drive</button></div>`);
+    d.querySelector('[data-drive-rename]').onclick=()=>formDialog('Cambiar nombre','Nombre',item.name,value=>fs.rename(item.id,value));
+    d.querySelector('[data-drive-move]').onclick=()=>moveForm(item);
+    d.querySelector('[data-drive-trash]').onclick=()=>{const confirmation=modal('Enviar a la papelera',`<p>${escape(item.name)} quedar\u00e1 en la papelera de Google Drive, donde pod\u00e9s recuperarlo.</p><footer><button type="button" data-drive-close>Cancelar</button><button type="button" data-drive-trash-confirm>Enviar a la papelera</button></footer>`);confirmation.querySelector('[data-drive-trash-confirm]').onclick=()=>mutate(()=>fs.trash(item.id));};
+  }
+  async function moveForm(item) {
+    try {
+      const version=epoch,folders=await fs.folders();if(version!==epoch)return;
+      const d=modal('Mover '+item.name,`<form><label>Carpeta de destino<select name="parent"><option value="${escape(fs.rootId)}">Mi espacio</option>${folders.filter(folder=>folder.id!==item.id).map(folder=>`<option value="${escape(folder.id)}">${escape(folder.name)}</option>`).join('')}</select></label><footer><button type="button" data-drive-close>Cancelar</button><button type="submit">Mover</button></footer></form>`);
+      d.querySelector('form').onsubmit=event=>{event.preventDefault();mutate(()=>fs.move(item.id,d.querySelector('select').value));};
+    }catch(error){message(error.message,true);}
+  }
+  async function mutate(action) {
+    if(busy)return;busy=true;const id=owner,version=epoch;
+    dialog?.querySelectorAll('button').forEach(button=>button.disabled=true);
+    try{await action();if(!currentUser(id,version))return;dialog?.close();busy=false;await loadFiles();message('Cambios guardados en tu Drive.');}
+    catch(error){if(currentUser(id,version)){const target=dialog?.open?dialog.querySelector('[data-drive-dialog-status]'):status;target.textContent=error.message;}}
+    finally{if(currentUser(id,version)){busy=false;dialog?.querySelectorAll('button').forEach(button=>button.disabled=false);}}
+  }
+  async function upload(files) {
+    if(busy||!connected||!fs||!files.length)return;
+    try{files.forEach(rules.fileCheck);}catch(error){return message(error.message,true);}
+    busy=true;const id=owner,version=epoch,parent=current,provider=fs;let done=0;const failed=[];
+    for(const file of files){if(!currentUser(id,version))break;try{await provider.upload(file,parent,percent=>{if(currentUser(id,version))message('Subiendo '+file.name+' \u00b7 '+percent+'%');});done++;}catch(error){failed.push(file.name+': '+error.message);}}
+    if(!currentUser(id,version))return;busy=false;await loadFiles();message(failed.length?`${done} subidos. ${failed.join(' ')}`:`${done===1?'Archivo subido':done+' archivos subidos'} a tu Drive.`,Boolean(failed.length));
+  }
+  function connectionSettings() {
+    const d=modal('Tu Google Drive',`<p>${escape(fs?.about?.user?.emailAddress||'Cuenta conectada')}</p><p>Desconectar no elimina tus carpetas ni archivos. La conexi\u00f3n se quitar\u00e1 de tu cuenta de Estudiemos en todos tus dispositivos.</p><footer><button type="button" data-drive-close>Volver</button><button type="button" data-drive-disconnect>Desconectar Drive</button></footer>`);
+    d.querySelector('[data-drive-disconnect]').onclick=async()=>{if(busy)return;busy=true;try{await api('disconnect');clear();busy=false;renderDisconnected();message('Drive desconectado. Tus archivos siguen en Google Drive.');}catch(error){busy=false;d.querySelector('[data-drive-dialog-status]').textContent=error.message;}};
+  }
+})();

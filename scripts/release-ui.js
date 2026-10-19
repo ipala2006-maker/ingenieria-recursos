@@ -25,7 +25,8 @@
       button.toggleAttribute('data-release-unavailable', !window.EstudiemosRelease.enabled('ai'));
     });
     document.querySelectorAll(workspaceSelector).forEach(button => {
-      button.toggleAttribute('data-release-unavailable', !window.EstudiemosRelease.enabled('workspace'));
+      const native = button.matches('[data-account-widget],[data-account-desktop-widget]');
+      button.toggleAttribute('data-release-unavailable', !window.EstudiemosRelease.enabled(native ? 'workspace' : 'driveWorkspace'));
     });
   }
   decorate();

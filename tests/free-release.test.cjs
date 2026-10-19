@@ -7,15 +7,16 @@ const {createRequire} = require('node:module');
 const release = require('../shared/release');
 const root = path.resolve(__dirname, '..');
 
-test('free launch flags are disabled for everyone and cannot be changed as preferences', () => {
+test('legacy storage and AI remain paused while Drive workspace is enabled without billing', () => {
   assert.equal(release.enabled('workspace'), false);
   assert.equal(release.enabled('ai'), false);
+  assert.equal(release.enabled('driveWorkspace'), true);
   assert.ok(Object.isFrozen(release.features));
 });
 
 test('paused tools are excluded from the available home spaces without disabling live tools', () => {
   assert.equal(release.homeSpaceEnabled('assistant'), false);
-  assert.equal(release.homeSpaceEnabled('workspace'), false);
+  assert.equal(release.homeSpaceEnabled('workspace'), true);
   for (const key of ['focus','progress','inbox','calendar','shortcuts']) assert.equal(release.homeSpaceEnabled(key), true);
 });
 

@@ -163,6 +163,7 @@
             <p>${checkIcon()} Archivos y carpetas personales</p>
             <p>${checkIcon()} Tema y preferencias</p>
           </div>
+          <a class="account-secondary" href="/mi-espacio.html" data-account-drive>Mi espacio \u00b7 Conectar Google Drive</a>
           <section class="account-referrals" data-account-referrals hidden>
             <header>
               <div><strong>Referidos</strong><small>Quien llega con tu enlace obtiene 35%. Vos obtenés 45% al sumar 3 registros verificados este mes.</small></div>

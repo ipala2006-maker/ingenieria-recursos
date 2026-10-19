@@ -14,7 +14,7 @@ if (home) {
     form.append(badge, description);
     home.querySelectorAll('[data-home-prompt]').forEach(button => { button.hidden = true; });
   }
-  if (!window.EstudiemosRelease?.enabled('workspace')) home.querySelector('[data-home-shortcut="space"] small').textContent = 'Próximamente';
+  if (!window.EstudiemosRelease?.enabled('driveWorkspace')) home.querySelector('[data-home-shortcut="space"] small').textContent = 'Próximamente';
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const host = home.querySelector('[data-home-depth]');
   const chart = home.querySelector('[data-home-chart]');
