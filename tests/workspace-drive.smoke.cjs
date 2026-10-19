@@ -16,6 +16,7 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
     for(const width of process.env.TEST_WIDTH ? [Number(process.env.TEST_WIDTH)] : [1440,390,320]){
       const context=await browser.newContext({viewport:{width,height:900},isMobile:width<500,hasTouch:width<500,serviceWorkers:'block'});
       let connected=false,enabled=true,next=0,uploaded='',files=[{id:'root-folder-file',name:'An\u00e1lisis matem\u00e1tico',mimeType:mime,parents:[folder],modifiedTime:'2026-10-19',appProperties:{estudiemosSpace:folder,estudiemosOwner:owner}},{id:'root-pdf-file',name:'Gu\u00eda de ejercicios.pdf',mimeType:'application/pdf',size:'1000000',parents:[folder],modifiedTime:'2026-10-19',appProperties:{estudiemosSpace:folder,estudiemosOwner:owner}}];
+      let browse=false,browseEnabled=false,failInitialization=0;
       const requests=[];
       await context.addInitScript(({owner})=>{
         const originalFetch=window.fetch.bind(window);window.fetch=async(url,options)=>{if(String(url).startsWith('https://www.googleapis.com/upload/')&&options?.method==='PUT'&&options.body instanceof Blob)window.__uploadedBlob=await options.body.text();return originalFetch(url,options);};
@@ -28,8 +29,8 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
         if(url.origin===base){
           if(url.pathname.startsWith('/api/')){
             const action=url.searchParams.get('drive');
-            if(action==='config')return route.fulfill({json:{enabled}});
-            if(action==='status')return route.fulfill({json:{connected}});
+            if(action==='config')return route.fulfill({json:{enabled,browseEnabled}});
+            if(action==='status')return route.fulfill({json:{connected,browse}});
             if(action==='token')return route.fulfill({json:{accessToken:'pilot-google-access',expiresAt:Date.now()+3600000}});
             if(action==='disconnect'){connected=false;return route.fulfill({json:{connected:false}});}
             if(action==='start')return route.fulfill({json:{url:'https://accounts.google.com/o/oauth2/v2/auth?scope='+encodeURIComponent('https://www.googleapis.com/auth/drive.file')}});
@@ -54,8 +55,10 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
         }
         if(request.method()==='POST'){const data=JSON.parse(request.postData());const item={...data,id:'new-folder-'+(++next),modifiedTime:'2026-10-19'};files.push(item);return route.fulfill({json:item});}
         const q=url.searchParams.get('q')||'';
-        if(q.includes('estudiemosRoot'))return route.fulfill({json:{files:[{id:folder,name:'Estudiemos',mimeType:mime}]}});
+        if(q.includes('estudiemosRoot')){if(failInitialization-->0)return route.fulfill({status:503,json:{}});return route.fulfill({json:{files:[{id:folder,name:'Estudiemos',mimeType:mime}]}});}
         let visible=files.filter(item=>!item.trashed);
+        if(q.includes('estudiemosSpace'))visible=visible.filter(item=>item.appProperties?.estudiemosOwner===owner&&item.appProperties?.estudiemosSpace===folder);
+        if(q.includes("'root' in parents"))visible.push({id:folder,name:'Estudiemos',mimeType:mime,parents:['root']});
         const parent=/'([A-Za-z0-9_-]+)' in parents/.exec(q);if(parent)visible=visible.filter(item=>item.parents.includes(parent[1]));
         if(q.includes('mimeType ='))visible=visible.filter(item=>item.mimeType===mime);
         const search=/name contains '([^']*)'/.exec(q);if(search)visible=visible.filter(item=>item.name.includes(search[1]));
@@ -82,20 +85,48 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
       await page.locator(`[data-workspace-folder="${folder}"]`).click();await body.getByText('Gu\u00eda de ejercicios.pdf',{exact:true}).waitFor();
       await page.locator('[data-workspace-search]').fill('Qu\u00edmica');await page.waitForFunction(()=>document.querySelectorAll('.workspace-item').length===1);await page.locator('[data-workspace-search]').fill('');await page.waitForFunction(()=>document.querySelectorAll('.workspace-item').length===3);
       for(const theme of ['dark','light']){await page.evaluate(theme=>window.EstudiemosTheme.set(theme),theme);await page.waitForTimeout(300);await page.screenshot({path:path.join(out,`${engine}-${width}-files-${theme}.png`)});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));}
+      browseEnabled=true;browse=true;failInitialization=3;
+      files.push({id:'moved-folder',name:'Carpeta movida desde Drive',mimeType:mime,parents:[folder]}, {id:'existing-file',name:'Apunte previo.pdf',mimeType:'application/pdf',parents:['moved-folder'],size:'3000'}, {id:'outside-folder',name:'Otra carpeta de Mi unidad',mimeType:mime,parents:['root']});
+      await page.reload();await page.locator('[data-drive-retry]').waitFor();await page.locator('[data-drive-retry]').click();
+      await body.getByText('Otra carpeta de Mi unidad',{exact:true}).waitFor();
+      assert.ok(await page.locator('[data-workspace-add]').first().isDisabled());assert.equal(await page.locator('[data-workspace-menu="outside-folder"]').count(),0);
+      await page.locator('[data-drive-location="space"]').click();await body.getByText('Carpeta movida desde Drive',{exact:true}).waitFor();
+      await page.locator('[data-workspace-open="moved-folder"]').click();await body.getByText('Apunte previo.pdf',{exact:true}).waitFor();
+      assert.equal(await page.locator('[data-workspace-menu="existing-file"]').count(),0);assert.ok(await page.locator('[data-workspace-add]').first().isDisabled());
+      files.find(item=>item.id==='existing-file').name='Apunte actualizado en Drive.pdf';
+      await page.locator('[data-drive-refresh]').click();await body.getByText('Apunte actualizado en Drive.pdf',{exact:true}).waitFor();
+      assert.ok((await page.locator('[data-workspace-breadcrumbs]').textContent()).includes('Carpeta movida desde Drive'),'Refresh preserves the selected folder');
+      await page.screenshot({path:path.join(out,`${engine}-${width}-my-unit.png`)});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
       assert.ok(!await page.evaluate(()=>JSON.stringify(localStorage).includes('pilot-google-access')));
       assert.ok(!requests.some(r=>r.url.includes('workspace_items')||r.url.includes('/storage/v1/')),'Drive files never use Supabase storage');
       assert.ok(!requests.some(r=>r.url.startsWith(base)&&r.body?.includes('original file bytes')),'No file bytes pass through Estudiemos');
       await page.evaluate(()=>{window.__pilotUser=null;window.dispatchEvent(new CustomEvent('estudiemos:account-change',{detail:{user:null}}));});await connect.waitFor();
       assert.ok(!await page.locator('body').textContent().then(text=>text.includes('estudiante@example.test')||text.includes('Qu\u00edmica II')),'Signing out clears private file names and Drive identity from DOM');
       await page.evaluate(owner=>{window.__pilotUser={id:owner,email:'estudiante@example.test'};window.dispatchEvent(new CustomEvent('estudiemos:account-change',{detail:{user:window.__pilotUser}}));},owner);await page.locator('[data-drive-settings]').waitFor();
-      await page.locator('[data-drive-settings]').click();await page.locator('[data-drive-disconnect]').click();await connect.waitFor();assert.equal(files.filter(item=>!item.trashed).length,3,'Disconnect preserves files');
+      const existingCount=files.filter(item=>!item.trashed).length;
+      await page.locator('[data-drive-settings]').click();await page.locator('[data-drive-disconnect]').click();await connect.waitFor();assert.equal(files.filter(item=>!item.trashed).length,existingCount,'Disconnect preserves files');
       await page.goto(base+'/');await page.waitForLoadState('networkidle');await page.locator(width<500?'[data-home-view="space"]':'[data-drive-library-link]').waitFor();
       assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
       if(width===1440)assert.ok(await page.evaluate(()=>document.documentElement.scrollHeight<=innerHeight+1),'Restoring Mi espacio keeps the desktop board within its viewport');
       await page.screenshot({path:path.join(out,`${engine}-${width}-home.png`)});
+      await page.locator('[data-home-customize]').click();await page.locator('.home-layout-manage').click();
+      assert.equal(await page.locator('[data-home-customizer-spaces] input[value="workspace"]').count(),1,'Mi espacio remains available in customization');
+      await page.locator('.home-customizer__done').click();
+      await page.evaluate(()=>{window.__savedRelease=window.EstudiemosRelease;window.EstudiemosRelease=undefined;});
+      await page.locator('.home-layout-manage').click();assert.equal(await page.locator('[data-home-customizer-spaces] input[value="workspace"]').count(),0);
+      await page.locator('.home-customizer__done').click();await page.evaluate(()=>{window.EstudiemosRelease=window.__savedRelease;});
+      await page.locator('.home-layout-manage').click();assert.equal(await page.locator('[data-home-customizer-spaces] input[value="workspace"]').count(),1,'Late release configuration refreshes the tool options');
+      await page.locator('.home-customizer__done').click();await page.locator('.home-layout-done').click();
+      if(width<500){
+        await page.evaluate(()=>history.replaceState({...history.state,estudiemosUi:'home-session'},'',location.href));
+        await page.locator('[data-home-view="space"]').click();await connect.waitFor();
+        await page.evaluate(()=>window.dispatchEvent(new CustomEvent('estudiemos:cloud-restored')));
+        assert.equal(await page.locator('[data-home-view="space"]').getAttribute('aria-selected'),'true','A stale Pomodoro history marker must not close Mi espacio');
+        await page.locator('[data-home-view="overview"]').click();
+      }
       if(width<500)await page.locator('[data-home-view="space"]').click();else await page.locator('[data-drive-library-link]').click();await connect.waitFor();
       enabled=false;await page.reload();await connect.waitFor();assert.equal(await connect.isEnabled(),false,'Missing deployment configuration never fakes a working connection');
-      assert.deepEqual(errors,[]);console.log(`PASS ${engine} ${width}: consent handoff, direct upload, folders, rename, move, search, recoverable trash, disconnect, no storage/token leak, light/dark`);
+      assert.deepEqual(errors,[]);console.log(`PASS ${engine} ${width}: existing Drive folders, read-only safety, failed initialization retry, refresh, home customization, stable mobile tabs, uploads and privacy`);
       await context.close();
     }
   }finally{await browser?.close();if(server.listening)await new Promise(resolve=>server.close(resolve));}

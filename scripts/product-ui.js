@@ -45,7 +45,7 @@
   page.appendChild(nav);
   const render = () => {
     if (!isVisible(current)) current = 'overview';
-    if(mobile.matches && history.state?.estudiemosUi==='home-session') current='overview';
+    if(mobile.matches && history.state?.estudiemosUi==='home-session' && document.querySelector('.study-session-dialog[open]')) current='overview';
     nav.hidden = !mobile.matches;
     if (overview) overview.hidden = mobile.matches && current !== 'overview';
     document.querySelector('.home-layout').hidden = mobile.matches && current === 'overview';
@@ -79,7 +79,9 @@
     if (!button || !isVisible(button.dataset.homeView)) return;
     if (current === button.dataset.homeView) return;
     current = button.dataset.homeView;
-    history.pushState({ ...(history.state || {}), homeView:current }, '', location.href);
+    const nextState={...(history.state || {}),homeView:current};
+    if(nextState.estudiemosUi==='home-session')delete nextState.estudiemosUi;
+    history.pushState(nextState, '', location.href);
     render();
     if (!matchMedia('(prefers-reduced-motion: reduce)').matches) views.find(([key]) => key === current)?.[2].animate([{opacity:.3,transform:'translateY(6px)'},{opacity:1,transform:'none'}], {duration:220,easing:'ease-out'});
   });
@@ -90,7 +92,9 @@
     const visibleViews = views.filter(([key]) => isVisible(key));
     const index = visibleViews.findIndex(([key]) => key === current);
     current = visibleViews[event.key === 'Home' ? 0 : event.key === 'End' ? visibleViews.length - 1 : (index + direction + visibleViews.length) % visibleViews.length][0];
-    history.replaceState({ ...(history.state || {}), homeView:current }, '', location.href);
+    const nextState={...(history.state || {}),homeView:current};
+    if(nextState.estudiemosUi==='home-session')delete nextState.estudiemosUi;
+    history.replaceState(nextState, '', location.href);
     render();
     nav.querySelector(`[data-home-view="${current}"]`).focus();
   });

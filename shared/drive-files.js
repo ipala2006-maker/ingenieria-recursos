@@ -27,9 +27,9 @@
     return 'https://drive.google.com/file/d/' + item.id + '/view';
   }
   class DriveFiles {
-    constructor({userId, getToken, fetchImpl = (...args) => fetch(...args), isCurrent = () => true}) {
+    constructor({userId, getToken, fetchImpl = (...args) => fetch(...args), isCurrent = () => true, browse = false}) {
       if (typeof userId !== 'string' || !userId || userId.length > 100) throw new Error('Cuenta no v\u00e1lida.');
-      Object.assign(this, {userId, getToken, fetchImpl, isCurrent, rootId:'', about:null});
+      Object.assign(this, {userId, getToken, fetchImpl, isCurrent, rootId:'', about:null, browse:browse === true});
     }
     check() { if (!this.isCurrent()) throw new Error('La cuenta cambi\u00f3. Volv\u00e9 a abrir Mi espacio.'); }
     async request(url, options = {}, raw = false, attempt = 0, force = false) {
@@ -74,6 +74,13 @@
       return this.about;
     }
     scope() { return "trashed = false and appProperties has { key='estudiemosSpace' and value='" + quote(id(this.rootId)) + "' } and appProperties has { key='estudiemosOwner' and value='" + quote(this.userId) + "' }"; }
+    owned(item) { return item?.id === this.rootId || (item?.appProperties?.estudiemosOwner === this.userId && item?.appProperties?.estudiemosSpace === this.rootId); }
+    async readableFolder(parentId) {
+      if (parentId === this.rootId || (this.browse && parentId === 'root')) return;
+      if (!this.browse) return this.parent(parentId);
+      const item = await this.request(BASE + 'files/' + id(parentId) + '?fields=' + encodeURIComponent(FIELDS));
+      if (item.trashed || item.mimeType !== FOLDER) throw new Error('La carpeta ya no est\u00e1 disponible.');
+    }
     async managed(fileId) {
       const item = await this.request(BASE + 'files/' + id(fileId) + '?fields=' + encodeURIComponent(FIELDS));
       if (item.trashed || item.appProperties?.estudiemosOwner !== this.userId || item.appProperties?.estudiemosSpace !== this.rootId) throw new Error('Ese archivo no pertenece a este espacio.');
@@ -85,8 +92,10 @@
       if (folder.mimeType !== FOLDER) throw new Error('El destino no es una carpeta.');
     }
     async list(parentId = this.rootId, query = '') {
-      await this.parent(parentId);
-      return this.pages(this.scope() + (query ? " and name contains '" + quote(String(query).slice(0,120)) + "'" : " and '" + id(parentId) + "' in parents"));
+      await this.readableFolder(parentId);
+      const parent = this.browse && parentId === 'root' ? 'root' : id(parentId);
+      if (this.browse) return this.pages("trashed = false and '" + parent + "' in parents" + (query ? " and name contains '" + quote(String(query).slice(0,120)) + "'" : ''));
+      return this.pages(this.scope() + (query ? " and name contains '" + quote(String(query).slice(0,120)) + "'" : " and '" + parent + "' in parents"));
     }
     async folders() { return this.pages(this.scope() + " and mimeType = '" + FOLDER + "'"); }
     metadata(title, parentId) { return {name:name(title), parents:[id(parentId)], appProperties:{estudiemosSpace:this.rootId, estudiemosOwner:this.userId}}; }

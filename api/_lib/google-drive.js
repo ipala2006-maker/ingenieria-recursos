@@ -5,6 +5,9 @@ const { setSecurityHeaders, isSameOriginRequest, requireJsonRequest, rejectOvers
 const { seal, unseal } = require('./drive-vault');
 
 const SCOPE = 'https://www.googleapis.com/auth/drive.file';
+const BROWSE_SCOPE = 'https://www.googleapis.com/auth/drive.metadata.readonly';
+const browseEnabled = () => process.env.GOOGLE_DRIVE_BROWSE_ENABLED === 'true';
+const hasBrowse = saved => saved?.scopes?.includes(BROWSE_SCOPE) === true;
 const COOKIE = '__Host-estudiemos-drive-oauth';
 const TABLE = '/rest/v1/drive_connections';
 const pilotEmails = () => String(process.env.GOOGLE_DRIVE_PILOT_EMAILS || '').split(',').map(value => value.trim().toLowerCase()).filter(Boolean);
@@ -51,9 +54,11 @@ async function callback(req, res) {
     if (req.query.error) return returnToApp(res, 'cancelled');
     if (typeof req.query.code !== 'string' || req.query.code.length > 4096) throw new Error('INVALID_CODE');
     const oauth = client(), {tokens} = await oauth.getToken({code: req.query.code, codeVerifier: pending.verifier});
-    if (!tokens.access_token || !tokens.refresh_token || String(tokens.scope || '').trim() !== SCOPE) throw new Error('INCOMPLETE_CONSENT');
+    const expected = pending.browse && browseEnabled() ? [SCOPE,BROWSE_SCOPE] : [SCOPE];
+    const scopes = [...new Set(String(tokens.scope || '').trim().split(/\s+/).filter(Boolean))];
+    if (!tokens.access_token || !tokens.refresh_token || scopes.length !== expected.length || expected.some(scope => !scopes.includes(scope))) throw new Error('INCOMPLETE_CONSENT');
     // The Google grant is bound to the Estudiemos account that started this flow.
-    await store(pending.uid, {refreshToken: tokens.refresh_token, accessToken: tokens.access_token, expiresAt: tokens.expiry_date || 0});
+    await store(pending.uid, {refreshToken: tokens.refresh_token, accessToken: tokens.access_token, expiresAt: tokens.expiry_date || 0, scopes});
     return returnToApp(res, 'connected');
   } catch (_) { return returnToApp(res, 'error'); }
 }
@@ -67,7 +72,8 @@ module.exports = async function googleDrive(req, res) {
   if (action === 'config' && req.method === 'GET') {
     const ready = configured();
     const user = ready && pilotEmails().length ? await authenticateBearer(req.headers.authorization) : null;
-    return res.status(200).json({enabled:ready && pilotAllowed(user)});
+    const enabled = ready && pilotAllowed(user);
+    return res.status(200).json({enabled,...(enabled && browseEnabled() ? {browseEnabled:true} : {})});
   }
   if (!configured()) return res.status(503).json({code:'DRIVE_NOT_CONFIGURED', message:'La conexi\u00f3n con Google Drive todav\u00eda no est\u00e1 habilitada.'});
   if (action === 'callback' && req.method === 'GET') return callback(req, res);
@@ -81,12 +87,13 @@ module.exports = async function googleDrive(req, res) {
     if (action === 'start') {
       const state = crypto.randomBytes(32).toString('base64url');
       const oauth = client(), codes = await oauth.generateCodeVerifierAsync();
-      setCookie(res, seal({uid:user.id, email:user.email, email_confirmed_at:user.email_confirmed_at, state, verifier:codes.codeVerifier, exp:Date.now()+600000}, 'oauth'), 600);
-      const url = oauth.generateAuthUrl({scope:[SCOPE], access_type:'offline', prompt:'consent select_account', include_granted_scopes:false, state, code_challenge:codes.codeChallenge, code_challenge_method:'S256'});
+      const browse = req.body?.browse === true && browseEnabled();
+      setCookie(res, seal({uid:user.id, email:user.email, email_confirmed_at:user.email_confirmed_at, state, verifier:codes.codeVerifier, exp:Date.now()+600000, browse}, 'oauth'), 600);
+      const url = oauth.generateAuthUrl({scope:browse ? [SCOPE,BROWSE_SCOPE] : [SCOPE], access_type:'offline', prompt:'consent select_account', include_granted_scopes:false, state, code_challenge:codes.codeChallenge, code_challenge_method:'S256'});
       return res.status(200).json({url});
     }
     const saved = await record(user.id);
-    if (action === 'status') return res.status(200).json({connected:Boolean(saved?.refreshToken)});
+    if (action === 'status') return res.status(200).json({connected:Boolean(saved?.refreshToken),browse:hasBrowse(saved)});
     if (action === 'disconnect') {
       setCookie(res, '', 0);
       await adminRequest(pathFor(user.id), {method:'DELETE', headers:{Prefer:'return=minimal'}});

@@ -7,11 +7,11 @@
   const icons = {
     folder:'<path d="M3 6h6l2 2h10v12H3z"/>', file:'<path d="M6 3h8l4 4v14H6V3zm8 0v5h5M9 12h6m-6 4h6"/>', plus:'<path d="M12 5v14M5 12h14"/>',
     cloud:'<path d="M7 18a5 5 0 0 1-1-10 6 6 0 0 1 11-2 6 6 0 0 1 1 12M12 11v10m-4-6 4-4 4 4"/>', more:'<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
-    close:'<path d="m6 6 12 12M18 6 6 18"/>', check:'<path d="m5 12 4 4L19 6"/>', back:'<path d="m14 6-6 6 6 6"/>'
+    close:'<path d="m6 6 12 12M18 6 6 18"/>', check:'<path d="m5 12 4 4L19 6"/>', back:'<path d="m14 6-6 6 6 6"/>', refresh:'<path d="M20 11a8 8 0 0 0-14-5L3 9m0-5v5h5M4 13a8 8 0 0 0 14 5l3-3m0 5v-5h-5"/>'
   };
   const icon = name => '<svg viewBox="0 0 24 24" aria-hidden="true">' + icons[name] + '</svg>';
   const size = value => { const n = Math.max(0,Number(value)||0); return n >= 1073741824 ? (n/1073741824).toFixed(1)+' GB' : n >= 1048576 ? (n/1048576).toFixed(1)+' MB' : Math.ceil(n/1024)+' KB'; };
-  let account, owner = '', epoch = 0, enabled = false, connected = false, busy = false, fs, token = '', expiresAt = 0, items = [], current = '', crumbs = [], dialog, returnFocus, query = '', searchTimer, lastLoad = 0, connectAfterLogin = false;
+  let account, owner = '', epoch = 0, enabled = false, browseEnabled = false, connected = false, busy = false, fs, token = '', expiresAt = 0, items = [], current = '', crumbs = [], dialog, returnFocus, query = '', searchTimer, lastLoad = 0, connectAfterLogin = false;
   const body = $('[data-workspace-items]'), state = $('[data-workspace-state]'), status = $('[data-workspace-status]');
   const full = document.body.classList.contains('drive-library-page');
   if (!full && !document.querySelector('[data-drive-library-link]')) {
@@ -20,13 +20,20 @@
   const signal = new URL(location.href).searchParams.get('drive');
   if (signal) { const url = new URL(location.href); url.searchParams.delete('drive'); history.replaceState(history.state,'',url.pathname+url.search+url.hash); }
   const band = document.createElement('div'); band.className = 'drive-connection'; band.dataset.driveConnection = '';
-  band.innerHTML = `<span class="drive-connection__icon">${icon('cloud')}</span><div><strong>Google Drive</strong><small data-drive-account>Sin conectar</small></div><button type="button" class="workspace-tool-icon" data-drive-settings aria-label="Configurar conexi\u00f3n de Drive" title="Conexi\u00f3n de Drive">${icon('more')}</button>`;
+  band.innerHTML = `<span class="drive-connection__icon">${icon('cloud')}</span><div><strong>Google Drive</strong><small data-drive-account>Sin conectar</small></div><button type="button" class="workspace-btn drive-browse" data-drive-browse hidden>Mostrar Mi unidad</button><button type="button" class="workspace-tool-icon" data-drive-refresh aria-label="Actualizar archivos de Drive" title="Actualizar archivos">${icon('refresh')}</button><button type="button" class="workspace-tool-icon" data-drive-settings aria-label="Configurar conexi\u00f3n de Drive" title="Conexi\u00f3n de Drive">${icon('more')}</button>`;
   section.querySelector('.workspace-browser').prepend(band); band.hidden = true;
   const toolbar = section.querySelector('.workspace-toolbar');
+  const locations=document.createElement('div');locations.className='drive-locations';locations.hidden=true;locations.setAttribute('role','group');locations.setAttribute('aria-label','Ubicaci\u00f3n de Drive');
+  locations.innerHTML='<button type="button" data-drive-location="unit">Mi unidad</button><button type="button" data-drive-location="space">Estudiemos</button><span data-drive-readonly hidden>Solo lectura</span>';
+  band.after(locations);
   document.addEventListener('click', event => {
-    if (event.target.closest('[data-drive-connect]')) connect();
+    if (event.target.closest('[data-drive-connect]')) connect(browseEnabled);
+    if (section.contains(event.target) && event.target.closest('[data-drive-browse]')) connect(true);
     if (event.target.closest('[data-drive-retry]')) load();
     if (!section.contains(event.target)) return;
+    if (event.target.closest('[data-drive-refresh]') && !busy) load();
+    const location=event.target.closest('[data-drive-location]');
+    if(location && !busy && fs){current=location.dataset.driveLocation==='unit'?'root':fs.rootId;crumbs=current==='root'?[{id:'root',name:'Mi unidad',writable:false}]:[...(fs.browse?[{id:'root',name:'Mi unidad',writable:false}]:[]),{id:fs.rootId,name:'Estudiemos',writable:true}];query='';$('[data-workspace-search]').value='';loadFiles();return;}
     const target = event.target.closest('[data-workspace-add],[data-workspace-upload],[data-workspace-new-folder],[data-workspace-folder],[data-workspace-open],[data-workspace-menu],[data-workspace-view],[data-drive-settings]');
     if (!target || busy) return;
     if (target.matches('[data-drive-settings]')) connectionSettings();
@@ -37,7 +44,7 @@
     if (target.matches('[data-workspace-view]')) { body.classList.toggle('is-list',target.dataset.workspaceView==='list'); section.querySelectorAll('[data-workspace-view]').forEach(button => button.setAttribute('aria-pressed',String(button===target))); }
     if (target.matches('[data-workspace-open]')) {
       const item = items.find(item => item.id === target.dataset.workspaceOpen);
-      if (item?.mimeType === rules.FOLDER) { crumbs.push({id:item.id,name:item.name}); current=item.id; query=''; $('[data-workspace-search]').value=''; loadFiles(); }
+      if (item?.mimeType === rules.FOLDER) { crumbs.push({id:item.id,name:item.name,writable:fs.owned(item)}); current=item.id; query=''; $('[data-workspace-search]').value=''; loadFiles(); }
       else if (item) window.open(rules.openUrl(item),'_blank','noopener,noreferrer');
     }
     if (target.matches('[data-workspace-menu]')) itemMenu(items.find(item => item.id === target.dataset.workspaceMenu));
@@ -50,7 +57,7 @@
   dropzone?.addEventListener('dragover',event => {if(event.dataTransfer?.types.includes('Files')){event.preventDefault();dropzone.classList.add('is-dragging');}});
   dropzone?.addEventListener('dragleave',() => dropzone.classList.remove('is-dragging'));
   dropzone?.addEventListener('drop',event => {event.preventDefault();dropzone.classList.remove('is-dragging');if(connected)upload(Array.from(event.dataTransfer?.files||[]));});
-  function refreshOnReturn(force=false) {if(owner && enabled && !busy && (force || Date.now()-lastLoad>30000))load();}
+  function refreshOnReturn(force=false) {if(owner && enabled && !busy && !dialog?.open && (force || Date.now()-lastLoad>1500))load();}
   window.addEventListener('focus',() => refreshOnReturn());
   document.addEventListener('visibilitychange',() => {if(document.visibilityState==='visible')refreshOnReturn();});
   window.addEventListener('estudiemos:drive-resume',() => refreshOnReturn(true));
@@ -60,15 +67,15 @@
 
   function message(text='',error=false) {status.textContent=text;status.dataset.type=error?'error':'success';}
   function currentUser(id,version) {return owner===id && epoch===version && account?.getUser()?.id===id;}
-  function clear() {epoch++; busy=false;token='';expiresAt=0;fs=null;connected=false;items=[];current='';crumbs=[];query='';body.replaceChildren();band.hidden=true;band.querySelector('[data-drive-account]').textContent='Sin conectar';$('[data-workspace-breadcrumbs]')?.replaceChildren();if($('[data-workspace-search]'))$('[data-workspace-search]').value='';dialog?.close();dialog?.replaceChildren();returnFocus=null;}
+  function clear() {epoch++; busy=false;token='';expiresAt=0;fs=null;connected=false;items=[];current='';crumbs=[];query='';body.replaceChildren();band.hidden=true;locations.hidden=true;section.removeAttribute('aria-busy');band.querySelector('[data-drive-account]').textContent='Sin conectar';$('[data-workspace-breadcrumbs]')?.replaceChildren();if($('[data-workspace-search]'))$('[data-workspace-search]').value='';dialog?.close();dialog?.replaceChildren();returnFocus=null;}
   function show(title,copy,action='') {
     body.hidden=true;state.hidden=false;state.innerHTML=`<span class="drive-state-icon">${icon('cloud')}</span><h3>${escape(title)}</h3><p>${escape(copy)}</p>${action}`;
     toolbar.hidden=true; section.querySelector('[data-workspace-add]')?.setAttribute('disabled','');
   }
   function renderDisconnected() {
-    band.hidden=true;
+    band.hidden=true;locations.hidden=true;
     const native=Boolean(window.EstudiemosAndroid);
-    show('Tus apuntes, en tu Drive','Acceso solo a los archivos de Estudiemos. Tu Drive y tus documentos siguen siendo tuyos.',`<button type="button" class="workspace-btn workspace-btn--primary drive-connect" data-drive-connect ${enabled?'':'disabled'}>${icon('cloud')}<span>${enabled ? native ? 'Conectar desde el navegador' : 'Conectar Google Drive' : 'Conexi\u00f3n en preparaci\u00f3n'}</span></button>${enabled?'<small class="drive-consent-note">Eleg\u00eds tu cuenta y autoriz\u00e1s el acceso en Google.</small>':''}`);
+    show('Tus apuntes, en tu Drive',browseEnabled?'Mi unidad se muestra en modo lectura. El contenido de tus archivos previos no se copia a Estudiemos.':'Acceso solo a los archivos de Estudiemos. Tu Drive y tus documentos siguen siendo tuyos.',`<button type="button" class="workspace-btn workspace-btn--primary drive-connect" data-drive-connect ${enabled?'':'disabled'}>${icon('cloud')}<span>${enabled ? native ? 'Conectar desde el navegador' : 'Conectar Google Drive' : 'Conexi\u00f3n en preparaci\u00f3n'}</span></button>${enabled?'<small class="drive-consent-note">Eleg\u00eds tu cuenta y autoriz\u00e1s el acceso en Google.</small>':''}`);
   }
   async function initialize() {
     clear(); const initialEpoch=epoch;account=window.EstudiemosAccount;
@@ -79,9 +86,9 @@
     try {
       const session=account.getSession();
       const config=await fetch('/api/account-config?drive=config',{cache:'no-store',credentials:'same-origin',headers:owner&&session?.access_token?{Authorization:'Bearer '+session.access_token}:{}}).then(response=>response.json());
-      if(epoch!==version)return;enabled=config.enabled===true;
+      if(epoch!==version)return;enabled=config.enabled===true;browseEnabled=config.browseEnabled===true;
       if (!owner || !enabled) return renderDisconnected();
-      if (connectAfterLogin) {connectAfterLogin=false;return connect();}
+      if (connectAfterLogin) {connectAfterLogin=false;return connect(browseEnabled);}
       const result=await api('status','GET');if(!currentUser(id,version))return;
       connected=result.connected===true;
       if(connected)await load();else renderDisconnected();
@@ -101,7 +108,7 @@
     if(!response.ok){const error=new Error(result.message||'No pudimos conectar con Drive.');error.code=result.code;throw error;}
     return result;
   }
-  async function connect() {
+  async function connect(browse=false) {
     if(busy || !enabled)return;
     if(!owner){connectAfterLogin=true;return account?.open();}
     if(window.EstudiemosAndroid){
@@ -110,7 +117,7 @@
       message('Complet\u00e1 la conexi\u00f3n en Chrome y volv\u00e9 a la app. Si no se abre, actualiz\u00e1 Estudiemos o abr\u00ed estudiemos-app.vercel.app/mi-espacio.html en Chrome.');return;
     }
     busy=true;section.querySelectorAll('[data-drive-connect]').forEach(button=>{button.disabled=true;button.querySelector('span').textContent='Abriendo Google...';});
-    try {const result=await api('start');const url=new URL(result.url);if(url.origin!=='https://accounts.google.com'||url.pathname!=='/o/oauth2/v2/auth')throw new Error('No se pudo abrir Google.');location.assign(url.href);}
+    try {const result=await api('start','POST',{browse:browse===true && browseEnabled});const url=new URL(result.url);if(url.origin!=='https://accounts.google.com'||url.pathname!=='/o/oauth2/v2/auth')throw new Error('No se pudo abrir Google.');location.assign(url.href);}
     catch(error){busy=false;renderDisconnected();message(error.message,true);}
   }
   async function access(force=false) {
@@ -119,14 +126,14 @@
   }
   async function load() {
     if(busy)return;busy=true;lastLoad=Date.now();const id=owner,version=epoch;
-    show('Abriendo tu espacio...','');message('');
+    if(!fs)show('Abriendo tu espacio...','');section.setAttribute('aria-busy','true');message('');
     try {
       const result=await api('status','GET');if(!result.connected){connected=false;token='';expiresAt=0;fs=null;items=[];body.replaceChildren();return renderDisconnected();}
-      if(!fs){fs=new rules.DriveFiles({userId:id,getToken:access,isCurrent:()=>currentUser(id,version)});await fs.initialize();current=fs.rootId;crumbs=[{id:current,name:'Mi espacio'}];}
+      if(!fs || fs.browse !== (result.browse===true)){token='';expiresAt=0;const candidate=new rules.DriveFiles({userId:id,getToken:access,isCurrent:()=>currentUser(id,version),browse:result.browse===true});await candidate.initialize();if(!currentUser(id,version))return;fs=candidate;current=fs.browse?'root':fs.rootId;crumbs=[{id:current,name:fs.browse?'Mi unidad':'Mi espacio',writable:!fs.browse}];}
       items=await fs.list(current,query);if(!currentUser(id,version))return;
       connected=true;render();
     }catch(error){if(currentUser(id,version)){if(error.code==='DRIVE_CONNECT_REQUIRED'){connected=false;token='';fs=null;renderDisconnected();}else {if(error.status===404)fs=null;show('No pudimos abrir tu Drive','Tus archivos no se modificaron.','<button class="workspace-btn" data-drive-retry>Reintentar</button>');}message(error.message,true);}}
-    finally{if(currentUser(id,version))busy=false;}
+    finally{if(currentUser(id,version)){busy=false;section.removeAttribute('aria-busy');}}
   }
   async function loadFiles() {
     if(!fs||!connected||busy)return;busy=true;const id=owner,version=epoch;
@@ -136,14 +143,19 @@
   function render() {
     if(!connected || !fs)return renderDisconnected();
     toolbar.hidden=false;band.hidden=false;state.hidden=true;body.hidden=false;
-    section.querySelector('[data-workspace-add]')?.removeAttribute('disabled');
+    const writable=current===fs.rootId || crumbs.at(-1)?.writable===true;
+    section.querySelector('[data-workspace-add]')?.toggleAttribute('disabled',!writable);
+    locations.hidden=!fs.browse;locations.querySelector('[data-drive-readonly]').hidden=writable;
+    locations.querySelectorAll('button').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.driveLocation===(crumbs.some(part=>part.id===fs.rootId)?'space':'unit'))));
+    band.querySelector('[data-drive-browse]').hidden=!browseEnabled||fs.browse;
     band.querySelector('[data-drive-account]').textContent=fs.about?.user?.emailAddress||'Conectado';
     const quota=fs.about?.storageQuota, free=quota?.limit?Math.max(0,Number(quota.limit)-Number(quota.usage||0)):null;
     band.querySelector('strong').textContent=free===null?'Google Drive':'Google Drive \u00b7 '+size(free)+' disponibles';
     $('[data-workspace-breadcrumbs]').innerHTML=crumbs.map((part,index)=>`${index?'<span aria-hidden="true">/</span>':''}<button type="button" data-workspace-folder="${escape(part.id)}">${escape(part.name)}</button>`).join('');
     const sort=$('[data-workspace-sort]')?.value||'updated';
     const visible=[...items].sort((a,b)=>Number(b.mimeType===rules.FOLDER)-Number(a.mimeType===rules.FOLDER)||(sort==='name'?a.name.localeCompare(b.name,'es'):sort==='type'?a.mimeType.localeCompare(b.mimeType):new Date(b.modifiedTime)-new Date(a.modifiedTime)));
-    body.innerHTML=visible.map(item=>`<article class="workspace-item"><button class="workspace-item__open" type="button" data-workspace-open="${escape(item.id)}" aria-label="Abrir ${escape(item.name)}"><span class="workspace-item__icon">${icon(item.mimeType===rules.FOLDER?'folder':'file')}</span><span class="workspace-item__copy"><span class="workspace-item__name" title="${escape(item.name)}">${escape(item.name)}</span><span class="workspace-item__meta">${item.mimeType===rules.FOLDER?'Carpeta':size(item.size)}</span></span></button><button class="workspace-item__menu" data-workspace-menu="${escape(item.id)}" type="button" aria-label="Opciones de ${escape(item.name)}" title="Opciones">${icon('more')}</button></article>`).join('')+`<button class="workspace-add-tile" data-workspace-add type="button">${icon('plus')}<span>${query?'Agregar archivo':'Agregar'}<small>Carpeta o archivo</small></span></button>`;
+    body.innerHTML=visible.map(item=>`<article class="workspace-item"><button class="workspace-item__open" type="button" data-workspace-open="${escape(item.id)}" aria-label="Abrir ${escape(item.name)}"><span class="workspace-item__icon">${icon(item.mimeType===rules.FOLDER?'folder':'file')}</span><span class="workspace-item__copy"><span class="workspace-item__name" title="${escape(item.name)}">${escape(item.name)}</span><span class="workspace-item__meta">${item.mimeType===rules.FOLDER?'Carpeta':size(item.size)}${!fs.owned(item)?' · Solo lectura':''}</span></span></button>${fs.owned(item)&&item.id!==fs.rootId?`<button class="workspace-item__menu" data-workspace-menu="${escape(item.id)}" type="button" aria-label="Opciones de ${escape(item.name)}" title="Opciones">${icon('more')}</button>`:''}</article>`).join('')+(writable?`<button class="workspace-add-tile" data-workspace-add type="button">${icon('plus')}<span>${query?'Agregar archivo':'Agregar'}<small>Carpeta o archivo</small></span></button>`:'');
+    if(!visible.length&&!writable)body.innerHTML='<p class="drive-empty">'+(query?'No encontramos archivos con ese nombre.':'Esta carpeta est\u00e1 vac\u00eda.')+'</p>';
     if(query&&!visible.length)message('No encontramos archivos con ese nombre.');
   }
   function navigate(id) {const index=crumbs.findIndex(part=>part.id===id);if(index<0)return;current=id;crumbs=crumbs.slice(0,index+1);query='';$('[data-workspace-search]').value='';loadFiles();}
@@ -160,7 +172,7 @@
   }
   function folderForm() {formDialog('Nueva carpeta','Nombre','',value=>fs.createFolder(value,current));}
   function itemMenu(item) {
-    if(!item)return;const d=modal(item.name,`<div class="drive-actions"><button type="button" data-drive-rename>Cambiar nombre</button><button type="button" data-drive-move>Mover a otra carpeta</button><button type="button" data-drive-trash>Enviar a la papelera de Drive</button></div>`);
+    if(!item || !fs.owned(item) || item.id===fs.rootId)return;const d=modal(item.name,`<div class="drive-actions"><button type="button" data-drive-rename>Cambiar nombre</button><button type="button" data-drive-move>Mover a otra carpeta</button><button type="button" data-drive-trash>Enviar a la papelera de Drive</button></div>`);
     d.querySelector('[data-drive-rename]').onclick=()=>formDialog('Cambiar nombre','Nombre',item.name,value=>fs.rename(item.id,value));
     d.querySelector('[data-drive-move]').onclick=()=>moveForm(item);
     d.querySelector('[data-drive-trash]').onclick=()=>{const confirmation=modal('Enviar a la papelera',`<p>${escape(item.name)} quedar\u00e1 en la papelera de Google Drive, donde pod\u00e9s recuperarlo.</p><footer><button type="button" data-drive-close>Cancelar</button><button type="button" data-drive-trash-confirm>Enviar a la papelera</button></footer>`);confirmation.querySelector('[data-drive-trash-confirm]').onclick=()=>mutate(()=>fs.trash(item.id));};
@@ -181,6 +193,7 @@
   }
   async function upload(files) {
     if(busy||!connected||!fs||!files.length)return;
+    if(current!==fs.rootId && crumbs.at(-1)?.writable!==true)return message('Abr\u00ed la carpeta Estudiemos para subir archivos. Esta ubicaci\u00f3n es de solo lectura.',true);
     try{files.forEach(rules.fileCheck);}catch(error){return message(error.message,true);}
     busy=true;const id=owner,version=epoch,parent=current,provider=fs;let done=0;const failed=[];
     for(const file of files){if(!currentUser(id,version))break;try{await provider.upload(file,parent,percent=>{if(currentUser(id,version))message('Subiendo '+file.name+' \u00b7 '+percent+'%');});done++;}catch(error){failed.push(file.name+': '+error.message);}}
