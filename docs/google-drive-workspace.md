@@ -11,13 +11,23 @@
 - Desconectar quita la credencial de Estudiemos y solicita su revocacion a Google. No borra los archivos. La papelera es la de Drive y permite recuperarlos desde Google Drive.
 - Si Google revoca el permiso o una autorizacion de prueba vence, se solicita volver a conectar. Sin conexion o sin cuota se muestra un error; no se inventa un guardado correcto.
 
+### Mi unidad y archivos existentes
+
+- La vista opcional **Mi unidad** lista las carpetas y archivos reales de Drive, incluidos los elementos movidos manualmente a Estudiemos. Sigue los padres reales de Drive y no exige las marcas internas para leer.
+- Necesita consentimiento adicional `drive.metadata.readonly`; no autoriza leer el contenido de todos los documentos. Los elementos previos se abren en Google y se muestran en modo lectura. Subidas, cambios de nombre, movimientos y papelera de la app siguen restringidos a sus propios archivos marcados.
+- `GOOGLE_DRIVE_BROWSE_ENABLED=true` habilita la solicitud adicional solo en servidor. Las conexiones existentes no se amplian silenciosamente: **Mostrar Mi unidad** abre el consentimiento oficial. El servidor guarda los scopes concedidos cifrados y solo informa la capacidad a la cuenta autenticada.
+- Google clasifica ese scope como restringido: requiere revision adicional para lanzamiento publico y puede exigir evaluacion de seguridad segun el tratamiento de datos. No contratar ni pagar evaluaciones. Conservar `GOOGLE_DRIVE_PILOT_EMAILS` mientras se verifica y no prometer que el despliegue publico sera gratuito o aprobado.
+- Los listados van directamente de Google al navegador. No se guardan nombres ni listados de Mi unidad en Supabase. Rechazar acceso general `drive`, `drive.readonly`, Gmail y Calendar en este flujo.
+- Actualizar conserva la carpeta actual; volver desde Drive vuelve a consultar sin la espera anterior de 30 segundos. Si falla la primera carga, Reintentar reconstruye el proveedor en lugar de conservar una inicializacion incompleta.
+- Mi espacio vuelve a comprobar las herramientas disponibles al abrir los ajustes. Las pestañas moviles limpian un estado antiguo del dialogo de Pomodoro para que no expulse de Mi espacio al restaurar datos.
+
 ## Configuracion Unica Del Responsable
 
 No activar pruebas gratuitas, creditos, facturacion ni servicios pagos.
 
 1. En el proyecto Google Cloud **Estudiemos**, habilitar **Google Drive API**.
 2. Configurar Google Auth Platform con nombre **Estudiemos**, publico externo y correo oficial de soporte. Ese correo puede aparecer a los usuarios: no usar el correo personal sin autorizacion. El correo debe ser elegible en el selector de Google (propietario del proyecto o grupo administrado).
-3. Solicitar solamente `https://www.googleapis.com/auth/drive.file`. No pedir `drive`, `drive.readonly`, Gmail, Calendar ni acceso general a metadatos. El scope es no sensible, pero Google puede requerir revision de marca y dominio para mostrar la identidad verificada.
+3. La conexion basica pide `https://www.googleapis.com/auth/drive.file`. Mi unidad agrega, solo con consentimiento adicional y servidor habilitado, `https://www.googleapis.com/auth/drive.metadata.readonly`. No pedir `drive`, `drive.readonly`, Gmail ni Calendar. Completar la revision de marca y, para Mi unidad, la revision del permiso restringido antes de habilitar a todos.
 4. Crear un cliente OAuth de tipo **Aplicacion web** dedicado a Mi espacio. Registrar exactamente este redirect URI:
 
    `https://estudiemos-app.vercel.app/api/account-config?drive=callback`
@@ -44,10 +54,17 @@ Si faltan credenciales, el backend informa `enabled:false` sin revelar valores. 
 - Implementacion publicada mediante PR63 (main `2a5bdb0`); selector de cuenta independiente corregido y publicado mediante PR64 (main `238ae46`). El despliegue de produccion esta READY y conserva el piloto privado.
 - El titular completo la verificacion de identidad de la cuenta oficial. Se comprobo consentimiento real `drive.file`, creacion de carpeta, subida de un TXT inocuo y lectura de su contenido original en Google Drive. Archivo y carpeta de prueba enviados a la papelera recuperable, sin eliminar permanentemente nada. La desconexion oficial termino correctamente y se confirmo en la interfaz.
 - Con confirmacion explicita posterior se paso OAuth a **Produccion** y se conecto el Drive habitual del responsable con el mismo permiso limitado. Su correo no se registra en esta documentacion publica. No se leyeron ni importaron sus documentos existentes; Mi espacio crea su propia carpeta.
-- Google confirmo que no se requiere verificacion de acceso a datos porque no hay permisos sensibles ni restringidos. La verificacion de **marca** detecto falta de propiedad de la pagina principal. Se solicito el comprobante oficial de Search Console y se agrega `google0ca28d0373362ce8.html`: es un archivo publico de propiedad, no un secreto OAuth. Debe conservarse mientras se mantenga esa propiedad.
-- Pendiente confirmar propiedad en Search Console despues del despliegue. Google indica esperar 24 horas despues de verificar la propiedad antes de reintentar la revision de marca. El piloto privado permanece hasta completar esa revision; **En produccion** no significa **Marca verificada**.
+- La conexion basica `drive.file` no requeria revision de datos. La incorporacion posterior de Mi unidad agrega un permiso restringido con autorizacion explicita y cambia ese requisito. No confundir la aprobacion del permiso basico con aprobacion de metadatos.
+- Search Console confirmo propiedad del sitio por `google0ca28d0373362ce8.html` el 19 de octubre de 2026, alrededor de las 21:09 UTC. No quitar ese archivo publico. Google indica esperar 24 horas antes de reintentar la revision de marca. **En produccion** y **Propiedad verificada** no significan **Marca verificada** ni **Permisos restringidos verificados**.
 
 ## Seguridad
+
+### Ampliacion Mi unidad (19 Octubre 2026)
+
+- Ian autorizo expresamente agregar `drive.metadata.readonly`. Google guardo solo ese permiso adicional y su justificacion como Productividad de Drive; no esta verificado todavia. Requiere video de demostracion y revision antes de lanzamiento publico.
+- Vercel produccion tiene `GOOGLE_DRIVE_BROWSE_ENABLED=true` como Config no secreta. `GOOGLE_DRIVE_PILOT_EMAILS` permanece restringido; no se ampliaron previews, usuarios piloto ni permisos de Calendar.
+- Regresion local: 186 pruebas aprobadas. Chrome y WebKit verificaron lectura de carpetas externas y movidas, bloqueo de escritura externa, reintento tras inicializacion fallida, actualizacion sin perder carpeta, lista de ajustes con carga tardia y pestana movil estable.
+- Pendiente tras desplegar: renovar el consentimiento de la cuenta piloto y comprobar los nombres/carpetas reales, sin mover, cambiar ni borrar documentos existentes. No confundir estas pruebas simuladas con la prueba real del nuevo scope.
 
 - SDK oficial `google-auth-library`, version fija. Autorizacion con PKCE S256, state aleatorio y cookie `__Host-`, Secure, HttpOnly, SameSite=Lax, diez minutos. El callback elimina la cookie, no carga terceros y devuelve a una ruta fija sin codigos ni tokens.
 - Supabase comprueba la sesion antes de empezar, consultar, renovar o desconectar; el usuario de la peticion nunca se toma del cuerpo.
@@ -55,7 +72,7 @@ Si faltan credenciales, el backend informa `enabled:false` sin revelar valores. 
 - Los access tokens breves se mantienen solo en memoria del navegador. Los refresh tokens y el secreto OAuth nunca se envian al cliente ni se incluyen en logs, URLs o Git.
 - Cambiar/cerrar cuenta limpia archivos, correo de Drive, navegacion, dialogos y token en memoria. No elimina la conexion consentida de la cuenta del servidor.
 - La CSP permite conexiones solo a `https://www.googleapis.com`, sin agregar scripts de terceros ni permitir codigo inline arbitrario. La app verifica destinos de subida, IDs, nombres y propiedad de los archivos antes de modificar. Solo mueve a la papelera, nunca ejecuta DELETE permanente de archivos.
-- Cada cuenta de Estudiemos tiene su carpeta identificada por `appProperties`. El permiso Google sigue siendo `drive.file`, no una restriccion criptografica a una carpeta; no debe presentarse como acceso general ni como ausencia total de riesgo.
+- Cada cuenta de Estudiemos tiene su carpeta identificada por `appProperties`. `drive.file` no es una restriccion criptografica a una carpeta. Mi unidad usa ademas metadatos de todo el Drive consentido, con capacidad de lectura solamente en la app para archivos externos; no presentar ese permiso como acceso solo a la carpeta Estudiemos.
 
 ## Conservado Y Costos
 

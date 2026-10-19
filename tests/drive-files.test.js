@@ -51,3 +51,16 @@ test('file links cannot execute scripts or forward credentials to another domain
   for(const webViewLink of ['javascript:alert(1)','https://attacker.test/file','https://drive.google.com.attacker.test/file'])assert.equal(openUrl({id:'file-123',webViewLink}),'https://drive.google.com/file/d/file-123/view');
   assert.throws(()=>openUrl({id:'../file'}));assert.equal(openUrl({id:'file-123',webViewLink:'https://docs.google.com/document/d/file-123/edit'}),'https://docs.google.com/document/d/file-123/edit');
 });
+
+test('metadata-only browsing shows real Drive folders including unmarked items moved from Drive, without changing ownership',async()=>{
+  const folder={id:'external-folder',name:'Materias previas',mimeType:FOLDER,parents:[root]},document={id:'external-file',name:'Fisica.pdf',mimeType:'application/pdf',parents:[folder.id]};
+  const h=library(url=>url.includes('/files/external-folder?')?Response.json(folder):url.includes('/files/external-file?')?Response.json(document):Response.json({files:[folder,document]}));h.drive.browse=true;
+  await h.drive.list('root');await h.drive.list(root);await h.drive.list(folder.id,"O'Brien");
+  const queries=h.calls.filter(call=>new URL(call.url).searchParams.has('q')).map(call=>new URL(call.url).searchParams.get('q'));
+  assert.ok(queries.some(q=>q.includes("'root' in parents")));assert.ok(queries.some(q=>q.includes("'external-folder' in parents")));
+  assert.ok(queries.every(q=>!q.includes('appProperties')),'Reading follows real Drive parents, not hidden app tags');
+  assert.equal(h.drive.owned(folder),false);assert.equal(h.drive.owned(document),false);
+  await assert.rejects(h.drive.rename(document.id,'Changed.pdf'),/no pertenece/);await assert.rejects(h.drive.trash(document.id),/no pertenece/);
+  await assert.rejects(h.drive.createFolder('New',folder.id),/no pertenece/);
+  assert.ok(h.calls.every(call=>!call.options.method),'External Drive items are strictly read-only');
+});

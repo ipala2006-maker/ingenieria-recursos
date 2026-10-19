@@ -3,21 +3,21 @@
   if(!dialog||!trigger||!page||!board)return;
   const layoutStorage=window.EstudiemosHomeLayout,KEY=layoutStorage.key,spaces=[['focus','Pomodoro',240],['progress','Tu progreso',300],['assistant','Organizador IA',260],['shortcuts','Accesos rápidos',64],['workspace','Mi espacio',280],['calendar','Calendario',340],['inbox','Inbox',280]];
   const mobile=matchMedia('(max-width:700px), (min-width:701px) and (max-width:900px) and (max-height:899px)');
-  const available=key=>window.EstudiemosRelease?.homeSpaceEnabled?.(key) ?? (key==='assistant'?window.EstudiemosRelease?.enabled('ai')===true:key==='workspace'?window.EstudiemosRelease?.enabled('workspace')===true:true);
+  const available=key=>window.EstudiemosRelease?.homeSpaceEnabled?.(key) ?? (key==='assistant'?window.EstudiemosRelease?.enabled('ai')===true:key==='workspace'?window.EstudiemosRelease?.enabled('driveWorkspace')===true:true);
   const effectiveVisibility=visible=>Object.fromEntries(spaces.map(([key])=>[key,available(key)&&visible[key]!==false]));
   const reduced=matchMedia('(prefers-reduced-motion:reduce)'),nodes=new Map(spaces.map(([key])=>[key,document.querySelector(`[data-home-space="${key}"]`)])),list=dialog.querySelector('[data-home-customizer-spaces]');
   let editing=false,gesture=null,frame=0,lastLayout=null,undoValue=null,armed=null;
   const clone=value=>JSON.parse(JSON.stringify(value));
   const clamp=(n,min,max,fallback)=>Number.isFinite(Number(n))&&n!=null?Math.max(min,Math.min(max,Number(n))):fallback;
   document.body.classList.add('home-resizable');
-  list.innerHTML=spaces.filter(([key])=>available(key)).map(([key,label,min])=>`<div class="home-customizer__item"><label class="home-customizer__space"><strong>${label}</strong><input type="checkbox" value="${key}" aria-label="Mostrar ${label}"></label>${key==='shortcuts'?'':`<div class="home-customizer__dimensions" data-dimensions="${key}"><label>Alto<input type="range" min="${min}" max="720" step="1" data-height="${key}" aria-label="Alto de ${label}"><output data-size-label="${key}"></output></label></div><div class="home-customizer__position" data-position="${key}">${[['x','Horizontal'],['y','Vertical'],['w','Ancho'],['h','Alto']].map(([field,name])=>`<label>${name}<input type="number" min="0" step="8" data-box="${key}" data-field="${field}" aria-label="${name} de ${label}"></label>`).join('')}</div>`}</div>`).join('');
+  function refreshOptions(){
+    const availableSpaces=spaces.filter(([key])=>available(key)),signature=availableSpaces.map(([key])=>key).join(',');
+    if(list.dataset.availableSpaces===signature)return;
+    list.dataset.availableSpaces=signature;
+    list.innerHTML=availableSpaces.map(([key,label,min])=>`<div class="home-customizer__item"><label class="home-customizer__space"><strong>${label}</strong><input type="checkbox" value="${key}" aria-label="Mostrar ${label}"></label>${key==='shortcuts'?'':`<div class="home-customizer__dimensions" data-dimensions="${key}"><label>Alto<input type="range" min="${min}" max="720" step="1" data-height="${key}" aria-label="Alto de ${label}"><output data-size-label="${key}"></output></label></div><details class="home-customizer__precision" data-position="${key}"><summary>Posici\u00f3n y tama\u00f1o</summary><div class="home-customizer__position">${[['x','Horizontal'],['y','Vertical'],['w','Ancho'],['h','Alto']].map(([field,name])=>`<label>${name}<input type="number" min="0" step="1" data-box="${key}" data-field="${field}" aria-label="${name} de ${label}"></label>`).join('')}</div></details>`}</div>`).join('');
+  }
+  refreshOptions();
   function button(className,text,label){const b=document.createElement('button');b.type='button';b.className=className;b.textContent=text;b.hidden=true;if(label){b.title=label;b.setAttribute('aria-label',label);}trigger.after(b);return b;}
-  list.querySelectorAll('[data-box]').forEach(input=>{input.step='1';});
-  list.querySelectorAll('[data-position]').forEach(fields=>{
-    const details=document.createElement('details'),summary=document.createElement('summary');
-    details.className='home-customizer__precision';details.dataset.position=fields.dataset.position;delete fields.dataset.position;
-    summary.textContent='Posición y tamaño';fields.before(details);details.append(summary,fields);
-  });
   const done=button('home-layout-done','Listo'),manage=button('home-layout-manage','Herramientas'),undo=button('home-layout-undo','↶','Deshacer último ajuste');
   const toolbar=document.createElement('div');toolbar.className='home-layout-toolbar';toolbar.hidden=true;toolbar.setAttribute('role','group');toolbar.setAttribute('aria-label','Editar distribución');trigger.after(toolbar);toolbar.append(undo,manage,done);
   const overlay=document.createElement('div');overlay.className='home-board-guides';overlay.setAttribute('aria-hidden','true');page.appendChild(overlay);
@@ -50,6 +50,7 @@
     for(const [key,r] of Object.entries(lastLayout.boxes)){const node=nodes.get(key);moveBox(node,r,animate);node.dataset.boardCompact=r.h<280?'true':'false';}
   }
   function form(value=read()){
+    refreshOptions();
     for(const [key] of spaces){
       const toggle=list.querySelector(`input[value="${key}"]`);if(!toggle)continue;toggle.checked=value.visible[key];const input=list.querySelector(`[data-height="${key}"]`);if(!input)continue;
       input.value=value.sizes[key].mobileHeight;list.querySelector(`[data-size-label="${key}"]`).textContent=`${input.value} px`;

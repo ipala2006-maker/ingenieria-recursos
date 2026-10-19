@@ -20,10 +20,21 @@
 .drive-connection > div { flex:1; min-width:0; display:grid; gap:4px; }
 .drive-connection strong { font-size:12px; font-weight:600; overflow-wrap:anywhere; }
 .drive-connection small { font-size:11px; color:var(--muted); overflow-wrap:anywhere; }
+.drive-locations { display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:10px 18px;border-bottom:1px solid var(--border); }
+.drive-locations[hidden] { display:none; }
+.drive-locations button { min-height:36px;padding:6px 12px;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--muted);font:inherit;font-size:12px;cursor:pointer; }
+.drive-locations button[aria-pressed="true"] { border-color:var(--border);background:var(--panel-2);color:var(--text); }
+.drive-locations span { margin-left:auto;font-size:11px;color:var(--muted); }
+.drive-browse { min-height:36px;padding:6px 10px;font-size:12px; }
+.workspace-section[aria-busy="true"] [data-drive-refresh] { opacity:.5; }
+.drive-empty { grid-column:1/-1;padding:16px 0;color:var(--muted);font-size:13px; }
+@media(max-width:480px) { .drive-connection { flex-wrap:wrap;gap:8px; }.drive-browse { order:4;width:100%; }.drive-locations { padding:8px 12px; } }
 .workspace-section:has(.drive-connection) .workspace-items { align-content:start; grid-template-columns:repeat(auto-fill,minmax(min(180px,100%),1fr)); gap:10px; padding:18px; }
 .workspace-section:has(.drive-connection) .workspace-items.is-list { grid-template-columns:1fr; }
 .workspace-section:has(.drive-connection) .workspace-item { min-height:90px; border-radius:7px; box-shadow:none; }
 .workspace-section:has(.drive-connection) .workspace-item__name { font-size:13px; }
+.workspace-section:has(.drive-connection) .workspace-item:not(:has(.workspace-item__menu)) .workspace-item__open { padding-right:0; }
+.drive-library-page .workspace-section:has(.drive-connection) .workspace-items:not(.is-list) { grid-template-columns:repeat(auto-fill,minmax(min(240px,100%),1fr)); }
 .workspace-section:has(.drive-connection) .workspace-add-tile { display:flex; align-items:center; gap:12px; min-height:90px; padding:16px; border-radius:7px; color:var(--muted); font:inherit; font-size:13px; text-align:left; }
 .workspace-add-tile > svg { width:22px; height:22px; flex:none; fill:none; stroke:currentColor; stroke-width:1.6; }
 .workspace-add-tile > span { display:grid; gap:6px; }

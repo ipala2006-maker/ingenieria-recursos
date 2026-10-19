@@ -96,6 +96,26 @@ test('callback rejects absent, forged or expired state and broader-than-requeste
     assert.equal(result.headers.Location,app+'/mi-espacio.html?drive=error');assert.equal(h.rows.size,0,scenario);
   }
 });
+
+test('Mi unidad requires an explicit incremental request, server enablement and exactly the granted metadata scope',async()=>{
+  const metadata='https://www.googleapis.com/auth/drive.metadata.readonly';
+  const disabled=harness();await disabled.request('start',{body:{browse:true}});assert.deepEqual(Array.from(disabled.grants[0].scope),[scope]);
+  const h=harness({env:{GOOGLE_DRIVE_BROWSE_ENABLED:'true'}});
+  assert.deepEqual((await h.request('config')).body,{enabled:true,browseEnabled:true});
+  const start=await h.request('start',{body:{browse:true}}),grant=h.grants[0];
+  assert.deepEqual(Array.from(grant.scope),[scope,metadata]);
+  h.setTokens({access_token:'limited-access',refresh_token:'limited-refresh',expiry_date:Date.now()+3600000,scope:metadata+' '+scope});
+  const result=await h.request('callback',{query:{drive:'callback',state:grant.state,code:'test'},headers:{cookie:start.headers['Set-Cookie'].split(';')[0]}});
+  assert.equal(result.headers.Location,app+'/mi-espacio.html?drive=connected');assert.equal((await h.request('status')).body.browse,true);
+  for(const extra of ['https://www.googleapis.com/auth/drive','https://www.googleapis.com/auth/drive.readonly']){
+    const denied=harness({env:{GOOGLE_DRIVE_BROWSE_ENABLED:'true'}}),s=await denied.request('start',{body:{browse:true}});
+    denied.setTokens({access_token:'x',refresh_token:'y',scope:scope+' '+metadata+' '+extra});
+    const response=await denied.request('callback',{query:{drive:'callback',state:denied.grants[0].state,code:'test'},headers:{cookie:s.headers['Set-Cookie'].split(';')[0]}});
+    assert.equal(response.headers.Location,app+'/mi-espacio.html?drive=error');assert.equal(denied.rows.size,0);
+  }
+  const legacy=harness();legacy.rows.set('alice',{credentials:vault.seal({refreshToken:'old'},'user:alice')});
+  assert.deepEqual((await legacy.request('status')).body,{connected:true,browse:false});
+});
 test('authentication and exact mutation origin are enforced before consulting any grant',async()=>{
   for(const headers of [{authorization:''},{authorization:'Bearer bob',origin:'https://attacker.test'},{authorization:'Bearer alice',origin:''}]){
     const h=harness(),result=await h.request('token',{headers:{host:'estudiemos-app.vercel.app','content-type':'application/json',origin:app,...headers}});
