@@ -21,7 +21,7 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
         const originalFetch=window.fetch.bind(window);window.fetch=async(url,options)=>{if(String(url).startsWith('https://www.googleapis.com/upload/')&&options?.method==='PUT'&&options.body instanceof Blob)window.__uploadedBlob=await options.body.text();return originalFetch(url,options);};
         window.__pilotUser={id:owner,email:'estudiante@example.test'};
         window.EstudiemosAccount={getUser:()=>window.__pilotUser,getSession:()=>window.__pilotUser?{access_token:'pilot-session'}:null,getClient:()=>null,whenReady:async()=>({session:{user:window.__pilotUser}}),isSynchronized:()=>true,open:()=>{window.__loginOpened=true;}};
-        localStorage.setItem('estudiemos_pomodoro_streak',JSON.stringify({days:{},goal:{minutes:25,updatedAt:1}}));
+        if(location.pathname==='/')localStorage.setItem('estudiemos_pomodoro_streak',JSON.stringify({days:{},goal:{minutes:25,updatedAt:1}}));
       },{owner});
       await context.route('**/*',async route=>{
         const request=route.request(),url=new URL(request.url());requests.push({url:url.href,method:request.method(),body:request.postData()});
@@ -65,6 +65,7 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
       await page.goto(base+'/mi-espacio.html');const connect=page.locator('[data-drive-connect]');await connect.waitFor();
       assert.equal(await connect.isEnabled(),true);assert.equal(requests.filter(r=>r.url.startsWith('https://www.googleapis.com')).length,0,'Disconnected users do not touch Google files');
       for(const theme of ['dark','light']){await page.evaluate(theme=>window.EstudiemosTheme.set(theme),theme);await page.waitForTimeout(300);await page.screenshot({path:path.join(out,`${engine}-${width}-connect-${theme}.png`)});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));}
+      assert.equal(await page.locator('[data-study-goal-dialog][open]').count(),0,'First-time Drive connection is not interrupted by unrelated study-goal onboarding');
       await connect.click();await page.waitForURL('https://accounts.google.com/**');assert.ok(page.url().includes('drive.file'));
       connected=true;await page.goto(base+'/mi-espacio.html?drive=connected');
       const body=page.locator('[data-workspace-items]');await body.getByText('Gu\u00eda de ejercicios.pdf',{exact:true}).waitFor();

@@ -324,7 +324,7 @@
   }
 
   function maybeAskStudyGoal() {
-    if (!document.body.classList.contains('workspace-home') || document.documentElement.classList.contains('rainmeter-widget')) return;
+    if (!document.body.classList.contains('workspace-home') || document.body.classList.contains('drive-library-page') || document.documentElement.classList.contains('rainmeter-widget')) return;
     streakState = loadStreakState();
     const identity = window.EstudiemosAccount?.getUser()?.id || 'guest';
     if (goals.read(streakState).configured || goalPromptedFor === identity) return;

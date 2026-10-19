@@ -313,7 +313,7 @@
     if (document.querySelector('script[src*="scripts/pomodoro.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/pomodoro.js?v=20261018-reminder-slots`;
+    script.src = `${rootPath}scripts/pomodoro.js?v=20261019-drive-onboarding`;
     script.defer = true;
     document.head.appendChild(script);
   }
