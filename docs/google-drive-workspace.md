@@ -35,11 +35,12 @@ Si faltan credenciales, el backend informa `enabled:false` sin revelar valores. 
 ## Estado De Activacion (19 Octubre 2026)
 
 - Tabla privada aplicada en Supabase y permisos comprobados: RLS habilitado/forzado, sin SELECT para anon/authenticated; acceso del servidor conservado.
-- Vercel produccion ya tiene `DRIVE_TOKEN_ENCRYPTION_KEY` sensible y `GOOGLE_DRIVE_APP_ORIGIN`. No reemplazar la clave existente: hacerlo invalidaria las conexiones cifradas.
+- Vercel produccion ya tiene `DRIVE_TOKEN_ENCRYPTION_KEY`, `GOOGLE_DRIVE_CLIENT_ID` y `GOOGLE_DRIVE_CLIENT_SECRET` de tipo Secret, y `GOOGLE_DRIVE_APP_ORIGIN`. No reemplazar la clave de cifrado existente: hacerlo invalidaria las conexiones guardadas. No se guardaron las credenciales nuevas en archivos, Git ni otros entornos.
 - Google Drive API habilitada en el proyecto Estudiemos y confirmada en su consola, sin activar prueba gratuita, creditos ni facturacion.
 - Ian confirmo `estudiemosapp@gmail.com` como soporte. Su sesion oficial ya esta iniciada, las condiciones iniciales de Cloud estan aceptadas y se otorgo, con confirmacion explicita, solo `roles/oauthconfig.editor` en el proyecto Estudiemos. El propietario original y otros roles no se modificaron.
-- El asistente de marca tiene nombre Estudiemos, soporte y contacto `estudiemosapp@gmail.com`, publico externo, y esta detenido en la Politica de Datos del Usuario de las APIs de Google; falta confirmar esa politica y guardar la configuracion. No se publico el correo personal como soporte.
-- Falta crear el cliente OAuth y guardar `GOOGLE_DRIVE_CLIENT_ID` / `GOOGLE_DRIVE_CLIENT_SECRET` en Vercel. No crear nuevos clientes ni ampliar permisos sin la confirmacion correspondiente. La activacion piloto debe preceder a cualquier publicacion general.
+- La Politica de Datos del Usuario de las APIs fue aceptada con confirmacion explicita. Google guardo la identidad Estudiemos, soporte y contacto `estudiemosapp@gmail.com`, publico externo. No se publico el correo personal como soporte.
+- Se creo un cliente web dedicado a Mi espacio con un solo redirect HTTPS exacto, sin origenes JavaScript adicionales. Se declaro unicamente `drive.file` y se agrego solo el Drive oficial como usuario de prueba de Google.
+- `GOOGLE_DRIVE_PILOT_EMAILS` restringe la activacion en produccion a la cuenta ya iniciada del responsable en Estudiemos; el correo de esa lista es privado y distinto del correo publico de soporte. Esta restriccion debe permanecer durante el despliegue y la prueba real, hasta completar la publicacion OAuth.
 - Falta consentimiento real de un titular, prueba real de archivo y desconexion, verificar publicacion OAuth y publicar la app. Las pruebas automatizadas usan datos simulados, no constituyen una conexion real.
 
 ## Seguridad
