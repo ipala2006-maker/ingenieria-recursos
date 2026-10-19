@@ -77,7 +77,8 @@
     await account.whenReady();if(initialEpoch!==epoch)return; owner=account.getUser()?.id||'';
     const id=owner, version=epoch;
     try {
-      const config=await fetch('/api/account-config?drive=config',{cache:'no-store'}).then(response=>response.json());
+      const session=account.getSession();
+      const config=await fetch('/api/account-config?drive=config',{cache:'no-store',credentials:'same-origin',headers:owner&&session?.access_token?{Authorization:'Bearer '+session.access_token}:{}}).then(response=>response.json());
       if(epoch!==version)return;enabled=config.enabled===true;
       if (!owner || !enabled) return renderDisconnected();
       if (connectAfterLogin) {connectAfterLogin=false;return connect();}

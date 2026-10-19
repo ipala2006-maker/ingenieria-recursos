@@ -20,7 +20,7 @@ function harness(options = {}) {
   const environment = {...process.env,GOOGLE_DRIVE_CLIENT_ID:'12345-test.apps.googleusercontent.com',GOOGLE_DRIVE_CLIENT_SECRET:'test-client-secret',GOOGLE_DRIVE_APP_ORIGIN:app,...options.env};
   const sandbox = {module:{exports:{}},process:{env:environment},URL,Date,require(name){
     if(name==='google-auth-library')return {OAuth2Client:OAuth};
-    if(name==='./supabase-admin')return {isConfigured:()=>true,authenticateBearer:async authorization=>authorization==='Bearer alice'?{id:'alice',email:'alice@example.test'}:authorization==='Bearer bob'?{id:'bob'}:null,adminRequest:async (url,request={})=>{
+    if(name==='./supabase-admin')return {isConfigured:()=>true,authenticateBearer:async authorization=>authorization==='Bearer alice'?{id:'alice',email:'alice@example.test',email_confirmed_at:'2026-10-19T00:00:00Z'}:authorization==='Bearer bob'?{id:'bob',email:'bob@example.test',email_confirmed_at:'2026-10-19T00:00:00Z'}:authorization==='Bearer unverified'?{id:'new',email:'alice@example.test'}:null,adminRequest:async (url,request={})=>{
       calls.push(['db',url,request]);
       if(request.method==='POST'){const row=JSON.parse(request.body);rows.set(row.user_id,row);return null;}
       const uid=new URL('https://db.test'+url).searchParams.get('user_id').replace(/^eq\./,'');
@@ -50,6 +50,27 @@ test('configuration exposes no credentials and blocks missing or unsafe setup',a
   for(const env of [{GOOGLE_DRIVE_CLIENT_ID:''},{DRIVE_TOKEN_ENCRYPTION_KEY:''},{GOOGLE_DRIVE_APP_ORIGIN:'https://attacker.test/redirect'},{GOOGLE_DRIVE_APP_ORIGIN:'http://estudiemos-app.vercel.app'}]){
     const app=harness({env});assert.equal((await app.request('config')).body.enabled,false);assert.equal((await app.request('start')).status,503);
   }
+});
+
+test('pilot rollout is server-owned, requires verified identity and never reveals its allowlist',async()=>{
+  const h=harness({env:{GOOGLE_DRIVE_PILOT_EMAILS:' ALICE@example.test '}});
+  assert.deepEqual((await h.request('config')).body,{enabled:true});
+  for(const authorization of ['','Bearer bob','Bearer unverified']){
+    const headers={host:'estudiemos-app.vercel.app',origin:app,'content-type':'application/json',authorization};
+    assert.deepEqual((await h.request('config',{headers})).body,{enabled:false});
+    const denied=await h.request('start',{headers,body:{email:'alice@example.test'}});
+    assert.ok([401,403].includes(denied.status));assert.equal(h.grants.length,0);
+    assert.ok(!JSON.stringify(denied).includes('alice@example.test'));
+  }
+  assert.ok(!h.calls.some(call=>call[0]==='db'));
+  const start=await h.request('start'),grant=h.grants[0];
+  const callback=await h.request('callback',{query:{drive:'callback',state:grant.state,code:'test'},headers:{cookie:start.headers['Set-Cookie'].split(';')[0]}});
+  assert.equal(callback.headers.Location,app+'/mi-espacio.html?drive=connected');
+  const outside=await h.request('disconnect',{headers:{host:'estudiemos-app.vercel.app',origin:app,'content-type':'application/json',authorization:'Bearer bob'}});
+  assert.equal(outside.status,200,'Rollout restrictions never prevent a user from revoking their own grant');
+  const forged='__Host-estudiemos-drive-oauth='+vault.seal({uid:'bob',email:'bob@example.test',email_confirmed_at:'confirmed',state:grant.state,verifier:'test',exp:Date.now()+60000},'oauth');
+  const denied=await h.request('callback',{query:{drive:'callback',state:grant.state,code:'test'},headers:{cookie:forged}});
+  assert.equal(denied.headers.Location,app+'/mi-espacio.html?drive=error');assert.ok(!h.rows.has('bob'));
 });
 test('OAuth uses minimal scope, PKCE, offline consent and an encrypted secure one-time browser state',async()=>{
   const h=harness(), start=await h.request('start'), grant=h.grants[0];

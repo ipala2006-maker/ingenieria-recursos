@@ -28,6 +28,8 @@ No activar pruebas gratuitas, creditos, facturacion ni servicios pagos.
 8. Publicar la version y comprobar Config, consentimiento real, subida de un archivo de prueba y desconexion con una cuenta autorizada por su titular.
 9. Antes de ofrecerlo a todos, pasar la aplicacion OAuth de **Prueba** a **Produccion** y completar las verificaciones que indique Google. En Prueba, los permisos de Drive y refresh tokens pueden vencer a los siete dias y hay limites de usuarios de prueba. Una prueba con un correo no demuestra que ya este habilitado para todos.
 
+Para probar en el origen de produccion sin habilitar Drive al resto, configurar primero `GOOGLE_DRIVE_PILOT_EMAILS` en Vercel servidor con los correos verificados de las cuentas piloto **de Estudiemos** (separados por comas). No son necesariamente los correos del Drive elegido. El backend autentica Config y cada operacion, oculta la lista y bloquea tambien el callback de una cuenta no permitida. Desconectar la credencial propia sigue permitido. Solo despues de verificar el flujo real y la publicacion OAuth, quitar esta restriccion y volver a desplegar para habilitarlo al resto. No basta un cambio de interfaz o un correo enviado en el cuerpo de la peticion para entrar al piloto.
+
 Si faltan credenciales, el backend informa `enabled:false` sin revelar valores. No se activa silenciosamente el almacenamiento anterior ni se muestran conexiones simuladas a usuarios reales.
 
 ## Estado De Activacion (19 Octubre 2026)
@@ -35,7 +37,9 @@ Si faltan credenciales, el backend informa `enabled:false` sin revelar valores. 
 - Tabla privada aplicada en Supabase y permisos comprobados: RLS habilitado/forzado, sin SELECT para anon/authenticated; acceso del servidor conservado.
 - Vercel produccion ya tiene `DRIVE_TOKEN_ENCRYPTION_KEY` sensible y `GOOGLE_DRIVE_APP_ORIGIN`. No reemplazar la clave existente: hacerlo invalidaria las conexiones cifradas.
 - Google Drive API habilitada en el proyecto Estudiemos y confirmada en su consola, sin activar prueba gratuita, creditos ni facturacion.
-- Faltan la identidad de Google con correo oficial de soporte, crear el cliente OAuth y guardar `GOOGLE_DRIVE_CLIENT_ID` / `GOOGLE_DRIVE_CLIENT_SECRET` en Vercel. El selector de soporte del proyecto solo ofrece actualmente el correo personal del propietario; no se selecciono ni publico.
+- Ian confirmo `estudiemosapp@gmail.com` como soporte. Su sesion oficial ya esta iniciada, las condiciones iniciales de Cloud estan aceptadas y se otorgo, con confirmacion explicita, solo `roles/oauthconfig.editor` en el proyecto Estudiemos. El propietario original y otros roles no se modificaron.
+- El asistente de marca tiene nombre Estudiemos, soporte y contacto `estudiemosapp@gmail.com`, publico externo, y esta detenido en la Politica de Datos del Usuario de las APIs de Google; falta confirmar esa politica y guardar la configuracion. No se publico el correo personal como soporte.
+- Falta crear el cliente OAuth y guardar `GOOGLE_DRIVE_CLIENT_ID` / `GOOGLE_DRIVE_CLIENT_SECRET` en Vercel. No crear nuevos clientes ni ampliar permisos sin la confirmacion correspondiente. La activacion piloto debe preceder a cualquier publicacion general.
 - Falta consentimiento real de un titular, prueba real de archivo y desconexion, verificar publicacion OAuth y publicar la app. Las pruebas automatizadas usan datos simulados, no constituyen una conexion real.
 
 ## Seguridad

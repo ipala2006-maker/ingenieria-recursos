@@ -7,6 +7,11 @@ const { seal, unseal } = require('./drive-vault');
 const SCOPE = 'https://www.googleapis.com/auth/drive.file';
 const COOKIE = '__Host-estudiemos-drive-oauth';
 const TABLE = '/rest/v1/drive_connections';
+const pilotEmails = () => String(process.env.GOOGLE_DRIVE_PILOT_EMAILS || '').split(',').map(value => value.trim().toLowerCase()).filter(Boolean);
+function pilotAllowed(user) {
+  const emails = pilotEmails();
+  return !emails.length || Boolean(user?.email_confirmed_at && emails.includes(String(user.email || '').toLowerCase()));
+}
 const configured = () => {
   try { origin(); return Boolean(isConfigured() && /^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$/i.test(process.env.GOOGLE_DRIVE_CLIENT_ID || '') && process.env.GOOGLE_DRIVE_CLIENT_SECRET && /^[a-f0-9]{64}$/i.test(process.env.DRIVE_TOKEN_ENCRYPTION_KEY || '')); }
   catch (_) {return false;}
@@ -42,6 +47,7 @@ async function callback(req, res) {
   try {
     const pending = unseal(cookie(req), 'oauth');
     if (!pending.uid || !pending.state || pending.exp < Date.now() || typeof req.query.state !== 'string' || req.query.state !== pending.state) throw new Error('INVALID_STATE');
+    if (!pilotAllowed(pending)) throw new Error('DRIVE_PILOT_ONLY');
     if (req.query.error) return returnToApp(res, 'cancelled');
     if (typeof req.query.code !== 'string' || req.query.code.length > 4096) throw new Error('INVALID_CODE');
     const oauth = client(), {tokens} = await oauth.getToken({code: req.query.code, codeVerifier: pending.verifier});
@@ -58,7 +64,11 @@ module.exports = async function googleDrive(req, res) {
   const action = req.query?.drive;
   if (!['config','start','callback','status','token','disconnect'].includes(action)) return res.status(400).json({message:'Acci\u00f3n no v\u00e1lida.'});
   if (!(await enforceRateLimit(req, res, {route:'google-drive:' + action, limit:action==='token'?30:20, windowSeconds:60}))) return;
-  if (action === 'config' && req.method === 'GET') return res.status(200).json({enabled:configured()});
+  if (action === 'config' && req.method === 'GET') {
+    const ready = configured();
+    const user = ready && pilotEmails().length ? await authenticateBearer(req.headers.authorization) : null;
+    return res.status(200).json({enabled:ready && pilotAllowed(user)});
+  }
   if (!configured()) return res.status(503).json({code:'DRIVE_NOT_CONFIGURED', message:'La conexi\u00f3n con Google Drive todav\u00eda no est\u00e1 habilitada.'});
   if (action === 'callback' && req.method === 'GET') return callback(req, res);
   if (action === 'callback' || (['start','token','disconnect'].includes(action) && req.method !== 'POST')) return res.status(405).json({message:'M\u00e9todo no permitido.'});
@@ -66,11 +76,12 @@ module.exports = async function googleDrive(req, res) {
   if (rejectOversizedBody(req,res,2048) || (req.method==='POST' && !requireJsonRequest(req,res))) return;
   const user = await authenticateBearer(req.headers.authorization);
   if (!user?.id) return res.status(401).json({code:'AUTH_REQUIRED',message:'Ingres\u00e1 a Estudiemos para conectar tu Drive.'});
+  if (action !== 'disconnect' && !pilotAllowed(user)) return res.status(403).json({code:'DRIVE_PILOT_ONLY',message:'La conexi\u00f3n con Drive est\u00e1 en preparaci\u00f3n.'});
   try {
     if (action === 'start') {
       const state = crypto.randomBytes(32).toString('base64url');
       const oauth = client(), codes = await oauth.generateCodeVerifierAsync();
-      setCookie(res, seal({uid:user.id, state, verifier:codes.codeVerifier, exp:Date.now()+600000}, 'oauth'), 600);
+      setCookie(res, seal({uid:user.id, email:user.email, email_confirmed_at:user.email_confirmed_at, state, verifier:codes.codeVerifier, exp:Date.now()+600000}, 'oauth'), 600);
       const url = oauth.generateAuthUrl({scope:[SCOPE], access_type:'offline', prompt:'consent', include_granted_scopes:false, state, code_challenge:codes.codeChallenge, code_challenge_method:'S256', ...(user.email ? {login_hint:user.email} : {})});
       return res.status(200).json({url});
     }
