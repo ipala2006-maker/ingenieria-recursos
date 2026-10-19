@@ -41,7 +41,11 @@ Si faltan credenciales, el backend informa `enabled:false` sin revelar valores. 
 - La Politica de Datos del Usuario de las APIs fue aceptada con confirmacion explicita. Google guardo la identidad Estudiemos, soporte y contacto `estudiemosapp@gmail.com`, publico externo. No se publico el correo personal como soporte.
 - Se creo un cliente web dedicado a Mi espacio con un solo redirect HTTPS exacto, sin origenes JavaScript adicionales. Se declaro unicamente `drive.file` y se agrego solo el Drive oficial como usuario de prueba de Google.
 - `GOOGLE_DRIVE_PILOT_EMAILS` restringe la activacion en produccion a la cuenta ya iniciada del responsable en Estudiemos; el correo de esa lista es privado y distinto del correo publico de soporte. Esta restriccion debe permanecer durante el despliegue y la prueba real, hasta completar la publicacion OAuth.
-- Falta consentimiento real de un titular, prueba real de archivo y desconexion, verificar publicacion OAuth y publicar la app. Las pruebas automatizadas usan datos simulados, no constituyen una conexion real.
+- Implementacion publicada mediante PR63 (main `2a5bdb0`); selector de cuenta independiente corregido y publicado mediante PR64 (main `238ae46`). El despliegue de produccion esta READY y conserva el piloto privado.
+- El titular completo la verificacion de identidad de la cuenta oficial. Se comprobo consentimiento real `drive.file`, creacion de carpeta, subida de un TXT inocuo y lectura de su contenido original en Google Drive. Archivo y carpeta de prueba enviados a la papelera recuperable, sin eliminar permanentemente nada. La desconexion oficial termino correctamente y se confirmo en la interfaz.
+- Con confirmacion explicita posterior se paso OAuth a **Produccion** y se conecto el Drive habitual del responsable con el mismo permiso limitado. Su correo no se registra en esta documentacion publica. No se leyeron ni importaron sus documentos existentes; Mi espacio crea su propia carpeta.
+- Google confirmo que no se requiere verificacion de acceso a datos porque no hay permisos sensibles ni restringidos. La verificacion de **marca** detecto falta de propiedad de la pagina principal. Se solicito el comprobante oficial de Search Console y se agrega `google0ca28d0373362ce8.html`: es un archivo publico de propiedad, no un secreto OAuth. Debe conservarse mientras se mantenga esa propiedad.
+- Pendiente confirmar propiedad en Search Console despues del despliegue. Google indica esperar 24 horas despues de verificar la propiedad antes de reintentar la revision de marca. El piloto privado permanece hasta completar esa revision; **En produccion** no significa **Marca verificada**.
 
 ## Seguridad
 
@@ -64,7 +68,8 @@ Si faltan credenciales, el backend informa `enabled:false` sin revelar valores. 
 - `node --test tests/google-drive.test.js tests/drive-files.test.js tests/drive-privacy.test.js`
 - `node tests/workspace-drive.smoke.cjs` (Chrome); `TEST_WEBKIT=1` para Safari/WebKit. Simula cuentas y Drive, nunca usa archivos reales.
 - Suite general del proyecto, comprobaciones de seguridad/CSP, compilacion Android y prueba real de Google antes de dar la integracion por activada.
-- En el commit de implementacion `0077fa9`, CI de seguridad y compilacion/pruebas Android finalizaron correctamente. Pruebas locales: 183 aprobadas; Chrome y WebKit a 1440, 390 y 320 px con Drive simulado.
+- PR64: 17 pruebas de Drive/proveedor/RLS aprobadas; seguridad y CSP correctas y CI de seguridad finalizada correctamente. Chrome y WebKit a 1440, 390 y 320 px completaron los flujos simulados de conexion, archivos y desconexion. La suite general anterior completo 184 pruebas.
+- Compilacion Android firmada de PR63/main `2a5bdb0` finalizada correctamente (Actions run `39315696285`); el APK `android-latest` fue actualizado el 19 de octubre de 2026 a las 20:01 UTC. La publicacion web posterior cambia solo el selector del servidor y documentacion.
 - Pendiente probar consentimiento real en iPhone/PWA y Android. El WebKit de pruebas en Windows fallo de forma intermitente al navegar por un enlace desde Inicio en un viewport movil; las vistas independientes y la pestana movil se verifican por separado. No se considera una prueba en un iPhone fisico.
 
 Fuentes: https://developers.google.com/identity/protocols/oauth2/web-server ; https://developers.google.com/workspace/drive/api/guides/api-specific-auth ; https://developers.google.com/workspace/drive/api/guides/manage-uploads ; https://developers.google.com/workspace/drive/api/guides/limits
