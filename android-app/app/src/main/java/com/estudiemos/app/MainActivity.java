@@ -52,6 +52,10 @@ public class MainActivity extends Activity {
     public static final String EXTRA_OPEN_POMODORO = "open_pomodoro";
     public static final String EXTRA_WORKSPACE_ITEM_ID = "workspace_item_id";
     public static final String EXTRA_WORKSPACE_ITEM_KIND = "workspace_item_kind";
+    public static final String EXTRA_OPEN_DRIVE = "open_drive_workspace";
+    public static final String EXTRA_DRIVE_ITEM_ID = "drive_widget_item";
+    public static final String EXTRA_DRIVE_ITEM_KIND = "drive_widget_kind";
+    public static final String EXTRA_DRIVE_OWNER = "drive_widget_owner";
     private static final int FILE_CHOOSER_REQUEST = 4202;
     private static final int INSTALL_PERMISSION_REQUEST = 4203;
 
@@ -152,7 +156,10 @@ public class MainActivity extends Activity {
             }
         });
 
-        if (savedInstanceState == null) webView.loadUrl(initialUrl(getIntent()));
+        if (savedInstanceState == null) {
+            webView.loadUrl(initialUrl(getIntent()));
+            openDriveItemIfRequested(getIntent());
+        }
         else webView.restoreState(savedInstanceState);
     }
 
@@ -237,10 +244,13 @@ public class MainActivity extends Activity {
                 requestWidgetPin(payload.optString("widget"));
             } else if ("workspace-sync".equals(type)) {
                 WorkspaceWidgetProvider.storeWorkspaceAndUpdate(this, message.getData());
+            } else if ("drive-workspace-sync".equals(type)) {
+                WorkspaceWidgetProvider.storeDriveAndUpdate(this, message.getData());
             } else if ("account-native-sync".equals(type)) {
                 WidgetSyncManager.handleAccountMessage(this, payload);
                 configureFirebase(payload.optJSONObject("config"));
                 sendInboxNotificationStatus();
+                webView.evaluateJavascript("window.dispatchEvent(new CustomEvent('estudiemos-android-widget-account-ready'));", null);
             } else if ("app-update".equals(type)) {
                 notifyWebUpdateStarted();
                 startAppUpdate();
@@ -252,7 +262,7 @@ public class MainActivity extends Activity {
 
     private void notifyWebAppReady() {
         webView.evaluateJavascript(
-                "window.dispatchEvent(new CustomEvent('estudiemos-android-ready'));",
+                "window.EstudiemosAndroidDriveWidget=" + ReleaseFeatures.DRIVE_WORKSPACE + ";window.dispatchEvent(new CustomEvent('estudiemos-android-ready'));",
                 null
         );
     }
@@ -455,7 +465,10 @@ public class MainActivity extends Activity {
         agendaDateRequested = intent.getStringExtra(EXTRA_AGENDA_DATE);
         openPomodoroRequested = intent.getBooleanExtra(EXTRA_OPEN_POMODORO, false);
         String workspaceItemId = intent.getStringExtra(EXTRA_WORKSPACE_ITEM_ID);
-        if (intent.getData() != null && "estudiemos".equals(intent.getData().getScheme())) {
+        if (intent.getBooleanExtra(EXTRA_OPEN_DRIVE, false)) {
+            webView.loadUrl(APP_URL + "mi-espacio.html");
+            openDriveItemIfRequested(intent);
+        } else if (intent.getData() != null && "estudiemos".equals(intent.getData().getScheme())) {
             webView.loadUrl(referralUrl(intent.getData().getQueryParameter("ref")));
         } else if (workspaceItemId != null && !workspaceItemId.trim().isEmpty()) {
             webView.loadUrl(workspaceUrl(workspaceItemId, intent.getStringExtra(EXTRA_WORKSPACE_ITEM_KIND)));
@@ -574,6 +587,7 @@ public class MainActivity extends Activity {
 
     private static String initialUrl(Intent intent) {
         if (intent == null) return APP_URL;
+        if (intent.getBooleanExtra(EXTRA_OPEN_DRIVE, false)) return APP_URL + "mi-espacio.html";
         Uri data = intent.getData();
         if (data != null && "estudiemos".equals(data.getScheme())) {
             return referralUrl(data.getQueryParameter("ref"));
@@ -597,6 +611,18 @@ public class MainActivity extends Activity {
                 .appendQueryParameter("workspaceKind", "file".equals(kind) ? "file" : "folder")
                 .build()
                 .toString();
+    }
+
+    private void openDriveItemIfRequested(Intent intent) {
+        if (intent == null || !ReleaseFeatures.DRIVE_WORKSPACE || !intent.getBooleanExtra(EXTRA_OPEN_DRIVE, false)
+                || !DriveWidgetRules.belongsTo(intent.getStringExtra(EXTRA_DRIVE_OWNER), WidgetSyncManager.currentUserId(this))) return;
+        String target = DriveWidgetRules.openUrl(intent.getStringExtra(EXTRA_DRIVE_ITEM_ID), intent.getStringExtra(EXTRA_DRIVE_ITEM_KIND));
+        if (target.isEmpty()) return;
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(target)));
+        } catch (Exception error) {
+            Toast.makeText(this, "No pudimos abrir Google Drive.", Toast.LENGTH_SHORT).show();
+        }
     }
 
     @SuppressWarnings("deprecation")

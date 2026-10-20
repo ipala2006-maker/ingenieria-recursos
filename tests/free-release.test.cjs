@@ -54,10 +54,15 @@ test('workspace launch gate runs before initialization or event listeners', () =
   assert.match(source,/return;\s*}\s*const BUCKET/);
 });
 
-test('Android workspace widget is paused without erasing its stored entries', () => {
+test('Android uses the account-bound Drive preview while legacy storage remains paused', () => {
   const base=path.join(root,'android-app/app/src/main/java/com/estudiemos/app');
   assert.match(fs.readFileSync(path.join(base,'ReleaseFeatures.java'),'utf8'),/WORKSPACE = false/);
+  assert.match(fs.readFileSync(path.join(base,'ReleaseFeatures.java'),'utf8'),/DRIVE_WORKSPACE = true/);
   const widget=fs.readFileSync(path.join(base,'WorkspaceWidgetProvider.java'),'utf8');
-  assert.match(widget,/if \(!ReleaseFeatures.WORKSPACE\) return entries/);
+  assert.match(widget,/if \(!ReleaseFeatures.DRIVE_WORKSPACE && !ReleaseFeatures.WORKSPACE\) return entries/);
+  assert.match(widget,/DriveWidgetRules.belongsTo\(owner, WidgetSyncManager.currentUserId\(context\)\)/);
+  assert.match(widget,/remove\(KEY_DRIVE_ITEMS\).remove\(KEY_DRIVE_OWNER\)/);
+  const sync=fs.readFileSync(path.join(base,'WidgetSyncManager.java'),'utf8');
+  assert.ok(sync.indexOf('if (!ReleaseFeatures.WORKSPACE) return;') < sync.indexOf('/rest/v1/workspace_items'));
   assert.match(widget,/workspace_widget_empty, "Próximamente"/);
 });

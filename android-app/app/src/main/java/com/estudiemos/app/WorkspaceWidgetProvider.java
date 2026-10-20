@@ -21,6 +21,46 @@ import java.util.List;
 public class WorkspaceWidgetProvider extends AppWidgetProvider {
     static final String PREFS = "estudiemos_widget";
     static final String KEY_ITEMS = "workspace_items_json";
+    private static final String KEY_DRIVE_ITEMS = "drive_widget_items";
+    private static final String KEY_DRIVE_OWNER = "drive_widget_owner";
+    private static final String KEY_DRIVE_CONNECTED = "drive_widget_connected";
+    private static final String KEY_DRIVE_LOCATION = "drive_widget_location";
+    private static final String KEY_DRIVE_LIMITED = "drive_widget_limited";
+
+    static void storeDriveAndUpdate(Context context, String rawMessage) {
+        if (!ReleaseFeatures.DRIVE_WORKSPACE || rawMessage == null || rawMessage.length() > 65536) return;
+        try {
+            JSONObject message = new JSONObject(rawMessage);
+            String owner = message.optString("owner", "");
+            if (!"drive-workspace-sync".equals(message.optString("type"))
+                    || !DriveWidgetRules.belongsTo(owner, WidgetSyncManager.currentUserId(context))) return;
+            JSONArray source = message.optJSONArray("items");
+            if (source == null) return;
+            boolean connected = message.optBoolean("connected", false);
+            JSONArray items = new JSONArray();
+            for (int index = 0; connected && index < Math.min(source.length(), DriveWidgetRules.MAX_ITEMS); index++) {
+                JSONObject row = source.optJSONObject(index);
+                if (row == null || !row.isNull("parentId")) continue;
+                String id = row.optString("id", ""), name = DriveWidgetRules.cleanName(row.optString("name", ""));
+                if (!DriveWidgetRules.validId(id) || name.isEmpty()) continue;
+                JSONObject item = new JSONObject();
+                item.put("id", id); item.put("name", name); item.put("parentId", JSONObject.NULL);
+                item.put("kind", "folder".equals(row.optString("kind")) ? "folder" : "file");
+                item.put("mimeType", "");
+                item.put("sizeBytes", Math.max(0, row.optLong("sizeBytes", 0)));
+                items.put(item);
+            }
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                    .putString(KEY_DRIVE_OWNER, owner).putString(KEY_DRIVE_ITEMS, items.toString())
+                    .putBoolean(KEY_DRIVE_CONNECTED, connected)
+                    .putString(KEY_DRIVE_LOCATION, "unit".equals(message.optString("location")) ? "Mi unidad" : "Estudiemos")
+                    .putBoolean(KEY_DRIVE_LIMITED, message.optBoolean("truncated") || source.length() > DriveWidgetRules.MAX_ITEMS)
+                    .apply();
+            notifyDataChanged(context);
+        } catch (Exception ignored) {
+            // An interrupted message never replaces the last complete private preview.
+        }
+    }
 
     @Override
     public void onUpdate(Context context, AppWidgetManager manager, int[] appWidgetIds) {
@@ -63,14 +103,20 @@ public class WorkspaceWidgetProvider extends AppWidgetProvider {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .edit()
                 .remove(KEY_ITEMS)
+                .remove(KEY_DRIVE_ITEMS).remove(KEY_DRIVE_OWNER).remove(KEY_DRIVE_CONNECTED)
+                .remove(KEY_DRIVE_LOCATION).remove(KEY_DRIVE_LIMITED)
                 .apply();
         notifyDataChanged(context);
     }
 
     static List<WorkspaceEntry> readRootEntries(Context context) {
         List<WorkspaceEntry> entries = new ArrayList<>();
-        if (!ReleaseFeatures.WORKSPACE) return entries;
-        String raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_ITEMS, "[]");
+        if (!ReleaseFeatures.DRIVE_WORKSPACE && !ReleaseFeatures.WORKSPACE) return entries;
+        android.content.SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        String owner = prefs.getString(KEY_DRIVE_OWNER, "");
+        if (ReleaseFeatures.DRIVE_WORKSPACE && (!prefs.getBoolean(KEY_DRIVE_CONNECTED, false)
+                || !DriveWidgetRules.belongsTo(owner, WidgetSyncManager.currentUserId(context)))) return entries;
+        String raw = prefs.getString(ReleaseFeatures.DRIVE_WORKSPACE ? KEY_DRIVE_ITEMS : KEY_ITEMS, "[]");
         try {
             JSONArray items = new JSONArray(raw);
             for (int index = 0; index < items.length(); index += 1) {
@@ -80,7 +126,8 @@ public class WorkspaceWidgetProvider extends AppWidgetProvider {
                 String name = item.optString("name", "").trim();
                 String kind = "file".equals(item.optString("kind")) ? "file" : "folder";
                 if (id.isEmpty() || name.isEmpty()) continue;
-                entries.add(new WorkspaceEntry(id, name, kind, item.optString("mimeType", ""), item.optLong("sizeBytes", 0)));
+                if (ReleaseFeatures.DRIVE_WORKSPACE && !DriveWidgetRules.validId(id)) continue;
+                entries.add(new WorkspaceEntry(id, name, kind, item.optString("mimeType", ""), item.optLong("sizeBytes", 0), owner));
             }
         } catch (Exception ignored) {
             return entries;
@@ -101,13 +148,23 @@ public class WorkspaceWidgetProvider extends AppWidgetProvider {
         serviceIntent.setData(Uri.parse(serviceIntent.toUri(Intent.URI_INTENT_SCHEME)));
         views.setRemoteAdapter(R.id.workspace_widget_list, serviceIntent);
         views.setEmptyView(R.id.workspace_widget_list, R.id.workspace_widget_empty);
-        if (!ReleaseFeatures.WORKSPACE) {
+        if (ReleaseFeatures.DRIVE_WORKSPACE) {
+            android.content.SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+            boolean signedIn = !WidgetSyncManager.currentUserId(context).isEmpty();
+            boolean connected = DriveWidgetRules.belongsTo(prefs.getString(KEY_DRIVE_OWNER, ""), WidgetSyncManager.currentUserId(context))
+                    && prefs.getBoolean(KEY_DRIVE_CONNECTED, false);
+            views.setTextViewText(R.id.workspace_widget_empty, !signedIn ? "Ingresá a Estudiemos para ver tus archivos"
+                    : connected ? "No hay archivos en esta ubicación" : "Abrí Mi espacio para conectar o actualizar Google Drive");
+            views.setTextViewText(R.id.workspace_widget_subtitle, "Google Drive · " + (connected ? prefs.getString(KEY_DRIVE_LOCATION, "Mi espacio") : "Mi espacio"));
+            views.setTextViewText(R.id.workspace_widget_footer, "Abrir Mi espacio · Actualizar vista");
+        } else if (!ReleaseFeatures.WORKSPACE) {
             views.setTextViewText(R.id.workspace_widget_empty, "Próximamente");
             views.setTextViewText(R.id.workspace_widget_subtitle, "Disponible en una próxima etapa");
         }
 
         Intent openItem = new Intent(context, MainActivity.class)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        if (ReleaseFeatures.DRIVE_WORKSPACE) openItem.putExtra(MainActivity.EXTRA_OPEN_DRIVE, true);
         PendingIntent template = PendingIntent.getActivity(
                 context,
                 6100 + appWidgetId,
@@ -118,6 +175,7 @@ public class WorkspaceWidgetProvider extends AppWidgetProvider {
 
         Intent openHome = new Intent(context, MainActivity.class)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        if (ReleaseFeatures.DRIVE_WORKSPACE) openHome.putExtra(MainActivity.EXTRA_OPEN_DRIVE, true);
         PendingIntent home = PendingIntent.getActivity(
                 context,
                 6200 + appWidgetId,
@@ -126,9 +184,12 @@ public class WorkspaceWidgetProvider extends AppWidgetProvider {
         );
         views.setOnClickPendingIntent(R.id.workspace_widget_header, home);
         views.setOnClickPendingIntent(R.id.workspace_widget_footer, home);
+        views.setOnClickPendingIntent(R.id.workspace_widget_empty, home);
 
         int count = readRootEntries(context).size();
-        views.setTextViewText(R.id.workspace_widget_count, String.valueOf(count));
+        boolean limited = ReleaseFeatures.DRIVE_WORKSPACE && count == DriveWidgetRules.MAX_ITEMS
+                && context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_DRIVE_LIMITED, false);
+        views.setTextViewText(R.id.workspace_widget_count, count + (limited ? "+" : ""));
         views.setContentDescription(R.id.workspace_widget_count, count + (count == 1 ? " elemento" : " elementos"));
         manager.updateAppWidget(appWidgetId, views);
     }
@@ -155,13 +216,15 @@ public class WorkspaceWidgetProvider extends AppWidgetProvider {
         final String kind;
         final String mimeType;
         final long sizeBytes;
+        final String owner;
 
-        WorkspaceEntry(String id, String name, String kind, String mimeType, long sizeBytes) {
+        WorkspaceEntry(String id, String name, String kind, String mimeType, long sizeBytes, String owner) {
             this.id = id;
             this.name = name;
             this.kind = kind;
             this.mimeType = mimeType;
             this.sizeBytes = sizeBytes;
+            this.owner = owner;
         }
     }
 }

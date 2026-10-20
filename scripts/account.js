@@ -1281,7 +1281,7 @@
   }
 
   function requestAndroidWidget(widget) {
-    if (widget === 'workspace' && !window.EstudiemosRelease?.enabled('workspace')) return setStatus('Mi espacio: próximamente.', 'success');
+    if (widget === 'workspace' && (!window.EstudiemosRelease?.enabled('driveWorkspace')||window.EstudiemosAndroidDriveWidget!==true)) return setStatus('Actualizá Estudiemos para agregar el widget de Google Drive.', 'success');
     if (!hasAndroidBridge() || !["agenda", "calendar", "streak", "pomodoro", "workspace"].includes(widget)) return;
     window.EstudiemosAndroid.postMessage(JSON.stringify({ type: "widget-pin", widget }));
     setStatus("Android abrirá la confirmación para agregar el widget.", "success");

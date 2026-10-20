@@ -29,7 +29,7 @@
   if (!document.querySelector('script[data-release-ui]')) {
     const releaseUi = document.createElement('script');
     releaseUi.dataset.releaseUi = '';
-    releaseUi.src = rootPath + 'scripts/release-ui.js?v=20261019-drive';
+    releaseUi.src = rootPath + 'scripts/release-ui.js?v=20261020-drive-widget';
     document.head.appendChild(releaseUi);
   }
   if (!window.EstudiemosRelease && !document.querySelector('script[data-release-config]')) {
@@ -370,7 +370,7 @@
     if (document.querySelector('script[src*="scripts/account.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/account.js?v=20261019-drive`;
+    script.src = `${rootPath}scripts/account.js?v=20261020-drive-widget`;
     script.defer = true;
     document.head.appendChild(script);
   }

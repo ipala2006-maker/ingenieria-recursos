@@ -49,6 +49,10 @@ final class WidgetSyncManager {
 
     private WidgetSyncManager() {}
 
+    static String currentUserId(Context context) {
+        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_USER_ID, "");
+    }
+
     static void handleAccountMessage(Context context, JSONObject payload) {
         Context appContext = context.getApplicationContext();
         if (payload.optBoolean("signedOut", false)) {
