@@ -8,16 +8,17 @@ import android.app.DownloadManager;
 import android.app.NotificationManager;
 import android.appwidget.AppWidgetManager;
 import android.content.ComponentName;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
+import android.database.Cursor;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.Settings;
 import android.view.WindowInsets;
 import android.view.ViewGroup;
@@ -67,7 +68,11 @@ public class MainActivity extends Activity {
     private ValueCallback<Uri[]> fileChooserCallback;
     private long updateDownloadId = -1L;
     private boolean updateAfterPermission;
-    private BroadcastReceiver updateDownloadReceiver;
+    private final Handler updateHandler = new Handler(Looper.getMainLooper());
+    private final Runnable updatePoll = this::checkUpdateDownload;
+    private boolean updateVisible;
+    private String updateState = "idle";
+    private int updatePercent = -1;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -89,7 +94,8 @@ public class MainActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
         ));
-        registerUpdateDownloadReceiver();
+        updateDownloadId = getSharedPreferences("estudiemos_updates", MODE_PRIVATE).getLong("download_id", -1L);
+        updateAfterPermission = savedInstanceState != null && savedInstanceState.getBoolean("update_permission", false);
         applySystemBarInsets(rootView);
         if (StreakReminderReceiver.isEnabled(this)) StreakReminderReceiver.scheduleNext(this);
 
@@ -262,9 +268,10 @@ public class MainActivity extends Activity {
 
     private void notifyWebAppReady() {
         webView.evaluateJavascript(
-                "window.EstudiemosAndroidDriveWidget=" + ReleaseFeatures.DRIVE_WORKSPACE + ";window.dispatchEvent(new CustomEvent('estudiemos-android-ready'));",
+                "window.EstudiemosAndroidDriveWidget=" + ReleaseFeatures.DRIVE_WORKSPACE + ";window.EstudiemosAndroidUpdater=true;window.dispatchEvent(new CustomEvent('estudiemos-android-ready'));",
                 null
         );
+        if (!"idle".equals(updateState)) notifyWebUpdateStatus(updateState, updatePercent);
     }
 
     private void notifyNativeSessionToWeb() {
@@ -320,6 +327,14 @@ public class MainActivity extends Activity {
                 "window.dispatchEvent(new CustomEvent('estudiemos-android-update-started'));",
                 null
         );
+    }
+
+    private void notifyWebUpdateStatus(String state, int percent) {
+        updateState = state;
+        updatePercent = percent;
+        if (!webReady || webView == null) return;
+        webView.evaluateJavascript("window.dispatchEvent(new CustomEvent('estudiemos-android-update-status',{detail:{state:"
+                + JSONObject.quote(state) + ",percent:" + percent + "}}));", null);
     }
 
     private void sendNotificationStatusToWeb() {
@@ -480,12 +495,15 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        updateVisible = true;
         InboxAlarmReceiver.refresh(this);
         sendInboxNotificationStatus();
-        if (updateAfterPermission && canInstallUpdates()) {
+        if (updateAfterPermission) {
             updateAfterPermission = false;
-            startAppUpdate();
+            if (canInstallUpdates()) startAppUpdate();
+            else notifyWebUpdateStatus("denied", -1);
         }
+        if (updateDownloadId > 0) checkUpdateDownload();
         if (StreakReminderReceiver.isEnabled(this)) StreakReminderReceiver.scheduleNext(this);
         WidgetSyncManager.syncNow(this);
         notifyNativeSessionToWeb();
@@ -499,7 +517,15 @@ public class MainActivity extends Activity {
     @Override
     protected void onSaveInstanceState(@NonNull Bundle outState) {
         webView.saveState(outState);
+        outState.putBoolean("update_permission", updateAfterPermission);
         super.onSaveInstanceState(outState);
+    }
+
+    @Override
+    protected void onStop() {
+        updateVisible = false;
+        updateHandler.removeCallbacks(updatePoll);
+        super.onStop();
     }
 
     @Override
@@ -511,60 +537,93 @@ public class MainActivity extends Activity {
         fileChooserCallback = null;
     }
 
-    private void registerUpdateDownloadReceiver() {
-        updateDownloadReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                if (!DownloadManager.ACTION_DOWNLOAD_COMPLETE.equals(intent.getAction())) return;
-                long completedId = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L);
-                if (completedId != updateDownloadId) return;
-                openDownloadedUpdate(completedId);
-            }
-        };
-        IntentFilter filter = new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(updateDownloadReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
-        } else {
-            registerReceiver(updateDownloadReceiver, filter);
-        }
-    }
-
     private boolean canInstallUpdates() {
         return Build.VERSION.SDK_INT < Build.VERSION_CODES.O || getPackageManager().canRequestPackageInstalls();
     }
 
     private void startAppUpdate() {
+        if (updateDownloadId > 0) {
+            checkUpdateDownload();
+            return;
+        }
         if (!canInstallUpdates()) {
             updateAfterPermission = true;
+            notifyWebUpdateStatus("permission", -1);
             Toast.makeText(this, "Permití que Estudiemos instale su actualización. Solo se solicita una vez.", Toast.LENGTH_LONG).show();
             Intent settingsIntent = new Intent(
                     Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
                     Uri.parse("package:" + getPackageName())
             );
-            startActivityForResult(settingsIntent, INSTALL_PERMISSION_REQUEST);
+            try {
+                startActivityForResult(settingsIntent, INSTALL_PERMISSION_REQUEST);
+            } catch (Exception error) {
+                updateAfterPermission = false;
+                notifyWebUpdateStatus("error", -1);
+            }
             return;
         }
 
         DownloadManager manager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
         if (manager == null) {
+            notifyWebUpdateStatus("error", -1);
             Toast.makeText(this, "No pudimos iniciar la actualización.", Toast.LENGTH_LONG).show();
             return;
         }
-        DownloadManager.Request request = new DownloadManager.Request(Uri.parse(UPDATE_APK_URL))
-                .setTitle("Actualizando Estudiemos")
-                .setDescription("Descargando la versión más reciente")
-                .setMimeType("application/vnd.android.package-archive")
-                .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                .setAllowedOverMetered(true)
-                .setAllowedOverRoaming(false)
-                .setDestinationInExternalFilesDir(this, Environment.DIRECTORY_DOWNLOADS, "Estudiemos-actualizacion.apk");
         try {
+            DownloadManager.Request request = new DownloadManager.Request(Uri.parse(UPDATE_APK_URL))
+                    .setTitle("Actualizando Estudiemos")
+                    .setDescription("Descargando la versión más reciente")
+                    .setMimeType("application/vnd.android.package-archive")
+                    .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                    .setAllowedOverMetered(true)
+                    .setAllowedOverRoaming(false)
+                    .setDestinationInExternalFilesDir(this, Environment.DIRECTORY_DOWNLOADS, "Estudiemos-actualizacion.apk");
             java.io.File previous = new java.io.File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "Estudiemos-actualizacion.apk");
-            if (previous.exists()) previous.delete();
+            if (previous.exists() && !previous.delete()) throw new java.io.IOException("Previous update is unavailable");
             updateDownloadId = manager.enqueue(request);
+            getSharedPreferences("estudiemos_updates", MODE_PRIVATE).edit().putLong("download_id", updateDownloadId).apply();
+            notifyWebUpdateStatus("downloading", -1);
+            checkUpdateDownload();
             Toast.makeText(this, "Descargando la actualización dentro de Estudiemos...", Toast.LENGTH_LONG).show();
         } catch (Exception error) {
+            clearUpdateDownload();
+            notifyWebUpdateStatus("error", -1);
             Toast.makeText(this, "No pudimos descargar la actualización. Revisá tu conexión.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void clearUpdateDownload() {
+        updateHandler.removeCallbacks(updatePoll);
+        updateDownloadId = -1L;
+        getSharedPreferences("estudiemos_updates", MODE_PRIVATE).edit().remove("download_id").apply();
+    }
+
+    private void checkUpdateDownload() {
+        updateHandler.removeCallbacks(updatePoll);
+        if (!updateVisible || updateDownloadId <= 0) return;
+        DownloadManager manager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+        if (manager == null) {
+            clearUpdateDownload();
+            notifyWebUpdateStatus("error", -1);
+            return;
+        }
+        // Query our saved download, including after rotation or a missed system broadcast.
+        try (Cursor cursor = manager.query(new DownloadManager.Query().setFilterById(updateDownloadId))) {
+            if (cursor == null || !cursor.moveToFirst()) throw new java.io.IOException("Update download missing");
+            int status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS));
+            if (status == DownloadManager.STATUS_SUCCESSFUL) {
+                openDownloadedUpdate(updateDownloadId);
+                return;
+            }
+            if (status == DownloadManager.STATUS_FAILED) throw new java.io.IOException("Update download failed");
+            long total = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES));
+            long bytes = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR));
+            int percent = total > 0 ? (int) Math.max(0, Math.min(99, bytes * 100d / total)) : -1;
+            notifyWebUpdateStatus(status == DownloadManager.STATUS_PAUSED ? "waiting" : "downloading", percent);
+            updateHandler.postDelayed(updatePoll, 1000);
+        } catch (Exception error) {
+            clearUpdateDownload();
+            notifyWebUpdateStatus("error", -1);
         }
     }
 
@@ -572,6 +631,8 @@ public class MainActivity extends Activity {
         DownloadManager manager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
         Uri apkUri = manager == null ? null : manager.getUriForDownloadedFile(downloadId);
         if (apkUri == null) {
+            clearUpdateDownload();
+            notifyWebUpdateStatus("error", -1);
             Toast.makeText(this, "La descarga no pudo completarse.", Toast.LENGTH_LONG).show();
             return;
         }
@@ -580,7 +641,11 @@ public class MainActivity extends Activity {
                 .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
         try {
             startActivity(installIntent);
+            clearUpdateDownload();
+            notifyWebUpdateStatus("installer", 100);
         } catch (Exception error) {
+            clearUpdateDownload();
+            notifyWebUpdateStatus("error", -1);
             Toast.makeText(this, "Android no pudo abrir el instalador de la actualización.", Toast.LENGTH_LONG).show();
         }
     }
@@ -634,6 +699,7 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        updateHandler.removeCallbacks(updatePoll);
         if (fileChooserCallback != null) {
             fileChooserCallback.onReceiveValue(null);
             fileChooserCallback = null;
@@ -641,11 +707,6 @@ public class MainActivity extends Activity {
         if (webView != null) {
             webView.stopLoading();
             webView.destroy();
-        }
-        if (updateDownloadReceiver != null) {
-            try { unregisterReceiver(updateDownloadReceiver); }
-            catch (Exception ignored) {}
-            updateDownloadReceiver = null;
         }
         super.onDestroy();
     }

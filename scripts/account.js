@@ -208,6 +208,7 @@
               <small>Buscar y aplicar la versión más reciente</small>
             </span>
           </button>
+          <a class="account-link" data-account-update-manual hidden href="https://github.com/ipala2006-maker/ingenieria-recursos/releases/download/android-latest/Estudiemos-Android.apk" target="_self" rel="noreferrer">${updateIcon()}<span>Descarga alternativa para Android</span></a>
         </div>
 
         <div class="account-android-widgets" data-account-android-widgets hidden>
@@ -1476,19 +1477,56 @@
     if (!button || button.disabled) return;
 
     if (window.EstudiemosAndroid) {
+      button.disabled = true;
+      const fallback = document.querySelector("[data-account-update-manual]");
+      if (fallback) fallback.hidden = false;
+      if (label) label.textContent = "Preparando actualización...";
       setStatus("Preparando la actualización dentro de Estudiemos...", "success");
-      let nativeUpdateStarted = false;
-      window.addEventListener("estudiemos-android-update-started", () => {
-        nativeUpdateStarted = true;
-      }, { once: true });
+      let timer;
+      const cleanup = () => {
+        window.clearTimeout(timer);
+        window.removeEventListener("estudiemos-android-update-started", started);
+        window.removeEventListener("estudiemos-android-update-status", status);
+        button.disabled = false;
+        if (label) label.textContent = "Actualizar Estudiemos";
+      };
+      const watch = (delay=45000) => {
+        window.clearTimeout(timer);
+        timer = window.setTimeout(() => {
+          cleanup();
+          setStatus("La actualización está tardando. Podés reintentar o usar la descarga alternativa que aparece debajo.", "error");
+        }, delay);
+      };
+      const started = () => {
+        setStatus("Android recibió el pedido. Esperando la descarga o el permiso de instalación...", "info");
+        watch(window.EstudiemosAndroidUpdater ? 45000 : 15000);
+      };
+      const status = event => {
+        const {state, percent} = event.detail || {};
+        const messages = {
+          permission: "Permití a Estudiemos instalar actualizaciones en la pantalla de Android y volvé a la app.",
+          downloading: "Descargando la actualización dentro de Estudiemos" + (Number.isInteger(percent)&&percent>=0&&percent<=100 ? ": "+percent+"%." : "..."),
+          waiting: "Android está esperando conexión para continuar la descarga. También podés usar la alternativa.",
+          installer: "Confirmá «Actualizar» en el instalador de Android. No hace falta desinstalar.",
+          error: "No se pudo continuar dentro de la app. Reintentá o usá la descarga alternativa.",
+          denied: "Android no autorizó la instalación. Podés habilitarla al reintentar o usar la descarga alternativa."
+        };
+        if (!messages[state]) return;
+        setStatus(messages[state], ["error","denied"].includes(state) ? "error" : "info");
+        if (["installer","error","denied"].includes(state)) cleanup();
+        else {
+          if (label) label.textContent = state === "downloading" && Number.isInteger(percent) && percent >= 0 && percent <= 100 ? "Descargando · "+percent+"%" : state === "permission" ? "Esperando permiso..." : "Descargando actualización...";
+          watch(state === "permission" ? 120000 : 45000);
+        }
+      };
+      window.addEventListener("estudiemos-android-update-started", started);
+      window.addEventListener("estudiemos-android-update-status", status);
+      watch();
       try {
         window.EstudiemosAndroid.postMessage(JSON.stringify({ type: "app-update" }));
-        window.setTimeout(() => {
-          if (nativeUpdateStarted) return;
-          location.assign("https://github.com/ipala2006-maker/ingenieria-recursos/releases/download/android-latest/Estudiemos-Android.apk");
-        }, 900);
       } catch (_) {
-        setStatus("No pudimos iniciar la actualización. Cerrá y volvé a abrir Estudiemos.", "error");
+        cleanup();
+        setStatus("No pudimos iniciar la actualización. Usá la descarga alternativa que aparece debajo.", "error");
       }
       return;
     }
