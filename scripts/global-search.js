@@ -207,7 +207,7 @@
 
     const link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = `${rootPath}styles/professional.css?v=20260919-contrast`;
+    link.href = `${rootPath}styles/professional.css?v=20261020-update-recovery`;
     document.head.appendChild(link);
   }
 
@@ -370,7 +370,7 @@
     if (document.querySelector('script[src*="scripts/account.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/account.js?v=20261020-drive-widget`;
+    script.src = `${rootPath}scripts/account.js?v=20261020-update-recovery`;
     script.defer = true;
     document.head.appendChild(script);
   }

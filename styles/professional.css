@@ -851,3 +851,15 @@ html.theme-dark .theme-switcher__btn.is-active{
     height:32px;
   }
 }
+.account-app-actions [data-account-update-manual]{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  min-height:44px;
+  margin-top:8px;
+  text-align:center;
+  text-decoration:none;
+}
+.account-app-actions [data-account-update-manual][hidden]{display:none}
+.account-app-actions [data-account-update-manual] svg{width:18px;height:18px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.7}
