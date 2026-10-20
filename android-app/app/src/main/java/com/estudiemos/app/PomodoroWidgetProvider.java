@@ -16,6 +16,10 @@ import android.widget.RemoteViews;
 import org.json.JSONObject;
 
 import java.time.LocalDate;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.util.Iterator;
+import java.util.Map;
 
 public class PomodoroWidgetProvider extends AppWidgetProvider {
     private static final String PREFS = "estudiemos_pomodoro_widget";
@@ -199,12 +203,29 @@ public class PomodoroWidgetProvider extends AppWidgetProvider {
         if (startedAt <= 0) startedAt = now;
         long endAt = state.optLong("endAt", 0);
         long cappedNow = endAt > 0 ? Math.min(now, endAt) : now;
+        long duration = Math.min(59, Math.max(0, config(state).optLong("study", 25))) * 60000;
+        if (endAt <= 0) return;
+        startedAt = Math.max(startedAt, endAt - duration);
         long elapsed = Math.max(0, (cappedNow - startedAt) / 1000);
         if (elapsed <= 0) return;
         try {
-            state.put("pendingStudySeconds", Math.max(0, state.optLong("pendingStudySeconds", 0)) + elapsed);
+            JSONObject days = state.optJSONObject("pendingStudyDays");
+            if (days == null) days = new JSONObject();
+            long total = 0;
+            for (Iterator<String> keys = days.keys(); keys.hasNext();) total += Math.max(0, days.optLong(keys.next(), 0));
+            long legacy = Math.min(86400, Math.max(0, state.optLong("pendingStudySeconds", 0) - total));
+            if (legacy > 0) addStudyDays(days, startedAt - legacy * 1000, legacy);
+            addStudyDays(days, startedAt, elapsed);
+            state.put("pendingStudyDays", days);
+            state.put("pendingStudySeconds", total + legacy + elapsed);
             state.put("studyCreditAt", startedAt + elapsed * 1000);
         } catch (Exception ignored) { }
+    }
+
+    private static void addStudyDays(JSONObject days, long start, long seconds) throws Exception {
+        for (Map.Entry<String, Long> entry : StudyCreditRules.split(start, seconds, ZoneId.systemDefault()).entrySet()) {
+            days.put(entry.getKey(), Math.max(0, days.optLong(entry.getKey(), 0)) + entry.getValue());
+        }
     }
 
     private static void advanceCompletedPhase(JSONObject state, long now) throws Exception {
@@ -216,7 +237,9 @@ public class PomodoroWidgetProvider extends AppWidgetProvider {
                 state.put("completedDate", today);
                 state.put("completedToday", 0);
             }
-            state.put("completedToday", Math.max(0, state.optInt("completedToday", 0)) + 1);
+            if (today.equals(Instant.ofEpochMilli(state.optLong("endAt", now)).atZone(ZoneId.systemDefault()).toLocalDate().toString())) {
+                state.put("completedToday", Math.max(0, state.optInt("completedToday", 0)) + 1);
+            }
             state.put("phase", "break");
         } else {
             int blocks = Math.max(1, config.optInt("blocks", 1));
@@ -227,7 +250,7 @@ public class PomodoroWidgetProvider extends AppWidgetProvider {
 
         String nextPhase = state.optString("phase", "study");
         long nextRemaining = Math.max(0, config.optLong(nextPhase, 25) * 60);
-        boolean autoStart = state.optBoolean("autoStart", false) && nextRemaining > 0;
+        boolean autoStart = state.optBoolean("autoStart", false) && nextRemaining > 0 && StudyCreditRules.timely(state.optLong("endAt", 0), now);
         state.put("remaining", nextRemaining);
         state.put("running", autoStart);
         state.put("endAt", autoStart ? now + nextRemaining * 1000 : 0);

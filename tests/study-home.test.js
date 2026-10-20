@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
+const credit = require('../shared/study-credit');
 const source = fs.readFileSync(path.join(__dirname,'../scripts/pomodoro.js'),'utf8');
 const snapshotCode = source.slice(source.indexOf('  function homeSnapshot()'), source.indexOf('  function addButton()'));
 const controlsCode = source.slice(source.indexOf('  function setRemaining('), source.indexOf('  function openPomodoroFromUrl()'));
@@ -61,6 +62,7 @@ function adjustableTimer() {
   let credited = 0;
   const context = {
     MAX_MINUTES:59, Date:{now:()=>700000},
+    window:{EstudiemosStudyCredit:credit},
     state:{remaining:1500,running:true,phase:'study',currentBlock:1,config:{blocks:4,study:25,break:5},studyCreditAt:100000,endAt:1600000,pendingStudySeconds:0,completedToday:0},
     reconcileTimer:()=>{}, stopAlarm:()=>{}, saveState:()=>{}, render:()=>{}, adoptTimerState:()=>false,
     durationSeconds:()=>context.state.config[context.state.phase]*60,
@@ -116,6 +118,7 @@ function skippableTimer(overrides = {}) {
   let credited = 0, notified = 0, saved = 0, ticker = false;
   const context = {
     Date:{now:()=>700000},
+    window:{EstudiemosStudyCredit:credit}, todayKey:()=>credit.dateKey(700000),
     state:{running:true,phase:'study',currentBlock:2,config:{study:25,break:5,blocks:4},remaining:900,endAt:1600000,studyCreditAt:100000,pendingStudySeconds:0,completedToday:0,autoStart:true,...overrides},
     adoptTimerState:()=>false, stopAlarm:()=>{}, stopTicker:()=>{ticker=false;},
     startTickerIfNeeded:()=>{ticker=true;}, normalizeDailyCount:()=>{},
@@ -191,4 +194,19 @@ test('skip adopts the latest shared timer before changing its phase',()=>{
   assert.equal(t.credited(),0);
   assert.equal(t.context.state.running,false);
   assert.match(source,/skip: skipPhase/);
+});
+
+test('an overdue restored session does not auto-start more study on the next app visit',()=>{
+  const t=skippableTimer({endAt:600000});
+  t.context.advancePhase(true,false);
+  assert.equal(t.context.state.phase,'break');
+  assert.equal(t.context.state.running,false);
+  assert.equal(t.ticker(),false);
+});
+
+test('a timely natural completion still starts the next phase when requested',()=>{
+  const t=skippableTimer({endAt:699950});
+  t.context.advancePhase(true,false);
+  assert.equal(t.context.state.phase,'break');
+  assert.equal(t.context.state.running,true);
 });

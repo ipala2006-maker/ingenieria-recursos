@@ -366,6 +366,7 @@
       state.calendarSource = 'all'; setCalendarPane(false); renderCalendar();
       document.querySelector('[data-calendar-detail-tab="program"]')?.focus();
     });
+    window.addEventListener('estudiemos:calendar-entry-added', () => { state.calendarDraft = null; renderCalendar(); });
     let swipeStart = null;
     let suppressCalendarClickUntil = 0;
     const calendar = document.querySelector('[data-dashboard-calendar]');
@@ -514,6 +515,7 @@
     scheduleDate?.addEventListener('change', selectScheduleDate);
     noteForm?.elements.title.addEventListener("input", () => {
       noteForm.querySelector('[type="submit"]').disabled = !noteForm.elements.title.value.trim();
+      noteForm.querySelector('[data-quick-note-status]').textContent = '';
     });
     noteForm?.addEventListener("submit", saveQuickNote);
     document.querySelector("[data-general-ai-form]")?.addEventListener("submit", routeGeneralAssistant);
@@ -618,6 +620,15 @@
       createdAt: Date.now()
     });
     writeAgenda(items.slice(0, MAX_AGENDA_ITEMS));
+    if (window.EstudiemosNoteEntry?.continuing(form)) {
+      form.elements.title.value = '';
+      const alarm = form.elements.inboxAlarmEnabled;
+      if (alarm) { alarm.checked = false; alarm.dispatchEvent(new Event('change', { bubbles: true })); }
+      form.querySelector('[type="submit"]').disabled = true;
+      form.querySelector('[data-quick-note-status]').textContent = 'Tarea guardada.';
+      form.elements.title.focus();
+      return;
+    }
     form.reset();
     form.querySelector('[type="submit"]').disabled = true;
     closeActivePanel();

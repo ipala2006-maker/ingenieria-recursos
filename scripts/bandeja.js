@@ -803,7 +803,7 @@
 
     const items = readList(STORAGE_KEYS.agenda);
     items.unshift({
-      id: `agenda:${Date.now()}`,
+      id: `agenda:${cryptoRandomId()}`,
       title,
       type: typeInput?.value || "Tarea",
       date: window.EstudiemosInboxAlarms?.readDate(document.getElementById('agendaForm')) || "",
@@ -818,13 +818,20 @@
     });
 
     writeList(STORAGE_KEYS.agenda, items.slice(0, MAX_AGENDA_ITEMS));
+    const form = document.getElementById('agendaForm');
+    const continuing = window.EstudiemosNoteEntry?.continuing(form);
     titleInput.value = "";
     if (dateInput) dateInput.value = selectedAgendaDate;
     if (noteInput) noteInput.value = "";
-    document.getElementById('agendaForm')?.reset();
-    agendaFilter = "pending";
+    if (continuing) {
+      const alarm = form.elements.inboxAlarmEnabled;
+      if (alarm) { alarm.checked = false; alarm.dispatchEvent(new Event('change', { bubbles: true })); }
+    } else form?.reset();
     updateAgendaSubmitState();
-    renderAgenda();
+    const nextDate = continuing && window.EstudiemosInboxAlarms?.readDate(form);
+    if (nextDate) selectAgendaDate(nextDate);
+    else { agendaFilter = 'pending'; renderAgenda(); }
+    if (continuing) titleInput.focus();
   }
 
   function openAgendaAssistant() {

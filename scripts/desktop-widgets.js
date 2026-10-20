@@ -630,30 +630,23 @@
   }
 
   function capturePomodoroStudyProgress(pomodoro) {
-    if (!pomodoro.running || pomodoro.phase !== "study") return;
-    const now = Date.now();
-    const startedAt = Number(pomodoro.studyCreditAt) || Number(pomodoro.updatedAt) || now;
-    const cappedNow = pomodoro.endAt ? Math.min(now, Number(pomodoro.endAt)) : now;
-    const elapsed = Math.max(0, Math.floor((cappedNow - startedAt) / 1000));
-    if (!elapsed) return;
-    pomodoro.pendingStudySeconds = Math.max(0, Math.floor(Number(pomodoro.pendingStudySeconds) || 0)) + elapsed;
-    pomodoro.studyCreditAt = startedAt + elapsed * 1000;
+    window.EstudiemosStudyCredit.capture(pomodoro);
   }
 
   function flushPomodoroStudyProgress(pomodoro) {
-    const seconds = Math.max(0, Math.floor(Number(pomodoro.pendingStudySeconds) || 0));
-    if (!seconds) return;
-    pomodoro.pendingStudySeconds = 0;
+    const days = window.EstudiemosStudyCredit.take(pomodoro);
+    if (!Object.keys(days).length) return;
     let streak = {};
     try { streak = JSON.parse(localStorage.getItem(STREAK_KEY) || "{}"); } catch (_) {}
     streak.days = streak.days && typeof streak.days === "object" ? streak.days : {};
     streak.carrySeconds = streak.carrySeconds && typeof streak.carrySeconds === "object" ? streak.carrySeconds : {};
-    const today = dateValue(new Date());
-    const totalSeconds = Math.max(0, Number(streak.carrySeconds[today]) || 0) + seconds;
-    window.EstudiemosStudyGoal.recordDay(streak, today);
-    const minutes = Math.floor(totalSeconds / 60);
-    streak.carrySeconds[today] = totalSeconds % 60;
-    if (minutes) streak.days[today] = Math.max(0, Number(streak.days[today]) || 0) + minutes;
+    for (const [date, seconds] of Object.entries(days)) {
+      const totalSeconds = Math.max(0, Number(streak.carrySeconds[date]) || 0) + seconds;
+      if (!streak.dailyGoals?.[date]) window.EstudiemosStudyGoal.recordDay(streak, date);
+      const minutes = Math.floor(totalSeconds / 60);
+      streak.carrySeconds[date] = totalSeconds % 60;
+      if (minutes) streak.days[date] = Math.max(0, Number(streak.days[date]) || 0) + minutes;
+    }
     streak.version = 2;
     localStorage.setItem(STREAK_KEY, JSON.stringify(streak));
     window.dispatchEvent(new CustomEvent("estudiemos:data-change", { detail: { key: STREAK_KEY } }));
@@ -675,7 +668,7 @@
         value.completedDate = today;
         value.completedToday = 0;
       }
-      value.completedToday = Math.max(0, Number(value.completedToday) || 0) + 1;
+      if (window.EstudiemosStudyCredit.dateKey(Number(value.endAt)) === today) value.completedToday = Math.max(0, Number(value.completedToday) || 0) + 1;
       value.phase = "break";
     } else {
       value.phase = "study";

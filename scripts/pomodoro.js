@@ -1386,13 +1386,15 @@
   }
 
   function advancePhase(completed, shouldNotify = true, continueRunning = false) {
+    const automatic = completed && state.autoStart && state.endAt > 0 && Date.now() - state.endAt <= 60000;
+    const completedDate = state.endAt ? window.EstudiemosStudyCredit.dateKey(state.endAt) : todayKey();
     captureStudyProgress();
     flushStudyCredit();
     if (!completed) stopAlarm();
     const previousPhase = state.phase;
     stopTicker();
 
-    if (completed && previousPhase === "study") {
+    if (completed && previousPhase === "study" && completedDate === todayKey()) {
       normalizeDailyCount();
       state.completedToday += 1;
     }
@@ -1410,7 +1412,7 @@
     state.remaining = durationSeconds(state.phase);
 
     if (completed && shouldNotify) notifyCompletion(previousPhase);
-    if (((completed && state.autoStart) || continueRunning) && state.remaining > 0) {
+    if ((automatic || continueRunning) && state.remaining > 0) {
       state.running = true;
       state.endAt = safeEndTime(state.remaining);
       state.studyCreditAt = state.phase === "study" ? Date.now() : 0;
@@ -2140,12 +2142,12 @@
     saveStreakState();
   }
 
-  function recordStudyPresenceSeconds(seconds) {
+  function recordStudyPresenceSeconds(seconds, date = dateKey(0)) {
     const amount = Math.max(0, Math.floor(Number(seconds) || 0));
     if (!amount) return;
-    const today = dateKey(0);
+    const today = date;
     const previousCarry = Math.max(0, Math.floor(Number(streakState.carrySeconds?.[today]) || 0));
-    goals.recordDay(streakState, today);
+    if (today === dateKey(0) || !streakState.dailyGoals?.[today]) goals.recordDay(streakState, today);
     const totalSeconds = previousCarry + amount;
     const minutes = Math.floor(totalSeconds / 60);
     streakState.carrySeconds ||= {};
@@ -2155,21 +2157,11 @@
   }
 
   function captureStudyProgress(now = Date.now()) {
-    if (!state.running || state.phase !== "study") return 0;
-    const startedAt = Number(state.studyCreditAt) || now;
-    const cappedNow = state.endAt ? Math.min(now, Number(state.endAt)) : now;
-    const elapsed = Math.max(0, Math.floor((cappedNow - startedAt) / 1000));
-    if (!elapsed) return 0;
-    state.pendingStudySeconds = Math.max(0, Math.floor(Number(state.pendingStudySeconds) || 0)) + elapsed;
-    state.studyCreditAt = startedAt + elapsed * 1000;
-    return elapsed;
+    return window.EstudiemosStudyCredit.capture(state, now);
   }
 
   function flushStudyCredit() {
-    const seconds = Math.max(0, Math.floor(Number(state.pendingStudySeconds) || 0));
-    if (!seconds) return;
-    state.pendingStudySeconds = 0;
-    recordStudyPresenceSeconds(seconds);
+    for (const [date, seconds] of Object.entries(window.EstudiemosStudyCredit.take(state))) recordStudyPresenceSeconds(seconds, date);
   }
 
   function streakSummary() {
@@ -2972,6 +2964,7 @@
       completedToday: nonNegativeInteger(saved.completedToday, 0),
       studyCreditAt: Number(saved.studyCreditAt) || (saved.running && phase === "study" ? Number(saved.updatedAt) || Date.now() : 0),
       pendingStudySeconds: nonNegativeInteger(saved.pendingStudySeconds, 0),
+      pendingStudyDays: saved.pendingStudyDays && typeof saved.pendingStudyDays === 'object' ? saved.pendingStudyDays : {},
       updatedAt: Number(saved.updatedAt) || 0
     };
   }

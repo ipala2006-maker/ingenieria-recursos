@@ -9,6 +9,15 @@
 - Con la conexion de Windows vigente, Windows entrega los recordatorios y la web no los duplica. Sin esa conexion, la web sigue disponible como alternativa si el usuario concedio permisos.
 - Android confirma el progreso de la cuenta antes de avisar. Si no se puede consultar, omite ese aviso; no deduce que falta estudiar a partir de un cache desactualizado. Las consultas demoradas no restan minutos ganados en el dispositivo.
 
+## Cambio De Dia
+
+- Los segundos pendientes conservan la fecha local en que se estudiaron. Una sesion que cruza medianoche reparte su tiempo entre los dos dias, incluidos cambios de horario de verano.
+- Recuperar una sesion vencida de ayer no acredita una hora hoy. El limite es el final real del bloque, nunca las horas transcurridas con la aplicacion cerrada.
+- Si el final de una fase lleva mas de un minuto vencido, la siguiente queda pausada. Se conserva el inicio automatico en terminaciones puntuales y al saltar una fase en marcha.
+- Web, PWA y widgets web usan `shared/study-credit.js`. Android 1.6.3 guarda el mismo mapa de segundos por fecha; actualizar el APK para corregir tambien su widget nativo.
+- Se conserva el historial ya guardado. No se eliminan minutos antiguos automaticamente: los totales anteriores no permiten distinguir de forma fiable un registro erroneo de estudio real.
+- Regresion: `node --test tests/study-credit.test.js tests/study-home.test.js`. `node tests/note-entry.smoke.cjs` comprueba que reabrir una sesion de ayer mantiene hoy en cero y no duplica los minutos al recargar.
+
 ## Windows
 
 El instalador 1.6.6.0 registra la identidad `Estudiemos.Study` y un acceso de Inicio para notificaciones nativas ToastGeneric, con el logo de Estudiemos. No usa globos de WinForms ni suplanta a Edge. Windows controla su tipografia y respeta No molestar y los permisos del usuario.
