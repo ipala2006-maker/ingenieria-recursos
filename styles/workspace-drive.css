@@ -29,7 +29,7 @@
 .drive-connection svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.7; }
 .drive-connection > div { flex:1; min-width:0; display:grid; gap:4px; }
 .drive-connection strong { font-size:12px; font-weight:600; overflow-wrap:anywhere; }
-.drive-connection small { font-size:11px; color:var(--muted); overflow-wrap:anywhere; }
+.drive-connection small { min-width:0;font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.4; }
 .drive-locations { display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:10px 18px;border-bottom:1px solid var(--border); }
 .drive-locations[hidden] { display:none; }
 .drive-locations button { min-height:36px;padding:6px 12px;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--muted);font:inherit;font-size:12px;cursor:pointer; }
@@ -54,6 +54,7 @@
   .workspace-section:has(.drive-connection) .workspace-search { grid-column:1/-1; }
 }
 @media(pointer:coarse) {
+  .workspace-section:has(.drive-connection) :is(.workspace-search input,.workspace-sort select) { font-size:16px; }
   .drive-connection .workspace-tool-icon,.drive-locations button { min-height:44px; }
   .drive-connection .workspace-tool-icon { width:44px; }
   .workspace-section:has(.drive-connection) .workspace-view-toggle { width:96px;min-height:52px; }

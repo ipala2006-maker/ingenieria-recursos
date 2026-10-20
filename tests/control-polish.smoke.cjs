@@ -72,6 +72,7 @@ async function contained(child,parent){
         const select=space.locator('[data-workspace-sort]');
         assert.ok(await select.evaluate(el=>{const s=getComputedStyle(el),canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');ctx.font=s.font;return ctx.measureText(el.selectedOptions[0].text).width<=el.clientWidth-parseFloat(s.paddingLeft)-parseFloat(s.paddingRight)+1;}),'sort label is fully visible');
         assert.ok(await space.locator('.workspace-tool-icon svg').evaluateAll(nodes=>nodes.filter(el=>el.getClientRects().length).every(el=>{const s=getComputedStyle(el);return s.fill==='none'&&s.stroke!=='none';})),'header icons never use accidental black fills');
+        assert.equal(await space.locator('[data-drive-account]').evaluate(el=>getComputedStyle(el).whiteSpace),'nowrap','long accounts do not split awkwardly');
         const add=space.locator('[data-workspace-add]').first(),header=space.locator('.workspace-section__head');
         await contained(add,header);
         assert.ok(await add.isDisabled(),'readonly locations still protect writes');
