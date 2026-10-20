@@ -37,15 +37,23 @@ public class WorkspaceWidgetService extends RemoteViewsService {
         public RemoteViews getViewAt(int position) {
             if (position < 0 || position >= entries.size()) return null;
             WorkspaceWidgetProvider.WorkspaceEntry entry = entries.get(position);
+            if (ReleaseFeatures.DRIVE_WORKSPACE && !DriveWidgetRules.belongsTo(entry.owner, WidgetSyncManager.currentUserId(context))) return null;
             RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.workspace_widget_item);
             boolean folder = "folder".equals(entry.kind);
             views.setImageViewResource(R.id.workspace_item_icon, folder ? R.drawable.ic_widget_folder : R.drawable.ic_widget_file);
             views.setTextViewText(R.id.workspace_item_name, entry.name);
-            views.setTextViewText(R.id.workspace_item_meta, folder ? "Carpeta" : WorkspaceWidgetProvider.formatSize(entry.sizeBytes));
+            views.setTextViewText(R.id.workspace_item_meta, folder ? "Carpeta" : entry.sizeBytes > 0 ? WorkspaceWidgetProvider.formatSize(entry.sizeBytes) : "Archivo");
 
             Intent fillIn = new Intent();
-            fillIn.putExtra(MainActivity.EXTRA_WORKSPACE_ITEM_ID, entry.id);
-            fillIn.putExtra(MainActivity.EXTRA_WORKSPACE_ITEM_KIND, entry.kind);
+            if (ReleaseFeatures.DRIVE_WORKSPACE) {
+                fillIn.putExtra(MainActivity.EXTRA_OPEN_DRIVE, true);
+                fillIn.putExtra(MainActivity.EXTRA_DRIVE_ITEM_ID, entry.id);
+                fillIn.putExtra(MainActivity.EXTRA_DRIVE_ITEM_KIND, entry.kind);
+                fillIn.putExtra(MainActivity.EXTRA_DRIVE_OWNER, entry.owner);
+            } else {
+                fillIn.putExtra(MainActivity.EXTRA_WORKSPACE_ITEM_ID, entry.id);
+                fillIn.putExtra(MainActivity.EXTRA_WORKSPACE_ITEM_KIND, entry.kind);
+            }
             views.setOnClickFillInIntent(R.id.workspace_item_root, fillIn);
             return views;
         }

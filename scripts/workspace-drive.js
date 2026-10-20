@@ -63,6 +63,7 @@
   window.addEventListener('estudiemos:drive-resume',() => refreshOnReturn(true));
   window.addEventListener('estudiemos:account-change',() => { if(account?.getUser()?.id !== owner) initialize(); });
   window.addEventListener('estudiemos-android-ready',render);
+  window.addEventListener('estudiemos-android-widget-account-ready',publishNativeWidget);
   initialize();
 
   function message(text='',error=false) {status.textContent=text;status.dataset.type=error?'error':'success';}
@@ -91,6 +92,7 @@
       if (connectAfterLogin) {connectAfterLogin=false;return connect(browseEnabled);}
       const result=await api('status','GET');if(!currentUser(id,version))return;
       connected=result.connected===true;
+      if(!connected)publishNativeWidget(false);
       if(connected)await load();else renderDisconnected();
       if (signal==='cancelled')message('No se conect\u00f3 Drive. Pod\u00e9s hacerlo m\u00e1s adelante.');
       if (signal==='error')message('Google no complet\u00f3 la conexi\u00f3n. Volv\u00e9 a intentar.',true);
@@ -128,16 +130,16 @@
     if(busy)return;busy=true;lastLoad=Date.now();const id=owner,version=epoch;
     if(!fs)show('Abriendo tu espacio...','');section.setAttribute('aria-busy','true');message('');
     try {
-      const result=await api('status','GET');if(!result.connected){connected=false;token='';expiresAt=0;fs=null;items=[];body.replaceChildren();return renderDisconnected();}
+      const result=await api('status','GET');if(!result.connected){publishNativeWidget(false);connected=false;token='';expiresAt=0;fs=null;items=[];body.replaceChildren();return renderDisconnected();}
       if(!fs || fs.browse !== (result.browse===true)){token='';expiresAt=0;const candidate=new rules.DriveFiles({userId:id,getToken:access,isCurrent:()=>currentUser(id,version),browse:result.browse===true});await candidate.initialize();if(!currentUser(id,version))return;fs=candidate;current=fs.browse?'root':fs.rootId;crumbs=[{id:current,name:fs.browse?'Mi unidad':'Mi espacio',writable:!fs.browse}];}
       items=await fs.list(current,query);if(!currentUser(id,version))return;
-      connected=true;render();
-    }catch(error){if(currentUser(id,version)){if(error.code==='DRIVE_CONNECT_REQUIRED'){connected=false;token='';fs=null;renderDisconnected();}else {if(error.status===404)fs=null;show('No pudimos abrir tu Drive','Tus archivos no se modificaron.','<button class="workspace-btn" data-drive-retry>Reintentar</button>');}message(error.message,true);}}
+      connected=true;busy=false;render();
+    }catch(error){if(currentUser(id,version)){if(error.code==='DRIVE_CONNECT_REQUIRED'){publishNativeWidget(false);connected=false;token='';fs=null;renderDisconnected();}else {if(error.status===404)fs=null;show('No pudimos abrir tu Drive','Tus archivos no se modificaron.','<button class="workspace-btn" data-drive-retry>Reintentar</button>');}message(error.message,true);}}
     finally{if(currentUser(id,version)){busy=false;section.removeAttribute('aria-busy');}}
   }
   async function loadFiles() {
     if(!fs||!connected||busy)return;busy=true;const id=owner,version=epoch;
-    try{const result=await fs.list(current,query);if(!currentUser(id,version))return;items=result;render();}
+    try{const result=await fs.list(current,query);if(!currentUser(id,version))return;items=result;busy=false;render();}
     catch(error){if(currentUser(id,version))message(error.message,true);}finally{if(currentUser(id,version))busy=false;}
   }
   function render() {
@@ -157,6 +159,14 @@
     body.innerHTML=visible.map(item=>`<article class="workspace-item"><button class="workspace-item__open" type="button" data-workspace-open="${escape(item.id)}" aria-label="Abrir ${escape(item.name)}"><span class="workspace-item__icon">${icon(item.mimeType===rules.FOLDER?'folder':'file')}</span><span class="workspace-item__copy"><span class="workspace-item__name" title="${escape(item.name)}">${escape(item.name)}</span><span class="workspace-item__meta">${item.mimeType===rules.FOLDER?'Carpeta':size(item.size)}${!fs.owned(item)?' · Solo lectura':''}</span></span></button>${fs.owned(item)&&item.id!==fs.rootId?`<button class="workspace-item__menu" data-workspace-menu="${escape(item.id)}" type="button" aria-label="Opciones de ${escape(item.name)}" title="Opciones">${icon('more')}</button>`:''}</article>`).join('')+(writable?`<button class="workspace-add-tile" data-workspace-add type="button">${icon('plus')}<span>${query?'Agregar archivo':'Agregar'}<small>Carpeta o archivo</small></span></button>`:'');
     if(!visible.length&&!writable)body.innerHTML='<p class="drive-empty">'+(query?'No encontramos archivos con ese nombre.':'Esta carpeta est\u00e1 vac\u00eda.')+'</p>';
     if(query&&!visible.length)message('No encontramos archivos con ese nombre.');
+    publishNativeWidget();
+  }
+  function publishNativeWidget(available=connected) {
+    if(available!==false)available=connected;
+    if(!window.EstudiemosAndroidDriveWidget||!window.EstudiemosAndroid?.postMessage||!owner||account?.getUser()?.id!==owner)return;
+    if(available&&(busy||!fs||query||![fs.rootId,'root'].includes(current)))return;
+    const payload=window.EstudiemosDriveWidget?.snapshot(owner,available,items,current==='root'?'unit':'space');
+    if(payload)window.EstudiemosAndroid.postMessage(JSON.stringify(payload));
   }
   function navigate(id) {const index=crumbs.findIndex(part=>part.id===id);if(index<0)return;current=id;crumbs=crumbs.slice(0,index+1);query='';$('[data-workspace-search]').value='';loadFiles();}
   function modal(title,content) {
@@ -201,6 +211,6 @@
   }
   function connectionSettings() {
     const d=modal('Tu Google Drive',`<p>${escape(fs?.about?.user?.emailAddress||'Cuenta conectada')}</p><p>Desconectar no elimina tus carpetas ni archivos. La conexi\u00f3n se quitar\u00e1 de tu cuenta de Estudiemos en todos tus dispositivos.</p><footer><button type="button" data-drive-close>Volver</button><button type="button" data-drive-disconnect>Desconectar Drive</button></footer>`);
-    d.querySelector('[data-drive-disconnect]').onclick=async()=>{if(busy)return;busy=true;try{await api('disconnect');clear();busy=false;renderDisconnected();message('Drive desconectado. Tus archivos siguen en Google Drive.');}catch(error){busy=false;d.querySelector('[data-drive-dialog-status]').textContent=error.message;}};
+    d.querySelector('[data-drive-disconnect]').onclick=async()=>{if(busy)return;busy=true;try{await api('disconnect');publishNativeWidget(false);clear();busy=false;renderDisconnected();message('Drive desconectado. Tus archivos siguen en Google Drive.');}catch(error){busy=false;d.querySelector('[data-drive-dialog-status]').textContent=error.message;}};
   }
 })();

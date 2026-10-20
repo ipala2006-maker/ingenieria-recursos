@@ -25,11 +25,14 @@
       button.toggleAttribute('data-release-unavailable', !window.EstudiemosRelease.enabled('ai'));
     });
     document.querySelectorAll(workspaceSelector).forEach(button => {
-      const native = button.matches('[data-account-widget],[data-account-desktop-widget]');
-      button.toggleAttribute('data-release-unavailable', !window.EstudiemosRelease.enabled(native ? 'workspace' : 'driveWorkspace'));
+      const desktop = button.matches('[data-account-desktop-widget]');
+      const android = button.matches('[data-account-widget]');
+      const enabled=window.EstudiemosRelease.enabled(desktop?'workspace':'driveWorkspace')&&(!android||window.EstudiemosAndroidDriveWidget===true);
+      button.toggleAttribute('data-release-unavailable', !enabled);
     });
   }
   decorate();
+  window.addEventListener('estudiemos-android-ready',decorate);
   document.querySelector('script[data-release-config]')?.addEventListener('load', decorate);
   new MutationObserver(decorate).observe(document.body, { childList: true, subtree: true });
   document.addEventListener('click', event => {
