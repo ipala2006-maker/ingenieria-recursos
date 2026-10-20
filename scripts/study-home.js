@@ -14,7 +14,6 @@ if (home) {
     form.append(badge, description);
     home.querySelectorAll('[data-home-prompt]').forEach(button => { button.hidden = true; });
   }
-  if (!window.EstudiemosRelease?.enabled('driveWorkspace')) home.querySelector('[data-home-shortcut="space"] small').textContent = 'Próximamente';
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const host = home.querySelector('[data-home-depth]');
   const chart = home.querySelector('[data-home-chart]');
@@ -257,12 +256,6 @@ if (home) {
     cloneIcon('[data-agenda-open]', '[data-home-node="calendar"]');
     cloneIcon('[data-workspace-new-folder]', '[data-home-node="space"]');
   }
-  function organizationSummary() {
-    let agenda = [];
-    try { const value = JSON.parse(localStorage.getItem('bandeja_agenda') || '[]'); if (Array.isArray(value)) agenda = value; } catch (_) {}
-    const pending = agenda.filter(item => !item.done && !['clase','class','rutina'].includes(String(item.type || '').toLowerCase()));
-    write('[data-home-pending]', `${pending.length} ${pending.length === 1 ? 'pendiente' : 'pendientes'}`);
-  }
   function openAssistant(instruction = '') {
     window.dispatchEvent(new CustomEvent('estudiemos:open-general-ai', { detail:{ instruction } }));
   }
@@ -326,8 +319,8 @@ if (home) {
     if(step) { period = Math.max(-120,Math.min(0,period+Number(step.dataset.homePeriodStep))); update(); }
     const prompt = event.target.closest('[data-home-prompt]');
     if (prompt) openAssistant(prompt.dataset.homePrompt);
-    const shortcut = event.target.closest('[data-home-shortcut], [data-home-destination]');
-    if (shortcut) window.dispatchEvent(new CustomEvent('estudiemos:home-navigate', { detail:{ view:shortcut.dataset.homeShortcut || shortcut.dataset.homeDestination } }));
+    const destination = event.target.closest('[data-home-destination]');
+    if (destination) window.dispatchEvent(new CustomEvent('estudiemos:home-navigate', { detail:{ view:destination.dataset.homeDestination } }));
   });
   home.addEventListener('change', event => {
     const target = event.target;
@@ -348,7 +341,6 @@ if (home) {
     openAssistant(home.querySelector('#homeAiPrompt').value.trim());
   });
   for (const name of ['estudiemos:study-ready','estudiemos:study-update','estudiemos:cloud-restored']) window.addEventListener(name, update);
-  for (const name of ['storage','estudiemos:data-change','estudiemos:cloud-restored']) window.addEventListener(name, organizationSummary);
   window.addEventListener('estudiemos:home-view', () => { organizerDepth?.setVisible(!home.hidden&&!sessionDialog.open);prepareDepth(); update(); });
   document.addEventListener('visibilitychange', () => { if (document.hidden) endHold(); else { prepareDepth(); update(); } });
   reduced.addEventListener('change', () => {
@@ -362,7 +354,6 @@ if (home) {
   });
   window.addEventListener('pagehide', () => { endHold();depth?.dispose(); depth = null; progressDepth?.dispose(); progressDepth=null;organizerDepth?.dispose();organizerDepth=null; generation++; depthPending = false; });
   window.addEventListener('pageshow', () => { prepareDepth(); update(); });
-  organizationSummary();
   update();
   prepareDepth();
 }

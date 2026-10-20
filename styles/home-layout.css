@@ -64,9 +64,21 @@
   .workspace-home.home-resizable .study-tool-head { flex:0 0 32px;min-height:32px;margin-bottom:6px; }
   .workspace-home.home-resizable .study-tool-head h2 { font-size:15px; }
   .workspace-home.home-resizable .study-tool-head .study-icon { min-height:36px;min-width:36px; }
-  .workspace-home.home-resizable .study-home__shortcuts:not(.home-space-disabled) { display:grid;margin-top:12px;min-height:64px; }
-  .workspace-home.home-resizable .product-home-navigation:not([hidden]) { flex:0 0 50px;background:var(--bg); }
-  .workspace-home.home-resizable .product-home-navigation button { min-height:46px;font-size:12px; }
+  .workspace-home.home-resizable .product-home-navigation:not([hidden]) {
+    display:grid;grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);
+    flex:0 0 auto;min-height:60px;gap:6px;padding:6px 0;border-top:1px solid var(--border);background:var(--bg);
+  }
+  .workspace-home.home-resizable .product-home-navigation button {
+    display:block;min-width:0;min-height:48px;padding:8px 4px;border:1px solid transparent;border-radius:6px;
+    background:transparent;color:var(--muted);font-size:12px;line-height:1.2;white-space:nowrap;
+    touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:background .15s,color .15s;
+  }
+  .workspace-home.home-resizable .product-home-navigation button[hidden] { display:none; }
+  .workspace-home.home-resizable .product-home-navigation button[aria-selected=true] {
+    background:var(--panel-2);color:var(--text);border-color:var(--border);box-shadow:none;
+  }
+  .workspace-home.home-resizable .product-home-navigation button:active { background:color-mix(in srgb,var(--accent) 16%,var(--panel)); }
+  .workspace-home.home-resizable .product-home-navigation button:focus-visible { outline:2px solid var(--accent);outline-offset:-3px; }
   .workspace-home.home-resizable .home-layout { min-height:0; }
   .workspace-home.home-resizable .workspace-section,.workspace-home.home-resizable .dashboard-widget { height:100%;padding:14px; }
   .workspace-home.home-resizable .workspace-toolbar input,.workspace-home.home-resizable .workspace-toolbar select { font-size:16px; }
