@@ -3,7 +3,7 @@
   if(!dialog||!trigger||!page||!board)return;
   const layoutStorage=window.EstudiemosHomeLayout,KEY=layoutStorage.key,spaces=[['focus','Pomodoro',240],['progress','Tu progreso',300],['assistant','Organizador IA',260],['shortcuts','Accesos rápidos',64],['workspace','Mi espacio',280],['calendar','Calendario',340],['inbox','Inbox',280]];
   const mobile=matchMedia('(max-width:700px), (min-width:701px) and (max-width:900px) and (max-height:899px)');
-  const available=key=>window.EstudiemosRelease?.homeSpaceEnabled?.(key) ?? (key==='assistant'?window.EstudiemosRelease?.enabled('ai')===true:key==='workspace'?window.EstudiemosRelease?.enabled('driveWorkspace')===true:true);
+  const available=key=>key!=='shortcuts'&&(window.EstudiemosRelease?.homeSpaceEnabled?.(key) ?? (key==='assistant'?window.EstudiemosRelease?.enabled('ai')===true:key==='workspace'?window.EstudiemosRelease?.enabled('driveWorkspace')===true:true));
   const effectiveVisibility=visible=>Object.fromEntries(spaces.map(([key])=>[key,available(key)&&visible[key]!==false]));
   const reduced=matchMedia('(prefers-reduced-motion:reduce)'),nodes=new Map(spaces.map(([key])=>[key,document.querySelector(`[data-home-space="${key}"]`)])),list=dialog.querySelector('[data-home-customizer-spaces]');
   let editing=false,gesture=null,frame=0,lastLayout=null,undoValue=null,armed=null;

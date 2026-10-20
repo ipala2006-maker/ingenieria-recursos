@@ -22,6 +22,7 @@
   const views = [...(overview ? [['overview','Inicio',overview]] : []), ['space','Mi espacio',workspace],['calendar','Calendario',calendar],['inbox','Inbox',inbox]];
   const panelLabels = new Map(views.map(([, , panel]) => [panel, panel.getAttribute('aria-labelledby')]));
   let current = views.some(([key]) => key === history.state?.homeView) ? history.state.homeView : views[0][0];
+  let navigationAnimation = null;
   const isVisible = key => {
     if (key === 'overview') return true;
     const mapped = key === 'space' ? 'workspace' : key;
@@ -66,24 +67,33 @@
     }
     window.dispatchEvent(new CustomEvent('estudiemos:home-view', { detail: { view: current, mobile: mobile.matches } }));
   };
+  function activate(key, replace = false) {
+    const view = views.find(([name]) => name === key);
+    if (!view || !isVisible(key)) return false;
+    if (current === key) return true;
+    navigationAnimation?.cancel();
+    navigationAnimation = null;
+    current = key;
+    const nextState={...(history.state || {}),homeView:current};
+    if(nextState.estudiemosUi==='home-session')delete nextState.estudiemosUi;
+    history[replace ? 'replaceState' : 'pushState'](nextState, '', location.href);
+    render();
+    if (mobile.matches && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      navigationAnimation = view[2].animate([{opacity:.65},{opacity:1}], {duration:140,easing:'ease-out'});
+    }
+    return true;
+  }
   window.addEventListener('estudiemos:home-navigate', event => {
     const view = views.find(([key]) => key === event.detail?.view);
     if (!view || !isVisible(view[0])) return;
-    if (mobile.matches) nav.querySelector(`[data-home-view="${view[0]}"]`).click();
+    if (mobile.matches) activate(view[0]);
     else view[2].scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block:'nearest' });
     view[2].setAttribute('tabindex','-1');
     view[2].focus({ preventScroll:true });
   });
   nav.addEventListener('click', event => {
     const button = event.target.closest('[data-home-view]');
-    if (!button || !isVisible(button.dataset.homeView)) return;
-    if (current === button.dataset.homeView) return;
-    current = button.dataset.homeView;
-    const nextState={...(history.state || {}),homeView:current};
-    if(nextState.estudiemosUi==='home-session')delete nextState.estudiemosUi;
-    history.pushState(nextState, '', location.href);
-    render();
-    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) views.find(([key]) => key === current)?.[2].animate([{opacity:.3,transform:'translateY(6px)'},{opacity:1,transform:'none'}], {duration:220,easing:'ease-out'});
+    if (button) activate(button.dataset.homeView);
   });
   nav.addEventListener('keydown', event => {
     const direction = {ArrowLeft:-1,ArrowRight:1}[event.key];
@@ -91,11 +101,7 @@
     event.preventDefault();
     const visibleViews = views.filter(([key]) => isVisible(key));
     const index = visibleViews.findIndex(([key]) => key === current);
-    current = visibleViews[event.key === 'Home' ? 0 : event.key === 'End' ? visibleViews.length - 1 : (index + direction + visibleViews.length) % visibleViews.length][0];
-    const nextState={...(history.state || {}),homeView:current};
-    if(nextState.estudiemosUi==='home-session')delete nextState.estudiemosUi;
-    history.replaceState(nextState, '', location.href);
-    render();
+    activate(visibleViews[event.key === 'Home' ? 0 : event.key === 'End' ? visibleViews.length - 1 : (index + direction + visibleViews.length) % visibleViews.length][0], true);
     nav.querySelector(`[data-home-view="${current}"]`).focus();
   });
   mobile.addEventListener('change', render);
@@ -105,6 +111,8 @@
   });
   window.addEventListener('estudiemos:cloud-restored', render);
   window.addEventListener('popstate', event => {
+    navigationAnimation?.cancel();
+    navigationAnimation = null;
     current = views.some(([key]) => key === event.state?.homeView) ? event.state.homeView : views[0][0];
     render();
   });

@@ -228,7 +228,7 @@
   function loadProductInterface() {
     if (document.querySelector('script[src*="scripts/product-ui.js"]')) return;
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/product-ui.js?v=20261019-drive-home`;
+    script.src = `${rootPath}scripts/product-ui.js?v=20261020-mobile-nav`;
     document.head.appendChild(script);
   }
 
