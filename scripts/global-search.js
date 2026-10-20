@@ -324,7 +324,7 @@
     if (document.querySelector('script[src*="scripts/pomodoro.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/pomodoro.js?v=20261020-day`;
+    script.src = `${rootPath}scripts/pomodoro.js?v=20261020-notification-status`;
     script.defer = true;
     document.head.appendChild(script);
   }

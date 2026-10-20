@@ -60,6 +60,7 @@
   let goalAutomatic = false;
   let goalUserId = window.EstudiemosAccount?.getUser()?.id || 'guest';
   let androidNotificationPermission = "unknown";
+  let androidAlertPermission = "unknown";
   let focusDepth = null;
   let timerDial = null;
   let timerDialPreview = null;
@@ -525,8 +526,13 @@
     window.addEventListener("estudiemos-android-notification-status", (event) => {
       androidNotificationPermission = event.detail?.permission || "unknown";
       renderDeviceAlerts();
-      renderNotificationAlert();
+      updateAndroidNotificationAlert(androidNotificationPermission);
     });
+    window.addEventListener("estudiemos-android-inbox-status", event => {
+      updateAndroidNotificationAlert(event.detail?.permission);
+    });
+    window.addEventListener("estudiemos:mobile-notifications", renderNotificationAlert);
+    window.addEventListener("pageshow", refreshDeviceNotificationStatus);
     window.addEventListener("estudiemos:cloud-restored", () => {
       streakState = loadStreakState();
       clearCompletedStreakReminders();
@@ -553,7 +559,7 @@
       resumeActiveAlarm();
       render();
       syncWakeLock();
-      renderNotificationAlert();
+      refreshDeviceNotificationStatus();
       maybeShowStreakReminder();
     });
     window.addEventListener("pagehide", () => {
@@ -564,7 +570,7 @@
     });
     window.addEventListener("focus", () => {
       resumeActiveAlarm();
-      renderNotificationAlert();
+      refreshDeviceNotificationStatus();
       maybeShowStreakReminder();
     });
     document.addEventListener("estudiemos:navigation", () => {
@@ -2005,7 +2011,20 @@
     if (!window.EstudiemosAndroid || typeof window.EstudiemosAndroid.postMessage !== "function") return;
     try {
       window.EstudiemosAndroid.postMessage(JSON.stringify({ type: "pomodoro-notification-status" }));
+      window.EstudiemosAndroid.postMessage(JSON.stringify({ type: "inbox-notifications-status" }));
     } catch (error) {}
+  }
+
+  function updateAndroidNotificationAlert(permission) {
+    // Either native feature can confirm the shared system permission; "default" only means that feature is off.
+    if (permission === "granted" || permission === "denied") androidAlertPermission = permission;
+    renderNotificationAlert();
+  }
+
+  function refreshDeviceNotificationStatus() {
+    requestAndroidNotificationStatus();
+    renderDeviceAlerts();
+    renderNotificationAlert();
   }
 
   function currentNotificationPermission() {
@@ -2019,7 +2038,8 @@
   function renderNotificationAlert() {
     const button = document.querySelector("[data-streak-notification-enable]");
     if (!button) return;
-    const permission = currentNotificationPermission();
+    const nativeAndroid = Boolean(window.EstudiemosAndroid && typeof window.EstudiemosAndroid.postMessage === "function");
+    const permission = nativeAndroid ? androidAlertPermission : currentNotificationPermission();
     button.hidden = permission === "granted";
     button.dataset.permission = permission;
     button.title = permission === "denied"
@@ -2027,6 +2047,7 @@
       : permission === "unsupported"
         ? "Instalá Estudiemos para activar recordatorios."
         : "Activar recordatorios de estudio";
+    button.setAttribute("aria-label", button.title);
   }
 
   function renderDeviceAlerts() {
