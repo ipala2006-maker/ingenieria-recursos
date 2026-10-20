@@ -70,6 +70,7 @@
 }
 
 .workspace-btn svg,
+.workspace-tool-icon svg,
 .workspace-toolbar svg,
 .workspace-item svg,
 .workspace-modal svg{
@@ -261,6 +262,10 @@
   background:var(--workspace-surface-soft);
   color:var(--accent);
 }
+
+.workspace-tool-icon:disabled{ opacity:.4; cursor:not-allowed; }
+.workspace-tool-icon:disabled:hover{ background:transparent; color:var(--muted); }
+.workspace-tool-icon:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
 
 .workspace-tool-icon--ai svg{
   fill:currentColor;

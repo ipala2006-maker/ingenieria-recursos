@@ -1,4 +1,14 @@
-.workspace-section:has(.drive-connection) { min-width:0; }
+.workspace-section:has(.drive-connection) { min-width:0;container:drive-space / inline-size; }
+.workspace-home .workspace-section__head .workspace-section__intro { flex:1;min-width:0; }
+.workspace-library-title { color:inherit;text-decoration:none;border-radius:4px; }
+.workspace-library-title:hover { color:var(--accent); }
+.workspace-library-title:focus-visible { outline:2px solid var(--accent);outline-offset:4px; }
+.workspace-home:not(.drive-library-page) .drive-connection { padding:10px 0;gap:8px; }
+.workspace-home:not(.drive-library-page) .drive-locations { padding:8px 0; }
+.workspace-home:not(.drive-library-page) .workspace-breadcrumbs:has(> button:only-child) { display:none; }
+.workspace-home:not(.drive-library-page) .workspace-section:has(.drive-connection) .workspace-items { padding:12px 0; }
+.workspace-section:has(.drive-connection) :is(.workspace-search,.workspace-sort select,.workspace-view-toggle) { box-sizing:border-box;min-height:40px; }
+.workspace-section:has(.drive-connection) .workspace-toolbar .workspace-view-toggle { align-items:center; }
 .workspace-section:has(.drive-connection) [hidden] { display:none!important; }
 .workspace-section:has(.drive-connection) .workspace-browser { min-height:0; flex:1; }
 .workspace-section:has(.drive-connection) .workspace-state { padding:24px 18px; min-height:0; margin:auto; }
@@ -24,11 +34,37 @@
 .drive-locations[hidden] { display:none; }
 .drive-locations button { min-height:36px;padding:6px 12px;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--muted);font:inherit;font-size:12px;cursor:pointer; }
 .drive-locations button[aria-pressed="true"] { border-color:var(--border);background:var(--panel-2);color:var(--text); }
+.drive-locations button:focus-visible { outline:2px solid var(--accent);outline-offset:2px; }
 .drive-locations span { margin-left:auto;font-size:11px;color:var(--muted); }
 .drive-browse { min-height:36px;padding:6px 10px;font-size:12px; }
 .workspace-section[aria-busy="true"] [data-drive-refresh] { opacity:.5; }
 .drive-empty { grid-column:1/-1;padding:16px 0;color:var(--muted);font-size:13px; }
 @media(max-width:480px) { .drive-connection { flex-wrap:wrap;gap:8px; }.drive-browse { order:4;width:100%; }.drive-locations { padding:8px 12px; } }
+@container drive-space (max-width:680px) {
+  .workspace-section:has(.drive-connection) .workspace-toolbar { flex-direction:column;align-items:stretch;gap:8px; }
+  .workspace-section:has(.drive-connection) .workspace-toolbar__controls { display:grid;grid-template-columns:minmax(0,1fr) 116px 76px;gap:8px;width:100%; }
+  .workspace-section:has(.drive-connection) .workspace-search { width:100%;min-width:0; }
+  .workspace-section:has(.drive-connection) .workspace-sort { min-width:0;max-width:none; }
+  .workspace-section:has(.drive-connection) .workspace-sort select { width:100%;font-size:12px;padding-inline:10px 30px; }
+  .workspace-section:has(.drive-connection) .workspace-view-toggle { width:76px;justify-self:end; }
+  .workspace-section:has(.drive-connection) .workspace-view-toggle button { flex:1;min-width:0; }
+}
+@container drive-space (max-width:420px) {
+  .workspace-section:has(.drive-connection) .workspace-toolbar__controls { grid-template-columns:minmax(0,1fr) auto; }
+  .workspace-section:has(.drive-connection) .workspace-search { grid-column:1/-1; }
+}
+@media(pointer:coarse) {
+  .drive-connection .workspace-tool-icon,.drive-locations button { min-height:44px; }
+  .drive-connection .workspace-tool-icon { width:44px; }
+  .workspace-section:has(.drive-connection) .workspace-view-toggle { width:96px;min-height:52px; }
+  .workspace-section:has(.drive-connection) .workspace-view-toggle button { min-width:44px;min-height:44px; }
+  @container drive-space (max-width:680px) {
+    .workspace-section:has(.drive-connection) .workspace-toolbar__controls { grid-template-columns:minmax(0,1fr) 116px 96px; }
+  }
+  @container drive-space (max-width:420px) {
+    .workspace-section:has(.drive-connection) .workspace-toolbar__controls { grid-template-columns:minmax(0,1fr) auto; }
+  }
+}
 .workspace-section:has(.drive-connection) .workspace-items { align-content:start; grid-template-columns:repeat(auto-fill,minmax(min(180px,100%),1fr)); gap:10px; padding:18px; }
 .workspace-section:has(.drive-connection) .workspace-items.is-list { grid-template-columns:1fr; }
 .workspace-section:has(.drive-connection) .workspace-item { min-height:90px; border-radius:7px; box-shadow:none; }

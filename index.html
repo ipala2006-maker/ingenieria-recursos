@@ -27,15 +27,15 @@
     <link rel="stylesheet" href="./styles/release.css?v=20261007-hidden-tools" />
     <script src="./scripts/theme-init.js?v=20260826-workspace-widget"></script>
     <link rel="stylesheet" href="./styles/app.css?v=20260906-referrals" />
-    <link rel="stylesheet" href="./styles/workspace.css?v=20260906-referrals-2" />
-    <link rel="stylesheet" href="./styles/workspace-drive.css?v=20261019-unit" />
+    <link rel="stylesheet" href="./styles/workspace.css?v=20261020-controls" />
+    <link rel="stylesheet" href="./styles/workspace-drive.css?v=20261020-controls" />
     <link rel="stylesheet" href="./styles/dashboard.css?v=20260831-ai-chat" />
     <link rel="stylesheet" href="./styles/product-ui.css?v=20260908-brand-blue" />
-    <link rel="stylesheet" href="./styles/study-home.css?v=20261007-focus-controls" />
+    <link rel="stylesheet" href="./styles/study-home.css?v=20261020-controls" />
     <link rel="stylesheet" href="./styles/interaction.css?v=20260913-phase" />
     <link rel="stylesheet" href="./styles/study-depth.css?v=20261007-flat-controls" />
     <link rel="stylesheet" href="./styles/home-console.css?v=20260914-custom-2" />
-    <link rel="stylesheet" href="./styles/home-layout.css?v=20261007-focus-fit" />
+    <link rel="stylesheet" href="./styles/home-layout.css?v=20261020-controls" />
     <link rel="stylesheet" href="./styles/study-chart.css?v=20261003-refined" />
     <link rel="stylesheet" href="./styles/calendar-month.css?v=20261007-compact-events" />
   </head>
@@ -63,7 +63,7 @@
         </header>
         <div class="study-home__tools">
           <section class="study-focus" aria-labelledby="homeFocusTitle" data-home-space="focus">
-            <header class="study-tool-head"><h2 id="homeFocusTitle">Pomodoro</h2><button type="button" class="study-icon" data-home-open="pomodoro" aria-label="Abrir temporizador Pomodoro" title="Abrir Pomodoro">↗</button></header>
+            <header class="study-tool-head"><h2 id="homeFocusTitle">Pomodoro</h2><button type="button" class="study-icon" data-home-open="pomodoro" aria-label="Abrir temporizador Pomodoro" title="Abrir Pomodoro"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button></header>
             <div class="study-focus__body">
               <div class="study-focus__stage" data-home-depth>
                 <div class="study-focus__fallback" aria-hidden="true"></div>
@@ -94,7 +94,7 @@
             </details>
           </section>
           <section class="study-progress" aria-labelledby="homeProgressTitle" data-home-space="progress">
-            <header class="study-tool-head"><h2 id="homeProgressTitle">Tu progreso</h2><div class="study-model-controls"><button class="study-icon" type="button" data-progress-reset aria-label="Restablecer vista del gráfico" title="Restablecer vista" hidden></button><button type="button" class="study-icon" data-home-open="streak" aria-label="Abrir estadísticas de la racha" title="Todas las estadísticas">↗</button></div></header>
+            <header class="study-tool-head"><h2 id="homeProgressTitle">Tu progreso</h2><div class="study-model-controls"><button class="study-icon" type="button" data-progress-reset aria-label="Restablecer vista del gráfico" title="Restablecer vista" hidden></button><button type="button" class="study-icon" data-home-open="streak" aria-label="Abrir estadísticas de la racha" title="Todas las estadísticas"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button></div></header>
             <div class="study-progress__numbers"><div><span>Hoy</span><strong data-home-today>0 h 0 min</strong></div><div><span>Últimos 7 días</span><strong data-home-week>0 h 0 min</strong></div></div>
             <div class="study-progress__period"><button type="button" data-home-period-step="-1" aria-label="Período de estudio anterior" title="Período anterior">‹</button><span data-home-period-label>Últimos 7 días</span><button type="button" data-home-period-step="1" aria-label="Período de estudio siguiente" title="Período siguiente">›</button><div role="group" aria-label="Período del progreso"><button type="button" data-home-range="week" aria-pressed="true">Semana</button><button type="button" data-home-range="month" aria-pressed="false">Mes</button></div></div>
             <div class="study-progress__axis"><span data-home-chart-scale>Tiempo de estudio</span></div>
@@ -124,7 +124,7 @@
           <header class="workspace-section__head">
             <div class="workspace-section__intro">
               <p class="workspace-eyebrow">Archivos personales</p>
-              <h2 id="workspaceSectionTitle">Mi espacio</h2>
+              <h2 id="workspaceSectionTitle"><a class="workspace-library-title" href="./mi-espacio.html" title="Abrir Mi espacio completo">Mi espacio</a></h2>
               <p>Tus apuntes, en tu Google Drive.</p>
             </div>
             <button class="workspace-plan-summary" type="button" data-workspace-plans aria-label="Ver planes y almacenamiento" hidden>
@@ -134,7 +134,6 @@
               </span>
               <span class="workspace-plan-summary__action">Ver planes</span>
             </button>
-            <a class="workspace-tool-icon" href="./mi-espacio.html" aria-label="Ampliar Mi espacio" title="Ampliar Mi espacio"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-8 8M4 14v6h6"/></svg></a>
             <button class="workspace-tool-icon workspace-console-add" type="button" data-workspace-add aria-label="Agregar carpeta o archivo" title="Agregar carpeta o archivo" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
           </header>
 
