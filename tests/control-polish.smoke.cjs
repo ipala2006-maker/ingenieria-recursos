@@ -1,6 +1,7 @@
 const {chromium,webkit}=require('../tmp/ui-check/node_modules/playwright');
 const assert=require('node:assert/strict'),http=require('node:http'),fs=require('node:fs'),path=require('node:path');
-const root=path.resolve(__dirname,'..'),output=path.join(root,'tmp/control-polish');
+const root=path.resolve(__dirname,'..'),live=process.env.TEST_BASE_URL,output=path.join(root,'tmp/control-polish',live?'live':'local');
+if(live)assert.equal(new URL(live).origin,'https://estudiemos-app.vercel.app');
 const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)').headers;
 const mime='application/vnd.google-apps.folder',owner='11111111-1111-4111-8111-111111111111',folder='pilot-app-folder';
 const types={'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.png':'image/png','.webp':'image/webp','.woff2':'font/woff2','.wav':'audio/wav','.webmanifest':'application/manifest+json'};
@@ -16,9 +17,11 @@ async function contained(child,parent){
     try{for(const {key,value} of headers)res.setHeader(key,key==='Content-Security-Policy'?value.replace(/;\s*upgrade-insecure-requests/,''):value);res.setHeader('Content-Type',types[path.extname(file)]);res.end(fs.readFileSync(file));}catch(_){res.writeHead(404).end();}
   });
   try{
-    await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const base='http://127.0.0.1:'+server.address().port;
+    if(!live)await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+    const base=live?new URL(live).origin:'http://127.0.0.1:'+server.address().port;
     const engine=process.env.TEST_WEBKIT==='1'?'webkit':'chrome';browser=engine==='webkit'?await webkit.launch():await chromium.launch({channel:'chrome'});
-    for(const [width,height,focusWidth,focusHeight,driveWidth] of [[1440,900,330,337,550],[1440,900,240,230,300],[1440,900,700,337,550],[768,1024,300,337,400],[390,844],[320,568]]){
+    const sizes=[[1440,900,330,337,550],[1440,900,240,230,300],[1440,900,700,337,550],[768,1024,300,337,400],[390,844],[320,568]];
+    for(const [width,height,focusWidth,focusHeight,driveWidth] of sizes.filter(size=>!process.env.TEST_WIDTH||size[0]===Number(process.env.TEST_WIDTH))){
       const context=await browser.newContext({viewport:{width,height},isMobile:width<500,hasTouch:width<500,timezoneId:'America/Argentina/Buenos_Aires',serviceWorkers:'block'});
       await context.addInitScript(owner=>{
         window.EstudiemosAccount={getUser:()=>({id:owner,email:'estudiante@example.test'}),getSession:()=>({access_token:'local-pilot'}),getClient:()=>null,whenReady:async()=>({session:{user:{id:owner}}}),isSynchronized:()=>true,open(){}};
@@ -76,6 +79,12 @@ async function contained(child,parent){
         assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
         if(width>=701)assert.ok(await page.evaluate(()=>document.documentElement.scrollHeight<=innerHeight+1),'desktop keeps its no-scroll board');
       }
+      // Windows WebKit also crashes on the baseline when navigating after Web Audio.
+      // Check navigation before media, then verify timer controls independently.
+      await space.locator('.workspace-library-title').click();await page.waitForURL('**/mi-espacio.html');
+      await page.locator('[data-workspace-open="'+folder+'"]').waitFor();
+      assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'full library navigation remains responsive');
+      await page.goBack();await page.locator('[data-home-timer]:enabled').waitFor({state:'attached'});
       if(width>=701){
         await page.locator('[data-home-customize]').click();
         const handle=focus.locator('[data-edge=s]'),r=await handle.boundingBox(),before=await focus.boundingBox();
@@ -93,10 +102,6 @@ async function contained(child,parent){
       assert.equal(await dialog.locator('.study-stepper button').first().evaluate(el=>getComputedStyle(el).boxShadow),'none');
       await dialog.locator('[data-home-session-close]').click();
       await dialog.waitFor({state:'hidden'});
-      if(width<500)await page.locator('[data-home-view=space]').click();
-      await space.locator('.workspace-library-title').click();await page.waitForURL('**/mi-espacio.html');
-      await page.locator('[data-workspace-open="'+folder+'"]').waitFor();
-      assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'full library navigation remains responsive');
       assert.deepEqual(errors,[]);console.log(`PASS ${engine} ${width}x${height} focus ${focusWidth||'mobile'}: aligned controls, responsive Drive, clean icons, both themes and actions`);
       await context.close();
     }
