@@ -81,6 +81,7 @@ for (const mode of modes) {
       window: { EstudiemosInboxAlarms: { readDate: () => mode.date, readForm: () => mode.alarm } },
       STORAGE_KEYS: { agenda: 'bandeja_agenda' }, MAX_AGENDA_ITEMS: 500,
       selectedAgendaDate: '2026-10-01', agendaFilter: 'day', readList: () => [],
+      cryptoRandomId: () => 'test',
       writeList: (key, value) => { assert.equal(key, 'bandeja_agenda'); saved = value; },
       updateAgendaSubmitState() {}, renderAgenda: () => { rendered++; }
     };

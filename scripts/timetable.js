@@ -146,7 +146,15 @@
         values[AGENDA_KEY]=[...notes.filter(item=>item.id!==agendaId),item];
         if(editingId)values[rules.KEY]=schedules.filter(item=>item.id!==editingId);
       }
-      commit(values); active=false;draft=false;
+      commit(values);
+      if (window.EstudiemosNoteEntry?.continuing(form)) {
+        editingId='';agendaId='';form.elements.title.value='';form.elements.place.value='';
+        form.querySelector('[data-timetable-title]').textContent='Nueva actividad';
+        form.querySelector('[data-timetable-delete]').hidden=true;
+        window.dispatchEvent(new CustomEvent('estudiemos:calendar-entry-added',{detail:{date:selected}}));
+        update();status.textContent='Actividad guardada.';form.elements.title.focus();return;
+      }
+      active=false;draft=false;
       window.dispatchEvent(new CustomEvent('estudiemos:calendar-edit-saved',{detail:{date:selected}}));
     } catch(error) {status.textContent=error.message||'No se pudo guardar. Intentá de nuevo.';}
   }
