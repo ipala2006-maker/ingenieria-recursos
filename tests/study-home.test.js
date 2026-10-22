@@ -61,7 +61,7 @@ test('home does not duplicate the timer or send AI requests itself', () => {
 function adjustableTimer() {
   let credited = 0;
   const context = {
-    MAX_MINUTES:59, Date:{now:()=>700000},
+    MAX_MINUTES:59, Date:{now:()=>700000},timerAccountId:'guest',sharedTimer:null,timerDeviceId:'fixture',
     window:{EstudiemosStudyCredit:credit},
     state:{remaining:1500,running:true,phase:'study',currentBlock:1,config:{blocks:4,study:25,break:5},studyCreditAt:100000,endAt:1600000,pendingStudySeconds:0,completedToday:0},
     reconcileTimer:()=>{}, stopAlarm:()=>{}, saveState:()=>{}, render:()=>{}, adoptTimerState:()=>false,
@@ -117,7 +117,7 @@ test('historical ranges stay detached, bounded and use real recorded days', () =
 function skippableTimer(overrides = {}) {
   let credited = 0, notified = 0, saved = 0, ticker = false;
   const context = {
-    Date:{now:()=>700000},
+    Date:{now:()=>700000},timerAccountId:'guest',sharedTimer:null,timerDeviceId:'fixture',
     window:{EstudiemosStudyCredit:credit}, todayKey:()=>credit.dateKey(700000),
     state:{running:true,phase:'study',currentBlock:2,config:{study:25,break:5,blocks:4},remaining:900,endAt:1600000,studyCreditAt:100000,pendingStudySeconds:0,completedToday:0,autoStart:true,...overrides},
     adoptTimerState:()=>false, stopAlarm:()=>{}, stopTicker:()=>{ticker=false;},

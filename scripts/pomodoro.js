@@ -8,6 +8,14 @@
 
   const SCRIPT_URL = document.currentScript?.src || new URL("scripts/pomodoro.js", location.href).href;
   const STORAGE_KEY = "estudiemos_pomodoro";
+  const timerSync = window.EstudiemosPomodoroSync;
+  let timerAccountId = window.EstudiemosAccount?.getUser()?.id || localStorage.getItem('estudiemos_cloud_user') || 'guest';
+  let timerDeviceId = localStorage.getItem('estudiemos_pomodoro_device');
+  if (!timerDeviceId) {
+    timerDeviceId = window.crypto?.randomUUID?.() || 'device_'+Math.random().toString(36).slice(2);
+    localStorage.setItem('estudiemos_pomodoro_device', timerDeviceId);
+  }
+  let sharedTimer = null;
   const STREAK_STORAGE_KEY = "estudiemos_pomodoro_streak";
   const MOBILE_FLOATING_KEY = "estudiemos_pomodoro_mobile_floating";
   const DEFAULT_CONFIG = { blocks: 4, study: 25, break: 5 };
@@ -22,6 +30,8 @@
   const MAX_MINUTES = 59;
   const MINUTE_VALUES = MAX_MINUTES + 1;
   let state = loadState();
+  const cachedSharedTimer = timerSync?.normalize(localStorage.getItem(timerSync.KEY));
+  if (cachedSharedTimer?.updatedAt === state.sharedUpdatedAt && cachedSharedTimer?.writer === state.sharedWriter) sharedTimer = cachedSharedTimer;
   let streakState = loadStreakState();
   let timerId = 0;
   let audioContext = null;
@@ -83,6 +93,7 @@
   addGoalDialog();
   bindEvents();
   registerDeviceSupport();
+  receiveSharedTimer();
   reconcileTimer(false);
   render();
   startTickerIfNeeded();
@@ -493,6 +504,7 @@
     window.addEventListener("pointercancel", stopDragging, { passive: true });
     window.addEventListener("estudiemos:theme-change", renderPipControls);
     window.addEventListener("storage", (event) => {
+      if (timerSync && event.key === timerSync.KEY) {receiveSharedTimer();return;}
       if (event.key !== STORAGE_KEY && event.key !== STREAK_STORAGE_KEY) return;
       if (event.key === STORAGE_KEY) {
         if (event.newValue === null && !readStoredTimer()) {
@@ -514,6 +526,7 @@
     });
     window.addEventListener("estudiemos:pomodoro-widget-action", () => {
       adoptTimerState();
+      publishSharedTimer();
     });
     window.addEventListener("estudiemos-android-pomodoro-state", (event) => {
       const incoming = event.detail;
@@ -522,6 +535,7 @@
         localStorage.setItem(STORAGE_KEY, JSON.stringify(incoming));
       } catch (_) {}
       adoptTimerState(incoming);
+      publishSharedTimer();
     });
     window.addEventListener("estudiemos-android-notification-status", (event) => {
       androidNotificationPermission = event.detail?.permission || "unknown";
@@ -535,13 +549,14 @@
     window.addEventListener("pageshow", refreshDeviceNotificationStatus);
     window.addEventListener("estudiemos:cloud-restored", () => {
       streakState = loadStreakState();
+      receiveSharedTimer();
       clearCompletedStreakReminders();
       if (goalAutomatic && goals.read(streakState).configured) document.querySelector('[data-study-goal-dialog]')?.close();
       render();
       syncStreakWithAndroid();
     });
     window.addEventListener('estudiemos:account-ready', event => { if (!event.detail?.user) maybeAskStudyGoal(); });
-    window.addEventListener('estudiemos:account-synced', maybeAskStudyGoal);
+    window.addEventListener('estudiemos:account-synced', () => {receiveSharedTimer();publishSharedTimer();maybeAskStudyGoal();});
     window.addEventListener('estudiemos:account-change', event => {
       const identity = event.detail?.user?.id || 'guest';
       if (identity === goalUserId) return;
@@ -1431,6 +1446,7 @@
   }
 
   function reconcileTimer(shouldNotify) {
+    if (timerAccountId !== 'guest' && !window.EstudiemosAccount?.isSynchronized?.()) return;
     normalizeDailyCount();
     if (!state.running) return;
 
@@ -1443,6 +1459,7 @@
     if (!state.running || timerId) return;
     timerId = window.setInterval(() => {
       if (adoptTimerState()) return;
+      if (timerAccountId !== 'guest' && !window.EstudiemosAccount?.isSynchronized?.()) {renderTimerOnly();return;}
       if (!state.running) { stopTicker(); return; }
       captureStudyProgress();
       if (state.pendingStudySeconds >= 60) {
@@ -2178,10 +2195,18 @@
   }
 
   function captureStudyProgress(now = Date.now()) {
+    const account = window.EstudiemosAccount;
+    if (timerAccountId !== 'guest' && !account?.isSynchronized?.()) return 0;
+    if (sharedTimer && sharedTimer.writer !== timerDeviceId) return 0;
     return window.EstudiemosStudyCredit.capture(state, now);
   }
 
-  function flushStudyCredit() {
+  function flushStudyCredit(allowHydrating = false) {
+    if (!allowHydrating && timerAccountId !== 'guest' && !window.EstudiemosAccount?.isSynchronized?.()) return;
+    if (sharedTimer && sharedTimer.writer !== timerDeviceId) {
+      window.EstudiemosStudyCredit.take(state);
+      return;
+    }
     for (const [date, seconds] of Object.entries(window.EstudiemosStudyCredit.take(state))) recordStudyPresenceSeconds(seconds, date);
   }
 
@@ -2986,7 +3011,9 @@
       studyCreditAt: Number(saved.studyCreditAt) || (saved.running && phase === "study" ? Number(saved.updatedAt) || Date.now() : 0),
       pendingStudySeconds: nonNegativeInteger(saved.pendingStudySeconds, 0),
       pendingStudyDays: saved.pendingStudyDays && typeof saved.pendingStudyDays === 'object' ? saved.pendingStudyDays : {},
-      updatedAt: Number(saved.updatedAt) || 0
+      updatedAt: Number(saved.updatedAt) || 0,
+      sharedUpdatedAt: Number(saved.sharedUpdatedAt) || 0,
+      sharedWriter: typeof saved.sharedWriter === 'string' ? saved.sharedWriter : ''
     };
   }
 
@@ -2998,6 +3025,56 @@
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch (error) {}
     syncPomodoroWithAndroid();
+    publishSharedTimer();
+  }
+
+  function receiveSharedTimer() {
+    if (!timerSync) return;
+    if (!window.EstudiemosAccount?.getUser() && localStorage.getItem('estudiemos_cloud_user')) return;
+    const identity = window.EstudiemosAccount?.getUser()?.id || 'guest';
+    if (identity !== timerAccountId) {
+      timerAccountId = identity;
+      sharedTimer = null;
+      state = loadState({});
+      stopAlarm();stopTicker();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+    const incoming = timerSync.normalize(localStorage.getItem(timerSync.KEY));
+    if (!incoming || timerSync.compare(incoming, sharedTimer) <= 0) {
+      render();syncPomodoroWithAndroid();return;
+    }
+    // Only the controlling device credits study; a remote view never replays pending minutes.
+    if (sharedTimer?.writer === timerDeviceId && incoming.previous?.updatedAt === sharedTimer.updatedAt
+        && incoming.previous?.writer === sharedTimer.writer) {
+      window.EstudiemosStudyCredit.capture(state, Math.min(Date.now(), incoming.updatedAt));
+      flushStudyCredit(true);
+    }
+    sharedTimer = incoming;
+    stopAlarm();stopTicker();
+    state = loadState({...state,...incoming,
+      remaining:incoming.running?Math.max(0,Math.ceil((incoming.endAt-Date.now())/1000)):incoming.remaining,
+      studyCreditAt:incoming.running&&incoming.phase==='study'&&incoming.writer===timerDeviceId?Math.max(Number(state.studyCreditAt)||0,incoming.updatedAt):0,
+      pendingStudySeconds:0,pendingStudyDays:{},
+      sharedUpdatedAt:incoming.updatedAt,sharedWriter:incoming.writer,
+      updatedAt:Math.max(Date.now(),Number(state.updatedAt||0)+1)
+    });
+    localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
+    render();startTickerIfNeeded();syncWakeLock();syncPomodoroWithAndroid();
+  }
+
+  function publishSharedTimer() {
+    if (!timerSync) return;
+    const account=window.EstudiemosAccount,user=account?.getUser();
+    if (!user || user.id!==timerAccountId || !account.isSynchronized()) return;
+    if (sharedTimer && timerSync.signature(state)===timerSync.signature(sharedTimer)) return;
+    const previous=sharedTimer?{updatedAt:sharedTimer.updatedAt,writer:sharedTimer.writer}:null;
+    sharedTimer={...timerSync.controls(state),updatedAt:Math.max(Date.now(),Number(sharedTimer?.updatedAt||0)+1),writer:timerDeviceId,previous};
+    state.sharedUpdatedAt=sharedTimer.updatedAt;
+    state.sharedWriter=sharedTimer.writer;
+    localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
+    localStorage.setItem(timerSync.KEY,JSON.stringify(sharedTimer));
+    syncPomodoroWithAndroid();
+    window.dispatchEvent(new CustomEvent('estudiemos:data-change',{detail:{key:timerSync.KEY}}));
   }
 
   function normalizeDailyCount() {

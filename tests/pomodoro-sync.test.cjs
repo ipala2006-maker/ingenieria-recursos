@@ -11,7 +11,7 @@ function timer() {
   const initial = {config:{blocks:4,study:25,break:5},phase:'study',remaining:1500,running:false,endAt:0,updatedAt:100};
   let stored = JSON.stringify(initial);
   const context = {
-    state:structuredClone(initial), STORAGE_KEY:'timer', DEFAULT_CONFIG:initial.config,
+    state:structuredClone(initial), STORAGE_KEY:'timer', DEFAULT_CONFIG:initial.config,timerSync:null,
     Date:{now:()=>now}, localStorage:{getItem:()=>stored,setItem:(_,value)=>{stored=value;writes++;}},
     positiveInteger:(value,fallback)=>Number(value)>0?Number(value):fallback,
     configInteger:(_,value,fallback)=>Number.isFinite(Number(value))?Number(value):fallback,
@@ -20,7 +20,7 @@ function timer() {
     volumeNumber:(value,fallback)=>value??fallback, todayKey:()=>'2026-09-12',
     render:()=>{}, reconcileTimer:()=>{}, syncWakeLock:()=>{},
     stopTicker:()=>{ticker=false;},startTickerIfNeeded:()=>{if(context.state.running)ticker=true;},
-    syncPomodoroWithAndroid:()=>{nativeMessages++;}
+    syncPomodoroWithAndroid:()=>{nativeMessages++;},publishSharedTimer:()=>{}
   };
   vm.runInNewContext(persistence, context);
   return {context, initial, setNow:value=>{now=value;}, remote:value=>{stored=JSON.stringify(value);}, stored:()=>JSON.parse(stored), writes:()=>writes, nativeMessages:()=>nativeMessages,ticker:()=>ticker};
