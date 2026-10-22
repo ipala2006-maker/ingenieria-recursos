@@ -5,6 +5,13 @@
   if (!topbar || document.querySelector(".global-search")) return;
 
   const rootPath = getRootPath();
+  if (!window.EstudiemosPomodoroSync) {
+    const sync = document.createElement('script');
+    sync.src = rootPath + 'shared/pomodoro-sync.js?v=20261021';
+    sync.onload = initialize;
+    document.head.appendChild(sync);
+    return;
+  }
   if (!window.EstudiemosStudyCredit) {
     const credit = document.createElement('script');
     credit.src = rootPath + 'shared/study-credit.js?v=20261020-day';
@@ -324,7 +331,7 @@
     if (document.querySelector('script[src*="scripts/pomodoro.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/pomodoro.js?v=20261020-notification-status`;
+    script.src = `${rootPath}scripts/pomodoro.js?v=20261021-device-sync`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -370,7 +377,7 @@
     if (document.querySelector('script[src*="scripts/account.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/account.js?v=20261020-update-recovery`;
+    script.src = `${rootPath}scripts/account.js?v=20261021-device-sync`;
     script.defer = true;
     document.head.appendChild(script);
   }

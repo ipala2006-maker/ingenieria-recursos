@@ -13,11 +13,12 @@
     "bandeja_horarios",
     "bandeja_calendario_papelera",
     "estudiemos_pomodoro_streak",
+    "estudiemos_pomodoro_sync",
     "estudiemos_workspace_changed",
     "estudiemos_android_devices",
     "estudiemos_theme"
   ];
-  const LIST_KEYS = new Set(SYNC_KEYS.filter((key) => !["estudiemos_theme", "estudiemos_pomodoro_streak", "estudiemos_workspace_changed"].includes(key)));
+  const LIST_KEYS = new Set(SYNC_KEYS.filter((key) => !["estudiemos_theme", "estudiemos_pomodoro_streak", "estudiemos_pomodoro_sync", "estudiemos_workspace_changed"].includes(key)));
   const PRIVATE_SYNC_KEYS = SYNC_KEYS.filter((key) => key !== "estudiemos_theme");
   const LINKED_USER_KEY = "estudiemos_cloud_user";
   const LOCAL_CHANGED_KEY = "estudiemos_cloud_local_changed";
@@ -293,7 +294,8 @@
       const key = event.detail?.key;
       if (applyingCloud || !SYNC_KEYS.includes(key)) return;
       markLocalChange(key);
-      scheduleSync();
+      if (key === "estudiemos_pomodoro_sync") synchronize("pomodoro");
+      else scheduleSync();
     });
 
     window.addEventListener("focus", scheduleRemoteRefresh);
@@ -797,7 +799,7 @@
         values[key] = raw || (key === "estudiemos_theme" ? "dark" : key === "estudiemos_workspace_changed" ? "0" : "{}");
       }
       // New private calendar lists must not inherit an unrelated change timestamp.
-      changedAt[key] = Number(savedChangedAt[key]) || (["bandeja_horarios", "bandeja_calendario_papelera"].includes(key) ? 0 : fallbackAt) || 0;
+      changedAt[key] = Number(savedChangedAt[key]) || (["bandeja_horarios", "bandeja_calendario_papelera", "estudiemos_pomodoro_sync"].includes(key) ? 0 : fallbackAt) || 0;
     });
     return { version: 2, values, changedAt };
   }
@@ -861,7 +863,7 @@
           ? source[key]
           : JSON.stringify(source[key] || {});
       }
-      empty.changedAt[key] = Math.max(0, Number(sourceChangedAt[key]) || Number(fallbackAt) || 0);
+      empty.changedAt[key] = Math.max(0, Number(sourceChangedAt[key]) || (key === "estudiemos_pomodoro_sync" ? 0 : Number(fallbackAt)) || 0);
     });
     return empty;
   }
@@ -879,6 +881,12 @@
     });
 
     const key = "estudiemos_pomodoro_streak";
+    const timerKey = "estudiemos_pomodoro_sync";
+    if (window.EstudiemosPomodoroSync) {
+      const timer = window.EstudiemosPomodoroSync.choose(local.values[timerKey], cloud.values[timerKey]);
+      merged.values[timerKey] = JSON.stringify(timer || {});
+      merged.changedAt[timerKey] = timer?.updatedAt || 0;
+    }
     const localStreak = parseObject(local.values[key]);
     const cloudStreak = parseObject(cloud.values[key]);
     const days = mergeNumericMap(localStreak.days, cloudStreak.days);
