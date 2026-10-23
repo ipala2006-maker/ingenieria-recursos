@@ -2,7 +2,7 @@
   if (window.EstudiemosTimetable || !window.EstudiemosTimetableRules) return;
   const rules = window.EstudiemosTimetableRules, AGENDA_KEY = 'bandeja_agenda';
   const style = document.createElement('link');
-  style.rel = 'stylesheet'; style.href = new URL('../styles/timetable.css?v=20261019-planner', document.currentScript.src); document.head.appendChild(style);
+  style.rel = 'stylesheet'; style.href = new URL('../styles/timetable.css?v=20261023-repeat', document.currentScript.src); document.head.appendChild(style);
   const days = [[1,'Lun','Lunes'],[2,'Mar','Martes'],[3,'Mié','Miércoles'],[4,'Jue','Jueves'],[5,'Vie','Viernes'],[6,'Sáb','Sábado'],[0,'Dom','Domingo']];
   const colors = ['Azul','Turquesa','Violeta','Rosa','Amarillo'];
   let panel, form, status, owner = identity(), editingId = '', agendaId = '', active = false, draft = false;
@@ -21,7 +21,9 @@
     panel.innerHTML = `<form data-timetable-form>
       <header class="calendar-planner__head"><h3 data-timetable-title>Nueva actividad</h3><button type="button" data-timetable-delete hidden aria-label="Eliminar actividad" title="Eliminar actividad"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></svg></button></header>
       <label>Actividad<input name="title" maxlength="90" required autocomplete="off" placeholder="Materia, tarea o evento"></label>
-      <div class="calendar-planner__row"><label>Repetir<select name="repeat"><option value="none">No repetir</option><option value="daily">Cada día</option><option value="weekly">Cada semana</option></select></label><label><span data-timetable-date-label>Fecha</span><input name="date" type="date" required></label></div>
+      <div class="calendar-planner__row calendar-planner__recurrence-row"><label>Repetir<select name="repeat"><option value="none">No repetir</option><option value="daily">Cada día</option><option value="weekly">Cada semana</option><option value="custom">Personalizar</option></select></label><label><span data-timetable-date-label>Fecha</span><input name="date" type="date" required></label></div>
+      <div class="calendar-planner__row" data-timetable-custom hidden><label>Cada<input name="interval" type="number" min="1" max="${rules.MAX_INTERVAL}" step="1" value="1" inputmode="numeric" disabled></label><label>Unidad<select name="unit" disabled><option value="days">Días</option><option value="weeks">Semanas</option><option value="months">Meses</option><option value="years">Años</option></select></label></div>
+      <p class="calendar-planner__status" data-timetable-repeat-summary aria-live="polite" hidden></p>
       <fieldset data-timetable-days hidden><legend>Días de la semana</legend><div class="timetable__days">${days.map(([day,label,name])=>`<label title="${name}"><input type="checkbox" name="day" value="${day}" aria-label="${name}"><span>${label}</span></label>`).join('')}</div></fieldset>
       <div data-timetable-period hidden><label class="calendar-planner__toggle"><input type="checkbox" name="limited">Hasta una fecha</label><label data-timetable-until hidden>Último día<input name="until" type="date"></label></div>
       <label class="calendar-planner__toggle" data-timetable-all-day><input type="checkbox" name="allDay">Todo el día</label>
@@ -37,6 +39,10 @@
     form = panel.querySelector('form'); status = form.querySelector('[data-timetable-status]');
     form.addEventListener('input', update); form.addEventListener('change', update);
     form.addEventListener('submit', save);
+    form.addEventListener('invalid', event=>{
+      const input=event.target;
+      status.textContent=['date','until'].includes(input.name) ? 'Elegí una fecha real y completa.' : input.name==='interval' ? 'Elegí un número entero entre 1 y '+rules.MAX_INTERVAL+'.' : input.validationMessage;
+    },true);
     form.addEventListener('click', event=>{
       const color = event.target.closest('[data-timetable-color]');
       if (color) { form.elements.color.value = color.dataset.timetableColor; update(); }
@@ -62,7 +68,8 @@
       if (item) {
         form.elements.title.value = item.title; form.elements.color.value = rules.COLORS.includes(item.color) ? item.color : 'blue';
         if (editingId) {
-          form.elements.repeat.value = item.days.length===7 ? 'daily' : 'weekly';
+          form.elements.repeat.value = item.recurrence ? 'custom' : item.days.length===7 ? 'daily' : 'weekly';
+          form.elements.interval.value = String(item.recurrence?.interval || 1); form.elements.unit.value = item.recurrence?.unit || 'days';
           form.elements.date.value = item.startDate || ''; form.elements.until.value = item.endDate || ''; form.elements.limited.checked = Boolean(item.endDate);
           form.elements.start.value = item.start; form.elements.end.value = item.end; form.elements.place.value = item.place || '';
           form.querySelectorAll('[name=day]').forEach(input=>{input.checked=item.days.includes(Number(input.value));});
@@ -80,11 +87,19 @@
   }
   function update() {
     status.textContent = '';
+    const custom = form.elements.repeat.value === 'custom';
     const repeat = form.elements.repeat.value !== 'none', allDay = !repeat && form.elements.allDay.checked;
-    form.querySelector('[data-timetable-days]').hidden = form.elements.repeat.value !== 'weekly';
+    form.querySelector('[data-timetable-custom]').hidden = !custom;
+    form.elements.interval.disabled = !custom; form.elements.interval.required = custom; form.elements.unit.disabled = !custom;
+    form.querySelector('[data-timetable-days]').hidden = !(form.elements.repeat.value === 'weekly' || custom && form.elements.unit.value === 'weeks');
     form.querySelector('[data-timetable-period]').hidden = !repeat; form.querySelector('[data-timetable-all-day]').hidden = repeat;
-    form.querySelector('[data-timetable-date-label]').textContent = repeat ? 'Desde (opcional)' : 'Fecha'; form.elements.date.required = !repeat;
+    form.querySelector('[data-timetable-date-label]').textContent = custom ? 'Desde' : repeat ? 'Desde (opcional)' : 'Fecha'; form.elements.date.required = !repeat || custom;
     form.querySelector('[data-timetable-until]').hidden = !repeat || !form.elements.limited.checked; form.elements.until.required = repeat && form.elements.limited.checked;
+    form.elements.until.disabled = !repeat || !form.elements.limited.checked;
+    for (const name of ['date','until']) {
+      const input=form.elements[name];
+      input.setCustomValidity(!input.disabled && (input.validity.badInput || input.value && !rules.date(input.value)) ? 'Elegí una fecha real y completa.' : '');
+    }
     form.querySelector('[data-timetable-times]').hidden = allDay; form.elements.start.required = !allDay; form.elements.end.required = !allDay;
     form.querySelector('[data-timetable-type]').hidden = repeat; form.elements.place.maxLength = repeat ? 90 : 1200;
     form.querySelector('[data-timetable-place-label]').textContent = repeat ? 'Lugar (opcional)' : 'Detalle (opcional)';
@@ -92,7 +107,10 @@
     const preview = form.querySelector('[data-timetable-preview]');
     preview.querySelector('strong').textContent = form.elements.title.value.trim() || 'Nueva actividad';
     const labels = days.filter(([day])=>form.querySelector('[name=day][value="'+day+'"]').checked).map(([,label])=>label);
-    const recurrence = !repeat ? 'Una sola vez' : form.elements.repeat.value==='daily' ? 'Cada día' : 'Cada semana · '+(labels.join(' · ') || 'Elegí los días');
+    const candidate = weeklyCandidate();
+    const recurrence = !repeat ? 'Una sola vez' : custom ? (rules.normalize({...candidate,title:candidate.title||'Actividad'}) ? rules.describe(candidate) : 'Elegí el intervalo y una fecha de inicio') : form.elements.repeat.value==='daily' ? 'Cada día' : 'Cada semana · '+(labels.join(' · ') || 'Elegí los días');
+    const summary=form.querySelector('[data-timetable-repeat-summary]');
+    summary.hidden=!custom; summary.textContent=custom ? recurrence+(form.elements.unit.value==='months'||form.elements.unit.value==='years' ? ' · Se omiten las fechas que no existen.' : '') : '';
     const date = form.elements.date.value ? shortDate(form.elements.date.value) : 'Sin fecha de inicio';
     preview.querySelector('span').textContent = [recurrence, allDay ? 'Todo el día' : form.elements.start.value+'–'+form.elements.end.value, date+(repeat && form.elements.limited.checked && form.elements.until.value ? ' → '+shortDate(form.elements.until.value) : '')].join(' · ');
     const overlap = repeat ? rules.overlaps(rules.read(localStorage), weeklyCandidate())[0] : null;
@@ -106,7 +124,8 @@
   }
   function shortDate(value) { const date=rules.date(value); return date ? new Intl.DateTimeFormat('es-AR',{day:'numeric',month:'short',year:'numeric'}).format(date) : value; }
   function weeklyCandidate() {
-    return {id:editingId || agendaId || 'preview', title:form.elements.title.value, days:form.elements.repeat.value==='daily' ? [1,2,3,4,5,6,0] : [...form.querySelectorAll('[name=day]:checked')].map(input=>Number(input.value)), start:form.elements.start.value, end:form.elements.end.value, place:form.elements.place.value, color:form.elements.color.value, startDate:form.elements.date.value, endDate:form.elements.limited.checked ? form.elements.until.value : ''};
+    const custom=form.elements.repeat.value==='custom';
+    return {id:editingId || agendaId || 'preview', title:form.elements.title.value, days:form.elements.repeat.value==='daily' || custom && form.elements.unit.value!=='weeks' ? [1,2,3,4,5,6,0] : [...form.querySelectorAll('[name=day]:checked')].map(input=>Number(input.value)), start:form.elements.start.value, end:form.elements.end.value, place:form.elements.place.value, color:form.elements.color.value, startDate:form.elements.date.value, endDate:form.elements.limited.checked ? form.elements.until.value : '', ...(custom ? {recurrence:{unit:form.elements.unit.value,interval:Number(form.elements.interval.value)}} : {})};
   }
   function commit(values) {
     const previous=Object.fromEntries(Object.keys(values).map(key=>[key,localStorage.getItem(key)]));
@@ -125,7 +144,9 @@
       const original=editingId?schedules.find(item=>item.id===editingId):agendaId?notes.find(item=>item.id===agendaId):null;
       if((editingId||agendaId)&&!original)throw new Error('Esta actividad se eliminó en otro dispositivo.');
       if(!allDay && (!rules.time(form.elements.start.value)||!rules.time(form.elements.end.value)||form.elements.end.value<=form.elements.start.value))throw new Error('La hora de fin debe ser posterior a la de inicio.');
-      if(form.elements.date.value&&!rules.date(form.elements.date.value))throw new Error('Elegí una fecha válida.');
+      if(form.elements.date.validity.badInput || form.elements.date.value&&!rules.date(form.elements.date.value))throw new Error('Elegí una fecha real y completa.');
+      if(repeat && form.elements.limited.checked && (form.elements.until.validity.badInput || !rules.date(form.elements.until.value)))throw new Error('Elegí una fecha final real y completa.');
+      if(form.elements.repeat.value==='custom' && (!rules.date(form.elements.date.value) || !Number.isInteger(Number(form.elements.interval.value)) || Number(form.elements.interval.value)<1 || Number(form.elements.interval.value)>rules.MAX_INTERVAL))throw new Error('Elegí una fecha de inicio y un intervalo entero entre 1 y '+rules.MAX_INTERVAL+'.');
       const id=editingId||agendaId||crypto.randomUUID(), values={};
       let selected=form.elements.date.value || rules.dateKey(new Date());
       if(repeat) {

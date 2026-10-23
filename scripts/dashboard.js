@@ -185,7 +185,7 @@
     const weekdays = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
     const dated = readList(AGENDA_KEY).filter(item => parseDateValue(item?.date));
     document.querySelector('[data-calendar-settings-content]').innerHTML = `<div class="calendar-settings-head"><h3>Horarios fijos <small>${schedules.length}</small></h3><button type="button" data-calendar-add-weekly aria-label="Agregar horario fijo" title="Agregar horario fijo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></div>
-      <div class="calendar-settings-schedules">${schedules.map(item => `<button type="button" class="calendar-settings-schedule timetable-color--${item.color}" data-calendar-edit-schedule="${escapeHtml(item.id)}"><span><strong>${escapeHtml(item.title)}</strong><small>${item.days.map(day => weekdays[day]).join(' · ')} · ${item.start}–${item.end}</small></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 3 5 5-12 12-6 1 1-6L16 3Z"/></svg></button>`).join('') || '<p class="calendar-settings-empty">Todavía no hay horarios fijos.</p>'}</div>
+      <div class="calendar-settings-schedules">${schedules.map(item => `<button type="button" class="calendar-settings-schedule timetable-color--${item.color}" data-calendar-edit-schedule="${escapeHtml(item.id)}"><span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.recurrence ? window.EstudiemosTimetableRules.describe(item) : item.days.map(day => weekdays[day]).join(' · '))} · ${item.start}–${item.end}</small></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 3 5 5-12 12-6 1 1-6L16 3Z"/></svg></button>`).join('') || '<p class="calendar-settings-empty">Todavía no hay horarios fijos.</p>'}</div>
       <div class="calendar-settings-cleanup"><button type="button" data-calendar-clear ${!dated.length && !schedules.length ? 'disabled' : ''}>Vaciar calendario</button><p>Quita las anotaciones con fecha y los horarios fijos. Conserva tus notas sin fecha, tu racha y tu progreso.</p>
       <div data-calendar-clear-confirm hidden><strong>¿Vaciar tu calendario?</strong><p>Podés recuperar esta limpieza desde aquí hasta que vuelvas a vaciarlo.</p><div><button type="button" data-calendar-cleanup-cancel>Cancelar</button><button type="button" data-calendar-cleanup-confirm>Vaciar y guardar copia</button></div></div>
       <button type="button" data-calendar-restore ${readList(CALENDAR_BACKUP_KEY).length ? '' : 'hidden'}>Recuperar última limpieza</button></div>`;
@@ -1073,20 +1073,22 @@
   }
 
   function parseDateValue(value) {
+    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
     const [year, month, day] = String(value || "").split("-").map(Number);
     if (!year || !month || !day) return null;
     const date = new Date(year, month - 1, day);
-    return Number.isNaN(date.getTime()) ? null : date;
+    return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day ? date : null;
   }
 
   function shortDate(value) {
+    if (!parseDateValue(value)) return "Fecha no válida";
     const parts = String(value).split("-").map(Number);
     return parts.length === 3 ? `${parts[2]}/${parts[1]}` : value;
   }
 
   function formatFullDate(value) {
-    const [year, month, day] = String(value).split("-").map(Number);
-    return new Intl.DateTimeFormat("es-AR", { weekday: "long", day: "numeric", month: "long" }).format(new Date(year, month - 1, day));
+    const date = parseDateValue(value);
+    return date ? new Intl.DateTimeFormat("es-AR", { weekday: "long", day: "numeric", month: "long" }).format(date) : "Elegí un día";
   }
 
   function randomId() {

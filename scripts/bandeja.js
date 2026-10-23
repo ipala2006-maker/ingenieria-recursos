@@ -1598,9 +1598,9 @@
   }
 
   function formatAgendaDate(value) {
-    const [year, month, day] = String(value).split("-").map(Number);
-    if (!year || !month || !day) return value;
-    return new Date(year, month - 1, day).toLocaleDateString("es-AR", {
+    const date = parseDateValue(value);
+    if (!date) return "Fecha no válida";
+    return date.toLocaleDateString("es-AR", {
       day: "2-digit",
       month: "short"
     });
@@ -1655,9 +1655,11 @@
   }
 
   function parseDateValue(value) {
+    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
     const [year, month, day] = String(value || "").split("-").map(Number);
     if (!year || !month || !day) return null;
-    return new Date(year, month - 1, day);
+    const date = new Date(year, month - 1, day);
+    return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day ? date : null;
   }
 
   function toDateValue(date) {
