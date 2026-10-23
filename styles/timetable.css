@@ -41,8 +41,8 @@
 .calendar-planner__status:empty { display:none; }
 .calendar-reader__detail .calendar-planner__actions { position:sticky; bottom:0; display:flex; align-items:center; justify-content:flex-end; gap:10px; padding:14px 0; background:var(--panel); border-top:1px solid var(--border); }
 .calendar-planner__actions button { display:inline-flex; align-items:center; justify-content:center; gap:8px; }
-.calendar-planner__actions [type=submit] { color:var(--bg); background:var(--accent); border-color:var(--accent); font-weight:650; }
-.theme-light .calendar-planner__actions [type=submit] { color:#fff; }
+.calendar-reader__detail .calendar-planner__actions button[type=submit] { color:var(--bg); background:var(--accent); border-color:var(--accent); font-weight:650; }
+.theme-light .calendar-reader__detail .calendar-planner__actions button[type=submit] { color:#fff; }
 .calendar-planner :focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
 @media(max-width:700px) {
   .calendar-reader__tabs { padding:0 16px; }
@@ -56,4 +56,7 @@
   .timetable__colors button { width:44px; }
   .timetable__days span { font-size:11px; }
   .calendar-planner__row { gap:10px; }
+}
+@media(max-width:400px) {
+  .calendar-planner__recurrence-row { grid-template-columns:minmax(0,1fr); }
 }

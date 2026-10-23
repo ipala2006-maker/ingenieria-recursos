@@ -121,18 +121,60 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
       assert.equal(await page.evaluate(()=>JSON.parse(localStorage.bandeja_agenda).length),1);assert.equal(await page.evaluate(()=>JSON.parse(localStorage.bandeja_horarios).length),0);
       await tools.locator('[data-calendar-restore]').click();await tools.locator('[data-calendar-settings-status]').filter({hasText:'Calendario recuperado'}).waitFor();
       await tools.locator('[data-calendar-tools-close]').click();await calendar.getByRole('button',{name:'Programar',exact:true}).click();
+      await form.locator('[name=title]').fill('Repasar cada trece días');
+      await form.locator('[name=repeat]').selectOption('custom');
+      await form.locator('[name=interval]').fill('13');await form.locator('[name=unit]').selectOption('days');
+      await form.locator('[name=date]').fill('2026-10-19');
+      await form.locator('[name=start]').fill('16:00');await form.locator('[name=end]').fill('17:00');
+      assert.equal(await form.locator('[data-timetable-days]').isVisible(),false);
+      assert.match(await form.locator('[data-timetable-repeat-summary]').textContent(),/Cada 13 días/);
+      const savedBefore=await page.evaluate(()=>localStorage.bandeja_horarios);
+      await form.locator('[name=date]').evaluate(input=>{input.type='text';input.value='2026-02-30';input.dispatchEvent(new Event('input',{bubbles:true}));});
+      await form.locator('[type=submit]').click();
+      assert.match(await form.locator('[data-timetable-status]').textContent(),/fecha real/);
+      assert.equal(await page.evaluate(()=>localStorage.bandeja_horarios),savedBefore);
+      await form.locator('[name=date]').evaluate(input=>{input.type='date';input.value='2026-10-19';input.dispatchEvent(new Event('input',{bubbles:true}));});
+      await form.locator('[name=interval]').fill('0');await form.locator('[type=submit]').click();
+      assert.match(await form.locator('[data-timetable-status]').textContent(),/entero/);
+      await form.locator('[name=interval]').fill('13');
+      for(const theme of ['dark','light']){
+        await page.evaluate(theme=>window.EstudiemosTheme.set(theme),theme);
+        await page.waitForTimeout(200);
+        assert.ok(await reader.evaluate(el=>el.scrollWidth<=el.clientWidth+1));
+        assert.deepEqual(await form.locator('input,select,textarea,strong,button').evaluateAll(nodes=>nodes.filter(n=>n.clientWidth>0&&n.scrollWidth>n.clientWidth+2).map(n=>n.textContent)),[]);
+        await reader.screenshot({path:path.join(out,'custom-'+theme+'-'+width+'.png')});
+      }
+      await save();
+      const customId=await page.evaluate(()=>JSON.parse(localStorage.bandeja_horarios).find(item=>item.title==='Repasar cada trece días').id);
+      assert.deepEqual(await page.evaluate(id=>JSON.parse(localStorage.bandeja_horarios).find(item=>item.id===id).recurrence,customId),{unit:'days',interval:13});
+      await reader.locator('[data-dashboard-calendar-view=month]').click();await reader.locator('[data-dashboard-month-change="1"]').click();
+      for(const date of ['2026-11-01','2026-11-14','2026-11-27'])assert.match(await reader.locator('[data-dashboard-date="'+date+'"]').getAttribute('aria-label'),/Repasar cada trece días/);
+      assert.doesNotMatch(await reader.locator('[data-dashboard-date="2026-11-02"]').getAttribute('aria-label'),/Repasar cada trece días/);
+      await reader.locator('[data-dashboard-month-change="-1"]').click();await pick('2026-10-19');
+      await reader.locator('[data-calendar-edit-schedule="'+customId+'"]').click();
+      assert.equal(await form.locator('[name=repeat]').inputValue(),'custom');assert.equal(await form.locator('[name=interval]').inputValue(),'13');
+      await form.locator('[name=unit]').selectOption('weeks');assert.equal(await form.locator('[data-timetable-days]').isVisible(),true);
+      await form.locator('[name=unit]').selectOption('months');assert.match(await form.locator('[data-timetable-repeat-summary]').textContent(),/omiten/);
+      await form.locator('[data-timetable-close]').click();
+      await page.reload();if(width<500)await page.locator('[data-home-view=calendar]').click();await page.waitForFunction(()=>window.EstudiemosTimetable);
+      await calendar.getByRole('button',{name:'Programar',exact:true}).click();
+      assert.deepEqual(await page.evaluate(id=>JSON.parse(localStorage.bandeja_horarios).find(item=>item.id===id).recurrence,customId),{unit:'days',interval:13},'Unsaved unit changes do not alter the recurrence across reload');
       await page.evaluate(()=>{window.EstudiemosAccount.getUser=()=>({id:'other'});dispatchEvent(new CustomEvent('estudiemos:account-synced'));});
       assert.equal(await reader.isVisible(),false);
       await page.goto(base+'/widget.html?view=calendar');await page.locator('.widget-calendar').waitFor({state:'visible'});
       await page.locator('[data-widget-calendar-view=week]').click();
       assert.ok(await page.locator('.calendar-entry.is-recurring.timetable-color--violet').count()>0);
       assert.ok(await page.locator('.calendar-entry.is-colored.timetable-color--rose').count()>0);
-      assert.deepEqual(errors,[]);await context.close();console.log('PASS integrated planner '+width+': one-off/daily/weekly, finite period, colors, inline editing, safe conversion, Inbox, cleanup, ownership and widgets');
+      await page.locator('[data-widget-month="1"]').click();
+      assert.ok(await page.locator('.calendar-entry.is-recurring').filter({hasText:'Repasar cada trece días'}).count()>0,'Desktop calendar renders the custom recurrence on the correct week');
+      assert.deepEqual(errors,[]);await context.close();console.log('PASS integrated planner '+width+': valid dates, custom every 13 days, legacy recurrence, period, colors, edit/reload, Inbox, cleanup, ownership and widgets');
     }
   }catch(error){
+    console.error('CALENDAR FAILURE',error);
     if(lastPage&&!lastPage.isClosed()){
       await lastPage.screenshot({path:path.join(out,'failure.png')});
-      console.error(await lastPage.locator('[data-calendar-reader]').evaluate(el=>({editing:el.dataset.editing,activities:[...el.querySelectorAll('.calendar-activity')].map(n=>({text:n.textContent,color:getComputedStyle(n).getPropertyValue('--event-color')})),status:el.querySelector('[data-timetable-status]')?.textContent})));
+      console.error(await lastPage.evaluate(()=>({url:location.pathname,now:new Date().toISOString(),notes:localStorage.bandeja_agenda,schedules:localStorage.bandeja_horarios})));
+      if(await lastPage.locator('[data-calendar-reader]').count())console.error(await lastPage.locator('[data-calendar-reader]').evaluate(el=>({editing:el.dataset.editing,activities:[...el.querySelectorAll('.calendar-activity')].map(n=>({text:n.textContent,color:getComputedStyle(n).getPropertyValue('--event-color')})),status:el.querySelector('[data-timetable-status]')?.textContent})));
     }throw error;
   }finally{await browser?.close();server.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});
