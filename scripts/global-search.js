@@ -331,7 +331,7 @@
     if (document.querySelector('script[src*="scripts/pomodoro.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/pomodoro.js?v=20261021-device-sync`;
+    script.src = `${rootPath}scripts/pomodoro.js?v=20261023-sync`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -377,7 +377,7 @@
     if (document.querySelector('script[src*="scripts/account.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/account.js?v=20261021-device-sync`;
+    script.src = `${rootPath}scripts/account.js?v=20261023-sync`;
     script.defer = true;
     document.head.appendChild(script);
   }

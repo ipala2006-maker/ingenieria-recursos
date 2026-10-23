@@ -4593,6 +4593,13 @@ html.theme-light .app-install-sheet__close{
 }
 @keyframes account-spin{to{transform:rotate(360deg)}}
 .account-profile{display:grid;gap:13px}
+.account-sync-usage{border-block:1px solid var(--border);padding-block:8px;min-width:0}
+.account-sync-usage summary{min-height:44px;align-content:center;cursor:pointer;font-size:13px;font-weight:650}
+.account-sync-usage dl{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 12px;margin:8px 0 14px;font-size:12px}
+.account-sync-usage dt{color:var(--muted);overflow-wrap:anywhere}
+.account-sync-usage dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
+.account-sync-usage small{display:block;color:var(--muted);font-size:12px;line-height:1.5}
+.account-sync-usage .account-link{margin-top:8px;min-height:44px;font-size:12px}
 .account-identity{
   display:flex;
   align-items:center;

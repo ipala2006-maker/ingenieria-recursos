@@ -2498,7 +2498,7 @@
       if (!goals.read(streakState).configured || !hasEligibleSlot) return;
       const userId = account.getUser()?.id || '';
       // An old tab must pull progress from other devices before deciding to remind.
-      if (userId && await account.refresh() !== true) return;
+      if (userId && await account.refresh({force:true}) !== true) return;
       if ((account.getUser()?.id || '') !== userId) return;
       streakState = loadStreakState();
       summary = streakSummary();

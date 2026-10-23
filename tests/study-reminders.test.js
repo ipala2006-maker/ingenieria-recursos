@@ -148,9 +148,11 @@ test('account refresh confirms success only after completing its read/merge/writ
   const context = {
     client: { from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => result }) }) }) }, session: { user: { id: 'alice' } }, syncing: false, syncRequested: false,
     synchronizedUserId: '', lastPullAt: 0, LINKED_USER_KEY: 'linked', DIRTY_KEY: 'dirty', LOCAL_CHANGED_KEY: 'changed',
+    queuedSyncReason:'queued',cloudRevision:'',cloudRevisionUser:'',cachedCloudState:null,accountGeneration:0,syncFailures:0,syncRetryAt:0,navigator:{onLine:true},
     localStorage: { getItem: () => 'alice', setItem() {} }, Date, CustomEvent: class {},
     window: { dispatchEvent() {}, setTimeout() {} }, updateSyncLabel() {}, updateAccountIndicator() {}, setStatus() {},
-    captureLocalState: () => ({}), normalizeAccountState: value => value, mergeAccountStates: () => ({}), applyCloudState: () => { restored = true; }, uploadState: async () => {}
+    captureLocalState: () => ({}), normalizeAccountState: value => value, mergeAccountStates: () => ({}), applyCloudState: () => { restored = true; }, uploadState: async () => {},
+    cloudCheckInterval:()=>0,recordSyncUsage(){},syncJsonBytes:()=>0
   };
   vm.runInNewContext(fn, context);
   assert.equal(await context.synchronize('widget'), true); assert.equal(restored, true);

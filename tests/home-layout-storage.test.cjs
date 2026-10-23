@@ -55,7 +55,7 @@ test('account upload, merge and restore exclude layout but still synchronize tas
   const functions = source.slice(source.indexOf('  function captureLocalState()'), source.indexOf('  function prepareLocalAccountSwitch'));
   const s = storage({[local]: '{"visible":{"calendar":false}}', [legacy]: '{"density":"compact"}', keys: JSON.stringify({[legacy]: 100})});
   const context = vm.createContext({localStorage: s, window: {dispatchEvent() {},EstudiemosStudyGoal:require('../shared/study-goal')}, CustomEvent: function () {},
-    LINKED_USER_KEY: 'user', LOCAL_CHANGED_KEY: 'changed', KEY_CHANGED_KEY: 'keys', DIRTY_KEY: 'dirty', applyingCloud: false});
+    LINKED_USER_KEY: 'user', LOCAL_CHANGED_KEY: 'changed', KEY_CHANGED_KEY: 'keys', DIRTY_KEY: 'dirty', applyingCloud: false,accountGeneration:0});
   vm.runInContext(keys + functions + '\nthis.api={captureLocalState,applyCloudState,mergeAccountStates,clearLocalAccountData};', context);
   const remote = {values: {[legacy]: '{"visible":{"inbox":false}}', [local]: '{}', bandeja_agenda: [{id: 'task-1', title: 'Repasar'}]}, changedAt: {bandeja_agenda: 123}};
   const merged = context.api.mergeAccountStates(context.api.captureLocalState(), remote);

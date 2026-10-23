@@ -1,9 +1,9 @@
-const {chromium}=require('../tmp/ui-check/node_modules/playwright');
+const {chromium,webkit}=require('../tmp/ui-check/node_modules/playwright');
 const assert=require('node:assert/strict'),http=require('node:http'),fs=require('node:fs'),path=require('node:path');
 const root=path.resolve(__dirname,'..'),owner='11111111-1111-4111-8111-111111111111';
 const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)').headers;
 (async()=>{
-  let browser;const pages=[],rows=new Map(),writes=[];
+  let browser;const pages=[],rows=new Map(),writes=[],reads=[],pageErrors=[];let deliverBroadcasts=true;
   rows.set(owner,{state:{values:{estudiemos_pomodoro_streak:JSON.stringify({days:{},goal:{minutes:25,updatedAt:1}})},changedAt:{}},updated_at:new Date().toISOString()});
   const server=http.createServer((req,res)=>{
     const pathname=new URL(req.url,'http://localhost').pathname;
@@ -17,7 +17,7 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
   });
   try{
     await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const base='http://127.0.0.1:'+server.address().port;
-    browser=await chromium.launch({channel:'chrome'});
+    browser=process.env.TEST_WEBKIT==='1'?await webkit.launch():await chromium.launch({channel:'chrome'});
     for(const width of [1440,412]){
       const context=await browser.newContext({viewport:{width,height:1000},isMobile:width<500,hasTouch:width<500,serviceWorkers:'block'});
       await context.addInitScript(({owner})=>{
@@ -27,9 +27,9 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
         window.__channels={};
         const client={
           auth:{getSession:async()=>({data:{session:session()}}),onAuthStateChange:cb=>{window.__authChange=cb;return {data:{subscription:{unsubscribe(){}}}};},signOut:async()=>{window.__user=null;window.__authChange('SIGNED_OUT',null);return {};}},
-          from:table=>({select(){return this;},eq(_key,value){this.owner=value;return this;},maybeSingle:async function(){return {data:await fetch('/__fixture/state?owner='+encodeURIComponent(this.owner)).then(r=>r.json()),error:null};},
+          from:table=>({select(){return this;},eq(_key,value){this.owner=value;return this;},neq(_key,value){this.revision=value;return this;},maybeSingle:async function(){return {data:await fetch('/__fixture/state?owner='+encodeURIComponent(this.owner)+'&revision='+encodeURIComponent(this.revision||'')).then(r=>r.json()),error:null};},
             upsert:async value=>{await fetch('/__fixture/state',{method:'POST',body:JSON.stringify(value)});return {};}}),
-          channel:name=>{const c={on(_type,_filter,cb){window.__channels[name]=cb;return c;},subscribe(){return c;},send:async value=>{await fetch('/__fixture/broadcast',{method:'POST',body:JSON.stringify({name,...value})});}};return c;},
+          channel:name=>{const c={on(_type,_filter,cb){window.__channels[name]=cb;return c;},subscribe(callback){setTimeout(()=>callback?.('SUBSCRIBED'),0);return c;},send:async value=>{await fetch('/__fixture/broadcast',{method:'POST',body:JSON.stringify({name,...value})});return 'ok';}};return c;},
           removeChannel:async()=>{},rpc:async()=>({data:[],error:null})
         };
         window.supabase={createClient:()=>client};
@@ -39,12 +39,14 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
         if(url.origin!==base)return route.abort();
         if(url.pathname==='/__fixture/state'){
           if(req.method()==='POST'){const row=JSON.parse(req.postData());rows.set(row.user_id,{state:row.state,updated_at:row.updated_at});writes.push(row);return route.fulfill({json:{}});}
-          return route.fulfill({json:rows.get(url.searchParams.get('owner'))||null});
+          const row=rows.get(url.searchParams.get('owner')),unchanged=row?.updated_at===url.searchParams.get('revision');
+          reads.push({owner:url.searchParams.get('owner'),conditional:Boolean(url.searchParams.get('revision')),full:Boolean(row&&!unchanged)});
+          return route.fulfill({json:unchanged?null:row||null});
         }
         if(url.pathname==='/__fixture/broadcast'){
           const message=JSON.parse(req.postData());
           await route.fulfill({json:{}});
-          for(const p of pages)if(!p.isClosed())await p.evaluate(m=>window.__channels?.[m.name]?.({payload:m.payload}),message).catch(error=>{if(!/context was destroyed|closed/.test(error.message))throw error;});
+          if(deliverBroadcasts)for(const p of pages)if(!p.isClosed())await p.evaluate(m=>window.__channels?.[m.name]?.({payload:m.payload}),message).catch(error=>{if(!/context was destroyed|closed/.test(error.message))throw error;});
           return;
         }
         if(url.pathname.startsWith('/api/')){
@@ -53,11 +55,21 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
         }
         return route.continue();
       });
-      const page=await context.newPage();pages.push(page);page.on('pageerror',e=>{console.error('PAGE',e.message);});
+      const page=await context.newPage();pages.push(page);page.on('pageerror',e=>{pageErrors.push(e.message);console.error('PAGE',e.message);});
       await page.goto(base);
       await page.waitForFunction(()=>window.EstudiemosStudy&&window.EstudiemosAccount?.isSynchronized());
     }
     const [pc,phone]=pages;
+    for(const [i,page] of pages.entries()){
+      await page.locator('[data-account-open]').click();await page.locator('[data-account-usage] summary').click();
+      const usage=page.locator('[data-account-usage-values]');assert.match(await usage.textContent(),/Perfil sincronizado.*Recibido hoy/s);
+      assert.equal(await usage.evaluate(el=>el.scrollWidth<=el.clientWidth+1),true);
+      fs.mkdirSync(path.join(root,'tmp/sync-efficiency'),{recursive:true});
+      await page.locator('.account-panel').screenshot({path:path.join(root,'tmp/sync-efficiency/account-'+(i?'phone':'pc')+'.png')});
+      await page.locator('[data-account-close]').click();
+    }
+    const readCount=reads.length;await Promise.all(pages.map(page=>page.evaluate(()=>EstudiemosAccount.refresh())));
+    assert.equal(reads.length,readCount,'Widget refreshes share the account cooldown');
     await pc.evaluate(()=>{EstudiemosStudy.configure('study',27);EstudiemosStudy.configure('break',7);EstudiemosStudy.configure('blocks',5);EstudiemosStudy.toggle();});
     await phone.waitForFunction(()=>EstudiemosStudy.snapshot().running&&EstudiemosStudy.snapshot().config.study===27);
     const endPc=await pc.evaluate(()=>JSON.parse(localStorage.getItem('estudiemos_pomodoro_sync')).endAt);
@@ -76,6 +88,15 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
     assert.notEqual(await phone.evaluate(()=>EstudiemosStudy.snapshot().alarmVolume),0.9,'Sound volume stays local');
     await phone.reload();await phone.waitForFunction(()=>EstudiemosAccount?.isSynchronized()&&EstudiemosStudy?.snapshot().running&&EstudiemosStudy.snapshot().block===2);
     await phone.evaluate(()=>EstudiemosStudy.toggle());await pc.waitForFunction(()=>!EstudiemosStudy.snapshot().running);
+    deliverBroadcasts=false;
+    await pc.evaluate(()=>{EstudiemosStudy.configure('break',11);});
+    await pc.waitForFunction(()=>localStorage.getItem('estudiemos_cloud_dirty')==='false');
+    await phone.evaluate(()=>EstudiemosAccount.refresh({force:true}));
+    await phone.waitForFunction(()=>EstudiemosStudy.snapshot().config.break===11);
+    const beforeCheck=reads.filter(item=>item.full).length;
+    await phone.evaluate(()=>EstudiemosAccount.refresh({force:true}));
+    assert.equal(reads.filter(item=>item.full).length,beforeCheck,'Unchanged checks return no full state');
+    deliverBroadcasts=true;
     await phone.evaluate(()=>{
       const writer=localStorage.getItem('estudiemos_pomodoro_device');
       const old=JSON.parse(localStorage.getItem('estudiemos_pomodoro'));
@@ -95,6 +116,7 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
     await phone.evaluate(()=>EstudiemosAccount.getClient().auth.signOut());
     await phone.waitForFunction(()=>!EstudiemosAccount.getUser());
     assert.equal(await phone.evaluate(()=>EstudiemosStudy.snapshot().running),false,'Signout stops the private timer');
-    console.log('PASS two isolated devices: start, pause, seek, skip, config, shared deadline, no tick publishing, local sound, reload and account isolation');
+    assert.deepEqual(pageErrors,[]);
+    console.log('PASS two isolated devices: fast start/pause/seek/skip, shared deadline, no tick publishing, conditional reads, widget coalescing, missed broadcast recovery, usage UI, local sound, reload and account isolation');
   }finally{await browser?.close();if(server.listening)await new Promise(resolve=>server.close(resolve));}
 })().catch(e=>{console.error(e);process.exitCode=1;});

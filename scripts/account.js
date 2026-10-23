@@ -45,8 +45,13 @@
   let syncing = false;
   let synchronizedUserId = '';
   let syncRequested = false;
+  let queuedSyncReason = "queued";
   let applyingCloud = false;
   let lastPullAt = 0;
+  let cloudRevision = "", cloudRevisionUser = "";
+  let cachedCloudState = null, accountGeneration = 0;
+  let syncFailures = 0, syncRetryAt = 0;
+  let realtimeConnected = false;
   let realtimeChannel = null;
   let realtimeUserId = "";
   let cloudPollTimer = 0;
@@ -73,7 +78,8 @@
 
   window.EstudiemosAccount = {
     sync: () => synchronize("manual"),
-    refresh: () => synchronize("widget"),
+    refresh: (options = {}) => synchronize(options.force ? "verify" : "widget"),
+    getSyncUsage: () => getSyncUsage(),
     getUser: () => session?.user || null,
     isSynchronized: () => Boolean(session?.user?.id && synchronizedUserId === session.user.id),
     getSession: () => session,
@@ -194,6 +200,12 @@
             <button class="account-primary" type="submit">Guardar nueva contraseña</button>
           </form>
           <button class="account-primary" type="button" data-account-sync>Sincronizar ahora</button>
+          <details class="account-sync-usage" data-account-usage>
+            <summary>Consumo de sincronización</summary>
+            <dl data-account-usage-values></dl>
+            <small>Solo este navegador. Tamaños JSON sin compresión; no incluyen cabeceras, Realtime, alarmas ni otros servicios.</small>
+            <button class="account-link" type="button" data-account-usage-export>Exportar medición</button>
+          </details>
           <button class="account-secondary" type="button" data-account-signout>Cerrar sesión</button>
         </div>
 
@@ -265,6 +277,7 @@
       if (event.target.closest("[data-account-reset]")) resetPassword();
       if (event.target.closest("[data-account-signout]")) signOut();
       if (event.target.closest("[data-account-sync]")) synchronize("manual");
+      if (event.target.closest("[data-account-usage-export]")) exportSyncUsage();
       if (event.target.closest("[data-account-update]")) updateApplication();
       if (event.target.closest("[data-account-whatsapp-connect]")) connectWhatsApp();
       if (event.target.closest("[data-account-whatsapp-unlink]")) unlinkWhatsApp();
@@ -298,7 +311,7 @@
       else scheduleSync();
     });
 
-    window.addEventListener("focus", scheduleRemoteRefresh);
+    window.addEventListener("focus", () => scheduleRemoteRefresh());
     window.addEventListener("pageshow", () => {
       if (session) {
         connectRealtime(session.user.id);
@@ -309,6 +322,7 @@
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") scheduleRemoteRefresh();
     });
+    window.addEventListener("online", () => { syncRetryAt = 0; scheduleRemoteRefresh(); });
     window.addEventListener("estudiemos-android-ready", syncAccountWithAndroid);
     window.addEventListener("estudiemos-android-native-session", applyNativeSession);
     window.addEventListener("estudiemos-android-push-token", registerAndroidPushToken);
@@ -712,31 +726,51 @@
 
   async function synchronize(reason) {
     if (!client || !session) return false;
+    const background = reason === "poll" || reason === "widget";
     if (syncing) {
-      syncRequested = true;
+      if (!background) { syncRequested = true; queuedSyncReason = reason; }
       return false;
     }
+    if (navigator.onLine === false) return false;
+    const userId = session.user.id;
+    const generation = accountGeneration;
+    const dirty = localStorage.getItem(DIRTY_KEY) === "true";
+    const hydrated = synchronizedUserId === userId && localStorage.getItem(LINKED_USER_KEY) === userId;
+    if (reason !== "manual" && Date.now() < syncRetryAt) return false;
+    if (background && hydrated && !dirty && Date.now() - lastPullAt < cloudCheckInterval()) return true;
     syncing = true;
-    updateSyncLabel("Sincronizando...");
+    if (!background) updateSyncLabel("Sincronizando...");
     try {
-      const userId = session.user.id;
-      const result = await client.from("user_states")
+      let query = client.from("user_states")
         .select("state, updated_at")
-        .eq("user_id", userId)
-        .maybeSingle();
+        .eq("user_id", userId);
+      // RLS still scopes the row. An unchanged revision returns no state payload.
+      const conditional = hydrated && cachedCloudState && cloudRevisionUser === userId && cloudRevision && !["manual", "signout"].includes(reason);
+      if (conditional) query = query.neq("updated_at", cloudRevision);
+      const result = await query.maybeSingle();
+      if (session?.user?.id !== userId || accountGeneration !== generation) return false;
       if (result.error) throw result.error;
+      recordSyncUsage(userId, { checks: 1, fullDownloads: result.data ? 1 : 0, unchangedChecks: conditional && !result.data ? 1 : 0, receivedBytes: syncJsonBytes(result.data), ...(result.data ? {profileBytes:syncJsonBytes(result.data.state)} : {}) });
+      if (conditional && !result.data && localStorage.getItem(DIRTY_KEY) !== "true") {
+        lastPullAt = Date.now(); syncFailures = 0; syncRetryAt = 0;
+        updateSyncLabel("Sincronizado"); updateAccountIndicator(true);
+        return true;
+      }
+      const remote = result.data || (conditional ? {state:cachedCloudState, updated_at:cloudRevision} : null);
+      cloudRevisionUser = userId; cloudRevision = remote?.updated_at || "";
+      cachedCloudState = remote?.state || null;
 
       const localState = captureLocalState();
       const linkedUser = localStorage.getItem(LINKED_USER_KEY) || "";
-      const cloudChangedAt = result.data?.updated_at ? Date.parse(result.data.updated_at) : 0;
+      const cloudChangedAt = remote?.updated_at ? Date.parse(remote.updated_at) : 0;
       const localDirty = localStorage.getItem(DIRTY_KEY) === "true";
-      const cloudState = result.data ? normalizeAccountState(result.data.state, cloudChangedAt) : null;
+      const cloudState = remote ? normalizeAccountState(remote.state, cloudChangedAt) : null;
 
       if (linkedUser !== userId) {
         const accountState = cloudState || createEmptyAccountState();
         applyCloudState(accountState);
-        if (!result.data) await uploadState(userId, accountState);
-      } else if (!result.data) {
+        if (!remote) await uploadState(userId, accountState);
+      } else if (!remote) {
         await uploadState(userId, localState);
       } else {
         const mergedState = mergeAccountStates(localState, cloudState);
@@ -749,15 +783,21 @@
         }
       }
 
+      if (session?.user?.id !== userId || accountGeneration !== generation) return false;
       localStorage.setItem(LINKED_USER_KEY, userId);
       synchronizedUserId = userId;
       window.dispatchEvent(new CustomEvent('estudiemos:account-synced', { detail: { userId } }));
       lastPullAt = Date.now();
+      syncFailures = 0; syncRetryAt = 0;
       updateSyncLabel("Sincronizado");
       updateAccountIndicator(true);
       if (reason === "manual") setStatus("Tus dispositivos ya tienen la misma información.", "success");
       return true;
     } catch (error) {
+      if (session?.user?.id !== userId || accountGeneration !== generation) return false;
+      syncFailures = Math.min(syncFailures + 1, 5);
+      syncRetryAt = Date.now() + Math.min(300000, 15000 * 2 ** syncFailures);
+      recordSyncUsage(userId, { errors: 1 });
       updateSyncLabel("Pendiente de sincronizar");
       updateAccountIndicator(false);
       if (reason === "manual") setStatus("No pudimos sincronizar ahora. Tus datos siguen guardados en este dispositivo.", "error");
@@ -766,21 +806,32 @@
       syncing = false;
       if (syncRequested) {
         syncRequested = false;
-        window.setTimeout(() => synchronize("queued"), 80);
+        const nextReason = queuedSyncReason; queuedSyncReason = "queued";
+        window.setTimeout(() => synchronize(nextReason), 80);
       }
     }
   }
 
   async function uploadState(userId, state) {
-    const updatedAt = new Date().toISOString();
-    const result = await client.from("user_states").upsert({
+    if (session?.user?.id !== userId) throw new Error("account-changed");
+    const generation = accountGeneration;
+    const before = JSON.stringify(captureLocalState());
+    const updatedAt = new Date(Math.max(Date.now(), (Date.parse(cloudRevision) || 0) + 1)).toISOString();
+    const row = {
       user_id: userId,
       state,
       updated_at: updatedAt
-    }, { onConflict: "user_id" });
+    };
+    const result = await client.from("user_states").upsert(row, { onConflict: "user_id" });
+    if (session?.user?.id !== userId || accountGeneration !== generation) throw new Error("account-changed");
     if (result.error) throw result.error;
-    localStorage.setItem(LOCAL_CHANGED_KEY, String(Date.parse(updatedAt)));
-    localStorage.setItem(DIRTY_KEY, "false");
+    cloudRevisionUser = userId; cloudRevision = updatedAt;
+    cachedCloudState = state;
+    recordSyncUsage(userId, { uploads: 1, sentBytes: syncJsonBytes(row), profileBytes: syncJsonBytes(state) });
+    if (JSON.stringify(captureLocalState()) === before) {
+      localStorage.setItem(LOCAL_CHANGED_KEY, String(Date.parse(updatedAt)));
+      localStorage.setItem(DIRTY_KEY, "false");
+    } else { syncRequested = true; queuedSyncReason = "change"; }
     broadcastStateUpdate(userId, updatedAt);
     notifyAndroidWidgets();
   }
@@ -951,6 +1002,9 @@
   }
 
   function clearLocalAccountData() {
+    synchronizedUserId = ""; cloudRevision = ""; cloudRevisionUser = "";
+    cachedCloudState = null; accountGeneration++;
+    lastPullAt = 0; syncFailures = 0; syncRetryAt = 0;
     applyingCloud = true;
     try {
       PRIVATE_SYNC_KEYS.forEach((key) => {
@@ -984,7 +1038,7 @@
   function scheduleSync() {
     if (!session) return;
     window.clearTimeout(syncTimer);
-    syncTimer = window.setTimeout(() => synchronize("change"), 120);
+    syncTimer = window.setTimeout(() => synchronize("change"), 600);
   }
 
   function connectRealtime(userId) {
@@ -995,9 +1049,13 @@
       .channel(`estudiemos-state:${userId}`)
       .on("broadcast", { event: "state-updated" }, ({ payload }) => {
         if (payload?.sender === INSTANCE_ID) return;
-        scheduleRemoteRefresh();
+        if (payload?.updatedAt !== cloudRevision) scheduleRemoteRefresh("realtime");
       })
-      .subscribe();
+      .subscribe(status => {
+        if (realtimeUserId !== userId) return;
+        realtimeConnected = status === "SUBSCRIBED";
+        if (realtimeConnected) scheduleRemoteRefresh("realtime");
+      });
   }
 
   function disconnectRealtime() {
@@ -1008,28 +1066,97 @@
     if (client && realtimeChannel) client.removeChannel(realtimeChannel).catch?.(() => {});
     realtimeChannel = null;
     realtimeUserId = "";
+    realtimeConnected = false;
   }
 
-  function scheduleRemoteRefresh() {
+  function scheduleRemoteRefresh(reason = "resume") {
     window.clearTimeout(remoteRefreshTimer);
-    remoteRefreshTimer = window.setTimeout(() => synchronize("realtime"), 80);
+    remoteRefreshTimer = window.setTimeout(() => synchronize(reason), 150);
   }
 
   function broadcastStateUpdate(userId, updatedAt) {
     if (!realtimeChannel || realtimeUserId !== userId) return;
-    realtimeChannel.send({
+    Promise.resolve(realtimeChannel.send({
       type: "broadcast",
       event: "state-updated",
       payload: { sender: INSTANCE_ID, updatedAt }
-    }).catch?.(() => {});
+    })).then(status => { if (status !== "ok") realtimeConnected = false; }).catch(() => { realtimeConnected = false; });
+  }
+
+  function cloudCheckInterval() {
+    if (syncFailures) return 30000;
+    return document.visibilityState === "visible" ? realtimeConnected ? 120000 : 30000 : 300000;
   }
 
   function startCloudPolling() {
     window.clearInterval(cloudPollTimer);
     cloudPollTimer = window.setInterval(() => {
-      const minimumDelay = document.visibilityState === "visible" ? 10000 : 45000;
-      if (Date.now() - lastPullAt >= minimumDelay) synchronize("poll");
+      if (Date.now() - lastPullAt >= cloudCheckInterval()) synchronize("poll");
     }, 5000);
+  }
+
+  function syncJsonBytes(value) {
+    return new TextEncoder().encode(JSON.stringify(value) || "null").length;
+  }
+
+  function readSyncUsage(userId) {
+    const fields = ["checks", "fullDownloads", "unchangedChecks", "receivedBytes", "uploads", "sentBytes", "errors", "profileBytes"];
+    const days = {};
+    try {
+      const saved = JSON.parse(localStorage.getItem("estudiemos_sync_usage:" + userId) || "{}");
+      const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 30);
+      const today = syncUsageDay(new Date()), first = syncUsageDay(cutoff);
+      for (const [day, values] of Object.entries(saved.days || {})) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || day < first || day > today) continue;
+        days[day] = Object.fromEntries(fields.map(field => [field, Math.min(1e12, Math.max(0, Math.floor(Number(values?.[field]) || 0)))]));
+      }
+    } catch (_) {}
+    return {version:1, days};
+  }
+
+  function syncUsageDay(date) {
+    return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
+  }
+
+  function recordSyncUsage(userId, delta) {
+    try {
+      const saved = readSyncUsage(userId), day = syncUsageDay(new Date());
+      const entry = saved.days[day] || {};
+      for (const [field, value] of Object.entries(delta)) entry[field] = field === "profileBytes" ? value : (entry[field] || 0) + value;
+      saved.days[day] = entry;
+      localStorage.setItem("estudiemos_sync_usage:" + userId, JSON.stringify(saved));
+      if (document.querySelector("[data-account-usage][open]")) renderSyncUsage();
+    } catch (_) { /* Local measurement must never prevent synchronization. */ }
+  }
+
+  function getSyncUsage() {
+    const report = {version:1, scope:"this-browser", unit:"uncompressed-json-bytes", days:{}};
+    if (!session?.user?.id) return report;
+    report.days = readSyncUsage(session.user.id).days;
+    return report;
+  }
+
+  function renderSyncUsage() {
+    const container = document.querySelector("[data-account-usage-values]");
+    if (!container) return;
+    const report = getSyncUsage(), days = Object.keys(report.days).sort();
+    const today = report.days[syncUsageDay(new Date())] || {};
+    const total = days.reduce((sum, day) => sum + (report.days[day].receivedBytes || 0), 0);
+    const profile = report.days[days.at(-1)]?.profileBytes || 0;
+    const bytes = value => value < 1000 ? value + " B" : new Intl.NumberFormat("es-AR", {maximumFractionDigits:2}).format(value / (value < 1e6 ? 1000 : 1e6)) + (value < 1e6 ? " KB" : " MB");
+    container.replaceChildren();
+    for (const [label, value] of [["Perfil sincronizado", bytes(profile)], ["Recibido hoy", bytes(today.receivedBytes || 0)], ["Recibido en los últimos 31 días", bytes(total)], ["Comprobaciones sin cambios hoy", String(today.unchangedChecks || 0)], ["Descargas completas hoy", String(today.fullDownloads || 0)]]) {
+      const term = document.createElement("dt"), description = document.createElement("dd");
+      term.textContent = label; description.textContent = value; container.append(term, description);
+    }
+  }
+
+  function exportSyncUsage() {
+    if (!session) return;
+    const url = URL.createObjectURL(new Blob([JSON.stringify(getSyncUsage(), null, 2)], {type:"application/json"}));
+    const link = document.createElement("a");
+    link.href = url; link.download = "estudiemos-consumo-" + syncUsageDay(new Date()) + ".json";
+    link.click(); window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   function getCredentials() {
@@ -1074,6 +1201,7 @@
     if (passwordForm) passwordForm.hidden = !recoveryMode || !session;
     const email = document.querySelector("[data-account-email]");
     if (email) email.textContent = session?.user?.email || "";
+    renderSyncUsage();
     if (session && WHATSAPP_BOT_ENABLED && !whatsappStatusLoaded) refreshWhatsAppStatus();
     if (session && COMMERCIAL_LAUNCH_ENABLED && !referralStatusLoaded) refreshReferralStatus();
     if (!session) {
@@ -1582,6 +1710,7 @@
     shell.hidden = false;
     shell.setAttribute("aria-hidden", "false");
     document.body.classList.add("account-open");
+    renderSyncUsage();
     if (session && COMMERCIAL_LAUNCH_ENABLED && options.refreshReferrals !== false) refreshReferralStatus(true);
     if (sessionStorage.getItem("estudiemos_app_update_complete") === "true") {
       sessionStorage.removeItem("estudiemos_app_update_complete");
