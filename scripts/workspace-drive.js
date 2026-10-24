@@ -11,7 +11,7 @@
   };
   const icon = name => '<svg viewBox="0 0 24 24" aria-hidden="true">' + icons[name] + '</svg>';
   const size = value => { const n = Math.max(0,Number(value)||0); return n >= 1073741824 ? (n/1073741824).toFixed(1)+' GB' : n >= 1048576 ? (n/1048576).toFixed(1)+' MB' : Math.ceil(n/1024)+' KB'; };
-  let account, owner = '', epoch = 0, enabled = false, browseEnabled = false, connected = false, busy = false, fs, token = '', expiresAt = 0, items = [], current = '', crumbs = [], dialog, returnFocus, query = '', searchTimer, lastLoad = 0, connectAfterLogin = false;
+  let account, owner = '', epoch = 0, enabled = false, configReady = false, initializing = false, browseEnabled = false, connected = false, busy = false, fs, token = '', expiresAt = 0, items = [], current = '', crumbs = [], dialog, returnFocus, query = '', searchTimer, lastLoad = 0, connectAfterLogin = false;
   const body = $('[data-workspace-items]'), state = $('[data-workspace-state]'), status = $('[data-workspace-status]');
   const full = document.body.classList.contains('drive-library-page');
   if (!full && !document.querySelector('[data-drive-library-link]')) {
@@ -29,7 +29,7 @@
   document.addEventListener('click', event => {
     if (event.target.closest('[data-drive-connect]')) connect(browseEnabled);
     if (section.contains(event.target) && event.target.closest('[data-drive-browse]')) connect(true);
-    if (event.target.closest('[data-drive-retry]')) load();
+    if (event.target.closest('[data-drive-retry]')) configReady?load():initialize();
     if (!section.contains(event.target)) return;
     if (event.target.closest('[data-drive-refresh]') && !busy) load();
     const location=event.target.closest('[data-drive-location]');
@@ -57,7 +57,7 @@
   dropzone?.addEventListener('dragover',event => {if(event.dataTransfer?.types.includes('Files')){event.preventDefault();dropzone.classList.add('is-dragging');}});
   dropzone?.addEventListener('dragleave',() => dropzone.classList.remove('is-dragging'));
   dropzone?.addEventListener('drop',event => {event.preventDefault();dropzone.classList.remove('is-dragging');if(connected)upload(Array.from(event.dataTransfer?.files||[]));});
-  function refreshOnReturn(force=false) {if(owner && enabled && !busy && !dialog?.open && (force || Date.now()-lastLoad>1500))load();}
+  function refreshOnReturn(force=false) {if(!initializing&&!busy&&!dialog?.open&&(force||Date.now()-lastLoad>15000)){if(!configReady)initialize();else if(owner&&enabled)load();}}
   window.addEventListener('focus',() => refreshOnReturn());
   document.addEventListener('visibilitychange',() => {if(document.visibilityState==='visible')refreshOnReturn();});
   window.addEventListener('estudiemos:drive-resume',() => refreshOnReturn(true));
@@ -93,27 +93,26 @@
   function renderDisconnected() {
     band.hidden=true;locations.hidden=true;
     const native=Boolean(window.EstudiemosAndroid);
-    show('Tus apuntes, en tu Drive',browseEnabled?'Mi unidad se muestra en modo lectura. El contenido de tus archivos previos no se copia a Estudiemos.':'Acceso solo a los archivos de Estudiemos. Tu Drive y tus documentos siguen siendo tuyos.',`<button type="button" class="workspace-btn workspace-btn--primary drive-connect" data-drive-connect ${enabled?'':'disabled'}>${icon('cloud')}<span>${enabled ? native ? 'Conectar desde el navegador' : 'Conectar Google Drive' : 'Conexi\u00f3n en preparaci\u00f3n'}</span></button>${enabled?'<small class="drive-consent-note">Eleg\u00eds tu cuenta y autoriz\u00e1s el acceso en Google.</small>':''}`);
+    show('Tus apuntes, en tu Drive',browseEnabled?'Mi unidad se muestra en modo lectura. El contenido de tus archivos previos no se copia a Estudiemos.':'Acceso solo a los archivos de Estudiemos. Tu Drive y tus documentos siguen siendo tuyos.',`<button type="button" class="workspace-btn workspace-btn--primary drive-connect" data-drive-connect ${enabled||!owner?'':'disabled'}>${icon('cloud')}<span>${!owner?'Iniciar sesión para conectar Drive':enabled ? native ? 'Conectar desde el navegador' : 'Conectar Google Drive' : 'Conexión no habilitada para esta cuenta'}</span></button>${enabled?'<small class="drive-consent-note">Eleg\u00eds tu cuenta y autoriz\u00e1s el acceso en Google.</small>':''}`);
   }
   async function initialize() {
-    clear(); const initialEpoch=epoch;account=window.EstudiemosAccount;
+    clear(); enabled=false;configReady=false;initializing=true;lastLoad=Date.now();show('Preparando tu Drive…','');const initialEpoch=epoch;account=window.EstudiemosAccount;
     if (!account) { await new Promise(resolve => { const timer=setTimeout(resolve,10000);window.addEventListener('estudiemos:account-ready',()=>{clearTimeout(timer);resolve();},{once:true}); }); account=window.EstudiemosAccount; }
-    if (!account) return show('No pudimos preparar Mi espacio','Revis\u00e1 tu conexi\u00f3n.', '<button class="workspace-btn" data-drive-retry>Reintentar</button>');
+    if (!account) {initializing=false;return show('No pudimos preparar Mi espacio','Revis\u00e1 tu conexi\u00f3n.', '<button class="workspace-btn" data-drive-retry>Reintentar</button>');}
     await account.whenReady();if(initialEpoch!==epoch)return; owner=account.getUser()?.id||'';
     const id=owner, version=epoch;
     try {
       const session=account.getSession();
-      const config=await fetch('/api/account-config?drive=config',{cache:'no-store',credentials:'same-origin',headers:owner&&session?.access_token?{Authorization:'Bearer '+session.access_token}:{}}).then(response=>response.json());
-      if(epoch!==version)return;enabled=config.enabled===true;browseEnabled=config.browseEnabled===true;
+      const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),15000);let config;
+      try{const response=await fetch('/api/account-config?drive=config',{signal:controller.signal,cache:'no-store',credentials:'same-origin',headers:owner&&session?.access_token?{Authorization:'Bearer '+session.access_token}:{}});if(!response.ok)throw new Error('No pudimos comprobar la conexión de Drive.');config=await response.json();if(typeof config.enabled!=='boolean')throw new Error('La conexión de Drive no respondió correctamente.');}finally{clearTimeout(timeout);}
+      if(epoch!==version)return;configReady=true;enabled=config.enabled===true;browseEnabled=config.browseEnabled===true;
       if (!owner || !enabled) return renderDisconnected();
       if (connectAfterLogin) {connectAfterLogin=false;return connect(browseEnabled);}
-      const result=await api('status','GET');if(!currentUser(id,version))return;
-      connected=result.connected===true;
-      if(!connected)publishNativeWidget(false);
-      if(connected)await load();else renderDisconnected();
+      await load();
       if (signal==='cancelled')message('No se conect\u00f3 Drive. Pod\u00e9s hacerlo m\u00e1s adelante.');
       if (signal==='error')message('Google no complet\u00f3 la conexi\u00f3n. Volv\u00e9 a intentar.',true);
-    } catch(error) {if(epoch===version){renderDisconnected();message(error.message,true);}}
+    } catch(error) {if(epoch===version){show('No pudimos conectar con Drive','Tus archivos siguen en Google Drive. Volvé a intentar sin desconectar tu cuenta.','<button class="workspace-btn" data-drive-retry>Reintentar</button>');message(error.name==='AbortError'?'La conexión tardó demasiado. Volvé a intentar.':error.message,true);}}
+    finally{if(epoch===version)initializing=false;}
   }
   async function api(action,method='POST',values={}) {
     const id=owner,version=epoch, session=account?.getSession();
@@ -128,8 +127,9 @@
     return result;
   }
   async function connect(browse=false) {
-    if(busy || !enabled)return;
+    if(busy)return;
     if(!owner){connectAfterLogin=true;return account?.open();}
+    if(!enabled)return;
     if(window.EstudiemosAndroid){
       lastLoad=0;
       window.EstudiemosAndroid.postMessage(JSON.stringify({type:'drive-connect-browser'}));

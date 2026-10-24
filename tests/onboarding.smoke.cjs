@@ -45,8 +45,8 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
         if(['welcome','alarms','program','session','drive','done'].includes(step))await page.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-${width}-${step}.png`)});
         if(step==='program')assert.equal(await page.locator('[data-calendar-reader]').evaluate(el=>el.open),true);
         if(step==='session')assert.equal(await page.locator('.study-session-dialog').evaluate(el=>el.open),true);
-        if(step==='done'){await popover.locator('.driver-popover-next-btn').click();break;}
-        await popover.locator('.driver-popover-next-btn').click();
+        if(step==='done'){await page.mouse.click(width-4,80);break;}
+        await page.mouse.click(width-4,80);
         await page.waitForFunction(previous=>document.querySelector('.onboarding-layer')?.dataset.step!==previous,step);
       }
       assert.ok(visited.includes('done'),visited.join(','));
@@ -61,10 +61,10 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
       assert.equal(await layer.count(),0,'No repeat on next launch');
       if(await page.locator('[data-study-goal-dialog]').isVisible())await page.locator('[data-study-goal-close]').click();
       await page.locator('[data-account-open]').click();await page.locator('[data-onboarding-replay]').click();await layer.waitFor({state:'visible'});
-      await popover.waitFor({state:'visible'});await page.waitForTimeout(230);await popover.locator('.driver-popover-next-btn').click();
+      await popover.waitFor({state:'visible'});await page.waitForTimeout(230);await page.mouse.click(width-4,80);
       await page.waitForFunction(()=>document.querySelector('.onboarding-layer')?.dataset.step==='note');await page.waitForTimeout(250);
-      await popover.locator('.driver-popover-prev-btn').click();await page.waitForFunction(()=>document.querySelector('.onboarding-layer')?.dataset.step==='welcome');await page.waitForTimeout(250);
-      await popover.locator('.driver-popover-next-btn').click();await page.waitForFunction(()=>document.querySelector('.onboarding-layer')?.dataset.step==='note');await page.waitForTimeout(250);
+      await page.mouse.click(4,80);await page.waitForFunction(()=>document.querySelector('.onboarding-layer')?.dataset.step==='welcome');await page.waitForTimeout(250);
+      await page.mouse.click(width-4,80);await page.waitForFunction(()=>document.querySelector('.onboarding-layer')?.dataset.step==='note');await page.waitForTimeout(250);
       await popover.locator('.driver-popover-close-btn').click();await layer.waitFor({state:'hidden'});
       assert.equal(await page.evaluate(()=>history.length),before.history,'Omitting from a note must not navigate back');assert.equal(await page.locator('[data-quick-panel=note]').isVisible(),false);
       assert.equal(await page.evaluate(()=>JSON.parse(localStorage.estudiemos_onboarding_v1).status),'skipped');
@@ -81,7 +81,7 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
     assert.equal(await page.evaluate(()=>location.search.includes('tutorial=')),false);
     await page.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-light-reduced.png`)});
     await page.keyboard.press('ArrowRight');await page.waitForFunction(()=>document.querySelector('.onboarding-layer')?.dataset.step==='note');await page.waitForTimeout(100);
-    await page.mouse.click(4,4);await page.waitForFunction(()=>document.querySelector('.onboarding-layer')?.dataset.step==='alarms');await page.waitForTimeout(100);
+    await page.mouse.click(386,4);await page.waitForFunction(()=>document.querySelector('.onboarding-layer')?.dataset.step==='alarms');await page.waitForTimeout(100);
     await page.keyboard.press('Escape');await layer.waitFor({state:'hidden'});
     assert.equal(await page.evaluate(()=>JSON.parse(localStorage.estudiemos_onboarding_v1).status),'skipped');
     assert.equal(await page.locator('[data-quick-panel=note]').isVisible(),false);

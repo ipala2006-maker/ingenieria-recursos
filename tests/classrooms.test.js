@@ -83,9 +83,9 @@ test('shared projections reuse weekly calendar rules and preserve institution ti
   assert.throws(()=>rules.event({...activity,date:'2026-02-29'}));assert.throws(()=>rules.course({...base,timezone:'Invalid/Zone'}));
 });
 
-function handlerHarness(){
+function handlerHarness(responder){
   const file=path.join(root,'api/_lib/classrooms.js'),localRequire=createRequire(file),calls=[];
-  const context={module:{exports:{}},require(name){if(name==='./supabase-admin')return {authenticateBearer:async value=>value==='Bearer teacher'?{id:ids[0]}:null,adminRequest:async(url,options)=>{calls.push({url,body:JSON.parse(options.body)});return {classes:[],calendar:[],revision:'0'.repeat(32)};}};if(name==='./request-security')return {...localRequire(name),enforceRateLimit:async()=>true};return localRequire(name);}};
+  const context={module:{exports:{}},require(name){if(name==='./supabase-admin')return {authenticateBearer:async value=>value==='Bearer teacher'?{id:ids[0]}:null,adminRequest:async(url,options={})=>{calls.push({url,method:options.method||'GET',body:options.body?JSON.parse(options.body):undefined});return responder?responder(url,options):{classes:[],calendar:[],revision:'0'.repeat(32)};}};if(name==='./request-security')return {...localRequire(name),enforceRateLimit:async()=>true};return localRequire(name);}};
   vm.runInNewContext(fs.readFileSync(file,'utf8'),context);
   return {calls,request:async(body={},extra={})=>{const result={headers:{}};const res={setHeader:(key,value)=>result.headers[key]=value,status(code){result.status=code;return this;},json(value){result.body=value;return this;}};await context.module.exports({method:'POST',query:{classes:'1'},headers:{host:'app.test',origin:'https://app.test',authorization:'Bearer teacher','content-type':'application/json'},body,...extra},res);return result;}};
 }
@@ -102,4 +102,11 @@ test('HTTP binds caller identity, whitelists data, secures origins and refuses u
   assert.equal((await h.request({action:'create',title:'x'.repeat(9000)})).status,413);
   assert.equal(h.calls.length,1);
   assert.match(response.headers['Cache-Control'],/no-store/);
+});
+
+test('course deletion is owner-filtered; invitation previews expose dates but no roster, files or note details',async()=>{
+  const denied=handlerHarness(()=>[]);assert.equal((await denied.request({action:'delete',id:ids[1],owner_id:ids[1]})).status,400);assert.equal(denied.calls.some(call=>call.method==='DELETE'),false);assert.ok(denied.calls[0].url.includes('owner_id=eq.'+ids[0]));
+  const allowed=handlerHarness((url,options)=>url.includes('/rpc/')?{classes:[],calendar:[],revision:'0'.repeat(32)}:options.method==='DELETE'?null:[{id:ids[1]}]);assert.equal((await allowed.request({action:'delete',id:ids[1]})).status,200);assert.equal(allowed.calls.filter(call=>call.method==='DELETE').length,1);assert.ok(allowed.calls.filter(call=>call.method==='DELETE').every(call=>call.url.includes('owner_id=eq.'+ids[0])));
+  const preview=handlerHarness(url=>url.includes('classroom_events?')?[{id:ids[2],data:{...activity,note:'Not for previews'}}]:[{id:ids[1],title:'Algebra',teacher_name:'Responsable',institution:'Uni',timezone:'UTC',color:'blue',owner_id:ids[0]}]);
+  const result=await preview.request({}, {method:'GET',query:{classes:'1',invite:base.code},headers:{host:'app.test'}});assert.equal(result.status,200);assert.equal(result.body.calendar[0].data.note,'');assert.equal(result.body.owner_id,undefined);assert.equal(result.body.materials,undefined);assert.equal(result.body.members,undefined);
 });

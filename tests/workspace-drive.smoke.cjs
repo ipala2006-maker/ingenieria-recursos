@@ -16,7 +16,7 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
     for(const width of process.env.TEST_WIDTH ? [Number(process.env.TEST_WIDTH)] : [1440,390,320]){
       const context=await browser.newContext({viewport:{width,height:900},isMobile:width<500,hasTouch:width<500,serviceWorkers:'block'});
       let connected=false,enabled=true,next=0,uploaded='',files=[{id:'root-folder-file',name:'An\u00e1lisis matem\u00e1tico',mimeType:mime,parents:[folder],modifiedTime:'2026-10-19',appProperties:{estudiemosSpace:folder,estudiemosOwner:owner}},{id:'root-pdf-file',name:'Gu\u00eda de ejercicios.pdf',mimeType:'application/pdf',size:'1000000',parents:[folder],modifiedTime:'2026-10-19',appProperties:{estudiemosSpace:folder,estudiemosOwner:owner}}];
-      let browse=false,browseEnabled=false,failInitialization=0;
+      let browse=false,browseEnabled=false,failInitialization=0,failConfig=0;
       const requests=[];
       await context.addInitScript(({owner})=>{
         const originalFetch=window.fetch.bind(window);window.fetch=async(url,options)=>{if(String(url).startsWith('https://www.googleapis.com/upload/')&&options?.method==='PUT'&&options.body instanceof Blob)window.__uploadedBlob=await options.body.text();return originalFetch(url,options);};
@@ -29,7 +29,7 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
         if(url.origin===base){
           if(url.pathname.startsWith('/api/')){
             const action=url.searchParams.get('drive');
-            if(action==='config')return route.fulfill({json:{enabled,browseEnabled}});
+            if(action==='config'){if(failConfig-->0)return route.fulfill({status:503,json:{message:'Temporary fixture outage'}});return route.fulfill({json:{enabled,browseEnabled}});}
             if(action==='status')return route.fulfill({json:{connected,browse}});
             if(action==='token')return route.fulfill({json:{accessToken:'pilot-google-access',expiresAt:Date.now()+3600000}});
             if(action==='disconnect'){connected=false;return route.fulfill({json:{connected:false}});}
@@ -71,6 +71,7 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
       assert.equal(await page.locator('[data-study-goal-dialog][open]').count(),0,'First-time Drive connection is not interrupted by unrelated study-goal onboarding');
       await connect.click();await page.waitForURL('https://accounts.google.com/**');assert.ok(page.url().includes('drive.file'));
       connected=true;await page.goto(base+'/mi-espacio.html?drive=connected');
+      failConfig=1;await page.reload();await page.locator('[data-drive-retry]').waitFor();assert.equal(await page.getByText('Conexión en preparación',{exact:true}).count(),0);await page.locator('[data-drive-retry]').click();
       const body=page.locator('[data-workspace-items]');await body.getByText('Gu\u00eda de ejercicios.pdf',{exact:true}).waitFor();
       const beforePick=requests.filter(request=>['POST','PATCH','DELETE','PUT'].includes(request.method)&&request.url.startsWith('https://www.googleapis.com')).length;
       await page.evaluate(()=>{window.__picked=null;window.EstudiemosDriveLibrary.pick().then(value=>window.__picked=value);});

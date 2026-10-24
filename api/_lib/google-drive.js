@@ -77,6 +77,7 @@ module.exports = async function googleDrive(req, res) {
   if (action === 'config' && req.method === 'GET') {
     const ready = configured();
     const user = ready && pilotEmails().length ? await authenticateBearer(req.headers.authorization) : null;
+    if(ready&&pilotEmails().length&&req.headers.authorization&&!user)return res.status(401).json({enabled:false,code:'AUTH_REQUIRED',message:'No pudimos verificar tu sesión. Volvé a intentar la conexión de Drive.'});
     const enabled = ready && pilotAllowed(user);
     return res.status(200).json({enabled,...(enabled && browseEnabled() ? {browseEnabled:true} : {})});
   }

@@ -14,7 +14,7 @@
   window.EstudiemosOnboarding = Object.freeze({ start: () => start(true), pending: () => pending || active, isActive: () => active });
   if (requested) { query.searchParams.delete('tutorial'); history.replaceState(history.state, '', query); }
   if (!pending && !readStatus() && !classInvitation) remember('existing');
-  function pendingClass() { try { return JSON.parse(sessionStorage.getItem('estudiemos_class_invite_v1') || 'null')?.expires > Date.now(); } catch (_) { return false; } }
+  function pendingClass() { try { return window.EstudiemosCourseInvitation?.pending(window.EstudiemosAccount?.getUser()?.id||'') || JSON.parse(sessionStorage.getItem('estudiemos_class_invite_v1') || 'null')?.expires > Date.now(); } catch (_) { return false; } }
 
   function readStatus() { try { return JSON.parse(localStorage.getItem(KEY) || 'null')?.status || ''; } catch (_) { return ''; } }
   function remember(status) { try { localStorage.setItem(KEY, JSON.stringify({version:1, status})); } catch (_) {} }
@@ -41,7 +41,7 @@
     if (driverModule) return driverModule;
     const styles = ['scripts/vendor/driver/driver.css', 'styles/onboarding.css'];
     await Promise.all(styles.map(path => new Promise((resolve, reject) => {
-      const link = document.createElement('link'); link.rel = 'stylesheet'; link.href = new URL(path + '?v=20261023', root);
+      const link = document.createElement('link'); link.rel = 'stylesheet'; link.href = new URL(path + '?v=20261024-flow', root);
       link.onload = resolve; link.onerror = reject; document.head.append(link);
     })));
     driverModule = await import(new URL('scripts/vendor/driver/driver.js.mjs', root));
@@ -49,7 +49,7 @@
   }
   function buildSteps() {
     const result = [
-      {id:'welcome', title:'Bienvenido a Estudiemos', text:'Conocé tus herramientas, una por una. Avanzá con un clic o con Siguiente. Este recorrido no guarda tareas ni cambia tu configuración.'},
+      {id:'welcome', title:'Bienvenido a Estudiemos', text:'Conocé tus herramientas, una por una. Tocá a la derecha para avanzar y a la izquierda para volver. Este recorrido no guarda tareas ni cambia tu configuración.'},
       {id:'note', title:'Anotá y seguí con tu día', text:'Escribí una tarea o una idea. Puede quedar sin fecha, tener un día asignado o incluir una alarma. Enter la guarda; Shift + Enter guarda y prepara otra.', target:'[data-quick-note-form] .note-entry-title, [data-quick-note-form] [name=title]', view:'inbox', preview:'note'},
       {id:'alarms', title:'Un aviso cuando lo necesites', text:'La fecha y la alarma son opcionales. Podés elegir día, hora y repetición. Las notificaciones se activan con tu permiso; este recorrido no solicita ninguno.', target:'[data-quick-note-form] [name=inboxAlarmEnabled]', view:'inbox', preview:'note', parent:true},
     ];
@@ -90,7 +90,8 @@
     ring = document.createElement('div'); ring.className = 'onboarding-focus'; ring.setAttribute('aria-hidden', 'true'); layer.append(ring);
     document.body.append(layer);
     layer.addEventListener('cancel', event => { event.preventDefault(); finish('skipped'); });
-    layer.addEventListener('click', event => { if (!event.target.closest('button,a')) next(); });
+    layer.addEventListener('click', event => { if (!event.target.closest('button,a')) go(current+(event.clientX<innerWidth/2?-1:1)); });
+    layer.addEventListener('keydown',event=>{if(['ArrowRight','ArrowLeft','Enter',' '].includes(event.key)&&!event.target.closest('button,a')){event.preventDefault();event.stopPropagation();go(current+(event.key==='ArrowLeft'?-1:1));}});
   }
   function positionSpotlight(target = tour?.getActiveElement()) {
     if (!active) return;
@@ -109,12 +110,10 @@
     try {
       const previous = steps[current], step = steps[index];
       if (tour.getState().popover) tour.getState().popover.wrapper.style.visibility = 'hidden';
-      layer.close();
-      if (previous?.preview !== step.preview) { restorePreview(); if (step.view) navigate(step.view); cleanupPreview = openPreview(step.preview); }
-      else if (step.view) navigate(step.view);
-      await frame();
+      const changePreview=previous?.preview!==step.preview,changeView=step.view&&previous?.view!==step.view;
+      if(changePreview||changeView){layer.close();if(changePreview)restorePreview();if(changeView)navigate(step.view);if(changePreview)cleanupPreview=openPreview(step.preview);await frame();}
       if (!active) return;
-      layer.showModal();
+      if(!layer.open)layer.showModal();
       current = index; layer.dataset.step = step.id;
       tour.moveTo(index);
     } catch (_) { finish('interrupted'); }
@@ -133,16 +132,16 @@
       savedFocus = document.activeElement;
       steps = buildSteps(); createLayer(); layer.dataset.step = steps[0].id; layer.showModal();
       tour = driver({
-        animate:!reduced.matches, duration:200, smoothScroll:false, allowScroll:false,
+        animate:false, smoothScroll:false, allowScroll:false, allowKeyboardControl:false,
         overlayOpacity:0, disableActiveInteraction:true, showProgress:true, progressText:'{{current}} / {{total}}',
-        nextBtnText:'Siguiente', prevBtnText:'Atrás', doneBtnText:'Ir a mi inicio', closeBtnLabel:'Omitir recorrido',
+        showButtons:['close'], closeBtnLabel:'Omitir recorrido',
         popoverClass:'estudiemos-tour', stagePadding:8, stageRadius:8,
         onNextClick:next, onPrevClick:() => go(current-1), onCloseClick:() => finish('skipped'),
         onHighlightStarted:element => positionSpotlight(element || null),
-        onHighlighted:() => { busy = false; positionSpotlight(); tour.getState().popover?.nextButton.focus({preventScroll:true}); },
+        onHighlighted:() => { busy = false; positionSpotlight(); layer.focus({preventScroll:true}); },
         onPopoverRender:popover => {
           layer.append(popover.wrapper); popover.wrapper.setAttribute('role','document');
-          popover.closeButton.textContent = 'Omitir'; popover.nextButton.focus({preventScroll:true});
+          popover.closeButton.textContent = 'Omitir';
           popover.wrapper.style.setProperty('--tour-progress', ((current+1)/steps.length*100)+'%');
         },
         onDestroyed:() => { if (active) finish('skipped'); },
