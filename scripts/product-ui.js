@@ -86,8 +86,8 @@
   window.addEventListener('estudiemos:home-navigate', event => {
     const view = views.find(([key]) => key === event.detail?.view);
     if (!view || !isVisible(view[0])) return;
-    if (mobile.matches) activate(view[0]);
-    else view[2].scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block:'nearest' });
+    if (mobile.matches) activate(view[0], event.detail?.replace === true);
+    else view[2].scrollIntoView({ behavior: event.detail?.replace || matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block:'nearest' });
     view[2].setAttribute('tabindex','-1');
     view[2].focus({ preventScroll:true });
   });

@@ -562,12 +562,13 @@
     panel.setAttribute("aria-hidden", "false");
     document.body.classList.add("quick-panel-open");
     if (history.state?.estudiemosUi !== `quick-${name}`) {
-      history.pushState({ ...(history.state || {}), estudiemosUi: `quick-${name}` }, "", location.href);
+      history[window.EstudiemosOnboarding?.isActive() ? 'replaceState' : 'pushState']({ ...(history.state || {}), estudiemosUi: `quick-${name}` }, "", location.href);
     }
-    requestAnimationFrame(() => panel.querySelector("input,textarea,select")?.focus());
+    if (!window.EstudiemosOnboarding?.isActive()) requestAnimationFrame(() => panel.querySelector("input,textarea,select")?.focus());
   }
 
   function closeActivePanel() {
+    if (window.EstudiemosOnboarding?.isActive()) { hidePanels(); return; }
     if (String(history.state?.estudiemosUi || "").startsWith("quick-")) {
       history.back();
       return;

@@ -336,6 +336,7 @@
   }
 
   function maybeAskStudyGoal() {
+    if (window.EstudiemosOnboarding?.pending()) return;
     if (!document.body.classList.contains('workspace-home') || document.body.classList.contains('drive-library-page') || document.documentElement.classList.contains('rainmeter-widget')) return;
     streakState = loadStreakState();
     const identity = window.EstudiemosAccount?.getUser()?.id || 'guest';
@@ -556,6 +557,7 @@
       syncStreakWithAndroid();
     });
     window.addEventListener('estudiemos:account-ready', event => { if (!event.detail?.user) maybeAskStudyGoal(); });
+    window.addEventListener('estudiemos:onboarding-finished', event => { if (event.detail?.status !== 'interrupted') maybeAskStudyGoal(); });
     window.addEventListener('estudiemos:account-synced', () => {receiveSharedTimer();publishSharedTimer();maybeAskStudyGoal();});
     window.addEventListener('estudiemos:account-change', event => {
       const identity = event.detail?.user?.id || 'guest';

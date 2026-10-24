@@ -54,7 +54,7 @@
   function open(options = {}) {
     if (!mount()) return;
     if (options.retain && draft && identity() === owner) {
-      active = true; window.dispatchEvent(new CustomEvent('estudiemos:calendar-edit-open')); update(); form.elements.title.focus(); return;
+      active = true; window.dispatchEvent(new CustomEvent('estudiemos:calendar-edit-open')); update(); if (!window.EstudiemosOnboarding?.isActive()) form.elements.title.focus(); return;
     }
     owner = identity(); editingId = options.id || ''; agendaId = options.agendaId || ''; form.reset(); status.textContent = '';
     form.querySelector('[data-timetable-details]').open = false;
@@ -83,7 +83,7 @@
     form.querySelector('[data-timetable-details]').open = Boolean(form.elements.place.value);
     form.querySelector('[data-timetable-title]').textContent = editingId || agendaId ? 'Editar actividad' : 'Nueva actividad';
     form.querySelector('[data-timetable-delete]').hidden = !(editingId || agendaId);
-    active = true; draft = true; window.dispatchEvent(new CustomEvent('estudiemos:calendar-edit-open')); update(); form.elements.title.focus();
+    active = true; draft = true; window.dispatchEvent(new CustomEvent('estudiemos:calendar-edit-open')); update(); if (!window.EstudiemosOnboarding?.isActive()) form.elements.title.focus();
   }
   function update() {
     status.textContent = '';
