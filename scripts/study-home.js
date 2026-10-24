@@ -56,7 +56,7 @@ if (home) {
   sessionSummary.setAttribute('aria-haspopup','dialog');
   sessionSummary.addEventListener('click',event=>{
     event.preventDefault();
-    history.pushState({...history.state,estudiemosUi:'home-session'},'',location.href);
+    history[window.EstudiemosOnboarding?.isActive() ? 'replaceState' : 'pushState']({...history.state,estudiemosUi:'home-session'},'',location.href);
     sessionDialog.showModal();
     organizerDepth?.setVisible(false);
   });

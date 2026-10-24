@@ -214,6 +214,7 @@
         </div>
 
         <div class="account-app-actions">
+          <a class="account-link" href="${getRootPath()}?tutorial=1" data-onboarding-replay>Ver recorrido de bienvenida</a>
           <button class="account-update" type="button" data-account-update>
             ${updateIcon()}
             <span>

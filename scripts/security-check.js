@@ -18,6 +18,7 @@ const secretPatterns = [
   ["Stripe private key", /(?:sk|rk)_live_[A-Za-z0-9]{24,}/]
 ];
 const dependencies = [
+  { package: { ecosystem: "npm", name: "driver.js" }, version: "1.10.2" },
   { package: { ecosystem: "npm", name: "three" }, version: "0.185.1" },
   { package: { ecosystem: "npm", name: "@supabase/supabase-js" }, version: "2.112.3" },
   { package: { ecosystem: "Maven", name: "androidx.webkit:webkit" }, version: "1.12.1" },

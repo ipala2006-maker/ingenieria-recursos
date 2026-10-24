@@ -235,7 +235,7 @@
   function loadProductInterface() {
     if (document.querySelector('script[src*="scripts/product-ui.js"]')) return;
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/product-ui.js?v=20261020-mobile-nav`;
+    script.src = `${rootPath}scripts/product-ui.js?v=20261024-tour`;
     document.head.appendChild(script);
   }
 
@@ -331,7 +331,7 @@
     if (document.querySelector('script[src*="scripts/pomodoro.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/pomodoro.js?v=20261023-sync`;
+    script.src = `${rootPath}scripts/pomodoro.js?v=20261024-tour`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -339,7 +339,7 @@
   function loadDashboardScript() {
     if (document.querySelector('script[src*="scripts/dashboard.js"]')) return;
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/dashboard.js?v=20261023-dates`;
+    script.src = `${rootPath}scripts/dashboard.js?v=20261024-tour`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -377,7 +377,7 @@
     if (document.querySelector('script[src*="scripts/account.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/account.js?v=20261023-sync`;
+    script.src = `${rootPath}scripts/account.js?v=20261024-tour`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -385,7 +385,7 @@
   function loadTimetableScript() {
     if (document.querySelector('script[data-timetable-ui]')) return;
     const ui = document.createElement('script'); ui.dataset.timetableUi = '';
-    ui.src = rootPath + 'scripts/timetable.js?v=20261023-repeat';
+    ui.src = rootPath + 'scripts/timetable.js?v=20261024-tour';
     document.head.appendChild(ui);
   }
 
