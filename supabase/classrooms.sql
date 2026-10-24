@@ -34,6 +34,10 @@ create table if not exists public.classroom_materials (
   url text not null check(length(url)<=1200 and url ~ '^https://(drive|docs)\.google\.com/')
 );
 create index if not exists classroom_materials_class on public.classroom_materials(class_id);
+-- Additive upgrade: existing courses remain teacher-managed until their owner changes the mode.
+alter table public.classrooms add column if not exists owner_role text not null default 'teacher' check(owner_role in ('teacher','collaborator'));
+alter table public.classroom_members add column if not exists role text not null default 'student' check(role in ('student','moderator'));
+alter table public.classroom_members add column if not exists permissions jsonb not null default '{}' check(jsonb_typeof(permissions)='object');
 alter table public.classrooms enable row level security;
 alter table public.classrooms force row level security;
 alter table public.classroom_members enable row level security;
@@ -64,12 +68,12 @@ create or replace function public.classroom_state(p_user uuid,p_revision text de
 returns jsonb language plpgsql stable security definer set search_path='' as $$
 declare revision text; classes jsonb; calendar jsonb;
 begin
-  select md5(coalesce(string_agg(c.id::text||c.updated_at::text||coalesce(m.joined_at::text,''),',' order by c.id),'')) into revision
+  select md5('permissions-v1:'||coalesce(string_agg(c.id::text||c.updated_at::text||coalesce(m.joined_at::text,''),',' order by c.id),'')) into revision
     from public.classrooms c left join public.classroom_members m on m.class_id=c.id and m.user_id=p_user
     where c.id in (select id from public.classrooms where owner_id=p_user union select class_id from public.classroom_members where user_id=p_user);
   if p_revision=revision then return jsonb_build_object('revision',revision,'unchanged',true); end if;
-  select coalesce(jsonb_agg(jsonb_build_object('id',c.id,'title',c.title,'teacherName',c.teacher_name,'institution',c.institution,'timezone',c.timezone,'color',c.color,'archived',c.archived,'role',case when c.owner_id=p_user then 'teacher' else 'student' end,'code',case when c.owner_id=p_user then c.invite_code else null end,'memberCount',(select count(*) from public.classroom_members where class_id=c.id)) order by c.archived,c.title,c.id),'[]') into classes
-    from public.classrooms c where c.id in (select id from public.classrooms where owner_id=p_user union select class_id from public.classroom_members where user_id=p_user);
+  select coalesce(jsonb_agg(jsonb_build_object('id',c.id,'title',c.title,'teacherName',c.teacher_name,'institution',c.institution,'timezone',c.timezone,'color',c.color,'archived',c.archived,'ownerRole',c.owner_role,'role',case when c.owner_id=p_user then c.owner_role when c.owner_role='collaborator' then m.role else 'student' end,'permissions',case when c.owner_id<>p_user and c.owner_role='collaborator' and m.role='moderator' then m.permissions else '{}'::jsonb end,'code',case when c.owner_id=p_user then c.invite_code else null end,'memberCount',(select count(*) from public.classroom_members where class_id=c.id)) order by c.archived,c.title,c.id),'[]') into classes
+    from public.classrooms c left join public.classroom_members m on m.class_id=c.id and m.user_id=p_user where c.owner_id=p_user or m.user_id=p_user;
   select coalesce(jsonb_agg(jsonb_build_object('id',e.id,'classId',c.id,'className',c.title,'timezone',c.timezone,'data',e.data) order by c.id,e.id),'[]') into calendar
     from public.classroom_events e join public.classrooms c on c.id=e.class_id where not c.archived and c.id in (select id from public.classrooms where owner_id=p_user union select class_id from public.classroom_members where user_id=p_user);
   return jsonb_build_object('revision',revision,'classes',classes,'calendar',calendar);
@@ -85,7 +89,7 @@ begin
   select coalesce(jsonb_agg(jsonb_build_object('id',id,'data',data) order by data->>'date',id),'[]') into events from public.classroom_events where class_id=p_class;
   select coalesce(jsonb_agg(jsonb_build_object('id',id,'title',title,'url',url) order by title,id),'[]') into materials from public.classroom_materials where class_id=p_class;
   if course.owner_id=p_user then
-    select coalesce(jsonb_agg(jsonb_build_object('id',m.user_id,'name',coalesce(nullif(p.username,''),'Estudiante '||upper(left(m.user_id::text,6)))) order by m.joined_at),'[]') into members
+    select coalesce(jsonb_agg(jsonb_build_object('id',m.user_id,'name',coalesce(nullif(p.username,''),'Estudiante '||upper(left(m.user_id::text,6))),'role',case when course.owner_role='collaborator' then m.role else 'student' end,'permissions',case when course.owner_role='collaborator' and m.role='moderator' then m.permissions else '{}'::jsonb end) order by m.joined_at,m.user_id),'[]') into members
     from public.classroom_members m left join public.friend_profiles p on p.user_id=m.user_id where m.class_id=p_class;
   else members:='[]'::jsonb; end if;
   return jsonb_build_object('id',p_class,'events',events,'materials',materials,'members',members);
@@ -118,25 +122,38 @@ exception when others then return false;
 end $$;
 revoke all on function public.classroom_event_valid(jsonb) from public,anon,authenticated,service_role;
 
+create or replace function public.classroom_permissions_valid(v jsonb)
+returns boolean language plpgsql immutable set search_path='' as $$
+declare key text; value jsonb;
+begin
+  if jsonb_typeof(v) is distinct from 'object' then return false; end if;
+  for key,value in select * from pg_catalog.jsonb_each(v) loop
+    if key not in ('datesAdd','datesEdit','datesRemove','filesAdd','filesEdit','filesRemove') or jsonb_typeof(value)<>'boolean' then return false; end if;
+  end loop;
+  return true;
+end $$;
+revoke all on function public.classroom_permissions_valid(jsonb) from public,anon,authenticated,service_role;
+
 create or replace function public.classroom_action(p_user uuid,p_action text,p_data jsonb default '{}')
 returns jsonb language plpgsql security definer set search_path='' as $$
-declare course public.classrooms; item uuid; result jsonb; touched boolean:=true;
+declare course public.classrooms; member public.classroom_members; item uuid; result jsonb; touched boolean:=true; permission text;
 begin
   if not exists(select 1 from auth.users where id=p_user) then raise exception 'AUTH_REQUIRED'; end if;
   if p_action='state' then return public.classroom_state(p_user,coalesce(p_data->>'revision','')); end if;
   if p_action='detail' then return public.classroom_detail(p_user,(p_data->>'id')::uuid); end if;
-  if p_action not in ('create','update','join','leave','rotate','archive','event_save','event_remove','material_save','material_remove','member_remove') then raise exception 'INVALID_DATA'; end if;
+  if p_action not in ('create','update','join','leave','rotate','archive','event_save','event_remove','material_save','material_remove','member_remove','member_permissions') then raise exception 'INVALID_DATA'; end if;
   if p_action in ('create','join') and not exists(select 1 from auth.users where id=p_user and email_confirmed_at is not null) then raise exception 'EMAIL_VERIFICATION_REQUIRED'; end if;
   -- Serialize each user's enrollment/creation limits, then each class's writes.
   perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('estudiemos.classrooms:'||p_user::text,0));
   if p_action in ('create','update') then
+    if p_data ? 'ownerRole' and coalesce(p_data->>'ownerRole','') not in ('teacher','collaborator') then raise exception 'INVALID_PERMISSIONS'; end if;
     if jsonb_typeof(p_data->'title') is distinct from 'string' or length(trim(p_data->>'title')) not between 1 and 90 or jsonb_typeof(p_data->'teacherName') is distinct from 'string' or length(trim(p_data->>'teacherName')) not between 1 and 60 or length(coalesce(p_data->>'institution',''))>90 or coalesce(p_data->>'color','') not in ('blue','teal','violet','rose','amber') then raise exception 'INVALID_DATA'; end if;
     if not exists(select 1 from pg_catalog.pg_timezone_names where name=p_data->>'timezone') then raise exception 'INVALID_TIMEZONE'; end if;
   end if;
   if p_action='create' then
     if (select count(*) from public.classrooms where owner_id=p_user)>=10 then raise exception 'CLASS_LIMIT'; end if;
-    insert into public.classrooms(owner_id,title,teacher_name,institution,timezone,color,invite_code)
-      values(p_user,trim(p_data->>'title'),trim(p_data->>'teacherName'),coalesce(p_data->>'institution',''),p_data->>'timezone',p_data->>'color',p_data->>'code') returning * into course;
+    insert into public.classrooms(owner_id,title,teacher_name,institution,timezone,color,invite_code,owner_role)
+      values(p_user,trim(p_data->>'title'),trim(p_data->>'teacherName'),coalesce(p_data->>'institution',''),p_data->>'timezone',p_data->>'color',p_data->>'code',coalesce(p_data->>'ownerRole','teacher')) returning * into course;
   else
     if p_action='join' then select * into course from public.classrooms where invite_code=p_data->>'code' and not archived for update;
     else select * into course from public.classrooms where id=(p_data->>'id')::uuid for update; end if;
@@ -154,14 +171,33 @@ begin
       if course.owner_id=p_user or not exists(select 1 from public.classroom_members where class_id=course.id and user_id=p_user) then raise exception 'CLASS_UNAVAILABLE'; end if;
       delete from public.classroom_members where class_id=course.id and user_id=p_user;
     else
-      if course.owner_id<>p_user then raise exception 'CLASS_UNAVAILABLE'; end if;
+      if course.owner_id<>p_user then
+        select * into member from public.classroom_members where class_id=course.id and user_id=p_user;
+        if member.user_id is null then raise exception 'CLASS_UNAVAILABLE'; end if;
+        if course.owner_role<>'collaborator' or member.role<>'moderator' or p_action not in ('event_save','event_remove','material_save','material_remove') then raise exception 'PERMISSION_DENIED'; end if;
+        item:=(p_data->>'itemId')::uuid;
+        permission:=case p_action
+          when 'event_save' then case when exists(select 1 from public.classroom_events where id=item) then 'datesEdit' else 'datesAdd' end
+          when 'event_remove' then 'datesRemove'
+          when 'material_save' then case when exists(select 1 from public.classroom_materials where id=item) then 'filesEdit' else 'filesAdd' end
+          when 'material_remove' then 'filesRemove' end;
+        if member.permissions->permission is distinct from 'true'::jsonb then raise exception 'PERMISSION_DENIED'; end if;
+      end if;
       if course.archived and p_action<>'archive' then raise exception 'CLASS_ARCHIVED'; end if;
-      if p_action='update' then update public.classrooms set title=trim(p_data->>'title'),teacher_name=trim(p_data->>'teacherName'),institution=coalesce(p_data->>'institution',''),timezone=p_data->>'timezone',color=p_data->>'color' where id=course.id;
+      if p_action='update' then
+        update public.classrooms set title=trim(p_data->>'title'),teacher_name=trim(p_data->>'teacherName'),institution=coalesce(p_data->>'institution',''),timezone=p_data->>'timezone',color=p_data->>'color',owner_role=coalesce(p_data->>'ownerRole',owner_role) where id=course.id;
+        if p_data->>'ownerRole'='teacher' then update public.classroom_members set role='student',permissions='{}' where class_id=course.id and (role<>'student' or permissions<>'{}'::jsonb); end if;
       elsif p_action='rotate' then update public.classrooms set invite_code=p_data->>'code' where id=course.id;
       elsif p_action='archive' then
         if jsonb_typeof(p_data->'archived') is distinct from 'boolean' then raise exception 'INVALID_DATA'; end if;
         update public.classrooms set archived=(p_data->>'archived')::boolean where id=course.id;
       elsif p_action='member_remove' then delete from public.classroom_members where class_id=course.id and user_id=(p_data->>'itemId')::uuid;
+      elsif p_action='member_permissions' then
+        if course.owner_role<>'collaborator' then raise exception 'PERMISSION_DENIED'; end if;
+        if coalesce(p_data->>'role','') not in ('student','moderator') or not public.classroom_permissions_valid(p_data->'permissions') then raise exception 'INVALID_PERMISSIONS'; end if;
+        update public.classroom_members set role=p_data->>'role',permissions=case when p_data->>'role'='moderator' then p_data->'permissions' else '{}'::jsonb end
+          where class_id=course.id and user_id=(p_data->>'itemId')::uuid;
+        if not found then raise exception 'CLASS_UNAVAILABLE'; end if;
       else
         item:=(p_data->>'itemId')::uuid;
         if p_action='event_save' then

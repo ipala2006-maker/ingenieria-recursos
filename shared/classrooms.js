@@ -5,6 +5,13 @@
   const CACHE_KEY='estudiemos_classes_v1',PENDING_KEY='estudiemos_class_invite_v1';
   const UUID=/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i;
   const CODE=/^[A-HJ-NP-Z2-9]{10}$/;
+  const PERMISSIONS=Object.freeze(['datesAdd','datesEdit','datesRemove','filesAdd','filesEdit','filesRemove']);
+  const isOwner=course=>['teacher','collaborator'].includes(course?.role);
+  const can=(course,permission)=>PERMISSIONS.includes(permission)&&!course?.archived&&(isOwner(course)||course?.role==='moderator'&&course.ownerRole==='collaborator'&&course.permissions?.[permission]===true);
+  function permissions(value){
+    if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).some(key=>!PERMISSIONS.includes(key)||typeof value[key]!=='boolean'))throw new Error('INVALID_PERMISSIONS');
+    return Object.fromEntries(PERMISSIONS.map(key=>[key,value[key]===true]));
+  }
   const text=(value,max,required=false)=>{
     if(typeof value!=='string'||value.trim().length>max||required&&!value.trim()||/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(value))throw new Error('INVALID_DATA');
     return value.trim();
@@ -44,6 +51,7 @@
   }
   function course(value){
     const result={title:text(value?.title,90,true),teacherName:text(value.teacherName,60,true),institution:text(value.institution||'',90),timezone:text(value.timezone,80,true),color:time.COLORS.includes(value.color)?value.color:'blue'};
+    if(value.ownerRole!==undefined){if(!['teacher','collaborator'].includes(value.ownerRole))throw new Error('INVALID_PERMISSIONS');result.ownerRole=value.ownerRole;}
     try{new Intl.DateTimeFormat('es',{timeZone:result.timezone}).format();}catch(_){throw new Error('INVALID_TIMEZONE');}
     return result;
   }
@@ -60,5 +68,5 @@
     }
     return result;
   }
-  return Object.freeze({CACHE_KEY,PENDING_KEY,UUID,CODE,code,invitation,text,event,material,course,driveUrl,occurrences});
+  return Object.freeze({CACHE_KEY,PENDING_KEY,UUID,CODE,PERMISSIONS,isOwner,can,permissions,code,invitation,text,event,material,course,driveUrl,occurrences});
 });

@@ -36,7 +36,7 @@ test('only the owner changes content; membership, rotation, archive and leaving 
   const db=await database();try{
     const [teacher,student,outsider]=ids,{selected:id}=await create(db);await call(db,student,'join',{code:base.code});
     const itemId='10000000-0000-4000-8000-000000000001';
-    for(const user of [student,outsider])for(const action of ['update','rotate','archive','event_save','event_remove','material_save','material_remove','member_remove'])await assert.rejects(call(db,user,action,{...base,id,itemId,event:activity,material:{title:'Notas',url:'https://drive.google.com/file/d/FILE_123/view'},archived:true}),/CLASS_UNAVAILABLE/);
+    for(const user of [student,outsider])for(const action of ['update','rotate','archive','event_save','event_remove','material_save','material_remove','member_remove'])await assert.rejects(call(db,user,action,{...base,id,itemId,event:activity,material:{title:'Notas',url:'https://drive.google.com/file/d/FILE_123/view'},archived:true}),user===student?/PERMISSION_DENIED/:/CLASS_UNAVAILABLE/);
     await call(db,teacher,'event_save',{id,itemId,event:activity});
     await call(db,teacher,'material_save',{id,itemId,material:{title:'Apuntes',url:'https://drive.google.com/file/d/FILE_123/view'}});
     assert.equal((await call(db,student,'detail',{id})).materials[0].title,'Apuntes');
@@ -127,5 +127,90 @@ test('invitation preview and deletion work for the real restricted server role w
     for(const role of ['anon','authenticated']){await db.exec('set role '+role);await assert.rejects(db.query('select classroom_invitation($1)',[base.code]),/permission denied/);await assert.rejects(db.query('select classroom_delete($1,$2)',[ids[0],id]),/permission denied/);await db.exec('reset role');}
     await db.exec('set role service_role');const deleted=(await db.query('select classroom_delete($1,$2) as data',[ids[0],id])).rows[0].data;assert.equal(deleted.selected,'');assert.deepEqual((await call(db,ids[1])).calendar,[]);await assert.rejects(db.query('select classroom_invitation($1)',[base.code]),/INVALID_CODE/);
     await db.exec('reset role');assert.equal((await db.query('select count(*)::int n from classroom_events where class_id=$1',[id])).rows[0].n,0);
+  }finally{await db.close();}
+});
+
+const grant=(db,id,user,permissions={},role='moderator')=>call(db,ids[0],'member_permissions',{id,itemId:user,role,permissions});
+const material={title:'Guia',url:'https://drive.google.com/file/d/FILE_123/view'};
+test('collaborators assign granular moderator permissions without exposing rosters or owner capabilities',async()=>{
+  const db=await database();try{
+    await db.exec('set role service_role');
+    const {selected:id}=await create(db,ids[0],{ownerRole:'collaborator'});
+    assert.equal((await call(db,ids[0])).classes[0].role,'collaborator');
+    await call(db,ids[1],'join',{code:base.code});await call(db,ids[2],'join',{code:base.code});
+    const before=(await call(db,ids[1])).revision;
+    await grant(db,id,ids[1],{datesAdd:true});
+    const mod=await call(db,ids[1]);assert.notEqual(mod.revision,before);assert.equal(mod.classes[0].role,'moderator');assert.equal(mod.classes[0].ownerRole,'collaborator');assert.equal(mod.classes[0].permissions.datesAdd,true);assert.equal(mod.classes[0].code,null);
+    const privateDetail=await call(db,ids[1],'detail',{id});assert.deepEqual(privateDetail.members,[]);assert.doesNotMatch(JSON.stringify(privateDetail),new RegExp(ids[2]));
+    for(const action of ['update','rotate','archive','member_remove','member_permissions'])await assert.rejects(call(db,ids[1],action,{...base,id,itemId:ids[2],role:'moderator',permissions:{filesAdd:true},archived:true}),/PERMISSION_DENIED/);
+    await assert.rejects(db.query('select classroom_delete($1,$2)',[ids[1],id]),/CLASS_UNAVAILABLE/);
+    await assert.rejects(grant(db,id,ids[3]),/CLASS_UNAVAILABLE/);await assert.rejects(grant(db,id,ids[0]),/CLASS_UNAVAILABLE/);
+    for(const permissions of [{owner:true},{datesAdd:'true'},[],null])await assert.rejects(grant(db,id,ids[1],permissions),/INVALID_PERMISSIONS/);
+    await assert.rejects(grant(db,id,ids[1],{},'collaborator'),/INVALID_PERMISSIONS/);
+    for(const table of ['classrooms','classroom_members','classroom_events','classroom_materials'])await assert.rejects(db.query('select * from '+table),/permission denied/);
+  }finally{await db.close();}
+});
+
+test('each of the six grants controls only its own operation, including upserts and cross-course IDs',async()=>{
+  const db=await database();try{
+    await db.exec('set role service_role');const {selected:id}=await create(db,ids[0],{ownerRole:'collaborator'});await call(db,ids[1],'join',{code:base.code});
+    for(const [prefix,save,remove,payload]of[['dates','event_save','event_remove',{event:activity}],['files','material_save','material_remove',{material}]]){
+      const itemId=ids[3],otherId=ids[2];
+      await grant(db,id,ids[1],{[prefix+'Add']:true});
+      await call(db,ids[1],save,{id,itemId,...payload});
+      await assert.rejects(call(db,ids[1],save,{id,itemId,...payload}),/PERMISSION_DENIED/);
+      await assert.rejects(call(db,ids[1],remove,{id,itemId}),/PERMISSION_DENIED/);
+      await grant(db,id,ids[1],{[prefix+'Edit']:true});
+      await call(db,ids[1],save,{id,itemId,...payload});
+      await assert.rejects(call(db,ids[1],save,{id,itemId:otherId,...payload}),/PERMISSION_DENIED/);
+      await assert.rejects(call(db,ids[1],remove,{id,itemId}),/PERMISSION_DENIED/);
+      await grant(db,id,ids[1],{[prefix+'Remove']:true});await call(db,ids[1],remove,{id,itemId});
+      await assert.rejects(call(db,ids[1],save,{id,itemId,...payload}),/PERMISSION_DENIED/);
+    }
+    const {selected:other}=await create(db,ids[2],{code:'KLMNPQRSTU'});await call(db,ids[2],'event_save',{id:other,itemId:ids[3],event:activity});
+    await grant(db,id,ids[1],Object.fromEntries(rules.PERMISSIONS.map(key=>[key,true])));
+    await assert.rejects(call(db,ids[1],'event_save',{id,itemId:ids[3],event:activity}),/CLASS_UNAVAILABLE/);
+    await assert.rejects(call(db,ids[1],'event_save',{id:other,itemId:ids[3],event:activity}),/CLASS_UNAVAILABLE/);
+    await call(db,ids[1],'event_remove',{id,itemId:ids[3]});assert.equal((await call(db,ids[2])).calendar.length,1,'Removing a foreign ID cannot affect another course');
+  }finally{await db.close();}
+});
+
+test('revoking moderation, leaving, archiving and switching to teacher mode never restore stale permissions',async()=>{
+  const db=await database();try{
+    const {selected:id}=await create(db,ids[0],{ownerRole:'collaborator'});await call(db,ids[1],'join',{code:base.code});
+    await grant(db,id,ids[1],{datesAdd:true,filesAdd:true});await db.exec(sql);
+    assert.equal((await call(db,ids[1])).classes[0].permissions.filesAdd,true,'Idempotent migration preserves explicit grants');
+    await db.exec('set role service_role');const before=(await call(db,ids[1])).revision;
+    await grant(db,id,ids[1],{},'student');assert.notEqual((await call(db,ids[1])).revision,before);
+    await assert.rejects(call(db,ids[1],'event_save',{id,itemId:ids[3],event:activity}),/PERMISSION_DENIED/);
+    await grant(db,id,ids[1],{});await assert.rejects(call(db,ids[1],'material_save',{id,itemId:ids[3],material}),/PERMISSION_DENIED/);
+    await grant(db,id,ids[1],{datesAdd:true});await call(db,ids[0],'archive',{id,archived:true});await assert.rejects(call(db,ids[1],'event_save',{id,itemId:ids[3],event:activity}),/CLASS_ARCHIVED/);
+    await call(db,ids[0],'archive',{id,archived:false});await call(db,ids[0],'update',{...base,id,ownerRole:'teacher'});
+    let state=await call(db,ids[1]);assert.equal(state.classes[0].role,'student');assert.deepEqual(state.classes[0].permissions,{});
+    await assert.rejects(grant(db,id,ids[1],{datesAdd:true}),/PERMISSION_DENIED/);await assert.rejects(call(db,ids[1],'event_save',{id,itemId:ids[3],event:activity}),/PERMISSION_DENIED/);
+    await call(db,ids[0],'update',{...base,id,ownerRole:'collaborator'});assert.equal((await call(db,ids[1])).classes[0].role,'student');
+    await grant(db,id,ids[1],{datesAdd:true});await call(db,ids[1],'leave',{id});await call(db,ids[1],'join',{code:base.code});assert.equal((await call(db,ids[1])).classes[0].role,'student');
+    await grant(db,id,ids[1],{datesAdd:true});await call(db,ids[0],'member_remove',{id,itemId:ids[1]});await assert.rejects(call(db,ids[1],'event_save',{id,itemId:ids[3],event:activity}),/CLASS_UNAVAILABLE/);
+  }finally{await db.close();}
+});
+
+test('shared and HTTP validation reject unknown roles and permissions and bind grants to the authenticated actor',async()=>{
+  const h=handlerHarness();const result=await h.request({action:'member_permissions',id:ids[2],itemId:ids[1],role:'moderator',permissions:{filesAdd:true},p_user:ids[1]});assert.equal(result.status,200);assert.equal(h.calls[0].body.p_user,ids[0]);assert.equal(h.calls[0].body.p_data.permissions.filesAdd,true);assert.equal(h.calls[0].body.p_data.permissions.datesAdd,false);
+  for(const role of ['teacher','collaborator','owner'])assert.equal((await h.request({action:'member_permissions',id:ids[2],itemId:ids[1],role,permissions:{}})).status,400);
+  for(const permissions of [{deleteClass:true},{filesAdd:'true'},null,[]])assert.equal((await h.request({action:'member_permissions',id:ids[2],itemId:ids[1],role:'moderator',permissions})).status,400);
+  assert.equal((await h.request({action:'member_permissions',id:ids[2],itemId:ids[1],role:'student',permissions:{filesAdd:true}})).status,400);
+  assert.equal((await handlerHarness(()=>{throw new Error('PERMISSION_DENIED');}).request({action:'event_save',id:ids[2],event:activity})).status,403);
+  assert.throws(()=>rules.course({...base,ownerRole:'moderator'}),/INVALID_PERMISSIONS/);
+  for(const key of rules.PERMISSIONS){assert.equal(rules.can({role:'student',ownerRole:'collaborator',permissions:{[key]:true}},key),false);assert.equal(rules.can({role:'moderator',ownerRole:'collaborator',permissions:{[key]:true}},key),true);assert.equal(rules.can({role:'moderator',ownerRole:'teacher',permissions:{[key]:true}},key),false);assert.equal(rules.can({role:'collaborator',archived:true},key),false);}
+  assert.equal(rules.can({role:'collaborator'},'deleteClass'),false);
+});
+
+test('additive role upgrade preserves existing courses, enrollments, calendar content and invite codes',async()=>{
+  const db=new PGlite();try{
+    await db.exec('create role anon;create role authenticated;create role service_role;create schema auth;create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz);create table friend_profiles(user_id uuid primary key,username text);');
+    for(const id of ids.slice(0,2))await db.query('insert into auth.users values($1,$2,now())',[id,id+'@example.test']);
+    await db.exec(sql.slice(0,sql.indexOf('-- Additive upgrade:'))+'commit;');
+    await db.query('insert into classrooms(id,owner_id,title,teacher_name,timezone,invite_code)values($1,$2,$3,$4,$5,$6)',[ids[2],ids[0],base.title,base.teacherName,base.timezone,base.code]);await db.query('insert into classroom_members(class_id,user_id)values($1,$2)',[ids[2],ids[1]]);await db.query('insert into classroom_events(id,class_id,data)values($1,$2,$3)',[ids[3],ids[2],activity]);
+    await db.exec(sql);const owner=await call(db,ids[0]),student=await call(db,ids[1]);assert.equal(owner.classes[0].role,'teacher');assert.equal(owner.classes[0].code,base.code);assert.equal(student.classes[0].role,'student');assert.equal(student.calendar[0].data.title,activity.title);assert.equal(owner.classes[0].memberCount,1);
   }finally{await db.close();}
 });
