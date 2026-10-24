@@ -128,7 +128,7 @@
     const button=event.target.closest('button');if(!button)return;if(button.hasAttribute('data-class-close'))return closeHost();if(busy)return;
     if(button.hasAttribute('data-class-role')){view='role';draw();return;}
     if(button.hasAttribute('data-class-role-choice')){const value=button.dataset.classRoleChoice;roles.choose(value);view=joinCode?'join':'list';draw();return;}
-    if(button.hasAttribute('data-class-login')){resume=true;closeHost();return window.EstudiemosAccount?.open();}
+    if(button.hasAttribute('data-class-login')){resume=true;if(!standalone)closeHost();return window.EstudiemosAccount?.open();}
     if(button.hasAttribute('data-class-join')){view='join';draw();return;}
     if(button.hasAttribute('data-class-create')){view='create';draw();return;}
     if(button.hasAttribute('data-class-select'))return choose(button.dataset.classSelect);
