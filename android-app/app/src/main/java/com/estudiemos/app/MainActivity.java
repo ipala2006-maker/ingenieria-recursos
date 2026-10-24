@@ -490,7 +490,7 @@ public class MainActivity extends Activity {
             webView.loadUrl(APP_URL + "mi-espacio.html");
             openDriveItemIfRequested(intent);
         } else if (intent.getData() != null && "estudiemos".equals(intent.getData().getScheme())) {
-            webView.loadUrl(referralUrl(intent.getData().getQueryParameter("ref")));
+            webView.loadUrl(invitationUrl(intent.getData()));
         } else if (workspaceItemId != null && !workspaceItemId.trim().isEmpty()) {
             webView.loadUrl(workspaceUrl(workspaceItemId, intent.getStringExtra(EXTRA_WORKSPACE_ITEM_KIND)));
         }
@@ -661,7 +661,7 @@ public class MainActivity extends Activity {
         if (intent.getBooleanExtra(EXTRA_OPEN_DRIVE, false)) return APP_URL + "mi-espacio.html";
         Uri data = intent.getData();
         if (data != null && "estudiemos".equals(data.getScheme())) {
-            return referralUrl(data.getQueryParameter("ref"));
+            return invitationUrl(data);
         }
         String itemId = intent.getStringExtra(EXTRA_WORKSPACE_ITEM_ID);
         if (itemId == null || itemId.trim().isEmpty()) return APP_URL;
@@ -674,6 +674,14 @@ public class MainActivity extends Activity {
         if (normalized.length() < 8) return APP_URL;
         if (normalized.length() > 12) normalized = normalized.substring(0, 12);
         return Uri.parse(APP_URL).buildUpon().appendQueryParameter("ref", normalized).build().toString();
+    }
+
+    private static String invitationUrl(Uri data) {
+        String code = data.getQueryParameter("materia");
+        if (code != null && code.matches("^[A-HJ-NP-Z2-9]{10}$")) {
+            return Uri.parse(APP_URL).buildUpon().appendQueryParameter("unirme", "1").fragment("materia=" + code).build().toString();
+        }
+        return referralUrl(data.getQueryParameter("ref"));
     }
 
     private static String workspaceUrl(String itemId, String kind) {

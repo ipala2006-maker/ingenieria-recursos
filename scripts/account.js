@@ -1,6 +1,6 @@
 (function () {
   if (window.EstudiemosAccount) return;
-  const AUTH_ONLY = document.body?.classList?.contains('teacher-workspace') === true;
+  const AUTH_ONLY = document.body?.classList?.contains('teacher-workspace') === true || document.body?.classList?.contains('course-invitation-page') === true;
 
   const SUPABASE_CDN = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.min.js";
   const SUPABASE_INTEGRITY = "sha256-z1Kf6JgMvm8t0+OTDs+WNS7T09cSM7Z2Dk+Sf4m5S58=";
@@ -51,6 +51,7 @@
   let lastPullAt = 0;
   let cloudRevision = "", cloudRevisionUser = "";
   let cachedCloudState = null, accountGeneration = 0;
+  let compactVersions = null, compactAvailable = null, syncConflicts = 0;
   let syncFailures = 0, syncRetryAt = 0;
   let realtimeConnected = false;
   let realtimeChannel = null;
@@ -744,17 +745,21 @@
     syncing = true;
     if (!background) updateSyncLabel("Sincronizando...");
     try {
-      let query = client.from("user_states")
+      let compact = await compactSync();
+      let query = compact ? null : client.from("user_states")
         .select("state, updated_at")
         .eq("user_id", userId);
       // RLS still scopes the row. An unchanged revision returns no state payload.
       const conditional = hydrated && cachedCloudState && cloudRevisionUser === userId && cloudRevision && !["manual", "signout"].includes(reason);
-      if (conditional) query = query.neq("updated_at", cloudRevision);
-      const result = await query.maybeSingle();
+      if (conditional && query) query = query.neq("updated_at", cloudRevision);
+      const result = compact ? {data:compact.missing?null:{state:mergeCompactState(compact),updated_at:compact.updated_at}} : await query.maybeSingle();
       if (session?.user?.id !== userId || accountGeneration !== generation) return false;
       if (result.error) throw result.error;
-      recordSyncUsage(userId, { checks: 1, fullDownloads: result.data ? 1 : 0, unchangedChecks: conditional && !result.data ? 1 : 0, receivedBytes: syncJsonBytes(result.data), ...(result.data ? {profileBytes:syncJsonBytes(result.data.state)} : {}) });
-      if (conditional && !result.data && localStorage.getItem(DIRTY_KEY) !== "true") {
+      const compactChanged=compact&&!compact.missing&&Object.keys(compact.versions).some(key=>compactVersions?.[key]!==compact.versions[key]);
+      recordSyncUsage(userId, { checks: 1, fullDownloads: compact?(!cachedCloudState&&result.data?1:0):result.data?1:0, unchangedChecks: compact?!compactChanged?1:0:conditional&&!result.data?1:0, receivedBytes: syncJsonBytes(compact||result.data),sentBytes:compact?syncJsonBytes({p_known:compactVersions||{},p_patch:null,p_expected:null}):0, ...(result.data ? {profileBytes:syncJsonBytes(result.data.state)} : {}) });
+      if (compact)compactVersions=compact.versions;
+      if ((compact?!compactChanged&&hydrated:conditional&&!result.data) && localStorage.getItem(DIRTY_KEY) !== "true") {
+        if(compact?.updated_at)cloudRevision=compact.updated_at;
         lastPullAt = Date.now(); syncFailures = 0; syncRetryAt = 0;
         updateSyncLabel("Sincronizado"); updateAccountIndicator(true);
         return true;
@@ -792,12 +797,14 @@
       window.dispatchEvent(new CustomEvent('estudiemos:account-synced', { detail: { userId } }));
       lastPullAt = Date.now();
       syncFailures = 0; syncRetryAt = 0;
+      syncConflicts = 0;
       updateSyncLabel("Sincronizado");
       updateAccountIndicator(true);
       if (reason === "manual") setStatus("Tus dispositivos ya tienen la misma información.", "success");
       return true;
     } catch (error) {
       if (session?.user?.id !== userId || accountGeneration !== generation) return false;
+      if(error.code==='SYNC_CONFLICT'&&++syncConflicts<=3){syncRequested=true;queuedSyncReason='conflict';return false;}
       syncFailures = Math.min(syncFailures + 1, 5);
       syncRetryAt = Date.now() + Math.min(300000, 15000 * 2 ** syncFailures);
       recordSyncUsage(userId, { errors: 1 });
@@ -825,18 +832,39 @@
       state,
       updated_at: updatedAt
     };
-    const result = await client.from("user_states").upsert(row, { onConflict: "user_id" });
+    const patch={values:{},changedAt:{}};
+    SYNC_KEYS.forEach(key=>{if(!cachedCloudState||JSON.stringify(state.values[key])!==JSON.stringify(cachedCloudState.values?.[key])||state.changedAt[key]!==cachedCloudState.changedAt?.[key]){patch.values[key]=state.values[key];patch.changedAt[key]=state.changedAt[key]||0;}});
+    const compactArgs={p_patch:patch,p_known:compactVersions||{},p_expected:cloudRevision||null};
+    const compact=compactVersions?await compactSync(patch,cloudRevision):null;
+    const result=compact?{error:null}:await client.from("user_states").upsert(row, { onConflict: "user_id" });
     if (session?.user?.id !== userId || accountGeneration !== generation) throw new Error("account-changed");
     if (result.error) throw result.error;
-    cloudRevisionUser = userId; cloudRevision = updatedAt;
+    if(compact?.conflict){const error=new Error('La información cambió en otro dispositivo.');error.code='SYNC_CONFLICT';throw error;}
+    cloudRevisionUser = userId; cloudRevision = compact?.updated_at||updatedAt;
+    if(compact)compactVersions=compact.versions;
     cachedCloudState = state;
-    recordSyncUsage(userId, { uploads: 1, sentBytes: syncJsonBytes(row), profileBytes: syncJsonBytes(state) });
+    recordSyncUsage(userId, { uploads: 1, sentBytes: syncJsonBytes(compact?compactArgs:row), receivedBytes:compact?syncJsonBytes(compact):0, profileBytes: syncJsonBytes(state) });
     if (JSON.stringify(captureLocalState()) === before) {
       localStorage.setItem(LOCAL_CHANGED_KEY, String(Date.parse(updatedAt)));
       localStorage.setItem(DIRTY_KEY, "false");
     } else { syncRequested = true; queuedSyncReason = "change"; }
-    broadcastStateUpdate(userId, updatedAt);
+    broadcastStateUpdate(userId, cloudRevision);
     notifyAndroidWidgets();
+  }
+
+  async function compactSync(patch=null,expected=null) {
+    if(typeof client?.rpc!=='function'||compactAvailable===false)return null;
+    const result=await client.rpc('sync_account_state',{p_known:compactVersions||{},p_patch:patch,p_expected:expected||null});
+    if(result.error){if(['PGRST202','42883'].includes(result.error.code)){compactAvailable=false;return null;}throw result.error;}
+    const data=result.data;
+    if(!data||typeof data.versions!=='object'||!data.missing&&!data.written&&(!data.state||typeof data.state.values!=='object'||typeof data.state.changedAt!=='object'))throw new Error('Respuesta de sincronización inválida.');
+    compactAvailable=true;return data;
+  }
+
+  function mergeCompactState(data){
+    const state={version:2,values:{...(cachedCloudState?.values||{}),...data.state.values},changedAt:{...(cachedCloudState?.changedAt||{}),...data.state.changedAt}};
+    for(const key of SYNC_KEYS)if(compactVersions?.[key]!==data.versions[key]&&!Object.hasOwn(data.state.values,key)){delete state.values[key];delete state.changedAt[key];}
+    return state;
   }
 
   function captureLocalState() {
@@ -853,7 +881,7 @@
         values[key] = raw || (key === "estudiemos_theme" ? "dark" : key === "estudiemos_workspace_changed" ? "0" : "{}");
       }
       // New private calendar lists must not inherit an unrelated change timestamp.
-      changedAt[key] = Number(savedChangedAt[key]) || (["bandeja_horarios", "bandeja_calendario_papelera", "estudiemos_pomodoro_sync"].includes(key) ? 0 : fallbackAt) || 0;
+      changedAt[key] = Object.hasOwn(savedChangedAt,key) ? Math.max(0,Number(savedChangedAt[key])||0) : (["bandeja_horarios", "bandeja_calendario_papelera", "estudiemos_pomodoro_sync"].includes(key) ? 0 : fallbackAt) || 0;
     });
     return { version: 2, values, changedAt };
   }
@@ -917,7 +945,7 @@
           ? source[key]
           : JSON.stringify(source[key] || {});
       }
-      empty.changedAt[key] = Math.max(0, Number(sourceChangedAt[key]) || (key === "estudiemos_pomodoro_sync" ? 0 : Number(fallbackAt)) || 0);
+      empty.changedAt[key] = Object.hasOwn(sourceChangedAt,key) ? Math.max(0,Number(sourceChangedAt[key])||0) : Math.max(0,(key === "estudiemos_pomodoro_sync" ? 0 : Number(fallbackAt))||0);
     });
     return empty;
   }
@@ -1005,6 +1033,7 @@
   }
 
   function clearLocalAccountData() {
+    compactVersions=null;syncConflicts=0;
     synchronizedUserId = ""; cloudRevision = ""; cloudRevisionUser = "";
     cachedCloudState = null; accountGeneration++;
     lastPullAt = 0; syncFailures = 0; syncRetryAt = 0;

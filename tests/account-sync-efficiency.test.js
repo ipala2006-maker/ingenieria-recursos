@@ -5,6 +5,16 @@ const preamble = source.slice(source.indexOf('  const SYNC_KEYS'), source.indexO
 const functions = source.slice(source.indexOf('  async function synchronize(reason)'), source.indexOf('  function getCredentials()'));
 const clone = value => JSON.parse(JSON.stringify(value));
 const deferred = () => { let resolve; const promise = new Promise(r => resolve = r); return {promise, resolve}; };
+function installCompact(h){
+  const crypto=require('node:crypto');let revision=Date.parse('2026-10-23T13:00:00Z');
+  h.context.client.rpc=async(_fn,args)=>{
+    const uid=h.context.session.user.id,row=h.rows.get(uid);
+    if(!row)return {data:{missing:true,versions:{}}};
+    if(args.p_patch){if(args.p_expected!==row.updated_at)return {data:{conflict:true,versions:{},state:{values:{},changedAt:{}},updated_at:row.updated_at}};Object.assign(row.state.values,clone(args.p_patch.values));Object.assign(row.state.changedAt,clone(args.p_patch.changedAt));row.updated_at=new Date(++revision).toISOString();}
+    const versions={},values={},changedAt={};for(const key of Object.keys(row.state.values)){const hash=crypto.createHash('md5').update(JSON.stringify([row.state.values[key],row.state.changedAt[key]])).digest('hex');versions[key]=hash;if(args.p_known[key]!==hash){values[key]=row.state.values[key];changedAt[key]=row.state.changedAt[key]||0;}}
+    return {data:args.p_patch?{written:true,versions,updated_at:row.updated_at}:{partial:true,versions,updated_at:row.updated_at,state:{version:2,values,changedAt}}};
+  };
+}
 
 function harness(sharedRows) {
   let now = Date.parse('2026-10-23T12:00:00Z'), nextTimer = 0;
@@ -12,7 +22,7 @@ function harness(sharedRows) {
   const rows = sharedRows || new Map([['alice', {state:{version:2,values:{bandeja_agenda:[{id:'note',title:'Private title',date:'2026-10-23'}]},changedAt:{bandeja_agenda:1}},updated_at:'2026-10-23T11:00:00.000Z'}]]);
   class Clock extends Date { constructor(...args) { super(...(args.length ? args : [now])); } static now() { return now; } }
   const context = {
-    AUTH_ONLY:false, session:{user:{id:'alice'}}, syncing:false, syncRequested:false, queuedSyncReason:'queued', synchronizedUserId:'', applyingCloud:false,
+    AUTH_ONLY:false, compactVersions:null,compactAvailable:null,syncConflicts:0,session:{user:{id:'alice'}}, syncing:false, syncRequested:false, queuedSyncReason:'queued', synchronizedUserId:'', applyingCloud:false,
     lastPullAt:0, cloudRevision:'', cloudRevisionUser:'', cachedCloudState:null,accountGeneration:0,syncFailures:0, syncRetryAt:0, realtimeConnected:true,
     realtimeChannel:null, realtimeUserId:'', cloudPollTimer:0, remoteRefreshTimer:0, syncTimer:0, INSTANCE_ID:'fixture',
     Date:Clock, TextEncoder, Intl, navigator:{onLine:true}, CustomEvent:class { constructor(type) {this.type=type;} },
@@ -182,4 +192,27 @@ test('a local edit preserves a concurrent remote change to a different tool', as
   const row=h.rows.get('alice');row.updated_at='2026-10-23T12:00:01Z';row.state.values.bandeja_horarios=[{id:'remote',title:'Remote class'}];row.state.changedAt.bandeja_horarios=Date.parse('2026-10-23T12:00:01Z');
   await h.read('change');const saved=h.rows.get('alice').state.values;
   assert.equal(saved.bandeja_agenda[0].title,'Local task');assert.equal(saved.bandeja_horarios[0].title,'Remote class');
+});
+
+test('minute-by-minute study progress sends only changed keys instead of resending the entire agenda',async t=>{
+  const h=harness();h.rows.get('alice').state.values.bandeja_agenda=Array.from({length:600},(_,id)=>({id,title:'Actividad del estudiante '+id,date:'2026-10-23'}));installCompact(h);await h.read('startup');
+  const before=clone(h.context.getSyncUsage().days['2026-10-23']),profile=before.profileBytes;
+  for(let minute=1;minute<=60;minute++){h.advance(60000);h.local.set('estudiemos_pomodoro_streak',JSON.stringify({version:3,days:{'2026-10-23':minute}}));h.context.markLocalChange('estudiemos_pomodoro_streak');await h.read('change');}
+  const usage=h.context.getSyncUsage().days['2026-10-23'],sent=usage.sentBytes-before.sentBytes;assert.ok(sent<profile*60*.1);assert.equal(h.reads.length,0);assert.equal(h.rows.get('alice').state.values.bandeja_agenda.length,600);assert.equal(JSON.parse(h.rows.get('alice').state.values.estudiemos_pomodoro_streak).days['2026-10-23'],60);
+  t.diagnostic(JSON.stringify({profileBytes:profile,minutes:60,sentBytes:sent,legacyFullProfileBytes:profile*60,reductionPercent:Number((100*(1-sent/(profile*60))).toFixed(2))}));
+});
+test('a missing compact RPC falls back once; network failures never fall back to an unguarded full write',async()=>{
+  const h=harness();let calls=0;h.context.client.rpc=async()=>{calls++;return {error:{code:'PGRST202'}};};await h.read('startup');h.advance(120000);await h.read('poll');assert.equal(calls,1);assert.equal(h.reads.length,2);
+  const unavailable=harness();unavailable.context.client.rpc=async()=>({error:{code:'503',message:'offline'}});assert.equal(await unavailable.read('startup'),false);assert.equal(unavailable.reads.length,0);assert.equal(unavailable.writes.length,0);
+});
+
+test('compact compare-and-swap conflicts retry with fresh remote changes and do not overwrite another tool',async()=>{
+  const h=harness();installCompact(h);await h.read('startup');
+  const rpc=h.context.client.rpc;let conflict=true;
+  h.context.client.rpc=async(fn,args)=>{if(args.p_patch&&conflict){conflict=false;const row=h.rows.get('alice');row.state.values.estudiemos_theme='light';row.state.changedAt.estudiemos_theme=2;row.updated_at='2026-10-23T15:00:00Z';}return rpc(fn,args);};
+  h.advance(1000);h.local.set('bandeja_agenda',JSON.stringify([{title:'Local edit'}]));h.context.markLocalChange('bandeja_agenda');assert.equal(await h.read('change'),false);assert.equal(h.local.get('estudiemos_cloud_dirty'),'true');await h.drain();assert.equal(h.rows.get('alice').state.values.estudiemos_theme,'light');assert.equal(h.rows.get('alice').state.values.bandeja_agenda[0].title,'Local edit');assert.equal(h.local.get('estudiemos_cloud_dirty'),'false');
+});
+
+test('an explicit zero change timestamp does not inherit an unrelated tool edit',async()=>{
+  const h=harness();await h.read('startup');h.advance(1000);h.context.markLocalChange('bandeja_agenda');const values=JSON.parse(h.local.get('estudiemos_cloud_key_changed'));values.estudiemos_theme=0;h.local.set('estudiemos_cloud_key_changed',JSON.stringify(values));assert.equal(h.context.captureLocalState().changedAt.estudiemos_theme,0);
 });

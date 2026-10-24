@@ -45,7 +45,7 @@
   }
   if (!document.querySelector('script[data-classrooms]')) {
     const classes = document.createElement('script'); classes.dataset.classrooms = '';
-    classes.src = rootPath + 'scripts/classroom-sync.js?v=20261024-roles';
+    classes.src = rootPath + 'scripts/classroom-sync.js?v=20261024-flow';
     document.head.appendChild(classes);
   }
   if (!document.querySelector('script[data-course-drive]')) {
@@ -395,7 +395,7 @@
     if (document.querySelector('script[src*="scripts/account.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/account.js?v=20261024-roles`;
+    script.src = `${rootPath}scripts/account.js?v=20261024-flow`;
     script.defer = true;
     document.head.appendChild(script);
   }

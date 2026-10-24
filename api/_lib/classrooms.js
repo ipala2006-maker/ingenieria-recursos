@@ -2,7 +2,7 @@ const crypto=require('node:crypto');
 const rules=require('../../shared/classrooms');
 const {authenticateBearer,adminRequest}=require('./supabase-admin');
 const {setSecurityHeaders,isSameOriginRequest,requireJsonRequest,rejectOversizedBody,enforceRateLimit}=require('./request-security');
-const actions=new Set(['create','update','join','leave','rotate','archive','event_save','event_remove','material_save','material_remove','member_remove']);
+const actions=new Set(['create','update','join','leave','delete','rotate','archive','event_save','event_remove','material_save','material_remove','member_remove']);
 const errors={AUTH_REQUIRED:'Iniciá sesión para abrir tus clases.',EMAIL_VERIFICATION_REQUIRED:'Confirmá tu correo antes de crear una clase o unirte.',INVALID_DATA:'Revisá el nombre de la clase y del profesor.',INVALID_TIMEZONE:'La zona horaria no es válida.',INVALID_EVENT:'Revisá la fecha, los días y el horario de la actividad.',INVALID_MATERIAL:'Usá un enlace a un archivo o carpeta de Google Drive.',CLASS_UNAVAILABLE:'La clase no está disponible o no tenés acceso.',INVALID_CODE:'No encontramos una clase disponible con ese código.',CLASS_LIMIT:'Alcanzaste el límite de 10 clases creadas o 30 clases como alumno.',CLASS_FULL:'La clase alcanzó su límite de 400 alumnos.',ITEM_LIMIT:'La clase admite hasta 100 actividades y 50 materiales.',CLASS_ARCHIVED:'La clase está archivada. Reactivala antes de modificarla.'};
 function inviteCode(){const alphabet='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';return Array.from(crypto.randomBytes(10),byte=>alphabet[byte&31]).join('');}
 module.exports=async function classrooms(req,res){
@@ -11,6 +11,16 @@ module.exports=async function classrooms(req,res){
   if(!isSameOriginRequest(req))return res.status(403).json({message:'Origen no permitido.'});
   if(rejectOversizedBody(req,res,8192)||req.method==='POST'&&!requireJsonRequest(req,res))return;
   if(!await enforceRateLimit(req,res,{route:'classrooms',limit:360,windowSeconds:60}))return;
+  if(req.method==='GET'&&req.query.invite){
+    if(!await enforceRateLimit(req,res,{route:'classroom-preview',limit:30,windowSeconds:60}))return;
+    const code=rules.code(req.query.invite);if(!rules.CODE.test(code))return res.status(400).json({message:errors.INVALID_CODE});
+    try{
+      const rows=await adminRequest('/rest/v1/classrooms?invite_code=eq.'+code+'&archived=eq.false&select=id,title,teacher_name,institution,timezone,color&limit=1'),course=rows?.[0];
+      if(!course)return res.status(404).json({message:errors.INVALID_CODE});
+      const events=await adminRequest('/rest/v1/classroom_events?class_id=eq.'+course.id+'&select=id,data&limit=100');
+      return res.status(200).json({title:course.title,teacherName:course.teacher_name,institution:course.institution,calendar:events.map(item=>({id:item.id,classId:course.id,className:course.title,timezone:course.timezone,data:{...rules.event(item.data),note:''}}))});
+    }catch(_){return res.status(503).json({message:'No pudimos preparar la invitación. Volvé a intentar.'});}
+  }
   const user=await authenticateBearer(req.headers.authorization);
   if(!user)return res.status(401).json({message:errors.AUTH_REQUIRED});
   const body=req.body||{},action=req.method==='GET'?(req.query.id?'detail':'state'):body.action;
@@ -35,6 +45,14 @@ module.exports=async function classrooms(req,res){
         if(action==='event_save')data.event=rules.event(body.event);
         if(action==='material_save')data.material=rules.material(body.material);
       }
+    }
+    if(action==='delete'){
+      const filter='?id=eq.'+data.id+'&owner_id=eq.'+user.id;
+      const owned=await adminRequest('/rest/v1/classrooms'+filter+'&select=id&limit=1');
+      if(!owned?.length)throw new Error('CLASS_UNAVAILABLE');
+      await adminRequest('/rest/v1/classrooms'+filter,{method:'DELETE',headers:{Prefer:'return=minimal'}});
+      const state=await adminRequest('/rest/v1/rpc/classroom_action',{method:'POST',body:JSON.stringify({p_user:user.id,p_action:'state',p_data:{}})});
+      return res.status(200).json({...state,selected:''});
     }
     const result=await adminRequest('/rest/v1/rpc/classroom_action',{method:'POST',body:JSON.stringify({p_user:user.id,p_action:action,p_data:data})});
     return res.status(200).json(result);
