@@ -103,6 +103,12 @@
       await this.parent(parentId);
       return this.request(BASE + 'files?fields=' + encodeURIComponent(FIELDS), {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({...this.metadata(title,parentId), mimeType:FOLDER})});
     }
+    async shareCoursePdf(fileId, courseId, consent = false) {
+      if (consent !== true || !/^[a-f0-9-]{36}$/i.test(courseId)) throw new Error('Confirm\u00e1 el permiso de lectura por enlace para este PDF.');
+      const item = await this.managed(fileId);
+      if (item.mimeType !== 'application/pdf' || item.appProperties?.estudiemosCourse !== courseId) throw new Error('Solo pod\u00e9s compartir un PDF subido para esta materia.');
+      return this.request(BASE + 'files/' + id(fileId) + '/permissions?fields=id', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({type:'anyone',role:'reader',allowFileDiscovery:false})});
+    }
     async rename(fileId, title) { await this.managed(fileId); return this.patch(fileId, {name:name(title)}); }
     async trash(fileId) { await this.managed(fileId); return this.patch(fileId, {trashed:true}); }
     async move(fileId, parentId) {

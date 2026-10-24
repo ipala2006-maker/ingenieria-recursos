@@ -1,5 +1,6 @@
 (function () {
   if (window.EstudiemosAccount) return;
+  const AUTH_ONLY = document.body?.classList?.contains('teacher-workspace') === true;
 
   const SUPABASE_CDN = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.min.js";
   const SUPABASE_INTEGRITY = "sha256-z1Kf6JgMvm8t0+OTDs+WNS7T09cSM7Z2Dk+Sf4m5S58=";
@@ -81,7 +82,7 @@
     refresh: (options = {}) => synchronize(options.force ? "verify" : "widget"),
     getSyncUsage: () => getSyncUsage(),
     getUser: () => session?.user || null,
-    isSynchronized: () => Boolean(session?.user?.id && synchronizedUserId === session.user.id),
+    isSynchronized: () => Boolean(session?.user?.id && (AUTH_ONLY || synchronizedUserId === session.user.id)),
     getSession: () => session,
     getClient: () => client,
     whenReady: () => readyPromise,
@@ -726,6 +727,7 @@
   }
 
   async function synchronize(reason) {
+    if (AUTH_ONLY) { updateSyncLabel(session ? 'Conectado' : 'Sin sesión'); return Boolean(session); }
     if (!client || !session) return false;
     const background = reason === "poll" || reason === "widget";
     if (syncing) {
@@ -1043,6 +1045,7 @@
   }
 
   function connectRealtime(userId) {
+    if (AUTH_ONLY) return;
     if (!client || !userId || (realtimeChannel && realtimeUserId === userId)) return;
     disconnectRealtime();
     realtimeUserId = userId;
@@ -1071,6 +1074,7 @@
   }
 
   function scheduleRemoteRefresh(reason = "resume") {
+    if (AUTH_ONLY) return;
     window.clearTimeout(remoteRefreshTimer);
     remoteRefreshTimer = window.setTimeout(() => synchronize(reason), 150);
   }
@@ -1090,6 +1094,7 @@
   }
 
   function startCloudPolling() {
+    if (AUTH_ONLY) return;
     window.clearInterval(cloudPollTimer);
     cloudPollTimer = window.setInterval(() => {
       if (Date.now() - lastPullAt >= cloudCheckInterval()) synchronize("poll");

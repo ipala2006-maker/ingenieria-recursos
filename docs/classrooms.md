@@ -1,20 +1,25 @@
-# Clases: Profesores y Alumnos
+# Materias y Catedras
 
 ## Uso
 
-1. Abrir **Clases** desde el icono de graduacion en la barra superior.
-2. El profesor elige **Crear clase**, indica el nombre, su nombre visible y,
-   opcionalmente, la escuela o universidad. Obtiene un codigo y un enlace.
-3. Los alumnos inician sesion y eligen **Unirme**. Tambien pueden abrir el enlace;
-   el codigo queda preparado mientras completan el inicio de sesion. La union
-   requiere pulsar **Unirme y agregar sus fechas**, nunca se realiza por un GET.
-4. El profesor publica actividades en **Fechas**, con fecha real, horario o todo
-   el dia, color, detalle y repeticion semanal opcional.
-5. Las fechas se muestran en el calendario de cada miembro, identificadas por
-   clase y en modo lectura. **Ver clase** abre su contenido. El filtro **Mis clases**
-   las separa de notas y horarios personales.
-6. En **Materiales**, el profesor elige un archivo/carpeta desde su Mi espacio
-   conectado, o pega un enlace de Google Drive. Los alumnos lo abren en Drive.
+1. Abrir **Materias y catedras**, icono de graduacion en la barra superior.
+2. La primera vez elegir **Soy Profesor** o **Soy Alumno**. El rol se puede cambiar
+   desde el icono de personas del modulo y se recuerda por cuenta en ese dispositivo.
+3. El profesor pasa a `materias.html`, un entorno exclusivo sin herramientas de
+   alumno. Crea la materia indicando su nombre y el de la materia/comision.
+4. Dentro de cada materia administra todo con **Cargar fechas**, **Anadir archivos**
+   y **Compartir link**. Configuracion agrupa alumnos, archivo y cambio de codigo.
+5. El alumno conserva la app completa. **Unirme a una materia** acepta enlace o
+   codigo, tambien preparados al abrir una invitacion. Pulsa **Aceptar y unirme**;
+   el GET del enlace nunca modifica inscripciones. Si necesita iniciar sesion,
+   la invitacion queda pendiente durante 24 horas, ligada a su cuenta cuando existe.
+6. Si el docente no usa Estudiemos, un alumno elige **Crear espacio de materia**.
+   Administra fechas, archivos y enlace igual que cualquier creador. La interfaz
+   lo llama responsable, sin afirmar que sea un profesor verificado.
+7. Las fechas se suman al calendario de los miembros en modo lectura, sin duplicar
+   anotaciones personales. Los archivos aparecen en **Archivos** y se abren en Drive.
+8. **Cargar fechas** admite parciales/finales (tipo Examen), entregas, clases u otras
+   actividades, colores, horario o todo el dia, detalle y repeticion semanal opcional.
 
 El profesor puede modificar o quitar contenidos, revisar los alias de sus alumnos,
 quitar alumnos, cambiar el codigo y archivar/reactivar la clase. Al salir o quitar
@@ -25,9 +30,20 @@ El chat no forma parte de esta version y no se muestra un control inactivo.
 ## Drive y Privacidad
 
 - Solo se publica el titulo y enlace elegidos; nunca tokens ni el resto del Drive.
-- No se suben copias de los archivos a Supabase ni se modifica el acceso de Google.
-- El profesor debe compartir el archivo en Drive con las cuentas de sus alumnos
-  o con la modalidad de enlace que decida conscientemente usar.
+- Se puede subir un PDF valido de hasta 50 MB directamente a una carpeta propia
+  de la materia dentro de Estudiemos en el Drive del responsable. No se suben
+  archivos a Supabase ni a Vercel; alli solo quedan titulo y enlace.
+- La opcion **Permitir leer este PDF a cualquiera con su enlace** esta desmarcada.
+  Marcarla exige una segunda confirmacion para ese PDF, advirtiendo que se puede
+  reenviar fuera de la comision. Solo entonces se crea permiso `anyone/reader`,
+  sin indexacion. No se hacen publicas carpetas ni otros archivos existentes.
+- Sin esa autorizacion, se conservan los permisos existentes de Google Drive.
+  El responsable debe habilitar la lectura para sus alumnos desde Google.
+- Tambien se pueden pegar enlaces existentes o elegirlos desde Mi espacio cuando
+  esta disponible. Estudiemos no cambia los permisos de esos archivos.
+- Cancelar una publicacion despues de subir el PDF puede dejar el borrador en
+  Drive. Un fallo al guardar el enlace no elimina el archivo ni revoca permisos
+  ya confirmados. Quitar un material de la app tampoco modifica permisos de Google.
 - Salir de una clase NO revoca permisos que alguien ya tenga en Google Drive.
 - Las escuelas pueden restringir enlaces externos o comparticion desde Workspace;
   Clases no evita esas restricciones.
@@ -49,6 +65,14 @@ El chat no forma parte de esta version y no se muestra un control inactivo.
 - `scripts/classroom-sync.js`: cache local ligada a la cuenta, checksum condicional,
   invalidacion al salir/cambiar cuenta, proteccion de carreras y reintentos acotados.
 - `scripts/classrooms.js` y `styles/classrooms.css`: interfaz cargada al abrirla.
+- `scripts/course-role.js`: preferencia local por cuenta, sin conceder permisos.
+- `materias.html` y `scripts/teacher-workspace.js`: entorno exclusivo docente.
+  `account.js` autentica, pero no descarga `user_states` ni se suscribe al estudio
+  personal en esta pagina. Al volver a Alumno se restaura la sincronizacion normal.
+- `scripts/course-drive.js`: subida directa, validacion PDF y tokens en memoria,
+  invalidacion al cambiar de cuenta, consentimiento explicito por PDF.
+- `api/_lib/google-drive.js`: retorno OAuth solo a rutas permitidas del mismo
+  dominio; mantiene PKCE, credenciales cifradas y el permiso limitado `drive.file`.
 - `scripts/workspace-drive.js`: selector de materiales con el acceso ya autorizado.
 
 No se agrega un servicio, secreto, suscripcion, almacenamiento de archivos ni API
@@ -78,11 +102,12 @@ Son limites de esta implementacion, no cuotas oficiales ni garantias de escala.
 
 ## Pruebas
 
-- `node --test tests/classrooms.test.js tests/classroom-sync.test.js`
+- `node --test tests/classrooms.test.js tests/classroom-sync.test.js tests/course-role.test.js tests/drive-files.test.js tests/google-drive.test.js`
 - `node tests/classrooms.smoke.cjs` usa Chrome, HTTP real y PGlite temporal.
 - PowerShell: `$env:TEST_WEBKIT='1'; node tests/classrooms.smoke.cjs`
 - La prueba de navegador usa `tmp/ui-check/node_modules/playwright`, igual que
   otros smoke tests del repositorio; no utiliza cuentas ni credenciales reales.
 
-El icono graduation-cap proviene de Lucide 0.468.0 bajo la licencia ya incluida en
-`assets/icons/LUCIDE-LICENSE`.
+Los iconos son de Lucide, con licencia en `assets/icons/LUCIDE-LICENSE`.
+La prueba de PDFs usa Google simulado; no publica archivos ni modifica permisos
+reales. La prueba HTTP y SQL usa usuarios y una base PGlite temporales.

@@ -46,7 +46,7 @@
     finally{if(version===epoch){writing=false;schedule();}}
   }
   async function changed(){
-    const current=identity();if(current===owner){if(!model)refresh();return;}
+    const current=identity();window.EstudiemosCourseRole?.bind(account()?.getUser());if(current===owner){if(!model)refresh();return;}
     owner=current;epoch++;serial++;loading=null;writing=false;model=null;lastRead=0;retryAt=0;failures=0;lastError=null;clearTimeout(timer);
     try{const saved=JSON.parse(localStorage.getItem(rules.CACHE_KEY)||'null');if(current&&saved?.owner===current&&Array.isArray(saved.model?.classes)&&Array.isArray(saved.model?.calendar))model=saved.model;else localStorage.removeItem(rules.CACHE_KEY);}catch(_){}
     emit();if(owner)refresh();
@@ -58,12 +58,12 @@
   async function open(options={}){
     if(location.pathname.endsWith('/widget.html')){const url=new URL('./',root);url.searchParams.set('clase',options.id||'');return window.open(url,'_blank','noopener,noreferrer');}
     launching=true;
-    if(!uiPromise)uiPromise=Promise.all([new Promise((resolve,reject)=>{const css=document.createElement('link');css.rel='stylesheet';css.href=new URL('styles/classrooms.css?v=20261024',root);css.onload=resolve;css.onerror=reject;document.head.append(css);}),new Promise((resolve,reject)=>{const script=document.createElement('script');script.src=new URL('scripts/classrooms.js?v=20261024',root);script.onload=resolve;script.onerror=reject;document.head.append(script);})]).catch(error=>{uiPromise=null;throw error;});
+    if(!uiPromise)uiPromise=Promise.all([new Promise((resolve,reject)=>{if(document.querySelector('link[href*="styles/classrooms.css"]'))return resolve();const css=document.createElement('link');css.rel='stylesheet';css.href=new URL('styles/classrooms.css?v=20261024-roles',root);css.onload=resolve;css.onerror=reject;document.head.append(css);}),new Promise((resolve,reject)=>{const script=document.createElement('script');script.src=new URL('scripts/classrooms.js?v=20261024-roles',root);script.onload=resolve;script.onerror=reject;document.head.append(script);})]).catch(error=>{uiPromise=null;throw error;});
     try{await uiPromise;window.EstudiemosClassroomUI.open(options);}catch(_){window.EstudiemosAccount?.open();}finally{launching=false;}
   }
   window.EstudiemosClasses=Object.freeze({snapshot,events,refresh,act,detail:id=>request('',{},id),open,pendingLaunch:()=>launching});
-  if(!location.pathname.endsWith('/widget.html')){
-    const button=document.createElement('button');button.type='button';button.className='topbar__link topbar-icon-btn';button.dataset.classesOpen='';button.title='Clases · Profesores y alumnos';button.setAttribute('aria-label','Abrir clases');button.innerHTML=`<img src="${new URL('assets/icons/graduation-cap.svg',root)}" width="20" height="20" alt="">`;
+  if(!location.pathname.endsWith('/widget.html')&&!document.body.classList.contains('teacher-workspace')){
+    const button=document.createElement('button');button.type='button';button.className='topbar__link topbar-icon-btn';button.dataset.classesOpen='';button.title='Materias y cátedras';button.setAttribute('aria-label','Abrir materias y cátedras');button.innerHTML=`<img src="${new URL('assets/icons/graduation-cap.svg',root)}" width="20" height="20" alt="">`;
     document.querySelector('.topbar__nav')?.append(button);button.addEventListener('click',()=>open());
   }
   for(const name of ['estudiemos:account-change','estudiemos:account-ready'])window.addEventListener(name,changed);
@@ -72,9 +72,10 @@
     if(event.key===rules.CACHE_KEY&&owner===identity())try{const cached=JSON.parse(event.newValue||'null');if(cached?.owner===owner&&cached.model){model=cached.model;lastRead=Date.now();emit();schedule();}}catch(_){}
   });
   (async()=>{if(!account())await new Promise(resolve=>window.addEventListener('estudiemos:account-ready',resolve,{once:true}));await account()?.whenReady();await changed();
-    const url=new URL(location.href),code=rules.code(new URLSearchParams(url.hash.slice(1)).get('clase')||''),id=url.searchParams.get('clase');
-    if(rules.CODE.test(code)){try{sessionStorage.setItem(rules.PENDING_KEY,JSON.stringify({code,expires:Date.now()+86400000,owner:identity()}));}catch(_){}const hash=new URLSearchParams(url.hash.slice(1));hash.delete('clase');url.hash=hash.toString();history.replaceState(history.state,'',url);open({join:code});}
-    else if(id!==null){url.searchParams.delete('clase');history.replaceState(history.state,'',url);open({id:rules.UUID.test(id)?id:''});}
-    else try{const pending=JSON.parse(sessionStorage.getItem(rules.PENDING_KEY)||'null');if(pending?.expires>Date.now()&&(!pending.owner||pending.owner===identity()))open({join:pending.code});else sessionStorage.removeItem(rules.PENDING_KEY);}catch(_){}
+    if(document.body?.classList.contains('teacher-workspace'))return;
+    const url=new URL(location.href),code=rules.invitation(url.href,root.origin),id=url.searchParams.get('clase')||url.searchParams.get('materia'),requested=url.searchParams.has('materias')||url.searchParams.has('clase')||url.searchParams.has('materia');
+    if(rules.CODE.test(code)){try{sessionStorage.setItem(rules.PENDING_KEY,JSON.stringify({code,expires:Date.now()+86400000,owner:identity()}));}catch(_){}const hash=new URLSearchParams(url.hash.slice(1));hash.delete('clase');hash.delete('materia');url.hash=hash.toString();url.searchParams.delete('materia');history.replaceState(history.state,'',url);open({join:code});}
+    else if(requested){const uploadId=url.searchParams.get('uploadClass'),upload=url.searchParams.get('drive')==='connected';url.searchParams.delete('clase');url.searchParams.delete('materia');url.searchParams.delete('materias');url.searchParams.delete('uploadClass');url.searchParams.delete('drive');history.replaceState(history.state,'',url);if(uploadId)await refresh(true);open({id:rules.UUID.test(uploadId||id||'')?(uploadId||id):'',upload});}
+    else try{const pending=JSON.parse(sessionStorage.getItem(rules.PENDING_KEY)||'null');if(pending?.expires>Date.now()&&(!pending.owner||pending.owner===identity()))open({join:pending.code});else{sessionStorage.removeItem(rules.PENDING_KEY);if(window.EstudiemosCourseRole?.get()==='teacher'&&document.body.classList.contains('workspace-home')&&!document.body.classList.contains('drive-library-page')&&!url.search&&!url.hash)location.replace(window.EstudiemosCourseRole.teacherUrl());}}catch(_){}
   })();
 })();

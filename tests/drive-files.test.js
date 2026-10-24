@@ -52,6 +52,15 @@ test('file links cannot execute scripts or forward credentials to another domain
   assert.throws(()=>openUrl({id:'../file'}));assert.equal(openUrl({id:'file-123',webViewLink:'https://docs.google.com/document/d/file-123/edit'}),'https://docs.google.com/document/d/file-123/edit');
 });
 
+test('reading a course PDF by link requires explicit consent and cannot expose folders or existing unrelated files',async()=>{
+  const course='00000000-0000-4000-8000-000000000001',pdf={...metadata,appProperties:{...metadata.appProperties,estudiemosCourse:course}};
+  const h=library(()=>Response.json(pdf));await assert.rejects(h.drive.shareCoursePdf('a-file',course),/Confirm/);assert.equal(h.calls.length,0);
+  await h.drive.shareCoursePdf('a-file',course,true);const writes=h.calls.filter(call=>call.options.method);assert.equal(writes.length,1);assert.deepEqual(JSON.parse(writes[0].options.body),{type:'anyone',role:'reader',allowFileDiscovery:false});assert.match(writes[0].url,/\/a-file\/permissions/);
+  for(const item of [metadata,{...pdf,mimeType:FOLDER},{...pdf,appProperties:{...pdf.appProperties,estudiemosOwner:'someone-else'}},{...pdf,appProperties:{...pdf.appProperties,estudiemosCourse:'another-class'}}]){
+    const denied=library(()=>Response.json(item));await assert.rejects(denied.drive.shareCoursePdf('a-file',course,true));assert.ok(denied.calls.every(call=>!call.options.method));
+  }
+});
+
 test('metadata-only browsing shows real Drive folders including unmarked items moved from Drive, without changing ownership',async()=>{
   const folder={id:'external-folder',name:'Materias previas',mimeType:FOLDER,parents:[root]},document={id:'external-file',name:'Fisica.pdf',mimeType:'application/pdf',parents:[folder.id]};
   const h=library(url=>url.includes('/files/external-folder?')?Response.json(folder):url.includes('/files/external-file?')?Response.json(document):Response.json({files:[folder,document]}));h.drive.browse=true;
