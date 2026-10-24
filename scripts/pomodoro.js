@@ -337,6 +337,9 @@
 
   function maybeAskStudyGoal() {
     if (window.EstudiemosOnboarding?.pending()) return;
+    if (window.EstudiemosClasses?.pendingLaunch?.()) return;
+    if (document.querySelector('dialog[open]') || new URLSearchParams(location.hash.slice(1)).has('clase') || new URLSearchParams(location.search || '').has('clase')) return;
+    try { if (JSON.parse(sessionStorage.getItem('estudiemos_class_invite_v1') || 'null')?.expires > Date.now()) return; } catch (_) {}
     if (!document.body.classList.contains('workspace-home') || document.body.classList.contains('drive-library-page') || document.documentElement.classList.contains('rainmeter-widget')) return;
     streakState = loadStreakState();
     const identity = window.EstudiemosAccount?.getUser()?.id || 'guest';
@@ -558,6 +561,7 @@
     });
     window.addEventListener('estudiemos:account-ready', event => { if (!event.detail?.user) maybeAskStudyGoal(); });
     window.addEventListener('estudiemos:onboarding-finished', event => { if (event.detail?.status !== 'interrupted') maybeAskStudyGoal(); });
+    window.addEventListener('estudiemos:classes-closed', maybeAskStudyGoal);
     window.addEventListener('estudiemos:account-synced', () => {receiveSharedTimer();publishSharedTimer();maybeAskStudyGoal();});
     window.addEventListener('estudiemos:account-change', event => {
       const identity = event.detail?.user?.id || 'guest';

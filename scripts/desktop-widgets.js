@@ -47,6 +47,7 @@
   window.addEventListener("estudiemos:cloud-restored", handleSynchronizedChange);
   window.addEventListener("estudiemos:account-change", loadWorkspaceItems);
   window.addEventListener("estudiemos:theme-change", refresh);
+  window.addEventListener('estudiemos:classes-updated', refresh);
   window.addEventListener("load", scheduleNativeWindowsSync, { once: true });
   scheduleNativeWindowsSync();
   if (standaloneHost) mountStandalone();
@@ -447,7 +448,7 @@
     const end = new Date(start.getFullYear(), start.getMonth(), start.getDate()+cellCount-1);
     const rules = window.EstudiemosTimetableRules;
     const recurring = rules?.occurrences(rules.read(localStorage), dateValue(start), dateValue(end)) || [];
-    const items = [...readAgenda().filter(item => item.date), ...recurring];
+    const items = [...readAgenda().filter(item => item.date), ...recurring, ...(window.EstudiemosClasses?.events(dateValue(start),dateValue(end)) || [])];
     const byDate = items.reduce((result, item) => {
       if (!result[item.date]) result[item.date] = [];
       result[item.date].push(item);

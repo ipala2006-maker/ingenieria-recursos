@@ -111,3 +111,7 @@ html body.drive-library-page .workspace-section__head > button { width:auto; fle
 [data-account-drive] { display:flex; align-items:center; justify-content:center; min-height:44px; text-decoration:none; margin:14px 0; font-size:13px; }
 @media(max-width:700px),(min-width:701px) and (max-width:900px) and (max-height:899px) { [data-drive-library-link] { display:none; } }
 @media(max-width:620px) { html body.drive-library-page .workspace-page { width:calc(100% - 24px); padding-top:14px; }.drive-library-page h1 { font-size:23px; }.drive-library-page .workspace-toolbar__controls { flex-wrap:wrap; }.drive-library-page .workspace-search { flex:1 1 100%; }.drive-connection { padding:12px; }.drive-library-page .workspace-section__head { gap:12px; }.drive-library-page .workspace-section__head > button { padding:10px; }.drive-dialog footer > button { flex:1; } }
+.drive-picker__head { display:flex; align-items:center; flex-wrap:wrap; gap:12px; margin:12px 0; }
+.drive-picker__head strong { flex:1; min-width:0; overflow-wrap:anywhere; }
+.drive-picker [data-pick-items] { display:grid; max-height:50dvh; overflow:auto; gap:6px; font-size:13px; color:var(--muted); }
+.drive-picker [data-pick-items] button { text-align:left; justify-content:flex-start; min-height:44px; overflow-wrap:anywhere; }

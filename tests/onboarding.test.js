@@ -10,7 +10,7 @@ function boot(initial = {}, url = 'https://estudiemos.example/') {
   const values = new Map(Object.entries(initial)), events = [], timers = [];
   const window = {addEventListener(){}, dispatchEvent:event => events.push(event.type)};
   const context = {
-    window, URL, location:new URL(url), matchMedia:() => ({matches:false}),
+    window, URL, URLSearchParams, location:new URL(url), matchMedia:() => ({matches:false}),
     history:{state:null, replaceState(_state, _title, next) { context.location = new URL(next); }},
     localStorage:{getItem:name => values.get(name) ?? null, setItem:(name, value) => values.set(name, value)},
     document:{body:{classList:{contains:() => true}},currentScript:{src:'https://estudiemos.example/scripts/onboarding.js'},querySelector:() => null,addEventListener(){}},
@@ -61,6 +61,10 @@ test('manual replay overrides completion and removes only its query parameter', 
 
 test('malformed tutorial state fails open without breaking app startup', () => {
   for (const raw of ['{broken','null','[]','false']) assert.equal(boot({[key]:raw}).api.pending(), true);
+});
+test('a class invitation takes priority over the optional first-run tour', () => {
+  const {api, values}=boot({},'https://estudiemos.example/#clase=ABCDEFGHJK');
+  assert.equal(api.pending(),false);assert.equal(values.has(key),false);
 });
 
 test('the tutorial has no network, timer commands, permissions, or account mutations', () => {

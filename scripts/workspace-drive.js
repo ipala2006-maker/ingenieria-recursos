@@ -65,6 +65,23 @@
   window.addEventListener('estudiemos-android-ready',render);
   window.addEventListener('estudiemos-android-widget-account-ready',publishNativeWidget);
   initialize();
+  window.EstudiemosDriveLibrary=Object.freeze({pick:async()=>{
+    if(!fs||!connected||busy)throw new Error('Conectá Google Drive desde Mi espacio, o pegá un enlace de Drive.');
+    if(dialog?.open)throw new Error('Cerrá el panel de Drive antes de elegir un material.');
+    const picker=modal('Elegir material de Drive','<div class="drive-picker"><div class="drive-picker__head"><button type="button" data-pick-back>Volver</button><strong data-pick-path></strong><button type="button" data-pick-folder>Elegir esta carpeta</button></div><div data-pick-items></div></div>');
+    const stack=[{id:fs.browse?'root':fs.rootId,name:fs.browse?'Mi unidad':'Estudiemos'}];let chosen=null,loadVersion=0;
+    async function renderPicker(){
+      const version=++loadVersion,folder=stack.at(-1),list=picker.querySelector('[data-pick-items]');
+      picker.querySelector('[data-pick-path]').textContent=folder.name;picker.querySelector('[data-pick-back]').disabled=stack.length===1;picker.querySelector('[data-pick-folder]').hidden=folder.id==='root';list.textContent='Cargando…';
+      try{const files=await fs.list(folder.id);if(version!==loadVersion||!picker.open)return;list.replaceChildren();
+        for(const file of files){const button=document.createElement('button');button.type='button';button.textContent=(file.mimeType===rules.FOLDER?'Carpeta · ':'')+file.name;button.addEventListener('click',()=>{if(file.mimeType===rules.FOLDER){stack.push({id:file.id,name:file.name});renderPicker();}else{chosen={title:file.name,url:rules.openUrl(file)};picker.close();}});list.append(button);}
+        if(!files.length)list.textContent='Esta carpeta está vacía.';
+      }catch(error){if(picker.open)list.textContent=error.message;}
+    }
+    picker.querySelector('[data-pick-back]').onclick=()=>{if(stack.length>1){stack.pop();renderPicker();}};
+    picker.querySelector('[data-pick-folder]').onclick=()=>{const folder=stack.at(-1);chosen={title:folder.name,url:'https://drive.google.com/drive/folders/'+folder.id};picker.close();};
+    const result=new Promise(resolve=>picker.addEventListener('close',()=>{loadVersion++;resolve(chosen);},{once:true}));renderPicker();return result;
+  }});
 
   function message(text='',error=false) {status.textContent=text;status.dataset.type=error?'error':'success';}
   function currentUser(id,version) {return owner===id && epoch===version && account?.getUser()?.id===id;}
