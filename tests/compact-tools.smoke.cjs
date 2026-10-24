@@ -30,6 +30,8 @@ const headers = require('../vercel.json').headers.find(rule => rule.source === '
       const context = await browser.newContext({viewport:{width,height:900},isMobile:width<500,hasTouch:width<500,reducedMotion:motion?'no-preference':'reduce',timezoneId:'America/Argentina/Buenos_Aires',serviceWorkers:'block'});
       await context.route('**/*', route => new URL(route.request().url()).origin === base ? route.continue() : route.abort());
       await context.addInitScript(() => {
+        localStorage.setItem('estudiemos_onboarding_v1',JSON.stringify({status:'completed'}));
+        localStorage.setItem('estudiemos_pomodoro_streak',JSON.stringify({days:{},goal:{minutes:25,updatedAt:1}}));
         const now = new Date(), prefix = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-';
         localStorage.setItem('estudiemos_calendar_view','month');
         localStorage.setItem('estudiemos_home_layout_local',JSON.stringify({visible:{focus:true,progress:false,assistant:false,workspace:false,calendar:false,inbox:false,shortcuts:false}}));

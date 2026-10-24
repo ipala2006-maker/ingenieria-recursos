@@ -6,10 +6,10 @@
 .classroom-dialog [hidden] { display:none!important; }
 .classroom-head { display:flex; flex:none; align-items:center; justify-content:space-between; gap:16px; padding:16px 20px; border-bottom:1px solid var(--border); }
 .classroom-head>div { display:flex; align-items:center; gap:10px; }
-.classroom-head h2 { margin:0; font-size:19px; font-weight:650; }
+.classroom-head h2 { margin:0; font-size:17px; font-weight:600;line-height:1.4; }
 .classroom-dialog img,.classroom-confirm img,[data-classes-open] img { flex:none; filter:invert(.75) sepia(.15) saturate(2) hue-rotate(175deg); }
 .theme-light .classroom-dialog img,.theme-light [data-classes-open] img { filter:none; opacity:.75; }
-.classroom-dialog button,.classroom-confirm button { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:44px; border:1px solid var(--border); border-radius:6px; padding:9px 12px; color:var(--text); background:transparent; font:inherit; font-size:13px; cursor:pointer; touch-action:manipulation; }
+.classroom-dialog button,.classroom-confirm button { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:44px; min-width:0;max-width:100%;border:1px solid var(--border); border-radius:6px; padding:9px 12px; color:var(--text); background:transparent; font:inherit; font-size:13px;line-height:1.4;overflow-wrap:anywhere;cursor:pointer; touch-action:manipulation; }
 .classroom-dialog button:hover,.classroom-confirm button:hover { background:var(--panel-2); }
 .classroom-dialog .classroom-primary,.classroom-confirm .classroom-primary { color:var(--bg); background:var(--accent); border-color:var(--accent); font-weight:650; }
 .theme-light .classroom-dialog .classroom-primary,.theme-light .classroom-confirm .classroom-primary { color:#fff; }
@@ -32,7 +32,7 @@
 .theme-light .classroom-color--blue { --class-color:#376dbe; }.theme-light .classroom-color--teal { --class-color:#168579; }.theme-light .classroom-color--violet { --class-color:#8051b5; }.theme-light .classroom-color--rose { --class-color:#b34b77; }.theme-light .classroom-color--amber { --class-color:#94701c; }
 .classroom-dot { display:block; width:8px; height:8px; margin-top:5px; flex:none; border-radius:50%; background:var(--class-color,var(--accent)); }
 .classroom-main { padding:24px; overflow:auto; min-width:0; overscroll-behavior:contain; }
-.classroom-main h3 { margin:0; font-size:20px; font-weight:650; overflow-wrap:anywhere; }
+.classroom-main h3 { margin:0; font-size:19px; font-weight:600;line-height:1.4;overflow-wrap:anywhere; }
 .classroom-muted { color:var(--muted); font-size:12px; line-height:1.6; }
 .classroom-empty { min-height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:22px; padding:28px 0; }
 .classroom-empty>img { width:42px; height:42px; }
@@ -49,7 +49,7 @@
 .classroom-tabs button { border:0; border-bottom:2px solid transparent; border-radius:0; padding:12px 0; color:var(--muted); }
 .classroom-tabs [aria-selected=true] { border-bottom-color:var(--accent); color:var(--text); font-weight:650; }
 .classroom-section-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 0; }
-.classroom-row { display:flex; align-items:flex-start; gap:12px; padding:18px 0; border-bottom:1px solid var(--border); }
+.classroom-row { display:flex; align-items:flex-start; gap:12px; padding:14px 0; border-bottom:1px solid var(--border); }
 .classroom-row>div:not(.classroom-actions) { flex:1; min-width:0; }
 .classroom-row>strong { flex:1; min-width:0; overflow-wrap:anywhere; }
 .classroom-row strong,.classroom-material-link { font-size:14px; font-weight:600; overflow-wrap:anywhere; line-height:1.5; }
@@ -58,8 +58,12 @@
 .classroom-row .classroom-note { white-space:pre-wrap; overflow-wrap:anywhere; color:var(--text); }
 .classroom-material-link { color:var(--accent); text-decoration:none; }
 .classroom-material-link:hover { text-decoration:underline; }
-.classroom-form { display:grid; gap:18px; max-width:580px; margin:22px 0; }
+.classroom-form { display:grid; gap:14px; max-width:600px; margin:20px 0; }
 .classroom-form>h3 { margin-bottom:4px; }
+.classroom-form:is([data-class-form=create],[data-class-form=update]) { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.classroom-form:is([data-class-form=create],[data-class-form=update])>:is(h3,fieldset,details,button),.classroom-form:is([data-class-form=create],[data-class-form=update])>label:first-of-type { grid-column:1/-1; }
+.classroom-form>button[type=submit] { justify-self:start;min-width:144px; }
+.classroom-form>.classroom-rank { align-self:end;justify-self:start;margin:0 0 10px; }
 .classroom-form label { display:grid; gap:7px; font-size:13px; color:var(--muted); min-width:0; line-height:1.4; }
 .classroom-form input:not([type=checkbox]):not([type=radio]),.classroom-form select,.classroom-form textarea { min-width:0; max-width:100%; width:100%; min-height:44px; font:inherit; font-size:14px; color:var(--text); background:var(--bg); padding:10px 12px; border:1px solid var(--border); border-radius:6px; }
 .classroom-form textarea { resize:vertical; }
@@ -84,12 +88,23 @@
 .classroom-confirm { width:min(440px,calc(100vw - 32px)); padding:24px; }
 .classroom-confirm p { font-size:14px; line-height:1.7; margin:0 0 22px; }
 .classroom-tools { display:grid; grid-template-columns:repeat(auto-fit,minmax(125px,1fr)); gap:10px; padding:20px 0 12px; }
-.classroom-tools button { flex-direction:column; padding:16px 8px; gap:10px; min-height:90px; font-weight:600; }
-.classroom-tools img { width:24px; height:24px; }
+.classroom-tools button { padding:14px 10px;gap:9px;min-height:60px;font-weight:550; }
+.classroom-tools img { width:20px; height:20px; }
 .classroom-code-line { display:flex; gap:12px; align-items:center; font-size:12px; color:var(--muted); padding:0 0 18px; flex-wrap:wrap; }
 .classroom-code-line strong { color:var(--text); font-weight:550; font-variant-numeric:tabular-nums; }
 .classroom-members { margin:24px 0; }
 .classroom-members summary { cursor:pointer; padding:12px 0; }
+.classroom-settings-tabs { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin:18px 0 22px;border-bottom:1px solid var(--border); }
+.classroom-settings-tabs button { border:0;border-bottom:2px solid transparent;border-radius:0;padding:10px 6px;color:var(--muted); }
+.classroom-settings-tabs button[aria-selected=true] { color:var(--accent);border-bottom-color:var(--accent); }
+.classroom-settings-tabs img { width:17px;height:17px; }
+.classroom-management { max-width:600px;display:grid;gap:22px; }
+.classroom-management>div { display:grid;gap:12px;justify-items:start; }
+.classroom-danger-zone { border-top:1px solid var(--border);padding-top:24px; }
+.classroom-dialog [data-class-delete-course] { color:var(--danger,#e78d9e); }
+.classroom-dialog [data-class-back] { border:0;padding-inline:0;color:var(--muted); }
+#classroomSettingsPanel .classroom-members { margin:0; }
+#classroomSettingsPanel .classroom-members>summary { font-size:15px;font-weight:550;padding-top:0;padding-bottom:16px; }
 .classroom-rank { display:inline-block; margin-top:8px; font-size:12px; color:var(--accent); line-height:1.5; }
 .classroom-member { border-bottom:1px solid var(--border); }
 .classroom-member .classroom-row { border:0; align-items:center; }
@@ -101,12 +116,23 @@
 .classroom-permission-groups fieldset { border:0; border-left:2px solid var(--border); margin:0; padding:0 0 0 14px; min-width:0; }
 .classroom-permission-groups legend { font-size:13px; font-weight:600; padding:0 0 8px; }
 .classroom-permissions>button { justify-self:start; }
-.classroom-upload { display:grid; gap:16px; padding:18px 0; border-block:1px solid var(--border); }
+.classroom-upload { padding:0;border-block:1px solid var(--border); }
+.classroom-upload>summary { display:flex;align-items:center;gap:8px;min-height:48px;list-style:none;cursor:pointer;color:var(--text); }
+.classroom-upload>summary::-webkit-details-marker { display:none; }
+.classroom-upload>summary::after { content:'+';margin-left:auto;font-size:19px;color:var(--muted); }
+.classroom-upload[open]>summary::after { content:'-'; }
+.classroom-upload-fields { display:grid;gap:14px;padding:4px 0 18px; }
+.classroom-upload:not([open])>.classroom-upload-fields { display:none; }
 .classroom-upload .classroom-toggle { align-items:flex-start; color:var(--text); }
 .classroom-upload .classroom-toggle input { flex:none; margin-top:0; }
 .classroom-upload p { margin:0; }
 .classroom-upload input::file-selector-button { font:inherit; color:var(--text); background:var(--panel-2); border:1px solid var(--border); border-radius:4px; padding:5px 8px; margin-right:8px; cursor:pointer; }
 .classroom-form details>label { margin-top:14px; }
+.classroom-form>.classroom-actions:empty { display:none; }
+.classroom-toggle input:is([name=allDay],[name=moderator]) { appearance:none;position:relative;width:40px!important;height:24px!important;flex:0 0 40px;border:1px solid var(--border);border-radius:14px;background:var(--bg);margin:0;cursor:pointer; }
+.classroom-toggle input:is([name=allDay],[name=moderator])::before { content:'';position:absolute;left:3px;top:3px;width:16px;height:16px;border-radius:50%;background:var(--muted);transition:transform .16s; }
+.classroom-toggle input:is([name=allDay],[name=moderator]):checked { background:var(--accent);border-color:var(--accent); }
+.classroom-toggle input:is([name=allDay],[name=moderator]):checked::before { transform:translateX(16px);background:var(--bg); }
 .is-choosing-role .classroom-sidebar { display:none; }
 .is-choosing-role .classroom-shell { grid-template-columns:minmax(0,1fr); }
 .classroom-role { max-width:640px; margin:auto; display:grid; gap:28px; padding:40px 0; }
@@ -140,7 +166,7 @@ body.teacher-workspace { height:100dvh; min-height:0; display:flex; flex-directi
   .has-selection .classroom-sidebar { display:none; }
   .classroom-main { flex:1; padding:18px 14px; overflow:auto; }
   .classroom-main h3 { font-size:18px; }
-  .classroom-main>button[data-class-back],.classroom-mobile-back { display:inline-flex!important; border:0; padding:4px 0; margin-bottom:16px; }
+  .classroom-main>button[data-class-back],.classroom-mobile-back { display:inline-flex!important; border:0; padding:4px 0; margin-bottom:4px; }
   .classroom-course-head { flex-wrap:wrap; }
   .classroom-invite { flex-wrap:wrap; gap:12px; }
   .classroom-form input:not([type=checkbox]):not([type=radio]),.classroom-form select,.classroom-form textarea { font-size:16px; }
@@ -152,7 +178,11 @@ body.teacher-workspace { height:100dvh; min-height:0; display:flex; flex-directi
   .classroom-head { flex-wrap:wrap; }
   .classroom-head>.classroom-actions { margin-left:auto; }
   .classroom-tools { gap:6px; }
-  .classroom-tools button { font-size:12px; padding:14px 5px; }
+  .classroom-tools { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .classroom-tools button { flex-direction:column;font-size:12px;padding:12px 5px;min-height:76px; }
+  .classroom-settings-tabs button { flex-direction:column;gap:4px;font-size:12px; }
+  .classroom-form:is([data-class-form=create],[data-class-form=update]) { grid-template-columns:minmax(0,1fr); }
+  .classroom-form>button[type=submit] { justify-self:stretch; }
   .classroom-member .classroom-row { flex-wrap:wrap; }
   .classroom-role-options { grid-template-columns:minmax(0,1fr); }
   .classroom-role-options button { padding:20px; }
@@ -162,4 +192,7 @@ body.teacher-workspace { height:100dvh; min-height:0; display:flex; flex-directi
   .classroom-embedded { width:100%; height:100%; max-height:none; }
   .classroom-embedded .classroom-main { padding:20px 16px; }
 }
-@media(prefers-reduced-motion:no-preference) { .classroom-dialog[open] { animation:classroom-enter .16s ease-out; } @keyframes classroom-enter { from {opacity:0;transform:translateY(5px)} to {opacity:1;transform:none} } }
+@media(max-width:360px) { .classroom-settings-tabs img { display:none; }.classroom-weekdays { grid-template-columns:repeat(4,minmax(0,1fr)); }.classroom-form-row { grid-template-columns:minmax(0,1fr); } }
+@media(prefers-reduced-motion:no-preference) { .classroom-main>.classroom-form,#classroomSettingsPanel,.classroom-content { animation:classroom-enter .15s ease-out; }.classroom-dialog button { transition:background .15s,color .15s,border-color .15s; } }
+@media(prefers-reduced-motion:reduce) { .classroom-toggle input::before { transition:none; } }
+@media(prefers-reduced-motion:no-preference) { .classroom-dialog[open] { animation:classroom-enter .16s ease-out; } @keyframes classroom-enter { from {opacity:.75;transform:translateY(3px)} to {opacity:1;transform:none} } }
