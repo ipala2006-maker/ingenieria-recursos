@@ -402,6 +402,8 @@
       cells[Math.max(0,Math.min(cells.length-1,index+delta))]?.focus();
     });
     document.addEventListener("click", (event) => {
+      const course = event.target.closest('[data-calendar-class]');
+      if (course) { document.querySelector('[data-calendar-reader][open]')?.close(); window.EstudiemosClasses?.open({id:course.dataset.calendarClass}); return; }
       const add = event.target.closest('[data-calendar-add]');
       if (add) return openCalendarPlanner();
       const pane = event.target.closest('[data-calendar-detail-tab]');
@@ -501,7 +503,7 @@
     const noteForm = document.querySelector("[data-quick-note-form]");
     document.addEventListener('change', event => {
       if (!event.target.matches('[data-calendar-filter]')) return;
-      state.calendarSource = ['weekly','dated'].includes(event.target.value) ? event.target.value : 'all';
+      state.calendarSource = ['weekly','dated','classes'].includes(event.target.value) ? event.target.value : 'all';
       renderCalendar();
     });
     function selectScheduleDate(event) {
@@ -535,6 +537,13 @@
       renderDashboard();
     });
     window.addEventListener('estudiemos:timetable-ready', renderCalendar);
+    window.addEventListener('estudiemos:classes-updated', renderCalendar);
+    window.addEventListener('estudiemos:class-calendar', event => {
+      const date = parseDateValue(event.detail?.date); if (!date) return;
+      state.date=toDateValue(date); state.year=date.getFullYear(); state.month=date.getMonth(); state.calendarSource='all';
+      window.dispatchEvent(new CustomEvent('estudiemos:home-navigate',{detail:{view:'calendar'}}));
+      openCalendarReader(document.activeElement); renderCalendar();
+    });
     window.addEventListener('estudiemos:note-colors-ready', renderAgenda);
     window.addEventListener("estudiemos:workspace-update", updateSpaceSummary);
     window.addEventListener("estudiemos:open-general-ai", (event) => {
@@ -770,7 +779,8 @@
     const recurring = window.EstudiemosTimetableRules?.occurrences(readList('bandeja_horarios'), toDateValue(start), toDateValue(end)) || [];
     const draft = state.calendarDraft;
     const previews = (draft?.schedule ? window.EstudiemosTimetableRules.occurrences([draft.schedule], toDateValue(start), toDateValue(end)) : draft?.entry ? [draft.entry] : []).map(item => ({...item,preview:true}));
-    const agenda = [...readAgenda(), ...recurring].filter(item => !draft?.replaceId || (item.id !== draft.replaceId && item.scheduleId !== draft.replaceId)).concat(previews).filter(item => state.calendarSource === 'all' || (state.calendarSource === 'weekly' ? item.scheduleId : !item.scheduleId));
+    const shared = window.EstudiemosClasses?.events(toDateValue(start),toDateValue(end)) || [];
+    const agenda = [...readAgenda(), ...recurring, ...shared].filter(item => !draft?.replaceId || (item.id !== draft.replaceId && item.scheduleId !== draft.replaceId)).concat(previews).filter(item => state.calendarSource === 'all' || (state.calendarSource === 'classes' ? item.classId : state.calendarSource === 'weekly' ? item.scheduleId : !item.scheduleId&&!item.classId));
     document.querySelectorAll('[data-calendar-preview-label]').forEach(label => { label.hidden = !previews.length; });
     const dated = agenda.reduce((map, item) => {
       if (!item.date) return map;
@@ -891,12 +901,13 @@
       return `<article class="calendar-activity is-${calendarKind(item)} ${eventColorClass(item)} ${item.done ? 'is-done' : ''}">
         <div class="calendar-activity__time"><time>${escapeHtml(formatCalendarTime(item))}</time><span>${escapeHtml(item.type)}</span></div>
         <div class="calendar-activity__content"><h4>${escapeHtml(item.title)}</h4>${item.subject ? `<p class="calendar-activity__subject">${escapeHtml(item.subject)}</p>` : ''}${item.note ? `<p class="calendar-activity__note">${escapeHtml(item.note)}</p>` : ''}${alarm ? `<p class="calendar-activity__alarm">${escapeHtml(alarm)}</p>` : ''}
-          <div class="calendar-activity__actions">${item.preview ? '' : item.scheduleId ? `<button type="button" class="calendar-activity__edit" data-calendar-day="${escapeHtml(item.date)}" data-calendar-edit-schedule="${escapeHtml(item.scheduleId)}">Editar horario</button>` : `<button type="button" class="calendar-activity__edit" data-calendar-edit-entry="${escapeHtml(item.id)}" data-calendar-day="${escapeHtml(item.date)}">Editar actividad</button>${isCompletable(item) ? `<label><input type="checkbox" data-dashboard-agenda-done="${escapeHtml(item.id)}" aria-label="${item.done ? 'Marcar como pendiente' : 'Marcar como hecha'}: ${escapeHtml(item.title)}" ${item.done ? 'checked' : ''}>${item.done ? 'Completada' : 'Marcar como hecha'}</label>` : ''}${window.EstudiemosInboxAlarms?.button(item) || ''}`}</div>
+          <div class="calendar-activity__actions">${item.preview ? '' : item.classId ? `<button type="button" class="calendar-activity__edit" data-calendar-class="${escapeHtml(item.classId)}">Ver clase</button>` : item.scheduleId ? `<button type="button" class="calendar-activity__edit" data-calendar-day="${escapeHtml(item.date)}" data-calendar-edit-schedule="${escapeHtml(item.scheduleId)}">Editar horario</button>` : `<button type="button" class="calendar-activity__edit" data-calendar-edit-entry="${escapeHtml(item.id)}" data-calendar-day="${escapeHtml(item.date)}">Editar actividad</button>${isCompletable(item) ? `<label><input type="checkbox" data-dashboard-agenda-done="${escapeHtml(item.id)}" aria-label="${item.done ? 'Marcar como pendiente' : 'Marcar como hecha'}: ${escapeHtml(item.title)}" ${item.done ? 'checked' : ''}>${item.done ? 'Completada' : 'Marcar como hecha'}</label>` : ''}${window.EstudiemosInboxAlarms?.button(item) || ''}`}</div>
         </div></article>`;
     }).join('') : '<p class="calendar-reader__empty">No hay actividades para este día.</p>';
   }
 
   function calendarKind(item) {
+    if (item.classId) return 'class';
     if (item.scheduleId) return 'recurring';
     if (item.type === 'Clase') return 'class';
     if (['Parcial', 'Final', 'Examen'].includes(item.type)) return 'exam';
@@ -918,7 +929,7 @@
       legend = document.createElement('div');
       legend.className = 'dashboard-calendar__legend';
       legend.dataset.calendarLegend = '';
-      legend.innerHTML = '<select data-calendar-filter aria-label="Mostrar actividades"><option value="all">Todo</option><option value="weekly">Horarios fijos</option><option value="dated">Anotaciones</option></select><button type="button" data-calendar-add>Programar</button><button type="button" data-calendar-colors>Colores</button><button type="button" data-calendar-settings aria-label="Configurar calendario" title="Configurar calendario"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7h-9M14 17H4"/><circle cx="7" cy="7" r="3"/><circle cx="17" cy="17" r="3"/></svg></button><span class="dashboard-calendar__month-total"></span>';
+      legend.innerHTML = '<select data-calendar-filter aria-label="Mostrar actividades"><option value="all">Todo</option><option value="weekly">Horarios fijos</option><option value="dated">Anotaciones</option><option value="classes">Mis clases</option></select><button type="button" data-calendar-add>Programar</button><button type="button" data-calendar-colors>Colores</button><button type="button" data-calendar-settings aria-label="Configurar calendario" title="Configurar calendario"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7h-9M14 17H4"/><circle cx="7" cy="7" r="3"/><circle cx="17" cy="17" r="3"/></svg></button><span class="dashboard-calendar__month-total"></span>';
       grid.after(legend);
     }
     legend.hidden = false;
@@ -1000,7 +1011,7 @@
   }
 
   function isCompletable(item) {
-    return !item.scheduleId && item.type !== "Clase";
+    return !item.classId && !item.scheduleId && item.type !== "Clase";
   }
 
   function updateSpaceSummary(event) {

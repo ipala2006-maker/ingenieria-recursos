@@ -5,14 +5,16 @@
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const query = new URL(location.href);
   const requested = query.searchParams.get('tutorial') === '1';
-  let pending = requested || !readStatus() && !hasPreviousUse();
+  const classInvitation = new URLSearchParams(location.hash.slice(1)).has('clase') || query.searchParams.has('clase') || pendingClass();
+  let pending = requested || !classInvitation && !readStatus() && !hasPreviousUse();
   let active = false, busy = false, tour, layer, ring, steps = [], current = -1;
   let cleanupPreview = () => {}, original, savedFocus, resizeFrame = 0, driverModule;
   const q = selector => document.querySelector(selector);
   const visible = element => Boolean(element?.getClientRects().length && getComputedStyle(element).visibility !== 'hidden');
   window.EstudiemosOnboarding = Object.freeze({ start: () => start(true), pending: () => pending || active, isActive: () => active });
   if (requested) { query.searchParams.delete('tutorial'); history.replaceState(history.state, '', query); }
-  if (!pending && !readStatus()) remember('existing');
+  if (!pending && !readStatus() && !classInvitation) remember('existing');
+  function pendingClass() { try { return JSON.parse(sessionStorage.getItem('estudiemos_class_invite_v1') || 'null')?.expires > Date.now(); } catch (_) { return false; } }
 
   function readStatus() { try { return JSON.parse(localStorage.getItem(KEY) || 'null')?.status || ''; } catch (_) { return ''; } }
   function remember(status) { try { localStorage.setItem(KEY, JSON.stringify({version:1, status})); } catch (_) {} }
@@ -61,6 +63,7 @@
     );
     if (available('progress')) result.push({id:'progress', title:'Tu progreso y tu racha', text:'Explorá cuánto estudiaste cada día. Tu racha crece al alcanzar el objetivo diario, que podés cambiar desde el ícono de la llama.', target:'[data-home-space=progress] .study-progress__numbers', view:'overview'});
     result.push({id:'friends', title:'Estudiar, acompañados', text:'Agregá amigos por usuario o correo, o compartí tu enlace. Podés ver el ranking de rachas entre quienes decidan compartirlas; la tuya es privada por defecto.', target:'[data-friends-open]', view:'overview'});
+    if (q('[data-classes-open]')) result.push({id:'classes',title:'Tu clase, conectada',text:'Como profesor, compartí fechas y materiales de Drive. Como alumno, un código te suma a la clase y agrega sus fechas a tu calendario.',target:'[data-classes-open]',view:'overview'});
     if (window.EstudiemosRelease?.enabled('driveWorkspace') && available('workspace')) result.push({id:'drive', title:'Tus apuntes, en tu Drive', text:'Conectá tu Google Drive cuando quieras para ver tus carpetas y archivos en Mi espacio. Vos elegís autorizar la conexión; el recorrido no abre tu cuenta de Google.', target:'[data-home-space=workspace] .workspace-section__head', view:'space'});
     result.push(
       {id:'layout', title:'Hacé lugar a tu manera', text:'Desde estos ajustes podés mover las herramientas, cambiar su tamaño y elegir cuáles ver. Cada dispositivo conserva su propia distribución.', target:'.study-home__head', view:'overview', preview:'layout'},

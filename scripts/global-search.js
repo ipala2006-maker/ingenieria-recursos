@@ -33,6 +33,18 @@
     document.head.appendChild(rules);
     return;
   }
+  if (!window.EstudiemosClassroomRules) {
+    const classes = document.createElement('script');
+    classes.src = rootPath + 'shared/classrooms.js?v=20261024';
+    classes.onload = initialize;
+    document.head.appendChild(classes);
+    return;
+  }
+  if (!document.querySelector('script[data-classrooms]')) {
+    const classes = document.createElement('script'); classes.dataset.classrooms = '';
+    classes.src = rootPath + 'scripts/classroom-sync.js?v=20261024';
+    document.head.appendChild(classes);
+  }
   if (!document.querySelector('script[data-release-ui]')) {
     const releaseUi = document.createElement('script');
     releaseUi.dataset.releaseUi = '';
@@ -222,7 +234,7 @@
     if (!document.querySelector('link[href*="styles/product-ui.css"]')) {
       const link = document.createElement("link");
       link.rel = "stylesheet";
-      link.href = `${rootPath}styles/product-ui.css?v=20260908-brand-blue`;
+      link.href = `${rootPath}styles/product-ui.css?v=20261024-classes`;
       document.head.appendChild(link);
     }
     if (document.querySelector('link[href*="styles/interaction.css"]')) return;
@@ -331,7 +343,7 @@
     if (document.querySelector('script[src*="scripts/pomodoro.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/pomodoro.js?v=20261024-tour`;
+    script.src = `${rootPath}scripts/pomodoro.js?v=20261024-classes`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -339,7 +351,7 @@
   function loadDashboardScript() {
     if (document.querySelector('script[src*="scripts/dashboard.js"]')) return;
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/dashboard.js?v=20261024-tour`;
+    script.src = `${rootPath}scripts/dashboard.js?v=20261024-classes`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -400,7 +412,7 @@
     if (document.querySelector('script[src*="scripts/desktop-widgets.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/desktop-widgets.js?v=20261023-dates`;
+    script.src = `${rootPath}scripts/desktop-widgets.js?v=20261024-classes`;
     script.async = false;
     document.head.appendChild(script);
   }

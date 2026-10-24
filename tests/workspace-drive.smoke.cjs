@@ -72,6 +72,14 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
       await connect.click();await page.waitForURL('https://accounts.google.com/**');assert.ok(page.url().includes('drive.file'));
       connected=true;await page.goto(base+'/mi-espacio.html?drive=connected');
       const body=page.locator('[data-workspace-items]');await body.getByText('Gu\u00eda de ejercicios.pdf',{exact:true}).waitFor();
+      const beforePick=requests.filter(request=>['POST','PATCH','DELETE','PUT'].includes(request.method)&&request.url.startsWith('https://www.googleapis.com')).length;
+      await page.evaluate(()=>{window.__picked=null;window.EstudiemosDriveLibrary.pick().then(value=>window.__picked=value);});
+      await page.locator('[data-pick-items]').getByRole('button',{name:'Gu\u00eda de ejercicios.pdf',exact:true}).click();
+      await page.waitForFunction(()=>window.__picked);assert.deepEqual(await page.evaluate(()=>window.__picked),{title:'Gu\u00eda de ejercicios.pdf',url:'https://drive.google.com/file/d/root-pdf-file/view'});
+      await page.evaluate(()=>{window.__picked=null;window.EstudiemosDriveLibrary.pick().then(value=>window.__picked=value);});
+      await page.locator('[data-pick-items]').getByRole('button',{name:'Carpeta · An\u00e1lisis matem\u00e1tico',exact:true}).click();await page.locator('[data-pick-folder]').click();
+      await page.waitForFunction(()=>window.__picked);assert.deepEqual(await page.evaluate(()=>window.__picked),{title:'An\u00e1lisis matem\u00e1tico',url:'https://drive.google.com/drive/folders/root-folder-file'});
+      assert.equal(requests.filter(request=>['POST','PATCH','DELETE','PUT'].includes(request.method)&&request.url.startsWith('https://www.googleapis.com')).length,beforePick,'Choosing classroom materials never changes Google sharing or file content');
       assert.equal(new URL(page.url()).searchParams.has('drive'),false,'Callback markers are removed from the page URL');
       await page.locator('[data-workspace-add]').first().click();await page.locator('[data-drive-add-folder]').click();
       await page.locator('.drive-dialog input').fill('Qu\u00edmica');await page.locator('.drive-dialog [type=submit]').click();await body.getByText('Qu\u00edmica',{exact:true}).waitFor();

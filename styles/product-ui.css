@@ -1,4 +1,6 @@
 /* Shared application surfaces. Native widget layouts keep their own renderer. */
+[data-classes-open] img { filter:invert(.75) sepia(.15) saturate(2) hue-rotate(175deg); }
+.theme-light [data-classes-open] img { filter:none; opacity:.75; }
 :root, html.theme-light {
   --bg:#f3f6f9;
   --panel:#ffffff;
