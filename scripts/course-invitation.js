@@ -19,14 +19,16 @@
     const destination=appUrl(code);section.querySelector('[data-course-join]').href=destination;
     if(/Android/i.test(navigator.userAgent)){const link=document.createElement('a');link.className='install-action install-action--quiet';link.textContent='Abrir app instalada';link.href='intent://open?materia='+code+'#Intent;scheme=estudiemos;package=com.estudiemos.app;S.browser_fallback_url='+encodeURIComponent(url.href)+';end';section.querySelector('.install-hero__actions').append(link);}
     document.querySelectorAll('[data-open-estudiemos],a[href="https://estudiemos-app.vercel.app/"]').forEach(link=>link.href=destination);
-    const state=section.querySelector('[data-course-invite-status]');
+    const state=section.querySelector('[data-course-invite-status]');let unavailable=false;
     const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15000);
     try{
       const response=await fetch(new URL('api/account-config?classes=1&invite='+code,root),{cache:'no-store',credentials:'same-origin',signal:controller.signal}),preview=await response.json();
+      if(response.status===404){unavailable=true;clear();}
       if(!response.ok)throw new Error(preview.message||'No pudimos preparar la materia.');
       save(code,'',preview);section.querySelector('h2').textContent=preview.title;state.textContent='Las fechas ya están preparadas en este dispositivo. Instalá Estudiemos e iniciá sesión para agregarlas a tu cuenta.';
       const dates=section.querySelector('[data-course-invite-dates]');for(const item of preview.calendar.slice(0,5)){const line=document.createElement('p');line.textContent=item.data.date+' · '+item.data.title+(item.data.allDay?' · Todo el día':' · '+item.data.start+'–'+item.data.end);dates.append(line);}
-    }catch(error){section.querySelector('h2').textContent='Te invitaron a una materia';state.textContent=error.message+' La invitación queda guardada para continuar en la app.';}finally{clearTimeout(timer);}
+    }catch(error){section.querySelector('h2').textContent=unavailable?'Invitación no disponible':'Te invitaron a una materia';state.textContent=unavailable?'La materia se eliminó o cambió su código. Pedí un enlace nuevo.':error.message+' La invitación queda guardada para continuar en la app.';if(unavailable){const link=section.querySelector('[data-course-join]');link.textContent='Abrir Estudiemos';link.href=new URL('./',root);}}finally{clearTimeout(timer);}
+    if(unavailable)return;
     const script=document.createElement('script');script.src=new URL('scripts/account.js?v=20261024-flow',root);script.onload=async()=>{await window.EstudiemosAccount?.whenReady();if(window.EstudiemosAccount?.getUser()||matchMedia('(display-mode: standalone)').matches||navigator.standalone)location.replace(destination);};document.head.append(script);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
