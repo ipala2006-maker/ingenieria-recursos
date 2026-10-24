@@ -15,11 +15,9 @@ module.exports=async function classrooms(req,res){
     if(!await enforceRateLimit(req,res,{route:'classroom-preview',limit:30,windowSeconds:60}))return;
     const code=rules.code(req.query.invite);if(!rules.CODE.test(code))return res.status(400).json({message:errors.INVALID_CODE});
     try{
-      const rows=await adminRequest('/rest/v1/classrooms?invite_code=eq.'+code+'&archived=eq.false&select=id,title,teacher_name,institution,timezone,color&limit=1'),course=rows?.[0];
-      if(!course)return res.status(404).json({message:errors.INVALID_CODE});
-      const events=await adminRequest('/rest/v1/classroom_events?class_id=eq.'+course.id+'&select=id,data&limit=100');
-      return res.status(200).json({title:course.title,teacherName:course.teacher_name,institution:course.institution,calendar:events.map(item=>({id:item.id,classId:course.id,className:course.title,timezone:course.timezone,data:{...rules.event(item.data),note:''}}))});
-    }catch(_){return res.status(503).json({message:'No pudimos preparar la invitación. Volvé a intentar.'});}
+      const preview=await adminRequest('/rest/v1/rpc/classroom_invitation',{method:'POST',body:JSON.stringify({p_code:code})});
+      return res.status(200).json({title:preview.title,teacherName:preview.teacherName,institution:preview.institution,calendar:preview.calendar.slice(0,100).map(item=>({id:item.id,classId:item.classId,className:item.className,timezone:item.timezone,data:{...rules.event(item.data),note:''}}))});
+    }catch(error){return res.status(error.message==='INVALID_CODE'?404:503).json({message:error.message==='INVALID_CODE'?errors.INVALID_CODE:'No pudimos preparar la invitación. Volvé a intentar.'});}
   }
   const user=await authenticateBearer(req.headers.authorization);
   if(!user)return res.status(401).json({message:errors.AUTH_REQUIRED});
@@ -47,12 +45,8 @@ module.exports=async function classrooms(req,res){
       }
     }
     if(action==='delete'){
-      const filter='?id=eq.'+data.id+'&owner_id=eq.'+user.id;
-      const owned=await adminRequest('/rest/v1/classrooms'+filter+'&select=id&limit=1');
-      if(!owned?.length)throw new Error('CLASS_UNAVAILABLE');
-      await adminRequest('/rest/v1/classrooms'+filter,{method:'DELETE',headers:{Prefer:'return=minimal'}});
-      const state=await adminRequest('/rest/v1/rpc/classroom_action',{method:'POST',body:JSON.stringify({p_user:user.id,p_action:'state',p_data:{}})});
-      return res.status(200).json({...state,selected:''});
+      const state=await adminRequest('/rest/v1/rpc/classroom_delete',{method:'POST',body:JSON.stringify({p_user:user.id,p_id:data.id})});
+      return res.status(200).json(state);
     }
     const result=await adminRequest('/rest/v1/rpc/classroom_action',{method:'POST',body:JSON.stringify({p_user:user.id,p_action:action,p_data:data})});
     return res.status(200).json(result);

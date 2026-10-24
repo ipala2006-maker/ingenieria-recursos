@@ -2,10 +2,11 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const {createRequire}=require('node:module'),{PGlite}=require('@electric-sql/pglite');
 const rules=require('../shared/classrooms');
 const root=path.resolve(__dirname,'..'),sql=fs.readFileSync(path.join(root,'supabase/classrooms.sql'),'utf8');
+const invitationSql=fs.readFileSync(path.join(root,'supabase/classroom-invitations.sql'),'utf8');
 const ids=[1,2,3,4].map(n=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`);
 const base={title:'Física',teacherName:'Profesora Ana',institution:'Escuela piloto',timezone:'UTC',color:'teal',code:'ABCDEFGHJK'};
 const activity={title:'Parcial',date:'2026-10-26',start:'08:00',end:'10:00',allDay:false,type:'Examen',color:'amber',note:'Aula 2',repeat:'none',days:[],endDate:''};
-async function database(){const db=new PGlite();await db.exec('create role anon;create role authenticated;create role service_role;create schema auth;create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz);create table friend_profiles(user_id uuid primary key,username text);');for(const id of ids)await db.query('insert into auth.users values($1,$2,now())',[id,id+'@example.test']);await db.exec(sql);return db;}
+async function database(){const db=new PGlite();await db.exec('create role anon;create role authenticated;create role service_role;create schema auth;create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz);create table friend_profiles(user_id uuid primary key,username text);');for(const id of ids)await db.query('insert into auth.users values($1,$2,now())',[id,id+'@example.test']);await db.exec(sql);await db.exec(invitationSql);return db;}
 const call=async(db,user,action='state',data={})=>(await db.query('select classroom_action($1,$2,$3) as data',[user,action,data])).rows[0].data;
 const create=async(db,user=ids[0],data={})=>call(db,user,'create',{...base,...data});
 
@@ -105,8 +106,26 @@ test('HTTP binds caller identity, whitelists data, secures origins and refuses u
 });
 
 test('course deletion is owner-filtered; invitation previews expose dates but no roster, files or note details',async()=>{
-  const denied=handlerHarness(()=>[]);assert.equal((await denied.request({action:'delete',id:ids[1],owner_id:ids[1]})).status,400);assert.equal(denied.calls.some(call=>call.method==='DELETE'),false);assert.ok(denied.calls[0].url.includes('owner_id=eq.'+ids[0]));
-  const allowed=handlerHarness((url,options)=>url.includes('/rpc/')?{classes:[],calendar:[],revision:'0'.repeat(32)}:options.method==='DELETE'?null:[{id:ids[1]}]);assert.equal((await allowed.request({action:'delete',id:ids[1]})).status,200);assert.equal(allowed.calls.filter(call=>call.method==='DELETE').length,1);assert.ok(allowed.calls.filter(call=>call.method==='DELETE').every(call=>call.url.includes('owner_id=eq.'+ids[0])));
-  const preview=handlerHarness(url=>url.includes('classroom_events?')?[{id:ids[2],data:{...activity,note:'Not for previews'}}]:[{id:ids[1],title:'Algebra',teacher_name:'Responsable',institution:'Uni',timezone:'UTC',color:'blue',owner_id:ids[0]}]);
+  const denied=handlerHarness(()=>{throw new Error('CLASS_UNAVAILABLE');});assert.equal((await denied.request({action:'delete',id:ids[1],owner_id:ids[1]})).status,400);assert.equal(denied.calls.some(call=>call.method==='DELETE'),false);assert.equal(denied.calls[0].body.p_user,ids[0]);assert.equal(denied.calls[0].body.p_id,ids[1]);
+  const allowed=handlerHarness(()=>({classes:[],calendar:[],revision:'0'.repeat(32),selected:''}));assert.equal((await allowed.request({action:'delete',id:ids[1]})).status,200);assert.equal(allowed.calls[0].url,'/rest/v1/rpc/classroom_delete');assert.equal(allowed.calls.length,1);
+  const preview=handlerHarness(()=>({title:'Algebra',teacherName:'Responsable',institution:'Uni',owner_id:ids[0],calendar:[{id:ids[2],classId:ids[1],className:'Algebra',timezone:'UTC',data:{...activity,note:'Not for previews'}}]}));
   const result=await preview.request({}, {method:'GET',query:{classes:'1',invite:base.code},headers:{host:'app.test'}});assert.equal(result.status,200);assert.equal(result.body.calendar[0].data.note,'');assert.equal(result.body.owner_id,undefined);assert.equal(result.body.materials,undefined);assert.equal(result.body.members,undefined);
+  assert.equal(preview.calls[0].url,'/rest/v1/rpc/classroom_invitation');assert.equal(preview.calls[0].body.p_code,base.code);
+  const missing=handlerHarness(()=>{throw new Error('INVALID_CODE');});assert.equal((await missing.request({}, {method:'GET',query:{classes:'1',invite:base.code}})).status,404);
+});
+
+test('invitation preview and deletion work for the real restricted server role without opening table access',async()=>{
+  const db=await database();try{
+    const {selected:id}=await create(db),itemId='10000000-0000-4000-8000-000000000001';
+    await call(db,ids[1],'join',{code:base.code});await call(db,ids[0],'event_save',{id,itemId,event:{...activity,note:'Private details',extra:'Never expose'}});await call(db,ids[0],'material_save',{id,itemId,material:{title:'Private PDF',url:'https://drive.google.com/file/d/FILE_123/view'}});
+    await db.exec('set role service_role');
+    for(const table of ['classrooms','classroom_events'])await assert.rejects(db.query('select * from '+table),/permission denied/);
+    const preview=(await db.query('select classroom_invitation($1) as data',[base.code])).rows[0].data;
+    assert.equal(preview.title,base.title);assert.equal(preview.calendar[0].data.title,activity.title);assert.equal(preview.calendar[0].data.note,'');assert.equal(preview.calendar[0].data.extra,undefined);assert.doesNotMatch(JSON.stringify(preview),/Private details|Private PDF|FILE_123|@example/);
+    await assert.rejects(db.query('select classroom_delete($1,$2)',[ids[1],id]),/CLASS_UNAVAILABLE/);
+    await db.exec('reset role');await db.exec(invitationSql);assert.equal((await call(db,ids[0])).calendar.length,1,'Reapplying the repair preserves the course');
+    for(const role of ['anon','authenticated']){await db.exec('set role '+role);await assert.rejects(db.query('select classroom_invitation($1)',[base.code]),/permission denied/);await assert.rejects(db.query('select classroom_delete($1,$2)',[ids[0],id]),/permission denied/);await db.exec('reset role');}
+    await db.exec('set role service_role');const deleted=(await db.query('select classroom_delete($1,$2) as data',[ids[0],id])).rows[0].data;assert.equal(deleted.selected,'');assert.deepEqual((await call(db,ids[1])).calendar,[]);await assert.rejects(db.query('select classroom_invitation($1)',[base.code]),/INVALID_CODE/);
+    await db.exec('reset role');assert.equal((await db.query('select count(*)::int n from classroom_events where class_id=$1',[id])).rows[0].n,0);
+  }finally{await db.close();}
 });
