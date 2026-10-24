@@ -5,6 +5,9 @@
   if (!topbar || document.querySelector(".global-search")) return;
 
   const rootPath = getRootPath();
+  if (!window.EstudiemosCourseRole) {
+    const role = document.createElement('script'); role.src=rootPath+'scripts/course-role.js?v=20261024-roles';role.onload=initialize;document.head.append(role);return;
+  }
   if (!window.EstudiemosPomodoroSync) {
     const sync = document.createElement('script');
     sync.src = rootPath + 'shared/pomodoro-sync.js?v=20261021';
@@ -35,15 +38,18 @@
   }
   if (!window.EstudiemosClassroomRules) {
     const classes = document.createElement('script');
-    classes.src = rootPath + 'shared/classrooms.js?v=20261024';
+    classes.src = rootPath + 'shared/classrooms.js?v=20261024-roles';
     classes.onload = initialize;
     document.head.appendChild(classes);
     return;
   }
   if (!document.querySelector('script[data-classrooms]')) {
     const classes = document.createElement('script'); classes.dataset.classrooms = '';
-    classes.src = rootPath + 'scripts/classroom-sync.js?v=20261024';
+    classes.src = rootPath + 'scripts/classroom-sync.js?v=20261024-roles';
     document.head.appendChild(classes);
+  }
+  if (!document.querySelector('script[data-course-drive]')) {
+    const drive=document.createElement('script');drive.dataset.courseDrive='';drive.src=rootPath+'scripts/course-drive.js?v=20261024-roles';document.head.append(drive);
   }
   if (!document.querySelector('script[data-release-ui]')) {
     const releaseUi = document.createElement('script');
@@ -343,7 +349,7 @@
     if (document.querySelector('script[src*="scripts/pomodoro.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/pomodoro.js?v=20261024-classes`;
+    script.src = `${rootPath}scripts/pomodoro.js?v=20261024-roles`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -389,7 +395,7 @@
     if (document.querySelector('script[src*="scripts/account.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/account.js?v=20261024-tour`;
+    script.src = `${rootPath}scripts/account.js?v=20261024-roles`;
     script.defer = true;
     document.head.appendChild(script);
   }

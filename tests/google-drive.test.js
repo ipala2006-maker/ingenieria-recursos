@@ -84,6 +84,15 @@ test('OAuth uses minimal scope, PKCE, offline consent and an encrypted secure on
   assert.equal(vault.unseal(h.rows.get('alice').credentials,'user:alice').refreshToken,'pilot-refresh');
   assert.equal(h.calls.find(call=>call[0]==='exchange')[1].codeVerifier,'pilot-verifier');
 });
+
+test('course OAuth callbacks resume only fixed same-origin pages, never an arbitrary return URL',async()=>{
+  const classId='00000000-0000-4000-8000-000000000001';
+  for(const [context,target]of [['teacher','/materias.html'],['student-course','/'],['https://attacker.test','/mi-espacio.html']]){
+    const h=harness(),start=await h.request('start',{body:{context,classId,returnUrl:'https://attacker.test'}});
+    const callback=await h.request('callback',{query:{drive:'callback',state:h.grants[0].state,code:'fixture'},headers:{cookie:start.headers['Set-Cookie'].split(';')[0]}}),url=new URL(callback.headers.Location);
+    assert.equal(url.origin,app);assert.equal(url.pathname,target);assert.equal(url.searchParams.get('drive'),'connected');assert.equal(url.searchParams.get('uploadClass'),context.startsWith('https:')?null:classId);
+  }
+});
 test('callback rejects absent, forged or expired state and broader-than-requested scopes',async()=>{
   for(const scenario of ['absent','forged','expired','broad','incomplete']){
     const h=harness(),start=await h.request('start'),grant=h.grants[0];let cookie=start.headers['Set-Cookie'].split(';')[0];

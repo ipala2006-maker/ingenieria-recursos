@@ -5,7 +5,7 @@
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const query = new URL(location.href);
   const requested = query.searchParams.get('tutorial') === '1';
-  const classInvitation = new URLSearchParams(location.hash.slice(1)).has('clase') || query.searchParams.has('clase') || pendingClass();
+  const classInvitation = ['clase','materia'].some(key=>new URLSearchParams(location.hash.slice(1)).has(key)) || ['clase','materia','materias','uploadClass'].some(key=>query.searchParams.has(key)) || pendingClass();
   let pending = requested || !classInvitation && !readStatus() && !hasPreviousUse();
   let active = false, busy = false, tour, layer, ring, steps = [], current = -1;
   let cleanupPreview = () => {}, original, savedFocus, resizeFrame = 0, driverModule;
@@ -63,7 +63,7 @@
     );
     if (available('progress')) result.push({id:'progress', title:'Tu progreso y tu racha', text:'Explorá cuánto estudiaste cada día. Tu racha crece al alcanzar el objetivo diario, que podés cambiar desde el ícono de la llama.', target:'[data-home-space=progress] .study-progress__numbers', view:'overview'});
     result.push({id:'friends', title:'Estudiar, acompañados', text:'Agregá amigos por usuario o correo, o compartí tu enlace. Podés ver el ranking de rachas entre quienes decidan compartirlas; la tuya es privada por defecto.', target:'[data-friends-open]', view:'overview'});
-    if (q('[data-classes-open]')) result.push({id:'classes',title:'Tu clase, conectada',text:'Como profesor, compartí fechas y materiales de Drive. Como alumno, un código te suma a la clase y agrega sus fechas a tu calendario.',target:'[data-classes-open]',view:'overview'});
+    if (q('[data-classes-open]')) result.push({id:'classes',title:'Tus materias, conectadas',text:'Elegí tu rol, compartí fechas y archivos de Drive, o unite por enlace o código. También podés crear un espacio para tu comisión.',target:'[data-classes-open]',view:'overview'});
     if (window.EstudiemosRelease?.enabled('driveWorkspace') && available('workspace')) result.push({id:'drive', title:'Tus apuntes, en tu Drive', text:'Conectá tu Google Drive cuando quieras para ver tus carpetas y archivos en Mi espacio. Vos elegís autorizar la conexión; el recorrido no abre tu cuenta de Google.', target:'[data-home-space=workspace] .workspace-section__head', view:'space'});
     result.push(
       {id:'layout', title:'Hacé lugar a tu manera', text:'Desde estos ajustes podés mover las herramientas, cambiar su tamaño y elegir cuáles ver. Cada dispositivo conserva su propia distribución.', target:'.study-home__head', view:'overview', preview:'layout'},

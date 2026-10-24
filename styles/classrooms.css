@@ -83,6 +83,38 @@
 .classroom-mobile-back { display:none!important; }
 .classroom-confirm { width:min(440px,calc(100vw - 32px)); padding:24px; }
 .classroom-confirm p { font-size:14px; line-height:1.7; margin:0 0 22px; }
+.classroom-tools { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; padding:20px 0 12px; }
+.classroom-tools button { flex-direction:column; padding:16px 8px; gap:10px; min-height:90px; font-weight:600; }
+.classroom-tools img { width:24px; height:24px; }
+.classroom-code-line { display:flex; gap:12px; align-items:center; font-size:12px; color:var(--muted); padding:0 0 18px; flex-wrap:wrap; }
+.classroom-code-line strong { color:var(--text); font-weight:550; font-variant-numeric:tabular-nums; }
+.classroom-members { margin:24px 0; }
+.classroom-members summary { cursor:pointer; padding:12px 0; }
+.classroom-upload { display:grid; gap:16px; padding:18px 0; border-block:1px solid var(--border); }
+.classroom-upload .classroom-toggle { align-items:flex-start; color:var(--text); }
+.classroom-upload .classroom-toggle input { flex:none; margin-top:0; }
+.classroom-upload p { margin:0; }
+.classroom-upload input::file-selector-button { font:inherit; color:var(--text); background:var(--panel-2); border:1px solid var(--border); border-radius:4px; padding:5px 8px; margin-right:8px; cursor:pointer; }
+.classroom-form details>label { margin-top:14px; }
+.is-choosing-role .classroom-sidebar { display:none; }
+.is-choosing-role .classroom-shell { grid-template-columns:minmax(0,1fr); }
+.classroom-role { max-width:640px; margin:auto; display:grid; gap:28px; padding:40px 0; }
+.classroom-role h3 { text-align:center; }
+.classroom-role-options { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+.classroom-role-options button { flex-direction:column; align-items:flex-start; text-align:left; padding:24px; gap:14px; }
+.classroom-role-options img { width:30px; height:30px; }
+.classroom-role-options strong { font-size:18px; font-weight:600; }
+.classroom-role-options span { color:var(--muted); font-size:13px; line-height:1.5; }
+body.teacher-workspace { height:100dvh; min-height:0; display:flex; flex-direction:column; overflow:hidden; margin:0; }
+.teacher-topbar { position:relative; flex:none; padding:14px 28px; gap:20px; }
+.teacher-topbar__label { color:var(--muted); font-size:13px; }
+.teacher-topbar .topbar__nav { margin-left:auto; }
+#teacherWorkspace { flex:1; min-height:0; display:flex; flex-direction:column; }
+.teacher-loading { padding:24px; color:var(--muted); }
+.classroom-embedded { display:flex; flex-direction:column; width:100%; height:100%; max-height:none; border:0; border-radius:0; flex:1; min-height:0; }
+.classroom-embedded[hidden] { display:none; }
+.classroom-embedded .classroom-main { padding:28px 36px; }
+.teacher-workspace [data-account-android-widgets],.teacher-workspace [data-account-desktop-widgets],.teacher-workspace [data-onboarding-replay],.teacher-workspace [data-account-usage],.teacher-workspace [data-account-sync],.teacher-workspace [data-account-drive] { display:none!important; }
 @media(max-width:680px) {
   .classroom-dialog { width:calc(100vw - 12px); height:calc(100dvh - 16px); max-height:calc(100dvh - 16px); }
   .classroom-head { padding:10px 12px; gap:10px; }
@@ -105,5 +137,17 @@
   .classroom-weekdays { gap:3px; }
   .classroom-weekdays span { font-size:11px; }
   .classroom-status { padding:10px 14px; }
+  .classroom-head h2 { font-size:15px; }
+  .classroom-head { flex-wrap:wrap; }
+  .classroom-head>.classroom-actions { margin-left:auto; }
+  .classroom-tools { gap:6px; }
+  .classroom-tools button { font-size:12px; padding:14px 5px; }
+  .classroom-role-options { grid-template-columns:minmax(0,1fr); }
+  .classroom-role-options button { padding:20px; }
+  .classroom-role { padding:16px 0; }
+  .teacher-topbar { padding:12px 16px; gap:10px; }
+  .teacher-topbar__label { display:none; }
+  .classroom-embedded { width:100%; height:100%; max-height:none; }
+  .classroom-embedded .classroom-main { padding:20px 16px; }
 }
 @media(prefers-reduced-motion:no-preference) { .classroom-dialog[open] { animation:classroom-enter .16s ease-out; } @keyframes classroom-enter { from {opacity:0;transform:translateY(5px)} to {opacity:1;transform:none} } }

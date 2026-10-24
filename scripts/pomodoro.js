@@ -338,7 +338,7 @@
   function maybeAskStudyGoal() {
     if (window.EstudiemosOnboarding?.pending()) return;
     if (window.EstudiemosClasses?.pendingLaunch?.()) return;
-    if (document.querySelector('dialog[open]') || new URLSearchParams(location.hash.slice(1)).has('clase') || new URLSearchParams(location.search || '').has('clase')) return;
+    if (document.querySelector('dialog[open]') || ['clase','materia'].some(key=>new URLSearchParams(location.hash.slice(1)).has(key)) || ['clase','materia','materias','uploadClass'].some(key=>new URLSearchParams(location.search || '').has(key))) return;
     try { if (JSON.parse(sessionStorage.getItem('estudiemos_class_invite_v1') || 'null')?.expires > Date.now()) return; } catch (_) {}
     if (!document.body.classList.contains('workspace-home') || document.body.classList.contains('drive-library-page') || document.documentElement.classList.contains('rainmeter-widget')) return;
     streakState = loadStreakState();

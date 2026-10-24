@@ -41,17 +41,22 @@ async function record(id) {
 async function store(id, data) {
   await adminRequest(TABLE + '?on_conflict=user_id', {method: 'POST', headers: {Prefer: 'resolution=merge-duplicates,return=minimal'}, body: JSON.stringify({user_id: id, credentials: seal(data, 'user:' + id), updated_at: new Date().toISOString()})});
 }
-function returnToApp(res, result) {
-  res.setHeader('Location', origin() + '/mi-espacio.html?drive=' + result);
+function returnToApp(res, result, pending = {}) {
+  const context = ['teacher','student-course'].includes(pending.context) ? pending.context : '';
+  const url = new URL(context === 'teacher' ? '/materias.html' : context ? '/?materias=1' : '/mi-espacio.html', origin());
+  url.searchParams.set('drive', result);
+  if (context && /^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(pending.classId || '')) url.searchParams.set('uploadClass', pending.classId);
+  res.setHeader('Location', url.href);
   return res.status(303).end();
 }
 async function callback(req, res) {
   setCookie(res, '', 0);
+  let pending = {};
   try {
-    const pending = unseal(cookie(req), 'oauth');
+    pending = unseal(cookie(req), 'oauth');
     if (!pending.uid || !pending.state || pending.exp < Date.now() || typeof req.query.state !== 'string' || req.query.state !== pending.state) throw new Error('INVALID_STATE');
     if (!pilotAllowed(pending)) throw new Error('DRIVE_PILOT_ONLY');
-    if (req.query.error) return returnToApp(res, 'cancelled');
+    if (req.query.error) return returnToApp(res, 'cancelled', pending);
     if (typeof req.query.code !== 'string' || req.query.code.length > 4096) throw new Error('INVALID_CODE');
     const oauth = client(), {tokens} = await oauth.getToken({code: req.query.code, codeVerifier: pending.verifier});
     const expected = pending.browse && browseEnabled() ? [SCOPE,BROWSE_SCOPE] : [SCOPE];
@@ -59,8 +64,8 @@ async function callback(req, res) {
     if (!tokens.access_token || !tokens.refresh_token || scopes.length !== expected.length || expected.some(scope => !scopes.includes(scope))) throw new Error('INCOMPLETE_CONSENT');
     // The Google grant is bound to the Estudiemos account that started this flow.
     await store(pending.uid, {refreshToken: tokens.refresh_token, accessToken: tokens.access_token, expiresAt: tokens.expiry_date || 0, scopes});
-    return returnToApp(res, 'connected');
-  } catch (_) { return returnToApp(res, 'error'); }
+    return returnToApp(res, 'connected', pending);
+  } catch (_) { return returnToApp(res, 'error', pending); }
 }
 
 module.exports = async function googleDrive(req, res) {
@@ -88,7 +93,9 @@ module.exports = async function googleDrive(req, res) {
       const state = crypto.randomBytes(32).toString('base64url');
       const oauth = client(), codes = await oauth.generateCodeVerifierAsync();
       const browse = req.body?.browse === true && browseEnabled();
-      setCookie(res, seal({uid:user.id, email:user.email, email_confirmed_at:user.email_confirmed_at, state, verifier:codes.codeVerifier, exp:Date.now()+600000, browse}, 'oauth'), 600);
+      const context = ['teacher','student-course'].includes(req.body?.context) ? req.body.context : '';
+      const classId = context && /^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(req.body?.classId || '') ? req.body.classId : '';
+      setCookie(res, seal({uid:user.id, email:user.email, email_confirmed_at:user.email_confirmed_at, state, verifier:codes.codeVerifier, exp:Date.now()+600000, browse, context, classId}, 'oauth'), 600);
       const url = oauth.generateAuthUrl({scope:browse ? [SCOPE,BROWSE_SCOPE] : [SCOPE], access_type:'offline', prompt:'consent select_account', include_granted_scopes:false, state, code_challenge:codes.codeChallenge, code_challenge_method:'S256'});
       return res.status(200).json({url});
     }

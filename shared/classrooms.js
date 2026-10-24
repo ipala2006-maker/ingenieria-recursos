@@ -10,6 +10,10 @@
     return value.trim();
   };
   function code(value){return typeof value==='string'?value.toUpperCase().replace(/[\s-]/g,''):'';}
+  function invitation(value,origin){
+    const plain=code(value);if(CODE.test(plain))return plain;
+    try{const url=new URL(String(value).trim());if(url.protocol!=='https:'&&url.origin!==origin)return '';if(![origin,'https://estudiemos-app.vercel.app'].includes(url.origin)||url.username||url.password)return '';const hash=new URLSearchParams(url.hash.slice(1));const token=code(hash.get('materia')||hash.get('clase')||url.searchParams.get('materia')||url.searchParams.get('clase')||'');return CODE.test(token)?token:'';}catch(_){return '';}
+  }
   function event(value){
     if(!value||typeof value!=='object')throw new Error('INVALID_EVENT');
     const result={title:text(value.title,90,true),date:value.date,start:value.start||'',end:value.end||'',allDay:value.allDay===true,type:['Clase','Examen','Entrega','Actividad'].includes(value.type)?value.type:'Clase',color:time.COLORS.includes(value.color)?value.color:'blue',note:text(value.note||'',1200),repeat:value.repeat||'none',days:[],endDate:value.endDate||''};
@@ -56,5 +60,5 @@
     }
     return result;
   }
-  return Object.freeze({CACHE_KEY,PENDING_KEY,UUID,CODE,code,text,event,material,course,driveUrl,occurrences});
+  return Object.freeze({CACHE_KEY,PENDING_KEY,UUID,CODE,code,invitation,text,event,material,course,driveUrl,occurrences});
 });

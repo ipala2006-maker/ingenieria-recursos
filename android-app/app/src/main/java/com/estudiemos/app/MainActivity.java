@@ -223,7 +223,13 @@ public class MainActivity extends Activity {
                 AgendaWidgetProvider.storeAgendaAndUpdate(this, message.getData());
             } else if ("drive-connect-browser".equals(type)) {
                 // Google does not allow OAuth inside embedded WebViews.
-                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://estudiemos-app.vercel.app/mi-espacio.html")));
+                String context = payload.optString("context");
+                String target = "teacher".equals(context) ? "materias.html" : "student-course".equals(context) ? "?materias=1" : "mi-espacio.html";
+                String classId = payload.optString("classId");
+                if (("teacher".equals(context) || "student-course".equals(context)) && classId.matches("(?i)^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$")) {
+                    target += (target.contains("?") ? "&" : "?") + "uploadClass=" + classId;
+                }
+                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://estudiemos-app.vercel.app/" + target)));
             } else if ("inbox-notifications-enable".equals(type)) {
                 InboxAlarmReceiver.enable(this);
                 if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {

@@ -67,6 +67,10 @@ test('a class invitation takes priority over the optional first-run tour', () =>
   assert.equal(api.pending(),false);assert.equal(values.has(key),false);
 });
 
+test('new course and Drive-return links also defer the tour',()=>{
+  for(const suffix of ['#materia=ABCDEFGHJK','?materias=1','?materia=ABCDEFGHJK','?uploadClass=fixture'])assert.equal(boot({},'https://estudiemos.example/'+suffix).api.pending(),false);
+});
+
 test('the tutorial has no network, timer commands, permissions, or account mutations', () => {
   assert.doesNotMatch(source, /\bfetch\s*\(|requestPermission\s*\(|\.signIn\s*\(|\.signOut\s*\(/);
   assert.doesNotMatch(source, /EstudiemosStudy\.(?:start|pause|reset|seek|configure)\s*\(/);

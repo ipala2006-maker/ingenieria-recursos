@@ -12,7 +12,7 @@ function harness(sharedRows) {
   const rows = sharedRows || new Map([['alice', {state:{version:2,values:{bandeja_agenda:[{id:'note',title:'Private title',date:'2026-10-23'}]},changedAt:{bandeja_agenda:1}},updated_at:'2026-10-23T11:00:00.000Z'}]]);
   class Clock extends Date { constructor(...args) { super(...(args.length ? args : [now])); } static now() { return now; } }
   const context = {
-    session:{user:{id:'alice'}}, syncing:false, syncRequested:false, queuedSyncReason:'queued', synchronizedUserId:'', applyingCloud:false,
+    AUTH_ONLY:false, session:{user:{id:'alice'}}, syncing:false, syncRequested:false, queuedSyncReason:'queued', synchronizedUserId:'', applyingCloud:false,
     lastPullAt:0, cloudRevision:'', cloudRevisionUser:'', cachedCloudState:null,accountGeneration:0,syncFailures:0, syncRetryAt:0, realtimeConnected:true,
     realtimeChannel:null, realtimeUserId:'', cloudPollTimer:0, remoteRefreshTimer:0, syncTimer:0, INSTANCE_ID:'fixture',
     Date:Clock, TextEncoder, Intl, navigator:{onLine:true}, CustomEvent:class { constructor(type) {this.type=type;} },
@@ -48,6 +48,12 @@ test('startup hydrates once; a quiet two-hour session no longer downloads the fu
   assert.ok(today.receivedBytes<today.profileBytes+2000);
   assert.ok(today.receivedBytes<today.profileBytes*480*0.01,'Over 99% less JSON in a quiet session, not a billing claim');
   assert.equal(h.writes.length,0);assert.ok(h.reads.slice(1).every(q=>q.revision&&q.owner==='alice'));
+});
+
+test('the dedicated teacher workspace authenticates without hydrating or subscribing to private study state',async()=>{
+  const h=harness();h.context.AUTH_ONLY=true;
+  assert.equal(await h.read('startup'),true);await h.read('manual');h.context.connectRealtime('alice');h.context.startCloudPolling();
+  assert.equal(h.reads.length,0);assert.equal(h.writes.length,0);assert.equal(h.context.synchronizedUserId,'');assert.equal(h.local.has('bandeja_agenda'),false);assert.equal(h.timers.size,0);
 });
 
 test('conditional reads still fetch a changed revision, including a writer with an older wall clock', async () => {
