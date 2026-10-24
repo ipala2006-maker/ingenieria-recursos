@@ -953,8 +953,7 @@
     container.innerHTML = items.map((item) => `
       <div class="dashboard-agenda__item ${eventColorClass(item)}"><label>
         <input type="checkbox" data-dashboard-agenda-done="${escapeHtml(item.id)}" aria-label="Marcar ${escapeHtml(item.title)} como hecha" />
-        <span class="dashboard-agenda__copy"><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.subject || item.type)}</small></span>
-        <span class="dashboard-agenda__date">${item.date ? shortDate(item.date) : "Sin fecha"}</span></label>
+        <span class="dashboard-agenda__copy"><strong>${escapeHtml(item.title)}</strong><span class="dashboard-agenda__meta"><small>${escapeHtml(item.subject || item.type)}</small><span class="dashboard-agenda__date">${item.date ? shortDate(item.date) : "Sin fecha"}</span></span></span></label>
         <div class="dashboard-agenda__actions">${window.EstudiemosNoteColors?.button(item) || ''}${window.EstudiemosInboxAlarms?.button(item) || ''}</div>
       </div>`).join("");
   }

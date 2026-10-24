@@ -15,7 +15,7 @@
    la invitacion queda pendiente durante 24 horas, ligada a su cuenta cuando existe.
 6. Si el docente no usa Estudiemos, un alumno elige **Crear espacio de materia**.
    Es el **Colaborador**, administra fechas, archivos y enlace, y puede asignar
-   moderadores desde Configuracion > Alumnos y moderadores > Permisos.
+  moderadores desde Configuracion > Participantes > Permisos.
 7. Las fechas se suman al calendario de los miembros en modo lectura, sin duplicar
    anotaciones personales. Los archivos aparecen en **Archivos** y se abren en Drive.
 8. **Cargar fechas** admite parciales/finales (tipo Examen), entregas, clases u otras
@@ -28,6 +28,11 @@ codigo invalida el enlace anterior, sin expulsar a quienes ya estan inscriptos.
 El chat no forma parte de esta version y no se muestra un control inactivo.
 
 ## Rangos y Permisos
+
+La configuracion se divide en General, Participantes y Gestion. Cambiar de pestana
+conserva el borrador de los datos generales, sin guardarlo ni cambiar permisos.
+Gestion agrupa archivo, cambio de codigo y eliminacion con sus confirmaciones.
+Al anadir un archivo se puede pegar un enlace o desplegar **Subir un PDF**.
 
 - Catedra docente: el **Profesor** es el unico editor. Los alumnos son lectores.
 - Catedra colaborativa: el **Colaborador** es el responsable y unico administrador

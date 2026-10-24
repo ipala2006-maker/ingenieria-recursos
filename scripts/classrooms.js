@@ -19,7 +19,8 @@
   const teacher=()=>rules.isOwner(current());
   const can=permission=>rules.can(current(),permission);
   const roleLabel=role=>({teacher:'Profesor',collaborator:'Colaborador',moderator:'Moderador',student:'Alumno'}[role]||'Alumno');
-  let managingMember='';
+  let managingMember='',settingsTab='general',settingsDraft=null;
+  const settingsTabs=[['general','General','settings-2'],['members','Participantes','users-round'],['manage','Gestión','folder']];
   function status(text='',error=false){const node=q('.classroom-status');node.textContent=text;node.hidden=!text;node.classList.toggle('is-error',error);}
   function lock(value){busy=value;dialog.setAttribute('aria-busy',String(value));dialog.querySelectorAll('button:not([data-class-close]),input,select,textarea').forEach(node=>node.disabled=value);}
   function colorFields(value='blue'){return `<fieldset class="classroom-colors"><legend>Color</legend>${time.COLORS.map((color,index)=>`<label title="${colors[index]}" class="classroom-color--${color}"><input type="radio" name="color" value="${color}" ${value===color?'checked':''} aria-label="${colors[index]}"><span></span></label>`).join('')}</fieldset>`;}
@@ -28,6 +29,7 @@
     node.innerHTML=`<h3>Mis materias <span>${list.length}</span></h3>${list.map(course=>`<button type="button" data-class-select="${escape(course.id)}" aria-current="${course.id===selected?'page':'false'}" class="classroom-course classroom-color--${course.color}"><span class="classroom-dot"></span><span><strong>${escape(course.title)}</strong><small>${course.archived?'Archivada':rules.isOwner(course)?roleLabel(course.role)+' · '+course.memberCount+' alumnos':course.role==='moderator'?'Moderador':escape(course.teacherName)}</small></span></button>`).join('')||'<p class="classroom-muted">Todavía no tenés materias.</p>'}`;
   }
   function draw(){
+    dialog.dataset.view=view;
     sidebar();dialog.classList.toggle('has-selection',view!=='list');
     const choosing=view==='role'||!roles?.get();
     dialog.classList.toggle('is-choosing-role',choosing);
@@ -70,8 +72,22 @@
   }
   function drawCourseForm(course){
     if(course?.archived){main.innerHTML=`<button type="button" data-class-back>${icon('arrow-left')}Volver a la clase</button><h3>Clase archivada</h3><div class="classroom-settings-actions"><button type="button" data-class-archive>Reactivar clase</button><button type="button" data-class-delete-course>Eliminar materia</button></div>`;return;}
+    const navigation=course?`<div class="classroom-settings-tabs" role="tablist" aria-label="Configuración de la materia">${settingsTabs.map(([key,label,name])=>`<button type="button" role="tab" id="class-settings-${key}" data-class-settings-tab="${key}" aria-selected="${settingsTab===key}" aria-controls="classroomSettingsPanel" tabindex="${settingsTab===key?'0':'-1'}">${icon(name)}${label}</button>`).join('')}</div>`:'';
+    const back=`<button type="button" data-class-back>${icon('arrow-left')}${course?'Volver a la materia':'Mis materias'}</button>`;
+    if(course&&settingsTab!=='general'){
+      const content=settingsTab==='members'?memberControls(course):`<section class="classroom-management"><h3>Gestión de la materia</h3><div><button type="button" data-class-archive>Archivar materia</button><button type="button" data-class-rotate>Cambiar código de invitación</button></div><div class="classroom-danger-zone"><button type="button" data-class-delete-course>Eliminar materia</button></div></section>`;
+      main.innerHTML=back+navigation+`<div id="classroomSettingsPanel" role="tabpanel" aria-labelledby="class-settings-${settingsTab}">${content}</div>`;
+      const members=q('.classroom-members');if(members)members.open=true;return;
+    }
     const ownerRole=course?.ownerRole||(standalone||roles?.get()==='teacher'?'teacher':'collaborator');
-    main.innerHTML=`<button type="button" data-class-back>${icon('arrow-left')}${course?'Volver a la materia':'Mis materias'}</button><form data-class-form="${course?'update':'create'}" class="classroom-form"><h3>${course?'Configuración de la materia':standalone?'Crear materia':'Crear espacio de materia'}</h3><label>Materia, cátedra o comisión<input name="title" maxlength="90" required placeholder="Ej: Álgebra · Comisión 2" value="${escape(course?.title)}"></label><label>Tu nombre<input name="teacherName" maxlength="60" required autocomplete="name" value="${escape(course?.teacherName)}"></label>${course&&!standalone?`<label>Organización<select name="ownerRole"><option value="teacher" ${ownerRole==='teacher'?'selected':''}>Profesor · solo yo edito</option><option value="collaborator" ${ownerRole==='collaborator'?'selected':''}>Colaborador · puedo asignar moderadores</option></select></label>`:`<input type="hidden" name="ownerRole" value="${ownerRole}"><span class="classroom-rank">${roleLabel(ownerRole)}</span>`}${colorFields(course?.color)}<details><summary>Institución y zona horaria</summary><label>Escuela o universidad (opcional)<input name="institution" maxlength="90" value="${escape(course?.institution)}"></label><label>Zona horaria de la materia<input name="timezone" maxlength="80" required value="${escape(course?.timezone||Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC')}"></label></details><button class="classroom-primary" type="submit">${course?'Guardar cambios':'Crear materia'}</button></form>${course?memberControls(course)+`<div class="classroom-settings-actions"><button type="button" data-class-archive>Archivar materia</button><button type="button" data-class-rotate>Cambiar código de invitación</button><button type="button" data-class-delete-course>Eliminar materia</button></div>`:''}`;
+    main.innerHTML=back+navigation+`${course?'<div id="classroomSettingsPanel" role="tabpanel" aria-labelledby="class-settings-general">':''}<form data-class-form="${course?'update':'create'}" class="classroom-form"><h3>${course?'Datos de la materia':standalone?'Crear materia':'Crear espacio de materia'}</h3><label>Materia, cátedra o comisión<input name="title" maxlength="90" required placeholder="Ej: Álgebra · Comisión 2" value="${escape(course?.title)}"></label><label>Tu nombre<input name="teacherName" maxlength="60" required autocomplete="name" value="${escape(course?.teacherName)}"></label>${course&&!standalone?`<label>Organización<select name="ownerRole"><option value="teacher" ${ownerRole==='teacher'?'selected':''}>Profesor</option><option value="collaborator" ${ownerRole==='collaborator'?'selected':''}>Colaborador</option></select></label>`:`<input type="hidden" name="ownerRole" value="${ownerRole}"><span class="classroom-rank">${roleLabel(ownerRole)}</span>`}${colorFields(course?.color)}<details><summary>Institución y zona horaria</summary><label>Escuela o universidad (opcional)<input name="institution" maxlength="90" value="${escape(course?.institution)}"></label><label>Zona horaria de la materia<input name="timezone" maxlength="80" required value="${escape(course?.timezone||Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC')}"></label></details><button class="classroom-primary" type="submit">${course?'Guardar cambios':'Crear materia'}</button></form>${course?'</div>':''}`;
+  }
+  function switchSettings(key){
+    if(busy||!settingsTabs.some(([value])=>value===key))return;
+    const form=q('[data-class-form=update]');if(form)settingsDraft=Object.fromEntries(new FormData(form));
+    settingsTab=key;draw();main.scrollTop=0;
+    if(key==='general'&&settingsDraft){const target=q('[data-class-form=update]');for(const [name,value]of Object.entries(settingsDraft)){const field=target?.elements.namedItem(name);if(field)field.value=value;}}
+    q('[data-class-settings-tab='+key+']')?.focus({preventScroll:true});
   }
   let editing='';
   function drawEvent(){
@@ -80,7 +96,7 @@
   }
   function drawMaterial(){
     const item=detail?.materials.find(item=>item.id===editing)||{};
-    main.innerHTML=`<button type="button" data-class-back>${icon('arrow-left')}Volver a la materia</button><form data-class-form="material_save" class="classroom-form"><h3>${editing?'Editar archivo':'Añadir archivos'}</h3>${editing?'':`<div class="classroom-upload"><button type="button" data-class-connect-drive>${icon('link')}Conectar Drive</button><label>Subir PDF<input type="file" name="pdf" accept="application/pdf,.pdf" data-class-pdf></label><label class="classroom-toggle"><input type="checkbox" name="shareByLink">Permitir leer este PDF a cualquiera con su enlace</label><p class="classroom-muted">Opcional. El enlace podrá reenviarse fuera de la comisión. Sin marcarlo, se conservan los permisos de Drive. Hasta 50 MB.</p></div>`}<div class="classroom-actions">${window.EstudiemosDriveLibrary?.pick?'<button type="button" data-class-pick-drive>Elegir de Mi espacio</button>':''}</div><label>Nombre del material<input name="title" maxlength="120" required value="${escape(item.title)}"></label><label>Enlace de Google Drive<input name="url" type="url" maxlength="1200" required value="${escape(item.url)}" placeholder="https://drive.google.com/…"></label><p class="classroom-muted">Para enlaces existentes, revisá en Drive que tus alumnos tengan permiso de lectura.</p><div class="classroom-actions"><button class="classroom-primary" type="submit">Publicar material</button>${editing&&can('filesRemove')?'<button type="button" data-class-delete="material_remove">Quitar material</button>':''}</div></form>`;
+    main.innerHTML=`<button type="button" data-class-back>${icon('arrow-left')}Volver a la materia</button><form data-class-form="material_save" class="classroom-form"><h3>${editing?'Editar archivo':'Añadir archivos'}</h3><label>Nombre del material<input name="title" maxlength="120" required value="${escape(item.title)}"></label><label>Enlace de Google Drive<input name="url" type="url" maxlength="1200" required value="${escape(item.url)}" placeholder="https://drive.google.com/…"></label><div class="classroom-actions">${window.EstudiemosDriveLibrary?.pick?`<button type="button" data-class-pick-drive>${icon('folder')}Elegir de Mi espacio</button>`:''}</div>${editing?'':`<details class="classroom-upload"><summary>${icon('file-text')}Subir un PDF</summary><div class="classroom-upload-fields"><button type="button" data-class-connect-drive>${icon('link')}Conectar Drive</button><label>Archivo PDF<input type="file" name="pdf" accept="application/pdf,.pdf" data-class-pdf></label><label class="classroom-toggle"><input type="checkbox" name="shareByLink">Permitir leer este PDF a cualquiera con su enlace</label><p class="classroom-muted">Opcional. El enlace podrá reenviarse fuera de la comisión. Sin marcarlo, se conservan los permisos de Drive. Hasta 50 MB.</p></div></details>`}<p class="classroom-muted">Los archivos conservan sus permisos de Google Drive.</p><div class="classroom-actions"><button class="classroom-primary" type="submit">Publicar material</button>${editing&&can('filesRemove')?'<button type="button" data-class-delete="material_remove">Quitar material</button>':''}</div></form>`;
     const version=sequence,form=q('[data-class-form=material_save]');
     if(!editing)window.EstudiemosCourseDrive?.status().then(state=>{if(version!==sequence||!form.isConnected)return;const button=form.querySelector('[data-class-connect-drive]');if(state.connected){button.textContent='Drive conectado';button.disabled=true;}}).catch(()=>{});
   }
@@ -141,6 +157,10 @@
     if(event.target.name==='allDay'){q('[data-class-times]').hidden=form.elements.allDay.checked;form.elements.start.required=form.elements.end.required=!form.elements.allDay.checked;}
   });
   dialog.addEventListener('keydown',event=>{
+    if(event.target.closest('[data-class-settings-tab]')&&['ArrowLeft','ArrowRight','Home','End'].includes(event.key)){
+      event.preventDefault();const keys=settingsTabs.map(([key])=>key),index=keys.indexOf(settingsTab);
+      switchSettings(keys[event.key==='Home'?0:event.key==='End'?keys.length-1:(index+(event.key==='ArrowRight'?1:-1)+keys.length)%keys.length]);return;
+    }
     if(!event.target.closest('[data-class-tab]')||!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
     event.preventDefault();const keys=['events','materials'],index=keys.indexOf(tab);
     tab=keys[event.key==='Home'?0:event.key==='End'?keys.length-1:(index+(event.key==='ArrowRight'?1:-1)+keys.length)%keys.length];draw();q('[data-class-tab='+tab+']').focus();
@@ -155,7 +175,8 @@
     if(button.hasAttribute('data-class-select'))return choose(button.dataset.classSelect);
     if(button.hasAttribute('data-class-back')){if(['event','material','settings','share'].includes(view))view='class';else{view='list';selected='';detail=null;}draw();status('');return;}
     if(button.hasAttribute('data-class-tab')){tab=button.dataset.classTab;draw();return;}
-    if(button.hasAttribute('data-class-settings')){view='settings';draw();return;}
+    if(button.hasAttribute('data-class-settings')){view='settings';settingsTab='general';managingMember='';settingsDraft=null;draw();main.scrollTop=0;return;}
+    if(button.hasAttribute('data-class-settings-tab')){switchSettings(button.dataset.classSettingsTab);return;}
     if(button.hasAttribute('data-class-member')){managingMember=managingMember===button.dataset.classMember?'':button.dataset.classMember;draw();if(managingMember)q('[data-class-form=member_permissions] [name=moderator]')?.focus({preventScroll:true});return;}
     if(button.hasAttribute('data-class-refresh'))return refresh();
     if(button.hasAttribute('data-class-event')){editing=button.dataset.classEvent;view='event';draw();return;}

@@ -3,7 +3,7 @@
   const rules = window.EstudiemosTimetableRules, key = 'bandeja_agenda';
   const choices = [['', 'Sin color'], ['blue', 'Azul'], ['teal', 'Turquesa'], ['violet', 'Violeta'], ['rose', 'Rosa'], ['amber', 'Amarillo']];
   const style = document.createElement('link');
-  style.rel = 'stylesheet'; style.href = new URL('../styles/note-colors.css?v=20261019-note-colors', document.currentScript.src); document.head.appendChild(style);
+  style.rel = 'stylesheet'; style.href = new URL('../styles/note-colors.css?v=20261024-polish', document.currentScript.src); document.head.appendChild(style);
   let dialog, currentId = '', owner = '', trigger;
   const identity = () => window.EstudiemosAccount?.getUser()?.id || 'guest';
   const escape = value => String(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));

@@ -357,7 +357,7 @@
   function loadDashboardScript() {
     if (document.querySelector('script[src*="scripts/dashboard.js"]')) return;
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/dashboard.js?v=20261024-classes`;
+    script.src = `${rootPath}scripts/dashboard.js?v=20261024-polish`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -410,7 +410,7 @@
   function loadNoteColorsScript() {
     if (document.querySelector('script[data-note-colors-ui]')) return;
     const script = document.createElement('script'); script.dataset.noteColorsUi = '';
-    script.src = rootPath + 'scripts/note-colors.js?v=20261019-note-colors';
+    script.src = rootPath + 'scripts/note-colors.js?v=20261024-polish';
     document.head.appendChild(script);
   }
 
