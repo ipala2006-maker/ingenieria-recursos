@@ -14,8 +14,8 @@
    el GET del enlace nunca modifica inscripciones. Si necesita iniciar sesion,
    la invitacion queda pendiente durante 24 horas, ligada a su cuenta cuando existe.
 6. Si el docente no usa Estudiemos, un alumno elige **Crear espacio de materia**.
-   Administra fechas, archivos y enlace igual que cualquier creador. La interfaz
-   lo llama responsable, sin afirmar que sea un profesor verificado.
+   Es el **Colaborador**, administra fechas, archivos y enlace, y puede asignar
+   moderadores desde Configuracion > Alumnos y moderadores > Permisos.
 7. Las fechas se suman al calendario de los miembros en modo lectura, sin duplicar
    anotaciones personales. Los archivos aparecen en **Archivos** y se abren en Drive.
 8. **Cargar fechas** admite parciales/finales (tipo Examen), entregas, clases u otras
@@ -26,6 +26,32 @@ quitar alumnos, cambiar el codigo y archivar/reactivar la clase. Al salir o quit
 una clase, sus fechas desaparecen sin borrar anotaciones personales. Cambiar el
 codigo invalida el enlace anterior, sin expulsar a quienes ya estan inscriptos.
 El chat no forma parte de esta version y no se muestra un control inactivo.
+
+## Rangos y Permisos
+
+- Catedra docente: el **Profesor** es el unico editor. Los alumnos son lectores.
+- Catedra colaborativa: el **Colaborador** es el responsable y unico administrador
+  de rangos, inscripciones, configuracion, archivo y eliminacion de la catedra.
+- **Moderador**: tiene seis permisos independientes: agregar, editar y quitar
+  fechas; agregar, editar y quitar archivos. Activarlo no concede permisos por
+  defecto. Elegir los permisos y pulsar **Guardar permisos** aplica el cambio.
+- **Alumno**: puede consultar fechas y archivos y salir de la materia. No edita
+  contenido compartido ni ve la lista de participantes o sus datos personales.
+- Desactivar Moderador elimina sus permisos. Volver a activarlo empieza sin
+  permisos. Salir o ser quitado de la catedra tampoco conserva privilegios.
+- El servidor verifica cada escritura bajo bloqueo de la catedra: no basta con
+  modificar los botones, reenviar una solicitud o tener abierto un editor viejo.
+  El permiso de agregar no permite sobrescribir un elemento existente.
+- Los moderadores suben PDFs a su propio Drive; no reciben acceso a la conexion
+  Google del profesor o colaborador. Editar un archivo en Estudiemos significa
+  cambiar su titulo o enlace; editar el PDF original depende de Google Drive.
+- Las catedras anteriores conservan el modo docente para no ampliar permisos
+  implicitamente. Su responsable puede elegir **Organizacion > Colaborador**
+  en la configuracion desde la app de alumno. Pasar de colaborativa a docente
+  exige confirmacion y revoca todos los moderadores, sin borrar contenido.
+- La actualizacion de `supabase/classrooms.sql` es aditiva e idempotente. Ejecutar
+  ese archivo antes de desplegar la API y la interfaz nuevas. No asigna moderadores
+  ni elimina materias existentes; las tablas siguen cerradas al acceso directo.
 
 ## Drive y Privacidad
 

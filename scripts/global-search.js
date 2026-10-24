@@ -38,14 +38,14 @@
   }
   if (!window.EstudiemosClassroomRules) {
     const classes = document.createElement('script');
-    classes.src = rootPath + 'shared/classrooms.js?v=20261024-roles';
+    classes.src = rootPath + 'shared/classrooms.js?v=20261024-permissions';
     classes.onload = initialize;
     document.head.appendChild(classes);
     return;
   }
   if (!document.querySelector('script[data-classrooms]')) {
     const classes = document.createElement('script'); classes.dataset.classrooms = '';
-    classes.src = rootPath + 'scripts/classroom-sync.js?v=20261024-flow';
+    classes.src = rootPath + 'scripts/classroom-sync.js?v=20261024-permissions';
     document.head.appendChild(classes);
   }
   if (!document.querySelector('script[data-course-drive]')) {

@@ -83,13 +83,24 @@
 .classroom-mobile-back { display:none!important; }
 .classroom-confirm { width:min(440px,calc(100vw - 32px)); padding:24px; }
 .classroom-confirm p { font-size:14px; line-height:1.7; margin:0 0 22px; }
-.classroom-tools { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; padding:20px 0 12px; }
+.classroom-tools { display:grid; grid-template-columns:repeat(auto-fit,minmax(125px,1fr)); gap:10px; padding:20px 0 12px; }
 .classroom-tools button { flex-direction:column; padding:16px 8px; gap:10px; min-height:90px; font-weight:600; }
 .classroom-tools img { width:24px; height:24px; }
 .classroom-code-line { display:flex; gap:12px; align-items:center; font-size:12px; color:var(--muted); padding:0 0 18px; flex-wrap:wrap; }
 .classroom-code-line strong { color:var(--text); font-weight:550; font-variant-numeric:tabular-nums; }
 .classroom-members { margin:24px 0; }
 .classroom-members summary { cursor:pointer; padding:12px 0; }
+.classroom-rank { display:inline-block; margin-top:8px; font-size:12px; color:var(--accent); line-height:1.5; }
+.classroom-member { border-bottom:1px solid var(--border); }
+.classroom-member .classroom-row { border:0; align-items:center; }
+.classroom-permissions { display:grid; gap:16px; padding:0 0 20px; }
+.classroom-permissions>.classroom-toggle { justify-content:space-between; border-bottom:1px solid var(--border); padding-bottom:12px; }
+.classroom-permissions .classroom-toggle { display:flex; align-items:center; gap:10px; min-height:44px; font-size:13px; }
+.classroom-permissions input[type=checkbox] { width:18px; height:18px; flex:none; accent-color:var(--accent); }
+.classroom-permission-groups { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px; }
+.classroom-permission-groups fieldset { border:0; border-left:2px solid var(--border); margin:0; padding:0 0 0 14px; min-width:0; }
+.classroom-permission-groups legend { font-size:13px; font-weight:600; padding:0 0 8px; }
+.classroom-permissions>button { justify-self:start; }
 .classroom-upload { display:grid; gap:16px; padding:18px 0; border-block:1px solid var(--border); }
 .classroom-upload .classroom-toggle { align-items:flex-start; color:var(--text); }
 .classroom-upload .classroom-toggle input { flex:none; margin-top:0; }
@@ -142,6 +153,7 @@ body.teacher-workspace { height:100dvh; min-height:0; display:flex; flex-directi
   .classroom-head>.classroom-actions { margin-left:auto; }
   .classroom-tools { gap:6px; }
   .classroom-tools button { font-size:12px; padding:14px 5px; }
+  .classroom-member .classroom-row { flex-wrap:wrap; }
   .classroom-role-options { grid-template-columns:minmax(0,1fr); }
   .classroom-role-options button { padding:20px; }
   .classroom-role { padding:16px 0; }
