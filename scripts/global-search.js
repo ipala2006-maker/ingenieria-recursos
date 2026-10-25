@@ -38,18 +38,18 @@
   }
   if (!window.EstudiemosClassroomRules) {
     const classes = document.createElement('script');
-    classes.src = rootPath + 'shared/classrooms.js?v=20261024-permissions';
+    classes.src = rootPath + 'shared/classrooms.js?v=20261025-courses';
     classes.onload = initialize;
     document.head.appendChild(classes);
     return;
   }
   if (!document.querySelector('script[data-classrooms]')) {
     const classes = document.createElement('script'); classes.dataset.classrooms = '';
-    classes.src = rootPath + 'scripts/classroom-sync.js?v=20261024-permissions';
+    classes.src = rootPath + 'scripts/classroom-sync.js?v=20261025-courses';
     document.head.appendChild(classes);
   }
   if (!document.querySelector('script[data-course-drive]')) {
-    const drive=document.createElement('script');drive.dataset.courseDrive='';drive.src=rootPath+'scripts/course-drive.js?v=20261024-roles';document.head.append(drive);
+    const drive=document.createElement('script');drive.dataset.courseDrive='';drive.src=rootPath+'scripts/course-drive.js?v=20261025-courses';document.head.append(drive);
   }
   if (!document.querySelector('script[data-release-ui]')) {
     const releaseUi = document.createElement('script');

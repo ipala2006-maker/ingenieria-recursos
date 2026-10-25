@@ -19,7 +19,7 @@
   function code(value){return typeof value==='string'?value.toUpperCase().replace(/[\s-]/g,''):'';}
   function invitation(value,origin){
     const plain=code(value);if(CODE.test(plain))return plain;
-    try{const url=new URL(String(value).trim());if(url.protocol!=='https:'&&url.origin!==origin)return '';if(![origin,'https://estudiemos-app.vercel.app'].includes(url.origin)||url.username||url.password)return '';const hash=new URLSearchParams(url.hash.slice(1));const token=code(hash.get('materia')||hash.get('clase')||url.searchParams.get('materia')||url.searchParams.get('clase')||'');return CODE.test(token)?token:'';}catch(_){return '';}
+    try{const url=new URL(String(value).trim());if(url.protocol!=='https:'&&url.origin!==origin)return '';if(![origin,'https://estudiemos-app.vercel.app'].includes(url.origin)||url.username||url.password)return '';const hash=new URLSearchParams(url.hash.slice(1)),path=/^\/materia\/([A-HJ-NP-Z2-9]{10})\/?$/.exec(url.pathname);const token=code(path?.[1]||hash.get('materia')||hash.get('clase')||url.searchParams.get('materia')||url.searchParams.get('clase')||'');return CODE.test(token)?token:'';}catch(_){return '';}
   }
   function event(value){
     if(!value||typeof value!=='object')throw new Error('INVALID_EVENT');

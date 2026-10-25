@@ -15,8 +15,8 @@ module.exports=async function classrooms(req,res){
     if(!await enforceRateLimit(req,res,{route:'classroom-preview',limit:30,windowSeconds:60}))return;
     const code=rules.code(req.query.invite);if(!rules.CODE.test(code))return res.status(400).json({message:errors.INVALID_CODE});
     try{
-      const preview=await adminRequest('/rest/v1/rpc/classroom_invitation',{method:'POST',body:JSON.stringify({p_code:code})});
-      return res.status(200).json({title:preview.title,teacherName:preview.teacherName,institution:preview.institution,calendar:preview.calendar.slice(0,100).map(item=>({id:item.id,classId:item.classId,className:item.className,timezone:item.timezone,data:{...rules.event(item.data),note:''}}))});
+      const preview=await require('./course-preview')(code,adminRequest);
+      return res.status(200).json(preview);
     }catch(error){return res.status(error.message==='INVALID_CODE'?404:503).json({message:error.message==='INVALID_CODE'?errors.INVALID_CODE:'No pudimos preparar la invitación. Volvé a intentar.'});}
   }
   const user=await authenticateBearer(req.headers.authorization);

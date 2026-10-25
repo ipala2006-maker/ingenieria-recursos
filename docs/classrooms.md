@@ -29,6 +29,20 @@ El chat no forma parte de esta version y no se muestra un control inactivo.
 
 ## Rangos y Permisos
 
+### Equipo visible dentro de la catedra
+
+Cada miembro ve el nombre del profesor o colaborador y su propio rol en una
+franja compacta. **Roles y permisos** despliega los alias de los delegados y sus
+seis permisos exactos. Delegado es el nombre visible del rango interno
+`moderator`; no cambia sus privilegios. El resto de los alumnos, sus correos,
+IDs, notas e inscripciones no se exponen. La lista completa de participantes
+continua reservada al responsable.
+
+La proyeccion `team` se obtiene en la misma consulta privada de detalle, sin
+sondeo adicional ni copiarla al estado personal sincronizado. El archivo
+`supabase/classroom-team.sql` actualiza solo esa funcion, conserva sus ACL y no
+asigna rangos, elimina datos ni abre tablas. Aplicar antes de publicar la UI.
+
 La configuracion se divide en General, Participantes y Gestion. Cambiar de pestana
 conserva el borrador de los datos generales, sin guardarlo ni cambiar permisos.
 Gestion agrupa archivo, cambio de codigo y eliminacion con sus confirmaciones.
@@ -60,6 +74,17 @@ Al anadir un archivo se puede pegar un enlace o desplegar **Subir un PDF**.
 
 ## Drive y Privacidad
 
+Al desplegar **Subir un PDF**, el responsable ve la cuenta conectada y puede
+elegir una carpeta autorizada de Estudiemos en su propio Drive. Por defecto se
+usa `Estudiemos / nombre de la catedra`. No se solicita acceso de escritura a
+todo Mi unidad: las carpetas previas visibles solo con metadatos siguen siendo
+de solo lectura. Un delegado con permiso de agregar archivos usa su propio Drive,
+nunca las credenciales del profesor/colaborador.
+
+Los alumnos abren los materiales en Google Drive y usan su descarga normal.
+Se respetan las restricciones de lectura y descarga de Google; Estudiemos no
+descarga usando la cuenta del responsable ni evita las restricciones del archivo.
+
 - Solo se publica el titulo y enlace elegidos; nunca tokens ni el resto del Drive.
 - Se puede subir un PDF valido de hasta 50 MB directamente a una carpeta propia
   de la materia dentro de Estudiemos en el Drive del responsable. No se suben
@@ -84,6 +109,31 @@ Al anadir un archivo se puede pegar un enlace o desplegar **Subir un PDF**.
   creador/administrador de esa clase. El codigo debe distribuirse a su grupo real.
 - El horario de cada actividad se conserva en la zona horaria de la clase, indicada
   en su agenda y detalle del calendario; no se crean alarmas por defecto.
+
+## Invitacion y Presentacion
+
+Las invitaciones nuevas usan `/materia/CODIGO`. Reutilizan la funcion existente
+`api/account-config`, sin sumar una Function de Vercel. La pagina muestra el
+nombre real de la catedra, responsable, institucion y hasta tres fechas con sus
+horarios. Los metadatos Open Graph incluyen titulo, descripcion e imagen para
+WhatsApp y otras redes. La imagen generica pesa unos 30 KB; no contiene datos
+personales. Los metadatos nunca incluyen archivos ni participantes.
+
+La vista de fechas ya se generaba con el codigo anterior. Ahora el servidor la
+incluye una sola vez en el HTML y el cliente la reutiliza, evitando otra lectura
+de esa misma invitacion. No se envian las demos ni medios promocionales ocultos
+de la pagina general. Se conserva `no-store` y `noindex`, sin cache que pueda
+mantener vigente un codigo rotado. La CSP es la misma que la pagina de instalacion.
+
+Los enlaces anteriores `instalar.html#materia=...` y los codigos pegados siguen
+funcionando. Con sesion activa se continua automaticamente a la catedra. Sin
+sesion se conserva la invitacion para registrarse o instalar. No se instala
+software automaticamente. En Android se conserva **Abrir app instalada**; no
+se presume detectar desde el navegador cualquier PWA o instalacion existente.
+
+El panel **Compartir link** ofrece la invitacion lista para copiar y el menu
+nativo Compartir cuando el navegador lo permite. Abrirlo no manda mensajes por
+si solo ni cambia los permisos de los PDFs.
 
 ## Arquitectura
 

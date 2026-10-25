@@ -5,6 +5,7 @@ module.exports = async function handler(request, response) {
   setSecurityHeaders(response);
   if (request.query && Object.hasOwn(request.query, 'drive')) return require('./_lib/google-drive')(request,response);
   if (request.query && Object.hasOwn(request.query, 'friendInvitation')) return require('./_lib/friend-invitation')(request,response);
+  if (request.query && Object.hasOwn(request.query, 'courseInvitation')) return require('./_lib/course-invitation')(request,response);
   if (request.query?.friends === '1') return require('./_lib/friends')(request,response);
   if (request.query?.classes === '1') return require('./_lib/classrooms')(request,response);
   if (request.method !== "GET") {

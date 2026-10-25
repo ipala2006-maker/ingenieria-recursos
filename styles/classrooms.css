@@ -106,6 +106,30 @@
 #classroomSettingsPanel .classroom-members { margin:0; }
 #classroomSettingsPanel .classroom-members>summary { font-size:15px;font-weight:550;padding-top:0;padding-bottom:16px; }
 .classroom-rank { display:inline-block; margin-top:8px; font-size:12px; color:var(--accent); line-height:1.5; }
+.classroom-team { border-block:1px solid var(--border);padding:12px 0;margin-top:16px; }
+.classroom-team-owner { display:flex;align-items:center;gap:10px;min-width:0; }
+.classroom-team-owner>span:first-of-type { display:grid;gap:3px;min-width:0; }
+.classroom-team-owner strong { font-size:13px;font-weight:550;overflow-wrap:anywhere; }
+.classroom-team-owner small { color:var(--muted);font-size:11px; }
+.classroom-team-owner .classroom-rank { margin:0 0 0 auto;text-align:right;flex:none; }
+.classroom-team details>summary { cursor:pointer;font-size:12px;color:var(--muted);padding:12px 0 0;min-height:36px; }
+.classroom-team-roles { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:16px 0 4px; }
+.classroom-team-roles p { display:grid;gap:5px;margin:0;font-size:12px;line-height:1.6; }
+.classroom-team-roles p span { color:var(--muted); }
+.classroom-team-delegates { padding-top:12px; }
+.classroom-team-delegates h4 { font-size:12px;margin:0 0 10px; }
+.classroom-team-delegates article { display:grid;gap:8px;border-top:1px solid var(--border);padding:12px 0;font-size:12px; }
+.classroom-team-delegates ul { display:flex;flex-wrap:wrap;gap:6px 14px;list-style:none;padding:0;margin:0;color:var(--muted); }
+.classroom-file-open { display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:8px;font-size:12px; }
+.classroom-file-open img { width:17px;height:17px; }
+.classroom-drive-destination { margin:0;font-size:12px;color:var(--muted);line-height:1.6;overflow-wrap:anywhere; }
+.classroom-invitation-preview { display:grid;gap:10px;border:1px solid var(--border);border-radius:8px;padding:20px;background:var(--bg); }
+.classroom-invitation-preview>img { width:28px;height:28px; }
+.classroom-invitation-preview>span,.classroom-invitation-preview small { font-size:12px;color:var(--muted); }
+.classroom-invitation-preview h4 { margin:0;font-size:20px;line-height:1.3;font-weight:550;overflow-wrap:anywhere; }
+.classroom-invitation-preview p { margin:0;font-size:13px;color:var(--muted); }
+.classroom-share-code { display:flex;gap:10px;flex-wrap:wrap;margin:0;font-size:12px;color:var(--muted); }
+.classroom-share-code strong { color:var(--text);font-weight:550;font-variant-numeric:tabular-nums; }
 .classroom-member { border-bottom:1px solid var(--border); }
 .classroom-member .classroom-row { border:0; align-items:center; }
 .classroom-permissions { display:grid; gap:16px; padding:0 0 20px; }
@@ -193,6 +217,7 @@ body.teacher-workspace { height:100dvh; min-height:0; display:flex; flex-directi
   .classroom-embedded .classroom-main { padding:20px 16px; }
 }
 @media(max-width:360px) { .classroom-settings-tabs img { display:none; }.classroom-weekdays { grid-template-columns:repeat(4,minmax(0,1fr)); }.classroom-form-row { grid-template-columns:minmax(0,1fr); } }
+@media(max-width:480px) { .classroom-team-roles { grid-template-columns:minmax(0,1fr); }.classroom-team-owner .classroom-rank { max-width:100px;flex-shrink:1; }.classroom-file-open span { display:none; } }
 @media(prefers-reduced-motion:no-preference) { .classroom-main>.classroom-form,#classroomSettingsPanel,.classroom-content { animation:classroom-enter .15s ease-out; }.classroom-dialog button { transition:background .15s,color .15s,border-color .15s; } }
 @media(prefers-reduced-motion:reduce) { .classroom-toggle input::before { transition:none; } }
 @media(prefers-reduced-motion:no-preference) { .classroom-dialog[open] { animation:classroom-enter .16s ease-out; } @keyframes classroom-enter { from {opacity:.75;transform:translateY(3px)} to {opacity:1;transform:none} } }
