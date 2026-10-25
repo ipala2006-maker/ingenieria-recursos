@@ -10,6 +10,24 @@ async function database(){const db=new PGlite();await db.exec('create role anon;
 const call=async(db,user,action='state',data={})=>(await db.query('select classroom_action($1,$2,$3) as data',[user,action,data])).rows[0].data;
 const create=async(db,user=ids[0],data={})=>call(db,user,'create',{...base,...data});
 
+test('course members see only responsible and delegate aliases with exact grants, never the roster or private identities',async()=>{
+  const db=await database();try{
+    const [owner,delegate,student,outsider]=ids,{selected:id}=await create(db,owner,{ownerRole:'collaborator'});
+    await call(db,delegate,'join',{code:base.code});await call(db,student,'join',{code:base.code});
+    await db.query('insert into friend_profiles values($1,$2)',[delegate,'BrightFalcon82']);
+    await call(db,owner,'member_permissions',{id,itemId:delegate,role:'moderator',permissions:{datesEdit:true,filesAdd:true}});
+    const before=await call(db,student,'detail',{id});
+    assert.equal(before.team.owner.name,base.teacherName);assert.equal(before.team.owner.role,'collaborator');assert.equal(before.team.delegates.length,1);
+    assert.equal(before.team.delegates[0].name,'BrightFalcon82');assert.deepEqual(before.team.delegates[0].permissions,rules.permissions({datesEdit:true,filesAdd:true}));
+    assert.deepEqual(before.members,[]);assert.doesNotMatch(JSON.stringify(before.team),/@|user_id|joined_at|access_token/);assert.ok(!JSON.stringify(before.team).includes(delegate));
+    await db.exec(fs.readFileSync(path.join(root,'supabase/classroom-team.sql'),'utf8'));
+    assert.deepEqual((await call(db,student,'detail',{id})).team,before.team,'Incremental deployment preserves exactly the existing data and ACL');
+    await assert.rejects(call(db,outsider,'detail',{id}),/CLASS_UNAVAILABLE/);
+    await call(db,owner,'member_permissions',{id,itemId:delegate,role:'student',permissions:{}});assert.deepEqual((await call(db,student,'detail',{id})).team.delegates,[]);
+    const {selected:teacherId}=await create(db,owner,{code:'KLMNPQRSTU'});assert.equal((await call(db,owner,'detail',{id:teacherId})).team.owner.role,'teacher');assert.deepEqual((await call(db,owner,'detail',{id:teacherId})).team.delegates,[]);
+  }finally{await db.close();}
+});
+
 test('classes enroll by code once, remain private, and publish shared dates without personal task copies',async()=>{
   const db=await database();try{
     const [teacher,student,other]=ids,created=await create(db),id=created.selected;

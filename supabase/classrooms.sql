@@ -82,7 +82,7 @@ revoke all on function public.classroom_state(uuid,text) from public,anon,authen
 
 create or replace function public.classroom_detail(p_user uuid,p_class uuid)
 returns jsonb language plpgsql stable security definer set search_path='' as $$
-declare course public.classrooms; events jsonb; materials jsonb; members jsonb;
+declare course public.classrooms; events jsonb; materials jsonb; members jsonb; delegates jsonb:='[]';
 begin
   select * into course from public.classrooms c where c.id=p_class and (c.owner_id=p_user or exists(select 1 from public.classroom_members m where m.class_id=c.id and m.user_id=p_user));
   if course.id is null then raise exception 'CLASS_UNAVAILABLE'; end if;
@@ -92,7 +92,14 @@ begin
     select coalesce(jsonb_agg(jsonb_build_object('id',m.user_id,'name',coalesce(nullif(p.username,''),'Estudiante '||upper(left(m.user_id::text,6))),'role',case when course.owner_role='collaborator' then m.role else 'student' end,'permissions',case when course.owner_role='collaborator' and m.role='moderator' then m.permissions else '{}'::jsonb end) order by m.joined_at,m.user_id),'[]') into members
     from public.classroom_members m left join public.friend_profiles p on p.user_id=m.user_id where m.class_id=p_class;
   else members:='[]'::jsonb; end if;
-  return jsonb_build_object('id',p_class,'events',events,'materials',materials,'members',members);
+  if course.owner_role='collaborator' then
+    select coalesce(jsonb_agg(jsonb_build_object('name',coalesce(nullif(p.username,''),'Estudiante '||upper(left(m.user_id::text,6))),
+      'permissions',jsonb_build_object('datesAdd',m.permissions @> '{"datesAdd":true}'::jsonb,'datesEdit',m.permissions @> '{"datesEdit":true}'::jsonb,'datesRemove',m.permissions @> '{"datesRemove":true}'::jsonb,
+        'filesAdd',m.permissions @> '{"filesAdd":true}'::jsonb,'filesEdit',m.permissions @> '{"filesEdit":true}'::jsonb,'filesRemove',m.permissions @> '{"filesRemove":true}'::jsonb)) order by m.joined_at,m.user_id),'[]') into delegates
+      from public.classroom_members m left join public.friend_profiles p on p.user_id=m.user_id where m.class_id=p_class and m.role='moderator';
+  end if;
+  return jsonb_build_object('id',p_class,'events',events,'materials',materials,'members',members,'team',
+    jsonb_build_object('owner',jsonb_build_object('name',course.teacher_name,'role',course.owner_role),'delegates',delegates));
 end $$;
 revoke all on function public.classroom_detail(uuid,uuid) from public,anon,authenticated,service_role;
 

@@ -1,7 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
-    { "source": "/amistad/:token", "destination": "/api/account-config?friendInvitation=:token" }
+    { "source": "/amistad/:token", "destination": "/api/account-config?friendInvitation=:token" },
+    { "source": "/materia/:code", "destination": "/api/account-config?courseInvitation=:code" }
   ],
   "functions": {
     "api/account-config.js": {

@@ -45,17 +45,27 @@
     if(url.origin!=='https://accounts.google.com')throw new Error('Google no devolvió una conexión válida.');
     location.assign(url);
   }
-  async function upload(file,course,progress){
+  async function destinations(course){
+    if(!UUID.test(course?.id||''))throw new Error('Materia no válida.');
+    const files=await drive(),folders=await files.folders();files.check();
+    const byId=new Map(folders.map(item=>[item.id,item]));
+    function path(item){const parts=[item.name],seen=new Set([item.id]);let parent=item.parents?.[0];while(parent&&parent!==files.rootId&&byId.has(parent)&&!seen.has(parent)){seen.add(parent);const folder=byId.get(parent);parts.unshift(folder.name);parent=folder.parents?.[0];}return 'Estudiemos / '+parts.join(' / ');}
+    return {email:files.about?.user?.emailAddress||'',rootUrl:'https://drive.google.com/drive/folders/'+files.rootId,
+      defaultLabel:'Estudiemos / '+course.title,folders:folders.map(item=>({id:item.id,name:path(item)})).sort((a,b)=>a.name.localeCompare(b.name,'es'))};
+  }
+  async function upload(file,course,progress,destination=''){
     if(!UUID.test(course?.id||''))throw new Error('Materia no válida.');
     if(!file||!file.name.toLowerCase().endsWith('.pdf')||!file.size||file.size>50*1024*1024||await file.slice(0,5).text()!=='%PDF-')throw new Error('Elegí un PDF válido de hasta 50 MB.');
     const files=await drive();
-    let folder=(await files.folders()).find(item=>item.appProperties?.estudiemosCourse===course.id);
-    if(!folder){folder=await files.createFolder(course.title);folder=await files.patch(folder.id,{appProperties:{...folder.appProperties,estudiemosCourse:course.id}});}
+    let folder;
+    if(destination){await files.parent(destination);folder={id:destination};}
+    else{folder=(await files.folders()).find(item=>item.appProperties?.estudiemosCourse===course.id);
+      if(!folder){folder=await files.createFolder(course.title);folder=await files.patch(folder.id,{appProperties:{...folder.appProperties,estudiemosCourse:course.id}});}}
     const result=await files.upload(new File([file],file.name,{type:'application/pdf'}),folder.id,progress);
     const item=await files.patch(result.id,{appProperties:{...result.appProperties,estudiemosCourse:course.id}});
     return {id:item.id,title:item.name,url:window.EstudiemosDriveFiles.openUrl(item),folderUrl:'https://drive.google.com/drive/folders/'+folder.id};
   }
   async function share(item,courseId,consent){const files=await drive();await files.shareCoursePdf(item.id,courseId,consent);}
   window.addEventListener('estudiemos:account-change',()=>{generation++;library=null;libraryTask=null;token=null;});
-  window.EstudiemosCourseDrive=Object.freeze({connect,upload,share,status:()=>request('status')});
+  window.EstudiemosCourseDrive=Object.freeze({connect,upload,share,destinations,status:()=>request('status')});
 })();
