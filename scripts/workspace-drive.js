@@ -61,6 +61,7 @@
   window.addEventListener('focus',() => refreshOnReturn());
   document.addEventListener('visibilitychange',() => {if(document.visibilityState==='visible')refreshOnReturn();});
   window.addEventListener('estudiemos:drive-resume',() => refreshOnReturn(true));
+  window.addEventListener('estudiemos:drive-material-saved',() => {if(connected&&!busy&&!initializing)loadFiles();});
   window.addEventListener('estudiemos:account-change',() => { if(account?.getUser()?.id !== owner) initialize(); });
   window.addEventListener('estudiemos-android-ready',render);
   window.addEventListener('estudiemos-android-widget-account-ready',publishNativeWidget);

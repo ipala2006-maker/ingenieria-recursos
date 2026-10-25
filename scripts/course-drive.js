@@ -17,7 +17,7 @@
   }
   function load(){
     if(window.EstudiemosDriveFiles)return Promise.resolve();
-    if(!loader)loader=new Promise((resolve,reject)=>{const script=document.createElement('script');script.src=new URL('shared/drive-files.js?v=20261024-courses',root);script.onload=resolve;script.onerror=()=>{loader=null;script.remove();reject(new Error('No pudimos cargar Drive. Volvé a intentar.'));};document.head.append(script);});
+    if(!loader)loader=new Promise((resolve,reject)=>{const script=document.createElement('script');script.src=new URL('shared/drive-files.js?v=20261025-course-save',root);script.onload=resolve;script.onerror=()=>{loader=null;script.remove();reject(new Error('No pudimos cargar Drive. Volvé a intentar.'));};document.head.append(script);});
     return loader;
   }
   async function drive(){
@@ -26,7 +26,7 @@
     const owner=identity(),version=generation;
     const task=(async()=>{
       await load();const state=await request('status');
-      if(!state.connected)throw new Error('Conectá tu Google Drive antes de subir un PDF.');
+      if(!state.connected)throw new Error('Conectá tu Google Drive para guardar archivos.');
       const files=new window.EstudiemosDriveFiles.DriveFiles({userId:owner,isCurrent:()=>identity()===owner&&generation===version,getToken:async force=>{
         if(!force&&token?.expiresAt>Date.now()+120000)return token.accessToken;
         token=await request('token',{force:force===true},'POST');return token.accessToken;
@@ -36,10 +36,11 @@
     libraryTask=task;
     try{return await task;}finally{if(libraryTask===task)libraryTask=null;}
   }
-  async function connect(classId){
+  async function connect(classId,materialId=''){
     if(!UUID.test(classId))throw new Error('Elegí una materia antes de conectar Drive.');
+    if(materialId&&!UUID.test(materialId))throw new Error('Material no válido.');
     const context=document.body.classList.contains('teacher-workspace')?'teacher':'student-course';
-    try{sessionStorage.setItem('estudiemos_course_upload',JSON.stringify({owner:identity(),classId,expires:Date.now()+3600000}));}catch(_){}
+    try{sessionStorage.setItem('estudiemos_course_upload',JSON.stringify({owner:identity(),classId,materialId,expires:Date.now()+3600000}));}catch(_){}
     if(window.EstudiemosAndroid?.postMessage){window.EstudiemosAndroid.postMessage(JSON.stringify({type:'drive-connect-browser',context,classId}));return;}
     const result=await request('start',{context,classId},'POST'),url=new URL(result.url);
     if(url.origin!=='https://accounts.google.com')throw new Error('Google no devolvió una conexión válida.');
@@ -50,22 +51,39 @@
     const files=await drive(),folders=await files.folders();files.check();
     const byId=new Map(folders.map(item=>[item.id,item]));
     function path(item){const parts=[item.name],seen=new Set([item.id]);let parent=item.parents?.[0];while(parent&&parent!==files.rootId&&byId.has(parent)&&!seen.has(parent)){seen.add(parent);const folder=byId.get(parent);parts.unshift(folder.name);parent=folder.parents?.[0];}return 'Estudiemos / '+parts.join(' / ');}
-    return {email:files.about?.user?.emailAddress||'',rootUrl:'https://drive.google.com/drive/folders/'+files.rootId,
+    return {email:files.about?.user?.emailAddress||'',rootId:files.rootId,rootUrl:'https://drive.google.com/drive/folders/'+files.rootId,
       defaultLabel:'Estudiemos / '+course.title,folders:folders.map(item=>({id:item.id,name:path(item)})).sort((a,b)=>a.name.localeCompare(b.name,'es'))};
+  }
+  async function destinationFolder(files,course,destination){
+    if(destination){await files.parent(destination);return {id:destination};}
+    let folder=(await files.folders()).find(item=>item.appProperties?.estudiemosCourse===course.id);
+    if(!folder){folder=await files.createFolder(course.title);folder=await files.patch(folder.id,{appProperties:{...folder.appProperties,estudiemosCourse:course.id}});}
+    return folder;
   }
   async function upload(file,course,progress,destination=''){
     if(!UUID.test(course?.id||''))throw new Error('Materia no válida.');
     if(!file||!file.name.toLowerCase().endsWith('.pdf')||!file.size||file.size>50*1024*1024||await file.slice(0,5).text()!=='%PDF-')throw new Error('Elegí un PDF válido de hasta 50 MB.');
     const files=await drive();
-    let folder;
-    if(destination){await files.parent(destination);folder={id:destination};}
-    else{folder=(await files.folders()).find(item=>item.appProperties?.estudiemosCourse===course.id);
-      if(!folder){folder=await files.createFolder(course.title);folder=await files.patch(folder.id,{appProperties:{...folder.appProperties,estudiemosCourse:course.id}});}}
+    const folder=await destinationFolder(files,course,destination);
     const result=await files.upload(new File([file],file.name,{type:'application/pdf'}),folder.id,progress);
     const item=await files.patch(result.id,{appProperties:{...result.appProperties,estudiemosCourse:course.id}});
     return {id:item.id,title:item.name,url:window.EstudiemosDriveFiles.openUrl(item),folderUrl:'https://drive.google.com/drive/folders/'+folder.id};
   }
+  async function save(item,course,mode,folderId=''){
+    if(!UUID.test(course?.id||''))throw new Error('Materia no válida.');
+    const material=window.EstudiemosClassroomRules.material(item),source=window.EstudiemosClassroomRules.driveSource(material.url);
+    if(!source||!['copy','shortcut'].includes(mode)||source.folder&&mode==='copy')throw new Error('Elegí un archivo para copiar o un acceso directo a la carpeta.');
+    const files=await drive(),folder=await destinationFolder(files,course,folderId);
+    const result=await files.saveCourseMaterial(source,mode,folder.id,material.title);
+    files.check();
+    window.dispatchEvent(new CustomEvent('estudiemos:drive-material-saved'));
+    return {id:result.id,url:window.EstudiemosDriveFiles.openUrl(result)};
+  }
+  function resumeSave(classId){
+    try{const pending=JSON.parse(sessionStorage.getItem('estudiemos_course_upload')||'null');sessionStorage.removeItem('estudiemos_course_upload');if(pending?.owner===identity()&&pending.classId===classId&&pending.expires>Date.now()&&UUID.test(pending.materialId||''))return pending.materialId;}catch(_){}
+    return '';
+  }
   async function share(item,courseId,consent){const files=await drive();await files.shareCoursePdf(item.id,courseId,consent);}
   window.addEventListener('estudiemos:account-change',()=>{generation++;library=null;libraryTask=null;token=null;});
-  window.EstudiemosCourseDrive=Object.freeze({connect,upload,share,destinations,status:()=>request('status')});
+  window.EstudiemosCourseDrive=Object.freeze({connect,upload,share,save,resumeSave,destinations,status:()=>request('status')});
 })();

@@ -14,12 +14,12 @@ function boot(model=preview,error=''){
 const response=()=>({headers:{},setHeader(k,v){this.headers[k]=v;},status(code){this.code=code;return this;},send(body){this.body=body;return this;},json(body){this.body=body;return this;}});
 
 test('friendly class links render a real minimal invitation and WhatsApp metadata without duplicating the lookup',async()=>{
-  const h=boot(),res=response();await h.handler({method:'GET',query:{courseInvitation:code},headers:{host:'attacker.test'}},res);
+  const h=boot({...preview,email:'owner@example.test',team:{owner:{email:'owner@example.test'},delegates:[{email:'delegate@example.test'}]}}),res=response();await h.handler({method:'GET',query:{courseInvitation:code},headers:{host:'attacker.test'}},res);
   assert.equal(res.code,200);assert.equal(h.calls.length,1);assert.equal(h.calls[0].url,'/rest/v1/rpc/classroom_invitation');
   assert.match(res.body,/og:title" content="Álgebra · Comisión 2 · Invitación en Estudiemos/);assert.match(res.body,/og:url" content="https:\/\/estudiemos-app.vercel.app\/materia\/ABCDEFGHJK/);
   assert.match(res.body,/data-course-preview=/);assert.match(res.body,/Primer parcial/);assert.match(res.body,/Unirme a la cátedra/);assert.match(res.body,/og:image:width" content="1200/);
   assert.doesNotMatch(res.body,/heroTitle|data-scene=|widget-gallery__item/,'No hidden promotional content or media is served with a class invitation');
-  assert.doesNotMatch(res.body,/Private note|never-public|attacker.test|"members"|"materials"/);
+  assert.doesNotMatch(res.body,/Private note|never-public|attacker.test|"members"|"materials"|owner@example.test|delegate@example.test|"team"|"email"/);
   assert.match(res.body,/<script src="\/shared\/course-invite-view.js/);assert.equal(res.headers['Cache-Control'],'private, no-store');assert.equal(res.headers['Referrer-Policy'],'no-referrer');
   assert.equal(res.headers['Content-Security-Policy'],require('../vercel.json').headers.find(rule=>rule.source==='/(.*)').headers.find(h=>h.key==='Content-Security-Policy').value);
   assert.equal(rules.invitation('https://estudiemos-app.vercel.app/materia/'+code,'https://app.test'),code);

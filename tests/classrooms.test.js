@@ -10,7 +10,7 @@ async function database(){const db=new PGlite();await db.exec('create role anon;
 const call=async(db,user,action='state',data={})=>(await db.query('select classroom_action($1,$2,$3) as data',[user,action,data])).rows[0].data;
 const create=async(db,user=ids[0],data={})=>call(db,user,'create',{...base,...data});
 
-test('course members see only responsible and delegate aliases with exact grants, never the roster or private identities',async()=>{
+test('members see team contacts and exact grants, never student emails or public contact leaks',async()=>{
   const db=await database();try{
     const [owner,delegate,student,outsider]=ids,{selected:id}=await create(db,owner,{ownerRole:'collaborator'});
     await call(db,delegate,'join',{code:base.code});await call(db,student,'join',{code:base.code});
@@ -19,11 +19,17 @@ test('course members see only responsible and delegate aliases with exact grants
     const before=await call(db,student,'detail',{id});
     assert.equal(before.team.owner.name,base.teacherName);assert.equal(before.team.owner.role,'collaborator');assert.equal(before.team.delegates.length,1);
     assert.equal(before.team.delegates[0].name,'BrightFalcon82');assert.deepEqual(before.team.delegates[0].permissions,rules.permissions({datesEdit:true,filesAdd:true}));
-    assert.deepEqual(before.members,[]);assert.doesNotMatch(JSON.stringify(before.team),/@|user_id|joined_at|access_token/);assert.ok(!JSON.stringify(before.team).includes(delegate));
+    assert.equal(before.team.owner.email,owner+'@example.test');assert.equal(before.team.delegates[0].email,delegate+'@example.test');
+    assert.deepEqual(before.members,[]);assert.doesNotMatch(JSON.stringify(before.team),/user_id|joined_at|access_token/);
+    assert.ok(!JSON.stringify(before.team).includes(student+'@example.test'));assert.ok(!JSON.stringify(before.team).includes(outsider+'@example.test'));
+    const preview=(await db.query('select classroom_invitation($1) as data',[base.code])).rows[0].data;
+    assert.doesNotMatch(JSON.stringify(preview),/@example\.test|delegates|team|email/);
+    assert.doesNotMatch(JSON.stringify(await call(db,student)),/@example\.test|delegates|email/,'Contact details do not enter the synchronized course state');
     await db.exec(fs.readFileSync(path.join(root,'supabase/classroom-team.sql'),'utf8'));
     assert.deepEqual((await call(db,student,'detail',{id})).team,before.team,'Incremental deployment preserves exactly the existing data and ACL');
     await assert.rejects(call(db,outsider,'detail',{id}),/CLASS_UNAVAILABLE/);
-    await call(db,owner,'member_permissions',{id,itemId:delegate,role:'student',permissions:{}});assert.deepEqual((await call(db,student,'detail',{id})).team.delegates,[]);
+    await call(db,owner,'member_permissions',{id,itemId:delegate,role:'student',permissions:{}});const demoted=(await call(db,student,'detail',{id})).team;assert.deepEqual(demoted.delegates,[]);assert.ok(!JSON.stringify(demoted).includes(delegate+'@example.test'));
+    await call(db,student,'leave',{id});await assert.rejects(call(db,student,'detail',{id}),/CLASS_UNAVAILABLE/);
     const {selected:teacherId}=await create(db,owner,{code:'KLMNPQRSTU'});assert.equal((await call(db,owner,'detail',{id:teacherId})).team.owner.role,'teacher');assert.deepEqual((await call(db,owner,'detail',{id:teacherId})).team.delegates,[]);
   }finally{await db.close();}
 });
@@ -43,7 +49,7 @@ test('classes enroll by code once, remain private, and publish shared dates with
     const events=rules.occurrences(studentState,'2026-10-26');assert.equal(events[0].readOnly,true);assert.equal(events[0].subject,'Física');assert.equal(events[0].classId,id);assert.equal(events[0].scheduleId,undefined);
     await call(db,teacher,'event_save',{id,itemId,event:{...activity,title:'Parcial reprogramado',date:'2026-10-27'}});
     const updated=await call(db,student);assert.equal(updated.calendar.length,1);assert.equal(rules.occurrences(updated,'2026-10-26').length,0);assert.equal(rules.occurrences(updated,'2026-10-27')[0].title,'Parcial reprogramado');
-    const roster=await call(db,teacher,'detail',{id});assert.equal(roster.members.length,2);assert.ok(!JSON.stringify(roster).includes('@example.test'));
+    const roster=await call(db,teacher,'detail',{id});assert.equal(roster.members.length,2);assert.ok(!JSON.stringify(roster.members).includes('@example.test'));
     assert.ok(!JSON.stringify(await call(db,student,'detail',{id})).includes(other));
     const beforeCascade=(await call(db,teacher)).revision;await db.query('delete from classroom_members where class_id=$1 and user_id=$2',[id,other]);assert.notEqual((await call(db,teacher)).revision,beforeCascade,'Out-of-band membership changes also invalidate the conditional cache');
     await db.exec(sql);assert.equal((await call(db,teacher)).calendar.length,1,'Migration reruns preserve content');

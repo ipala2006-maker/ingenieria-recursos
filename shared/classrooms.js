@@ -49,6 +49,11 @@
     const title=text(value?.title,120,true),url=typeof value?.url==='string'&&driveUrl(value.url.trim());
     if(!url)throw new Error('INVALID_MATERIAL');return {title,url};
   }
+  function driveSource(value){
+    const safe=driveUrl(value);if(!safe)return null;
+    const url=new URL(safe),match=/\/(?:d|folders)\/([A-Za-z0-9_-]{5,200})(?:\/|$)/.exec(url.pathname);
+    return match?{id:match[1],resourceKey:url.searchParams.get('resourcekey')||'',folder:url.pathname.includes('/folders/')}:null;
+  }
   function course(value){
     const result={title:text(value?.title,90,true),teacherName:text(value.teacherName,60,true),institution:text(value.institution||'',90),timezone:text(value.timezone,80,true),color:time.COLORS.includes(value.color)?value.color:'blue'};
     if(value.ownerRole!==undefined){if(!['teacher','collaborator'].includes(value.ownerRole))throw new Error('INVALID_PERMISSIONS');result.ownerRole=value.ownerRole;}
@@ -68,5 +73,5 @@
     }
     return result;
   }
-  return Object.freeze({CACHE_KEY,PENDING_KEY,UUID,CODE,PERMISSIONS,isOwner,can,permissions,code,invitation,text,event,material,course,driveUrl,occurrences});
+  return Object.freeze({CACHE_KEY,PENDING_KEY,UUID,CODE,PERMISSIONS,isOwner,can,permissions,code,invitation,text,event,material,course,driveUrl,driveSource,occurrences});
 });

@@ -6,7 +6,7 @@
   const colors=['Azul','Turquesa','Violeta','Rosa','Amarillo'],days=[[1,'Lun'],[2,'Mar'],[3,'Mié'],[4,'Jue'],[5,'Vie'],[6,'Sáb'],[0,'Dom']];
   const dateLabel=value=>{const date=time.date(value);return date?new Intl.DateTimeFormat('es-AR',{day:'numeric',month:'short',year:'numeric'}).format(date):value;};
   const roles=window.EstudiemosCourseRole,standalone=document.body.classList.contains('teacher-workspace');
-  let selected='',detail=null,view='list',tab='events',busy=false,sequence=0,lastFocus,joinCode='',autoJoin=false,resume=false,uploaded=null,materialDraftId='';
+  let selected='',detail=null,view='list',tab='events',busy=false,sequence=0,lastFocus,joinCode='',autoJoin=false,resume=false,uploaded=null,materialDraftId='',savingMaterial='';
   const dialog=document.createElement(standalone?'section':'dialog');dialog.className='classroom-dialog'+(standalone?' classroom-embedded':'');dialog.setAttribute('aria-labelledby','classroomTitle');
   dialog.innerHTML=`<header class="classroom-head"><div>${icon('graduation-cap')}<h2 id="classroomTitle">Materias y cátedras</h2></div><div class="classroom-actions"><button type="button" class="classroom-icon" data-class-role aria-label="Cambiar rol" title="Cambiar rol">${icon('users-round')}</button><button type="button" data-class-join>Unirme</button><button type="button" data-class-create>${icon('plus')}Crear materia</button>${standalone?'':`<button type="button" class="classroom-icon" data-class-close aria-label="Cerrar materias" title="Cerrar">${icon('x')}</button>`}</div></header><p class="classroom-status" role="status" aria-live="polite" hidden></p><div class="classroom-shell"><aside class="classroom-sidebar" aria-label="Mis materias"></aside><section class="classroom-main"></section></div>`;
   (standalone?document.querySelector('#teacherWorkspace'):document.body).append(dialog);
@@ -20,14 +20,15 @@
   const can=permission=>rules.can(current(),permission);
   const roleLabel=role=>({teacher:'Profesor',collaborator:'Colaborador',moderator:'Delegado',student:'Alumno'}[role]||'Alumno');
   const permissionLabels={datesAdd:'Agregar fechas',datesEdit:'Editar fechas',datesRemove:'Quitar fechas',filesAdd:'Agregar archivos',filesEdit:'Editar archivos',filesRemove:'Quitar archivos'};
+  const contact=email=>typeof email==='string'&&email.includes('@')?`<a class="classroom-contact" href="mailto:${encodeURIComponent(email)}">${escape(email)}</a>`:'';
   function teamSummary(course){
     const delegates=detail?.team?.delegates||[],owner=detail?.team?.owner||{name:course.teacherName,role:course.ownerRole||'teacher'};
-    return `<section class="classroom-team" aria-label="Equipo y permisos de la cátedra"><div class="classroom-team-owner">${icon('users-round')}<span><small>${roleLabel(owner.role)}</small><strong>${escape(owner.name)}</strong></span><span class="classroom-rank">Tu rol: ${roleLabel(course.role)}</span></div><details><summary>${delegates.length?delegates.length+' '+(delegates.length===1?'delegado':'delegados')+' · ':''}Roles y permisos</summary><div class="classroom-team-roles"><p><strong>${roleLabel(owner.role)}</strong><span>${owner.role==='collaborator'?'Administra la cátedra, sus fechas y archivos. Asigna delegados y sus permisos.':'Administra la cátedra. Publica y modifica sus fechas y archivos.'}</span></p><p><strong>Alumno</strong><span>Consulta las fechas y abre o descarga los materiales desde Drive. No modifica el contenido compartido.</span></p></div>${owner.role==='collaborator'?`<div class="classroom-team-delegates"><h4>Delegados</h4>${delegates.map(member=>`<article><strong>${escape(member.name)}</strong><ul>${rules.PERMISSIONS.filter(key=>member.permissions?.[key]===true).map(key=>`<li>${permissionLabels[key]}</li>`).join('')||'<li>Sin permisos de edición</li>'}</ul></article>`).join('')||'<p class="classroom-muted">Sin delegados asignados.</p>'}</div>`:''}</details></section>`;
+    return `<section class="classroom-team" aria-label="Equipo y permisos de la cátedra"><div class="classroom-team-owner">${icon('users-round')}<span><small>${roleLabel(owner.role)}</small><strong>${escape(owner.name)}</strong>${contact(owner.email)}</span><span class="classroom-rank">Tu rol: ${roleLabel(course.role)}</span></div><details><summary>${delegates.length?delegates.length+' '+(delegates.length===1?'delegado':'delegados')+' · ':''}Equipo y permisos</summary><div class="classroom-team-roles"><p><strong>${roleLabel(owner.role)}</strong><span>${owner.role==='collaborator'?'Administra la cátedra, sus fechas y archivos. Asigna delegados y sus permisos.':'Administra la cátedra. Publica y modifica sus fechas y archivos.'}</span></p><p><strong>Alumno</strong><span>Consulta las fechas y guarda los materiales en su propio Drive. No modifica el contenido compartido.</span></p></div>${owner.role==='collaborator'?`<div class="classroom-team-delegates"><h4>Delegados</h4>${delegates.map(member=>`<article><strong>${escape(member.name)}</strong>${contact(member.email)}<ul>${rules.PERMISSIONS.filter(key=>member.permissions?.[key]===true).map(key=>`<li>${permissionLabels[key]}</li>`).join('')||'<li>Sin permisos de edición</li>'}</ul></article>`).join('')||'<p class="classroom-muted">Sin delegados asignados.</p>'}</div>`:''}<p class="classroom-muted">Correos del equipo visibles solo dentro de esta cátedra.</p></details></section>`;
   }
   let managingMember='',settingsTab='general',settingsDraft=null;
   const settingsTabs=[['general','General','settings-2'],['members','Participantes','users-round'],['manage','Gestión','folder']];
   function status(text='',error=false){const node=q('.classroom-status');node.textContent=text;node.hidden=!text;node.classList.toggle('is-error',error);}
-  function lock(value){busy=value;dialog.setAttribute('aria-busy',String(value));dialog.querySelectorAll('button:not([data-class-close]),input,select,textarea').forEach(node=>node.disabled=value);}
+  function lock(value){busy=value;dialog.setAttribute('aria-busy',String(value));dialog.querySelectorAll('button:not([data-class-close]),input,select,textarea').forEach(node=>node.disabled=value);const form=q('[data-class-form=drive_save]'),save=form?.querySelector('[data-class-save-submit]');if(save)save.disabled=value||form.dataset.destinations!=='ready';if(form&&rules.driveSource(detail?.materials.find(item=>item.id===savingMaterial)?.url)?.folder)form.elements.saveMode[0].disabled=true;}
   function colorFields(value='blue'){return `<fieldset class="classroom-colors"><legend>Color</legend>${time.COLORS.map((color,index)=>`<label title="${colors[index]}" class="classroom-color--${color}"><input type="radio" name="color" value="${color}" ${value===color?'checked':''} aria-label="${colors[index]}"><span></span></label>`).join('')}</fieldset>`;}
   function sidebar(){
     const list=courses(),node=q('.classroom-sidebar');
@@ -52,6 +53,7 @@
     if(view==='settings'&&!teacher())view='class';
     if(view==='create'||view==='settings'){drawCourseForm(view==='settings'?course:null);return;}
     if(!course){view='list';selected='';detail=null;draw();return;}
+    if(view==='save-material'&&detail?.materials.some(item=>item.id===savingMaterial)){drawSaveMaterial();return;}
     if(view==='event'&&can(editing?'datesEdit':'datesAdd')){drawEvent();return;}
     if(view==='material'&&can(editing?'filesEdit':'filesAdd')){drawMaterial();return;}
     if(view==='share'&&teacher()){drawShare();return;}
@@ -65,7 +67,7 @@
     if(tab==='events'){
       content.innerHTML=`<div class="classroom-section-head"><span class="classroom-muted">${escape(course.timezone)}</span></div><div class="classroom-items">${detail.events.map(item=>`<article class="classroom-row classroom-color--${item.data.color}"><span class="classroom-dot"></span><div><strong>${escape(item.data.title)}</strong><p>${dateLabel(item.data.date)}${item.data.repeat==='weekly'?' · '+days.filter(([day])=>item.data.days.includes(day)).map(([,label])=>label).join(', '):''}${item.data.endDate?' · hasta '+dateLabel(item.data.endDate):''}</p><small>${item.data.allDay?'Todo el día':item.data.start+' – '+item.data.end} · ${escape(item.data.type)}</small>${item.data.note?`<p class="classroom-note">${escape(item.data.note)}</p>`:''}</div><div class="classroom-actions">${can('datesEdit')?`<button type="button" data-class-event="${item.id}">Editar</button>`:`<button type="button" data-class-calendar="${item.data.date}">Calendario</button>${can('datesRemove')?`<button type="button" data-class-remove-event="${item.id}">Quitar</button>`:''}`}</div></article>`).join('')||'<p class="classroom-empty-line">Todavía no hay fechas publicadas.</p>'}</div>`;
     }else if(tab==='materials'){
-      content.innerHTML=`<div class="classroom-section-head"><span class="classroom-muted">Archivos alojados en Google Drive</span></div><div class="classroom-items">${detail.materials.map(item=>`<article class="classroom-row">${icon('file-text')}<div><a href="${escape(rules.driveUrl(item.url))}" target="_blank" rel="noopener noreferrer" class="classroom-material-link">${escape(item.title)}</a><small>Abrir y descargar en Drive</small></div><div class="classroom-actions"><a href="${escape(rules.driveUrl(item.url))}" target="_blank" rel="noopener noreferrer" class="classroom-file-open" aria-label="Abrir ${escape(item.title)} en Drive" title="Abrir en Google Drive">${icon('link')}<span>Abrir</span></a>${can('filesEdit')?`<button type="button" data-class-material="${item.id}">Editar</button>`:can('filesRemove')?`<button type="button" data-class-remove-material="${item.id}">Quitar</button>`:''}</div></article>`).join('')||'<p class="classroom-empty-line">Todavía no hay materiales publicados.</p>'}</div>`;
+      content.innerHTML=`<div class="classroom-section-head"><span class="classroom-muted">Originales en Drive · Sin archivos alojados en Estudiemos</span></div><div class="classroom-items">${detail.materials.map(item=>`<article class="classroom-row">${icon('file-text')}<div><a href="${escape(rules.driveUrl(item.url))}" target="_blank" rel="noopener noreferrer" class="classroom-material-link">${escape(item.title)}</a><small>Con los permisos del original</small></div><div class="classroom-actions"><button type="button" data-class-save-drive="${item.id}">${icon('folder')}Guardar en mi Drive</button><a href="${escape(rules.driveUrl(item.url))}" target="_blank" rel="noopener noreferrer" class="classroom-file-open" aria-label="Abrir ${escape(item.title)} en Drive" title="Abrir en Google Drive">${icon('link')}<span>Abrir</span></a>${can('filesEdit')?`<button type="button" data-class-material="${item.id}">Editar</button>`:can('filesRemove')?`<button type="button" data-class-remove-material="${item.id}">Quitar</button>`:''}</div></article>`).join('')||'<p class="classroom-empty-line">Todavía no hay materiales publicados.</p>'}</div>`;
     }else content.innerHTML=`<div class="classroom-items">${detail.members.map(item=>`<article class="classroom-row"><strong>${escape(item.name)}</strong>${!course.archived?`<button type="button" data-class-remove-member="${item.id}">Quitar</button>`:''}</article>`).join('')||'<p class="classroom-empty-line">Todavía no se unieron alumnos.</p>'}</div>`;
   }
   function drawJoin(){main.innerHTML=`<button type="button" data-class-back>${icon('arrow-left')}Mis materias</button><form data-class-form="join" class="classroom-form"><h3>Unirme a una materia</h3><label>Link o código de la materia<input name="code" required maxlength="1200" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="Pegá el enlace o ABCDE-FGHJK" value="${escape(joinCode)}"></label><button class="classroom-primary" type="submit">Aceptar y unirme</button></form>`;}
@@ -82,10 +84,13 @@
     if(course&&settingsTab!=='general'){
       const content=settingsTab==='members'?memberControls(course):`<section class="classroom-management"><h3>Gestión de la materia</h3><div><button type="button" data-class-archive>Archivar materia</button><button type="button" data-class-rotate>Cambiar código de invitación</button></div><div class="classroom-danger-zone"><button type="button" data-class-delete-course>Eliminar materia</button></div></section>`;
       main.innerHTML=back+navigation+`<div id="classroomSettingsPanel" role="tabpanel" aria-labelledby="class-settings-${settingsTab}">${content}</div>`;
-      const members=q('.classroom-members');if(members)members.open=true;return;
+      const members=q('.classroom-members');if(members)members.open=true;
+      if(settingsTab==='members')q('[data-class-form=member_permissions]')?.insertAdjacentHTML('afterbegin','<p class="classroom-muted">El correo de Estudiemos de cada delegado será visible para los miembros de esta cátedra mientras conserve ese rol.</p>');
+      return;
     }
     const ownerRole=course?.ownerRole||(standalone||roles?.get()==='teacher'?'teacher':'collaborator');
     main.innerHTML=back+navigation+`${course?'<div id="classroomSettingsPanel" role="tabpanel" aria-labelledby="class-settings-general">':''}<form data-class-form="${course?'update':'create'}" class="classroom-form"><h3>${course?'Datos de la materia':standalone?'Crear materia':'Crear espacio de materia'}</h3><label>Materia, cátedra o comisión<input name="title" maxlength="90" required placeholder="Ej: Álgebra · Comisión 2" value="${escape(course?.title)}"></label><label>Tu nombre<input name="teacherName" maxlength="60" required autocomplete="name" value="${escape(course?.teacherName)}"></label>${course&&!standalone?`<label>Organización<select name="ownerRole"><option value="teacher" ${ownerRole==='teacher'?'selected':''}>Profesor</option><option value="collaborator" ${ownerRole==='collaborator'?'selected':''}>Colaborador</option></select></label>`:`<input type="hidden" name="ownerRole" value="${ownerRole}"><span class="classroom-rank">${roleLabel(ownerRole)}</span>`}${colorFields(course?.color)}<details><summary>Institución y zona horaria</summary><label>Escuela o universidad (opcional)<input name="institution" maxlength="90" value="${escape(course?.institution)}"></label><label>Zona horaria de la materia<input name="timezone" maxlength="80" required value="${escape(course?.timezone||Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC')}"></label></details><button class="classroom-primary" type="submit">${course?'Guardar cambios':'Crear materia'}</button></form>${course?'</div>':''}`;
+    q('[data-class-form=create] button[type=submit],[data-class-form=update] button[type=submit]')?.insertAdjacentHTML('beforebegin','<p class="classroom-muted classroom-contact-notice">Tu correo de Estudiemos será visible para los miembros de esta cátedra como contacto del responsable, no en el enlace público.</p>');
   }
   function switchSettings(key){
     if(busy||!settingsTabs.some(([value])=>value===key))return;
@@ -105,17 +110,54 @@
     const version=sequence,form=q('[data-class-form=material_save]');
     if(!editing)window.EstudiemosCourseDrive?.status().then(state=>{if(version!==sequence||!form.isConnected)return;const button=form.querySelector('[data-class-connect-drive]');if(state.connected){button.textContent='Drive conectado';button.disabled=true;}}).catch(()=>{});
   }
-  async function choose(id){selected=id;view='class';detail=null;draw();const version=++sequence;lock(true);status('');try{const result=await api.detail(id);if(version!==sequence||!isOpen())return;detail=result;draw();}catch(error){if(version===sequence)status(error.message,true);}finally{if(version===sequence)lock(false);}}
-  dialog.addEventListener('toggle',async event=>{
-    const upload=event.target;if(!upload.matches?.('.classroom-upload')||!upload.open||upload.dataset.destinations)return;
-    upload.dataset.destinations='loading';const version=sequence,course=current(),form=upload.closest('form'),select=form.elements.driveFolder,note=form.querySelector('[data-class-drive-destination]');
+  function drawSaveMaterial(){
+    const item=detail.materials.find(item=>item.id===savingMaterial),folder=rules.driveSource(item.url)?.folder;
+    main.innerHTML=`<button type="button" data-class-back>${icon('arrow-left')}Volver a los archivos</button><form data-class-form="drive_save" class="classroom-form"><h3>Guardar en mi Drive</h3><p class="classroom-save-title">${escape(item.title)}</p><fieldset class="classroom-save-modes"><legend>Cómo guardarlo</legend><label><input type="radio" name="saveMode" value="copy" ${folder?'disabled':'checked'}><span><strong>Copia independiente</strong><small>${folder?'Las carpetas admiten acceso directo.':'Ocupa tu espacio. Conserva esta versión, sin cambiar el original.'}</small></span></label><label><input type="radio" name="saveMode" value="shortcut" ${folder?'checked':''}><span><strong>Acceso directo</strong><small>Abre siempre el original. Depende de sus permisos y actualizaciones.</small></span></label></fieldset><label>Carpeta de destino<select name="driveFolder"><option value="">Estudiemos / ${escape(current().title)}</option></select></label><p class="classroom-drive-destination" data-class-drive-destination role="status">Comprobando tu conexión con Drive…</p><div class="classroom-actions"><button type="submit" class="classroom-primary" data-class-save-submit disabled>Guardar</button><button type="button" data-class-connect-drive>Conectar mi Drive</button></div><details class="classroom-drive-help"><summary>Hacerlo desde Google Drive</summary><p>Con tu cuenta de Google, abrí el original. En el menú del archivo elegí Hacer una copia, o en Organizar elegí Añadir acceso directo. Seleccioná la carpeta de tu Drive. Google puede limitar estas opciones según los permisos del archivo.</p><a class="classroom-file-open" href="${escape(rules.driveUrl(item.url))}" target="_blank" rel="noopener noreferrer">Abrir original en Drive</a></details><p class="classroom-muted">El contenido queda en tu Google Drive, no en Estudiemos. Se respetan los permisos de Google y de la carpeta elegida.</p></form>`;
+    loadDestinations(q('[data-class-form=drive_save]'));
+  }
+  async function loadDestinations(form,host=form){
+    const version=sequence,course=current(),select=form.elements.driveFolder,note=form.querySelector('[data-class-drive-destination]');
+    host.dataset.destinations='loading';
     try{
       const result=await window.EstudiemosCourseDrive.destinations(course);
       if(version!==sequence||!form.isConnected)return;
-      for(const folder of result.folders){const option=document.createElement('option');option.value=folder.id;option.textContent=folder.name;select.append(option);}
-      note.textContent=result.email?'Drive de '+result.email+' · Archivos originales, sin copias en Estudiemos.':'Archivos originales en tu Drive, sin copias en Estudiemos.';
-      upload.dataset.destinations='ready';
-    }catch(_){if(version===sequence&&form.isConnected){delete upload.dataset.destinations;note.textContent='Conectá Drive para elegir una carpeta de Estudiemos. La carpeta de la cátedra se usa por defecto.';}}
+      for(const folder of [{id:result.rootId,name:'Estudiemos'},...result.folders].filter(item=>item.id)){const option=document.createElement('option');option.value=folder.id;option.textContent=folder.name;select.append(option);}
+      note.textContent=result.email?'Tu Drive: '+result.email:'Tu cuenta de Google Drive';
+      const connect=form.querySelector('[data-class-connect-drive]');if(connect)connect.hidden=true;
+      const submit=form.querySelector('[data-class-save-submit]');if(submit)submit.disabled=busy;
+      host.dataset.destinations='ready';
+    }catch(error){
+      if(version!==sequence||!form.isConnected)return;
+      delete host.dataset.destinations;note.textContent=error.message||'No pudimos consultar tu Drive. Podés abrir el original en Google.';
+    }
+  }
+  async function saveMaterial(form){
+    if(form.dataset.destinations!=='ready'){status('Conectá tu Drive antes de guardar, o abrí el original en Google.',true);return;}
+    const version=++sequence,item=detail.materials.find(item=>item.id===savingMaterial),course=current();
+    if(!item)return;
+    const mode=form.elements.saveMode.value,folder=form.elements.driveFolder.value;
+    lock(true);status(mode==='copy'?'Creando copia en tu Drive…':'Creando acceso directo en tu Drive…');
+    try{
+      const latest=await api.detail(course.id);
+      if(version!==sequence||!isOpen())return;
+      const original=latest.materials.find(value=>value.id===item.id);
+      if(!original||original.url!==item.url)throw new Error('El material cambió. Volvé a los archivos y actualizá la materia.');
+      const saved=await window.EstudiemosCourseDrive.save(original,course,mode,folder);
+      if(version!==sequence||!form.isConnected||!isOpen())return;
+      const link=document.createElement('a');link.href=rules.driveUrl(saved.url);link.target='_blank';link.rel='noopener noreferrer';link.className='classroom-file-open';link.textContent='Abrir en mi Drive';
+      const title=document.createElement('h3');title.textContent=mode==='copy'?'Copia guardada en tu Drive':'Acceso directo guardado en tu Drive';
+      form.replaceChildren(title,link);status('');
+    }catch(error){
+      if(version===sequence&&form.isConnected){
+        status(error.name==='AbortError'||error.name==='TypeError'||error.status>=500?'Google no confirmó el guardado. Revisá tu Drive antes de volver a intentar para no duplicarlo.':error.message,true);
+        const help=form.querySelector('.classroom-drive-help');if(help)help.open=true;
+      }
+    }finally{if(version===sequence){lock(false);const submit=form.querySelector('[data-class-save-submit]');if(submit)submit.disabled=form.dataset.destinations!=='ready';}}
+  }
+  async function choose(id){selected=id;view='class';detail=null;draw();const version=++sequence;lock(true);status('');try{const result=await api.detail(id);if(version!==sequence||!isOpen())return;detail=result;draw();}catch(error){if(version===sequence)status(error.message,true);}finally{if(version===sequence)lock(false);}}
+  dialog.addEventListener('toggle',async event=>{
+    const upload=event.target;if(!upload.matches?.('.classroom-upload')||!upload.open||upload.dataset.destinations)return;
+    await loadDestinations(upload.closest('form'),upload);
   },true);
   async function mutate(action,data,message){
     if(busy)return;const version=++sequence;lock(true);status('Guardando…');
@@ -163,6 +205,7 @@
       }
       else if(action==='event_save')mutate(action,{itemId:editing||undefined,event:rules.event({...values,allDay:form.elements.allDay.checked,days:[...form.querySelectorAll('[name=day]:checked')].map(input=>Number(input.value))})},'Fecha publicada en el calendario de la clase.');
       else if(action==='material_save')await publishMaterial(form,values);
+      else if(action==='drive_save')await saveMaterial(form);
     }catch(error){status(error.message==='INVALID_EVENT'?'Revisá las fechas, el horario y los días de repetición.':error.message==='INVALID_MATERIAL'?'Pegá un enlace a un archivo o carpeta de Google Drive.':'Revisá los campos de la actividad.',true);}
   });
   dialog.addEventListener('change',event=>{
@@ -189,7 +232,7 @@
     if(button.hasAttribute('data-class-join')){view='join';draw();return;}
     if(button.hasAttribute('data-class-create')){view='create';draw();return;}
     if(button.hasAttribute('data-class-select'))return choose(button.dataset.classSelect);
-    if(button.hasAttribute('data-class-back')){if(['event','material','settings','share'].includes(view))view='class';else{view='list';selected='';detail=null;}draw();status('');return;}
+    if(button.hasAttribute('data-class-back')){if(['event','material','save-material','settings','share'].includes(view))view='class';else{view='list';selected='';detail=null;}draw();status('');return;}
     if(button.hasAttribute('data-class-tab')){tab=button.dataset.classTab;draw();return;}
     if(button.hasAttribute('data-class-settings')){view='settings';settingsTab='general';managingMember='';settingsDraft=null;draw();main.scrollTop=0;return;}
     if(button.hasAttribute('data-class-settings-tab')){switchSettings(button.dataset.classSettingsTab);return;}
@@ -198,7 +241,8 @@
     if(button.hasAttribute('data-class-event')){editing=button.dataset.classEvent;view='event';draw();return;}
     if(button.hasAttribute('data-class-material')){editing=button.dataset.classMaterial;uploaded=null;materialDraftId=crypto.randomUUID();view='material';draw();return;}
     if(button.hasAttribute('data-class-share')){view='share';draw();return;}
-    if(button.hasAttribute('data-class-connect-drive')){try{await window.EstudiemosCourseDrive.connect(selected);}catch(error){status(error.message,true);}return;}
+    if(button.hasAttribute('data-class-save-drive')){savingMaterial=button.dataset.classSaveDrive;view='save-material';status('');draw();return;}
+    if(button.hasAttribute('data-class-connect-drive')){try{await window.EstudiemosCourseDrive.connect(selected,view==='save-material'?savingMaterial:'');}catch(error){status(error.message,true);}return;}
     if(button.hasAttribute('data-class-copy')){
       const {text}=invitation();
       try{await navigator.clipboard.writeText(text);status('Invitación copiada.');}catch(_){const input=document.createElement('textarea');input.value=text;input.readOnly=true;main.prepend(input);input.focus();input.select();status('Seleccioná y copiá tu invitación.');}return;
@@ -232,6 +276,6 @@
     lastFocus=document.activeElement;status('');joinCode=options.join||joinCode;autoJoin=options.autoJoin===true;
     if(!standalone&&!joinCode)try{const pending=JSON.parse(sessionStorage.getItem(rules.PENDING_KEY)||'null');if(pending?.expires>Date.now()&&(!pending.owner||pending.owner===window.EstudiemosAccount?.getUser()?.id))joinCode=pending.code;else sessionStorage.removeItem(rules.PENDING_KEY);}catch(_){}
     view=joinCode?'join':'list';selected=options.id||'';if(selected&&current())view='class';showHost();draw();
-    if(window.EstudiemosAccount?.getUser())refresh().then(()=>{if(!isOpen())return;if(options.id&&current()&&view==='list'){view='class';draw();}if(options.upload&&can('filesAdd')){view='material';editing='';uploaded=null;materialDraftId=crypto.randomUUID();draw();}joinInvitation();});
+    if(window.EstudiemosAccount?.getUser())refresh().then(()=>{if(!isOpen())return;if(options.id&&current()&&view==='list'){view='class';draw();}const saveId=options.upload?window.EstudiemosCourseDrive?.resumeSave(selected):'';if(saveId&&detail?.materials.some(item=>item.id===saveId)){savingMaterial=saveId;view='save-material';draw();}else if(options.upload&&can('filesAdd')){view='material';editing='';uploaded=null;materialDraftId=crypto.randomUUID();draw();}joinInvitation();});
   }});
 })();

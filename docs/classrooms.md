@@ -32,10 +32,13 @@ El chat no forma parte de esta version y no se muestra un control inactivo.
 ### Equipo visible dentro de la catedra
 
 Cada miembro ve el nombre del profesor o colaborador y su propio rol en una
-franja compacta. **Roles y permisos** despliega los alias de los delegados y sus
-seis permisos exactos. Delegado es el nombre visible del rango interno
-`moderator`; no cambia sus privilegios. El resto de los alumnos, sus correos,
-IDs, notas e inscripciones no se exponen. La lista completa de participantes
+franja compacta, con el correo de Estudiemos del responsable. **Equipo y permisos**
+despliega los alias, correos de Estudiemos de los delegados y sus seis permisos
+exactos. Delegado es el nombre visible del rango interno
+`moderator`; no cambia sus privilegios. Los contactos del equipo se consultan
+solo dentro de una catedra a la que la cuenta pertenece, no por codigo publico.
+Crear materia y asignar un delegado informan esta visibilidad. El resto de los
+alumnos, sus correos, IDs, notas e inscripciones no se exponen. La lista de participantes
 continua reservada al responsable.
 
 La proyeccion `team` se obtiene en la misma consulta privada de detalle, sin
@@ -81,7 +84,36 @@ todo Mi unidad: las carpetas previas visibles solo con metadatos siguen siendo
 de solo lectura. Un delegado con permiso de agregar archivos usa su propio Drive,
 nunca las credenciales del profesor/colaborador.
 
-Los alumnos abren los materiales en Google Drive y usan su descarga normal.
+Los alumnos pueden elegir **Guardar en mi Drive**, con una **Copia independiente**
+o un **Acceso directo**. La copia ocupa cuota propia y no sincroniza cambios del
+original. El acceso directo abre el original actualizado y deja de funcionar
+si el alumno pierde acceso a este. Las carpetas solo admiten acceso directo,
+no copia recursiva. Cada alumno elige una carpeta autorizada de su propio Drive
+(o la carpeta de la catedra por defecto); nadie usa el token del responsable.
+La API oficial de Google hace la copia dentro de Drive: los bytes no pasan
+por la API de Estudiemos, Supabase ni Vercel. Solo se consultan metadatos.
+
+Se mantienen los permisos OAuth existentes, sin agregar acceso total a Drive.
+Con `drive.file`, Google puede exigir que un archivo compartido desde otra
+cuenta se autorice por separado. Si no esta autorizado, se bloquea la copia
+y se ofrece **Hacerlo desde Google Drive**, donde el usuario usa el menu de
+Google para copiar o agregar el acceso directo. No se anuncia un guardado
+exitoso si Google no lo confirma. No se evitan las restricciones de descarga/copia
+ni se amplian permisos de archivos originales. Las creaciones no reintentan
+automaticamente un 5xx, para no duplicar archivos ante una respuesta perdida.
+Un timeout requiere revisar el Drive antes de repetir.
+
+Referencias oficiales: [files.copy](https://developers.google.com/workspace/drive/api/reference/rest/v3/files/copy),
+[accesos directos](https://developers.google.com/workspace/drive/api/guides/shortcuts)
+y [claves de recursos compartidos](https://developers.google.com/workspace/drive/api/guides/resource-keys).
+
+La conexion directa sigue sujeta a la configuracion/piloto del servidor.
+Una cuenta no habilitada puede abrir el original en Google y usar sus opciones
+nativas; esta mejora no levanta por si sola el piloto de Google ni su revision.
+Al volver de OAuth en el mismo navegador se restaura el panel de guardado,
+sin ejecutar una copia sin un nuevo toque en Guardar.
+
+Los alumnos tambien pueden abrir los materiales en Google Drive y usar su descarga normal.
 Se respetan las restricciones de lectura y descarga de Google; Estudiemos no
 descarga usando la cuenta del responsable ni evita las restricciones del archivo.
 
@@ -103,8 +135,11 @@ descarga usando la cuenta del responsable ni evita las restricciones del archivo
 - Salir de una clase NO revoca permisos que alguien ya tenga en Google Drive.
 - Las escuelas pueden restringir enlaces externos o comparticion desde Workspace;
   Clases no evita esas restricciones.
-- Los alumnos no reciben correos ni la lista de otros alumnos. El profesor ve
-  solo alias o identificadores genericos, nunca correos ni datos personales ajenos.
+- Los miembros ven el correo de Estudiemos del profesor/colaborador y de los
+  delegados mientras tengan ese rol. No reciben el correo del resto de alumnos
+  ni una lista de sus companeros. El responsable ve alias e identificadores de
+  sus participantes, no una lista general de correos. Los correos del equipo
+  no se guardan en el estado sincronizado ni se incluyen en la invitacion publica.
 - No se verifican titulos docentes ni pertenencia institucional: profesor significa
   creador/administrador de esa clase. El codigo debe distribuirse a su grupo real.
 - El horario de cada actividad se conserva en la zona horaria de la clase, indicada

@@ -45,11 +45,13 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
         if(driveFixture&&url.origin==='https://www.googleapis.com'){
           driveCalls.push({path:url.pathname,method,body:method==='PUT'?'PDF bytes':request.postData()});
           const send=data=>route.fulfill({json:data});
-          if(url.pathname==='/drive/v3/about')return send({user:{emailAddress:'teacher@example.test'},storageQuota:{limit:'15000000000',usage:'1000'}});
+          if(url.pathname==='/drive/v3/about')return send({user:{emailAddress:(user===teacher?'Teacher':user===student?'Student':'StudyMate42')+'@example.test'},storageQuota:{limit:'15000000000',usage:'1000'}});
           if(url.pathname==='/drive/v3/files'&&method==='GET')return send({files:(url.searchParams.get('q')||'').includes('estudiemosRoot')?[driveRoot]:[...driveItems.values()].filter(item=>item.mimeType===driveRoot.mimeType)});
           if(url.pathname==='/drive/v3/files'&&method==='POST'){const item={id:'folder-'+(++driveId),...request.postDataJSON()};driveItems.set(item.id,item);return send(item);}
           if(url.pathname==='/upload/drive/v3/files'&&method==='POST'){pendingUpload=request.postDataJSON();return route.fulfill({status:200,headers:{Location:'https://www.googleapis.com/upload/drive/v3/files?upload_id=fixture','Access-Control-Expose-Headers':'Location'},body:''});}
           if(url.pathname==='/upload/drive/v3/files'&&method==='PUT'){const item={id:'pdf-'+(++driveId),mimeType:'application/pdf',...pendingUpload};driveItems.set(item.id,item);return send(item);}
+          if(url.pathname==='/drive/v3/files/FILE_123'&&method==='GET')return ctx.denyCourseSource?route.fulfill({status:403,json:{error:{}}}):send({id:'FILE_123',mimeType:'application/pdf',capabilities:{canCopy:true}});
+          if(url.pathname==='/drive/v3/files/FILE_123/copy'&&method==='POST'){const item={id:'copy-'+(++driveId),mimeType:'application/pdf',...request.postDataJSON()};driveItems.set(item.id,item);return send(item);}
           const fileId=url.pathname.split('/')[4],item=driveItems.get(fileId);
           if(url.pathname.endsWith('/permissions')&&method==='POST')return send({id:'permission-fixture'});
           if(item){if(method==='PATCH')Object.assign(item,request.postDataJSON());return send(item);}
@@ -62,7 +64,7 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
         return route.continue();
       });return ctx;
     }
-    const tc=await context(teacher,1440,'teacher'),sc=await context(student,390),tp=await tc.newPage(),sp=await sc.newPage(),errors=[];lastPage=tp;
+    const tc=await context(teacher,1440,'teacher'),sc=await context(student,390,'student',true),tp=await tc.newPage(),sp=await sc.newPage(),errors=[];lastPage=tp;
     for(const page of[tp,sp])page.on('pageerror',error=>{errors.push(error.message);console.error(error.message);});
     await tp.goto(base+'/materias.html');const td=tp.locator('.classroom-dialog');await td.waitFor({state:'visible'});await tp.locator('[data-class-create]').first().click();
     const form=tp.locator('[data-class-form=create]');await form.locator('[name=title]').fill('Física · 1.º año');await form.locator('[name=teacherName]').fill('Prof. Ana');await form.locator('summary').click();await form.locator('[name=institution]').fill('Universidad piloto');await form.locator('[type=submit]').click();
@@ -81,6 +83,26 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
     await sp.locator('[data-class-calendar]').click();await sp.locator('[data-calendar-reader]').waitFor({state:'visible'});const calendar=sp.locator('[data-calendar-reader]');await calendar.locator('[data-calendar-class]').waitFor();assert.equal(await calendar.locator('[data-calendar-edit-entry]').count(),0);assert.equal(await calendar.locator('[data-calendar-day-items]').innerText().then(text=>text.includes('Parcial de física')),true);
     await sp.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-student-calendar.png`)});
     await calendar.locator('[data-calendar-class]').click();await sd.waitFor({state:'visible'});await sp.locator('[data-class-tab=materials]').click();await sp.locator('.classroom-material-link').waitFor();assert.equal(await sp.locator('.classroom-material-link').getAttribute('href'),'https://drive.google.com/file/d/FILE_123/view');
+    assert.equal(await sp.locator('.classroom-team .classroom-contact').innerText(),'Teacher@example.test');
+    assert.doesNotMatch(await sp.locator('.classroom-team').innerText(),/Student@example/);
+    const courseRevision=await sp.evaluate(()=>EstudiemosClasses.snapshot().revision),saveForm=sp.locator('[data-class-form=drive_save]');
+    for(const mode of ['copy','shortcut']){
+      await sp.locator('[data-class-save-drive]').first().click();await sp.waitForFunction(()=>document.querySelector('[data-class-form=drive_save]')?.dataset.destinations==='ready');
+      assert.match(await saveForm.locator('[data-class-drive-destination]').innerText(),/Student@example\.test/);
+      await saveForm.locator('[name=saveMode][value='+mode+']').check();
+      await saveForm.locator('[name=driveFolder]').selectOption('course-root');
+      await sp.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-student-save-${mode}-390.png`)});
+      assert.equal(await saveForm.evaluate(el=>el.scrollWidth<=el.clientWidth+1),true,'Save panel fits the viewport');
+      await saveForm.locator('[data-class-save-submit]').click();await saveForm.getByRole('link',{name:'Abrir en mi Drive'}).waitFor();
+      assert.equal(await sp.evaluate(()=>EstudiemosClasses.snapshot().revision),courseRevision,'Saving to personal Drive does not modify shared course content');
+      await sp.locator('[data-class-back]').click();
+    }
+    const personalWrites=sc.courseDriveCalls.filter(call=>call.method==='POST'&&(call.path.endsWith('/copy')||JSON.parse(call.body||'{}').mimeType==='application/vnd.google-apps.shortcut'));
+    assert.equal(personalWrites.length,2);assert.ok(personalWrites.every(call=>JSON.parse(call.body).appProperties.estudiemosOwner===student));
+    assert.equal(sc.courseDriveCalls.filter(call=>/upload|permissions/.test(call.path)).length,0,'Saving never sends bytes or changes the source permissions');
+    sc.denyCourseSource=true;await sp.locator('[data-class-save-drive]').first().click();await sp.waitForFunction(()=>document.querySelector('[data-class-form=drive_save]')?.dataset.destinations==='ready');
+    await saveForm.locator('[data-class-save-submit]').click();await sp.locator('.classroom-status.is-error').waitFor();assert.equal(await saveForm.locator('.classroom-drive-help').getAttribute('open')!==null,true);assert.equal(await saveForm.getByRole('link',{name:'Abrir en mi Drive'}).count(),0);
+    await sp.locator('[data-class-back]').click();sc.denyCourseSource=false;
     lastPage=tp;await tp.locator('[data-class-tab=events]').click();await tp.locator('[data-class-event]').filter({hasText:'Editar'}).click();await tp.locator('[data-class-form=event_save] [name=title]').fill('Parcial actualizado');await tp.locator('[data-class-form=event_save] [type=submit]').click();await tp.locator('.classroom-row strong').filter({hasText:'Parcial actualizado'}).waitFor();
     lastPage=sp;await sp.locator('[data-class-tab=events]').click();await sp.locator('[data-class-refresh]').click();await sp.locator('.classroom-row strong').filter({hasText:'Parcial actualizado'}).waitFor();
     const dc=await context(teacher,1440,'teacher',true),dp=await dc.newPage();lastPage=dp;dp.on('pageerror',error=>errors.push(error.message));
@@ -121,6 +143,8 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
     await mp.locator('[data-class-event]').click();await modEvent.locator('[name=title]').fill('No se debe guardar');
     await rp.locator('[name=moderator]').uncheck();await permissions.locator('[type=submit]').click();await rp.waitForFunction(()=>document.querySelector('.classroom-dialog').getAttribute('aria-busy')==='false');
     await modEvent.locator('[type=submit]').click();await mp.locator('.classroom-status.is-error').waitFor();assert.match(await mp.locator('.classroom-status').innerText(),/No tenés permiso/);assert.equal(await mp.locator('[data-class-event]').count(),0,'Revoked permissions remove stale editor controls after a rejected save');assert.equal((await db.query('select count(*)::int n from classroom_events where class_id=$1',[shared.id])).rows[0].n,1);
+    assert.match(await mp.locator('.classroom-team').innerText(),/Student@example\.test/);
+    assert.equal(await mp.locator('.classroom-team').innerText().then(text=>text.includes('StudyMate42@example.test')),false,'Revoking delegation removes its contact from the current member detail');
     await mc.close();await rc.close();await dc.close();
     await sp.evaluate(()=>{window.__classUser='';window.dispatchEvent(new CustomEvent('estudiemos:account-change'));});assert.equal(await sp.locator('.classroom-main').innerText().then(text=>text.includes('Parcial actualizado')),false);assert.equal(await sp.evaluate(()=>EstudiemosClasses.snapshot()),null);assert.equal(await sp.evaluate(()=>localStorage.getItem('estudiemos_classes_v1')),null);
     const previewResponse=await fetch(base+'/api/account-config?classes=1&invite='+code),preview=await previewResponse.json();assert.equal(previewResponse.status,200);assert.equal(preview.title,'Física · 1.º año');assert.equal(preview.calendar[0].data.note,'');assert.equal(preview.materials,undefined);assert.equal(preview.members,undefined);assert.equal(preview.owner_id,undefined);
