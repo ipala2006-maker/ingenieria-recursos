@@ -29,7 +29,7 @@
       const dates=section.querySelector('[data-course-invite-dates]');for(const item of preview.calendar.slice(0,5)){const line=document.createElement('p');line.textContent=item.data.date+' · '+item.data.title+(item.data.allDay?' · Todo el día':' · '+item.data.start+'–'+item.data.end);dates.append(line);}
     }catch(error){section.querySelector('h2').textContent=unavailable?'Invitación no disponible':'Te invitaron a una materia';state.textContent=unavailable?'La materia se eliminó o cambió su código. Pedí un enlace nuevo.':error.message+' La invitación queda guardada para continuar en la app.';if(unavailable){const link=section.querySelector('[data-course-join]');link.textContent='Abrir Estudiemos';link.href=new URL('./',root);}}finally{clearTimeout(timer);}
     if(unavailable)return;
-    const script=document.createElement('script');script.src=new URL('scripts/account.js?v=20261024-flow',root);script.onload=async()=>{await window.EstudiemosAccount?.whenReady();if(window.EstudiemosAccount?.getUser()||matchMedia('(display-mode: standalone)').matches||navigator.standalone)location.replace(destination);};document.head.append(script);
+    const script=document.createElement('script');script.src=new URL('scripts/account.js?v=20261025-capacity',root);script.onload=async()=>{await window.EstudiemosAccount?.whenReady();if(window.EstudiemosAccount?.getUser()||matchMedia('(display-mode: standalone)').matches||navigator.standalone)location.replace(destination);};document.head.append(script);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })();

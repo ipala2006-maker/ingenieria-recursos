@@ -1,5 +1,43 @@
 # Sincronizacion de menor consumo
 
+## Actualizacion del 25 de octubre de 2026
+
+- Las ediciones propias usan directamente la escritura atomica con revision
+  esperada de la RPC ya instalada. Un conflicto obliga a leer, combinar y
+  reintentar. Nunca se reemplaza por una escritura completa sin control si la
+  RPC deja de estar disponible durante ese intento.
+- Las comprobaciones quietas leen solo `updated_at`, con el mismo RLS y los
+  mismos intervalos. No redibujan herramientas ni retrasan controles.
+- Los clientes nuevos solicitan solo las versiones que cambiaron. Los viejos
+  siguen recibiendo el mapa completo. La medicion local cuenta el JSON real
+  recibido, no el mapa reconstruido en memoria.
+- Una edicion pequena de una lista envia al otro dispositivo solo elementos
+  modificados/eliminados y, si cambio, su orden. Se conserva solo el ultimo
+  cambio por lista, con maximo 4 KiB por lista, dentro del mismo estado privado.
+  No se agrega una tabla ni un historial creciente de operaciones.
+- Si faltan cambios intermedios, la lista no tiene IDs unicos, se modifica casi
+  toda o el cambio no es mas chico que la lista, se envia la lista completa.
+  Una base invalida se descarta y el siguiente intento pide un snapshot completo.
+- Se actualiza la misma funcion `supabase/account-sync-delta.sql`, sin nuevas
+  tablas, roles, credenciales ni permisos. SQL primero y web despues son
+  compatibles; el orden inverso tambien mantiene el transporte anterior.
+
+Medicion reproducible y limites: [capacidad gratuita](free-tier-capacity.md).
+
+## Regla para siguientes optimizaciones
+
+Cada cambio de consumo debe incluir comparacion antes/despues con el mismo
+escenario, estimacion mensual con supuestos y regresion de los flujos afectados.
+No cambiar intervalos de alarmas ni quitar funciones para mejorar un benchmark.
+No confundir usuarios activos mensuales con dispositivos simultaneos. No
+afirmar una capacidad total usando solo bytes de sincronizacion.
+
+Antes de publicar: pruebas de SQL/RLS y concurrencia, suite general, navegador
+Chrome y WebKit con dos cuentas/dispositivos, controles de Pomodoro y alarmas,
+calendario, materias y Drive en escritorio y movil; CSP y secretos. Los datos
+reales no son material descartable. Registrar cualquier prueba no ejecutada o
+bloqueada y comprobar luego la version publicada.
+
 ## Cambios
 
 - Inicio, cambios locales y comprobaciones manuales conservan el flujo de lectura,

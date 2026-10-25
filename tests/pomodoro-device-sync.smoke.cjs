@@ -1,9 +1,10 @@
 const {chromium,webkit}=require('../tmp/ui-check/node_modules/playwright');
 const assert=require('node:assert/strict'),http=require('node:http'),fs=require('node:fs'),path=require('node:path');
+const {PGlite}=require('@electric-sql/pglite');
 const root=path.resolve(__dirname,'..'),owner='11111111-1111-4111-8111-111111111111';
 const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)').headers;
 (async()=>{
-  let browser;const pages=[],rows=new Map(),writes=[],reads=[],pageErrors=[];let deliverBroadcasts=true;
+  let browser;const db=new PGlite(),pages=[],rows=new Map(),writes=[],reads=[],pageErrors=[];let deliverBroadcasts=true;
   rows.set(owner,{state:{values:{estudiemos_pomodoro_streak:JSON.stringify({days:{},goal:{minutes:25,updatedAt:1}})},changedAt:{}},updated_at:new Date().toISOString()});
   const server=http.createServer((req,res)=>{
     const pathname=new URL(req.url,'http://localhost').pathname;
@@ -16,6 +17,10 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
     }catch(_){res.writeHead(404).end();}
   });
   try{
+    await db.exec("create role anon;create role authenticated;create role service_role;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema auth to authenticated;grant execute on function auth.uid() to authenticated;");
+    await db.exec(fs.readFileSync(path.join(root,'supabase/schema.sql'),'utf8'));await db.exec(fs.readFileSync(path.join(root,'supabase/account-sync-delta.sql'),'utf8'));
+    await db.query('insert into auth.users values($1),($2)',[owner,'22222222-2222-4222-8222-222222222222']);
+    await db.query('insert into user_states(user_id,state,updated_at) values($1,$2,$3)',[owner,rows.get(owner).state,rows.get(owner).updated_at]);
     await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const base='http://127.0.0.1:'+server.address().port;
     browser=process.env.TEST_WEBKIT==='1'?await webkit.launch():await chromium.launch({channel:'chrome'});
     for(const width of [1440,412]){
@@ -27,21 +32,30 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
         window.__channels={};
         const client={
           auth:{getSession:async()=>({data:{session:session()}}),onAuthStateChange:cb=>{window.__authChange=cb;return {data:{subscription:{unsubscribe(){}}}};},signOut:async()=>{window.__user=null;window.__authChange('SIGNED_OUT',null);return {};}},
-          from:table=>({select(){return this;},eq(_key,value){this.owner=value;return this;},neq(_key,value){this.revision=value;return this;},maybeSingle:async function(){return {data:await fetch('/__fixture/state?owner='+encodeURIComponent(this.owner)+'&revision='+encodeURIComponent(this.revision||'')).then(r=>r.json()),error:null};},
+          from:table=>({select(fields){this.fields=fields;return this;},eq(_key,value){this.owner=value;return this;},neq(_key,value){this.revision=value;return this;},maybeSingle:async function(){return {data:await fetch('/__fixture/state?owner='+encodeURIComponent(this.owner)+'&revision='+encodeURIComponent(this.revision||'')+'&fields='+encodeURIComponent(this.fields)).then(r=>r.json()),error:null};},
             upsert:async value=>{await fetch('/__fixture/state',{method:'POST',body:JSON.stringify(value)});return {};}}),
           channel:name=>{const c={on(_type,_filter,cb){window.__channels[name]=cb;return c;},subscribe(callback){setTimeout(()=>callback?.('SUBSCRIBED'),0);return c;},send:async value=>{await fetch('/__fixture/broadcast',{method:'POST',body:JSON.stringify({name,...value})});return 'ok';}};return c;},
-          removeChannel:async()=>{},rpc:async()=>({data:[],error:null})
+          removeChannel:async()=>{},rpc:async(name,args)=>name==='sync_account_state'?fetch('/__fixture/rpc',{method:'POST',body:JSON.stringify({owner:window.__user?.id,args})}).then(r=>r.json()):({data:[],error:null})
         };
         window.supabase={createClient:()=>client};
       },{owner});
       await context.route('**/*',async route=>{
         const req=route.request(),url=new URL(req.url());
         if(url.origin!==base)return route.abort();
+        if(url.pathname==='/__fixture/rpc'){
+          const {owner:uid,args}=JSON.parse(req.postData());
+          const data=await db.transaction(async tx=>{await tx.exec('set local role authenticated');await tx.query("select set_config('request.jwt.claim.sub',$1,true)",[uid]);return(await tx.query('select sync_account_state($1,$2,$3) as data',[args.p_known,args.p_patch,args.p_expected])).rows[0].data;});
+          if(args.p_patch&&data.written)writes.push({owner:uid,patch:args.p_patch});
+          else reads.push({owner:uid,conditional:Boolean(Object.keys(args.p_known).length>2),full:Boolean(Object.keys(data.state?.values||{}).length||Object.keys(data.state?.lists||{}).length)});
+          return route.fulfill({json:{data,error:null}});
+        }
         if(url.pathname==='/__fixture/state'){
           if(req.method()==='POST'){const row=JSON.parse(req.postData());rows.set(row.user_id,{state:row.state,updated_at:row.updated_at});writes.push(row);return route.fulfill({json:{}});}
-          const row=rows.get(url.searchParams.get('owner')),unchanged=row?.updated_at===url.searchParams.get('revision');
+          const uid=url.searchParams.get('owner'),revision=url.searchParams.get('revision'),fields=url.searchParams.get('fields');
+          const row=await db.transaction(async tx=>{await tx.exec('set local role authenticated');await tx.query("select set_config('request.jwt.claim.sub',$1,true)",[uid]);return(await tx.query("select jsonb_build_object('state',state,'updated_at',updated_at) as data from user_states where user_id=$1",[uid])).rows[0]?.data||null;});
+          const unchanged=row?.updated_at===revision;
           reads.push({owner:url.searchParams.get('owner'),conditional:Boolean(url.searchParams.get('revision')),full:Boolean(row&&!unchanged)});
-          return route.fulfill({json:unchanged?null:row||null});
+          return route.fulfill({json:unchanged?null:fields==='updated_at'&&row?{updated_at:row.updated_at}:row||null});
         }
         if(url.pathname==='/__fixture/broadcast'){
           const message=JSON.parse(req.postData());
@@ -118,5 +132,5 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
     assert.equal(await phone.evaluate(()=>EstudiemosStudy.snapshot().running),false,'Signout stops the private timer');
     assert.deepEqual(pageErrors,[]);
     console.log('PASS two isolated devices: fast start/pause/seek/skip, shared deadline, no tick publishing, conditional reads, widget coalescing, missed broadcast recovery, usage UI, local sound, reload and account isolation');
-  }finally{await browser?.close();if(server.listening)await new Promise(resolve=>server.close(resolve));}
+  }finally{await browser?.close();if(server.listening)await new Promise(resolve=>server.close(resolve));await db.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

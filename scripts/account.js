@@ -745,6 +745,29 @@
     syncing = true;
     if (!background) updateSyncLabel("Sincronizando...");
     try {
+      // The RPC checks the revision atomically. A fresh read before every own
+      // edit is redundant; a conflict still takes the normal merge/retry path.
+      if (hydrated && dirty && compactAvailable === true && compactVersions && cachedCloudState && cloudRevisionUser === userId && cloudRevision && ["change", "pomodoro"].includes(reason)) {
+        const state = mergeAccountStates(captureLocalState(), normalizeAccountState(cachedCloudState, Date.parse(cloudRevision) || 0));
+        applyCloudState(state);
+        await uploadState(userId, state, true);
+        if (session?.user?.id !== userId || accountGeneration !== generation) return false;
+        finishSynchronization(reason, userId);
+        return true;
+      }
+      // Quiet backup checks need just a timestamp, not every key fingerprint.
+      // Only background reads use this probe, so user actions keep their latency.
+      if (background && hydrated && !dirty && compactAvailable === true && compactVersions && cachedCloudState && cloudRevisionUser === userId && cloudRevision) {
+        const probe = await client.from("user_states").select("updated_at").eq("user_id", userId).maybeSingle();
+        if (session?.user?.id !== userId || accountGeneration !== generation) return false;
+        if (probe.error) throw probe.error;
+        recordSyncUsage(userId, { checks: 1, receivedBytes: syncJsonBytes(probe.data) });
+        if (probe.data?.updated_at === cloudRevision && localStorage.getItem(DIRTY_KEY) !== "true") {
+          recordSyncUsage(userId, { unchangedChecks: 1 });
+          finishSynchronization(reason, userId, false);
+          return true;
+        }
+      }
       let compact = await compactSync();
       let query = compact ? null : client.from("user_states")
         .select("state, updated_at")
@@ -756,7 +779,7 @@
       if (session?.user?.id !== userId || accountGeneration !== generation) return false;
       if (result.error) throw result.error;
       const compactChanged=compact&&!compact.missing&&Object.keys(compact.versions).some(key=>compactVersions?.[key]!==compact.versions[key]);
-      recordSyncUsage(userId, { checks: 1, fullDownloads: compact?(!cachedCloudState&&result.data?1:0):result.data?1:0, unchangedChecks: compact?!compactChanged?1:0:conditional&&!result.data?1:0, receivedBytes: syncJsonBytes(compact||result.data),sentBytes:compact?syncJsonBytes({p_known:compactVersions||{},p_patch:null,p_expected:null}):0, ...(result.data ? {profileBytes:syncJsonBytes(result.data.state)} : {}) });
+      recordSyncUsage(userId, { checks: 1, fullDownloads: compact?(!cachedCloudState&&result.data?1:0):result.data?1:0, unchangedChecks: compact?!compactChanged?1:0:conditional&&!result.data?1:0, receivedBytes: compact?compact.receivedJsonBytes:syncJsonBytes(result.data),sentBytes:compact?syncJsonBytes({p_known:compactKnown(),p_patch:null,p_expected:null}):0, ...(result.data ? {profileBytes:syncJsonBytes(result.data.state)} : {}) });
       if (compact)compactVersions=compact.versions;
       if ((compact?!compactChanged&&hydrated:conditional&&!result.data) && localStorage.getItem(DIRTY_KEY) !== "true") {
         if(compact?.updated_at)cloudRevision=compact.updated_at;
@@ -792,15 +815,7 @@
       }
 
       if (session?.user?.id !== userId || accountGeneration !== generation) return false;
-      localStorage.setItem(LINKED_USER_KEY, userId);
-      synchronizedUserId = userId;
-      window.dispatchEvent(new CustomEvent('estudiemos:account-synced', { detail: { userId } }));
-      lastPullAt = Date.now();
-      syncFailures = 0; syncRetryAt = 0;
-      syncConflicts = 0;
-      updateSyncLabel("Sincronizado");
-      updateAccountIndicator(true);
-      if (reason === "manual") setStatus("Tus dispositivos ya tienen la misma información.", "success");
+      finishSynchronization(reason, userId);
       return true;
     } catch (error) {
       if (session?.user?.id !== userId || accountGeneration !== generation) return false;
@@ -822,7 +837,18 @@
     }
   }
 
-  async function uploadState(userId, state) {
+  function finishSynchronization(reason, userId, notify = true) {
+    localStorage.setItem(LINKED_USER_KEY, userId);
+    synchronizedUserId = userId;
+    if (notify) window.dispatchEvent(new CustomEvent('estudiemos:account-synced', { detail: { userId } }));
+    lastPullAt = Date.now();
+    syncFailures = 0; syncRetryAt = 0; syncConflicts = 0;
+    updateSyncLabel("Sincronizado");
+    updateAccountIndicator(true);
+    if (reason === "manual") setStatus("Tus dispositivos ya tienen la misma información.", "success");
+  }
+
+  async function uploadState(userId, state, requireCompact = false) {
     if (session?.user?.id !== userId) throw new Error("account-changed");
     const generation = accountGeneration;
     const before = JSON.stringify(captureLocalState());
@@ -834,8 +860,13 @@
     };
     const patch={values:{},changedAt:{}};
     SYNC_KEYS.forEach(key=>{if(!cachedCloudState||JSON.stringify(state.values[key])!==JSON.stringify(cachedCloudState.values?.[key])||state.changedAt[key]!==cachedCloudState.changedAt?.[key]){patch.values[key]=state.values[key];patch.changedAt[key]=state.changedAt[key]||0;}});
-    const compactArgs={p_patch:patch,p_known:compactVersions||{},p_expected:cloudRevision||null};
+    const compactArgs={p_patch:patch,p_known:compactKnown(),p_expected:cloudRevision||null};
     const compact=compactVersions?await compactSync(patch,cloudRevision):null;
+    if (requireCompact && !compact) {
+      const error = new Error('La sincronización cambió. Comprobando la versión actual.');
+      error.code = 'SYNC_CONFLICT';
+      throw error;
+    }
     const result=compact?{error:null}:await client.from("user_states").upsert(row, { onConflict: "user_id" });
     if (session?.user?.id !== userId || accountGeneration !== generation) throw new Error("account-changed");
     if (result.error) throw result.error;
@@ -843,7 +874,7 @@
     cloudRevisionUser = userId; cloudRevision = compact?.updated_at||updatedAt;
     if(compact)compactVersions=compact.versions;
     cachedCloudState = state;
-    recordSyncUsage(userId, { uploads: 1, sentBytes: syncJsonBytes(compact?compactArgs:row), receivedBytes:compact?syncJsonBytes(compact):0, profileBytes: syncJsonBytes(state) });
+    recordSyncUsage(userId, { uploads: 1, sentBytes: syncJsonBytes(compact?compactArgs:row), receivedBytes:compact?compact.receivedJsonBytes:0, profileBytes: syncJsonBytes(state) });
     if (JSON.stringify(captureLocalState()) === before) {
       localStorage.setItem(LOCAL_CHANGED_KEY, String(Date.parse(updatedAt)));
       localStorage.setItem(DIRTY_KEY, "false");
@@ -852,19 +883,40 @@
     notifyAndroidWidgets();
   }
 
+  function compactKnown() { return {...compactVersions,_listDelta:1,_compactVersions:1}; }
+
   async function compactSync(patch=null,expected=null) {
     if(typeof client?.rpc!=='function'||compactAvailable===false)return null;
-    const result=await client.rpc('sync_account_state',{p_known:compactVersions||{},p_patch:patch,p_expected:expected||null});
+    const result=await client.rpc('sync_account_state',{p_known:compactKnown(),p_patch:patch,p_expected:expected||null});
     if(result.error){if(['PGRST202','42883'].includes(result.error.code)){compactAvailable=false;return null;}throw result.error;}
     const data=result.data;
     if(!data||typeof data.versions!=='object'||!data.missing&&!data.written&&(!data.state||typeof data.state.values!=='object'||typeof data.state.changedAt!=='object'))throw new Error('Respuesta de sincronización inválida.');
-    compactAvailable=true;return data;
+    const receivedJsonBytes=syncJsonBytes(data);
+    const response={...data,versions:data.versionsPartial===true?{...compactVersions,...data.versions}:data.versions};
+    Object.defineProperty(response,'receivedJsonBytes',{value:receivedJsonBytes});
+    compactAvailable=true;return response;
   }
 
   function mergeCompactState(data){
-    const state={version:2,values:{...(cachedCloudState?.values||{}),...data.state.values},changedAt:{...(cachedCloudState?.changedAt||{}),...data.state.changedAt}};
-    for(const key of SYNC_KEYS)if(compactVersions?.[key]!==data.versions[key]&&!Object.hasOwn(data.state.values,key)){delete state.values[key];delete state.changedAt[key];}
-    return state;
+    try {
+      const state={version:2,values:{...(cachedCloudState?.values||{}),...data.state.values},changedAt:{...(cachedCloudState?.changedAt||{}),...data.state.changedAt}};
+      const lists=data.state.lists||{};
+      for(const [key,delta] of Object.entries(lists)) {
+        if(!LIST_KEYS.has(key)||delta?.base!==compactVersions?.[key]||delta?.target!==data.versions[key]||!Array.isArray(state.values[key])||!Array.isArray(delta.put)||!Array.isArray(delta.remove))throw new Error('Cambio de lista inválido.');
+        const items=new Map(state.values[key].map(item=>[item?.id,item]));
+        if(items.size!==state.values[key].length||[...items.keys()].some(id=>typeof id!=='string'))throw new Error('Lista base inválida.');
+        for(const id of delta.remove){if(typeof id!=='string'||!items.has(id))throw new Error('Elemento eliminado inválido.');items.delete(id);}
+        for(const item of delta.put){if(!item||typeof item.id!=='string')throw new Error('Elemento modificado inválido.');items.set(item.id,item);}
+        if(delta.order!==null&&(!Array.isArray(delta.order)||delta.order.length!==items.size||new Set(delta.order).size!==items.size||delta.order.some(id=>!items.has(id))))throw new Error('Orden de lista inválido.');
+        state.values[key]=delta.order===null?[...items.values()]:delta.order.map(id=>items.get(id));
+      }
+      for(const key of SYNC_KEYS)if(compactVersions?.[key]!==data.versions[key]&&!Object.hasOwn(data.state.values,key)&&!Object.hasOwn(lists,key)){delete state.values[key];delete state.changedAt[key];}
+      return state;
+    } catch (error) {
+      // A damaged delta must recover with a full snapshot on the next attempt.
+      compactVersions=null;
+      throw error;
+    }
   }
 
   function captureLocalState() {
