@@ -93,13 +93,13 @@ begin
     from public.classroom_members m left join public.friend_profiles p on p.user_id=m.user_id where m.class_id=p_class;
   else members:='[]'::jsonb; end if;
   if course.owner_role='collaborator' then
-    select coalesce(jsonb_agg(jsonb_build_object('name',coalesce(nullif(p.username,''),'Estudiante '||upper(left(m.user_id::text,6))),
+    select coalesce(jsonb_agg(jsonb_build_object('name',coalesce(nullif(p.username,''),'Estudiante '||upper(left(m.user_id::text,6))),'email',u.email,
       'permissions',jsonb_build_object('datesAdd',m.permissions @> '{"datesAdd":true}'::jsonb,'datesEdit',m.permissions @> '{"datesEdit":true}'::jsonb,'datesRemove',m.permissions @> '{"datesRemove":true}'::jsonb,
         'filesAdd',m.permissions @> '{"filesAdd":true}'::jsonb,'filesEdit',m.permissions @> '{"filesEdit":true}'::jsonb,'filesRemove',m.permissions @> '{"filesRemove":true}'::jsonb)) order by m.joined_at,m.user_id),'[]') into delegates
-      from public.classroom_members m left join public.friend_profiles p on p.user_id=m.user_id where m.class_id=p_class and m.role='moderator';
+      from public.classroom_members m left join public.friend_profiles p on p.user_id=m.user_id left join auth.users u on u.id=m.user_id where m.class_id=p_class and m.role='moderator';
   end if;
   return jsonb_build_object('id',p_class,'events',events,'materials',materials,'members',members,'team',
-    jsonb_build_object('owner',jsonb_build_object('name',course.teacher_name,'role',course.owner_role),'delegates',delegates));
+    jsonb_build_object('owner',jsonb_build_object('name',course.teacher_name,'role',course.owner_role,'email',(select u.email from auth.users u where u.id=course.owner_id)),'delegates',delegates));
 end $$;
 revoke all on function public.classroom_detail(uuid,uuid) from public,anon,authenticated,service_role;
 

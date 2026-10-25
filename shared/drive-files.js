@@ -34,16 +34,17 @@
     check() { if (!this.isCurrent()) throw new Error('La cuenta cambi\u00f3. Volv\u00e9 a abrir Mi espacio.'); }
     async request(url, options = {}, raw = false, attempt = 0, force = false) {
       this.check();
+      const {retry = true, ...fetchOptions} = options;
       const target = new URL(url);
       if (target.origin !== 'https://www.googleapis.com' || !['/drive/v3/','/upload/drive/v3/files'].some(prefix => target.pathname.startsWith(prefix))) throw new Error('Destino no permitido.');
       const token = await this.getToken(force); this.check();
       const controller = new AbortController(), timeout = setTimeout(() => controller.abort(), options.body instanceof Blob ? 120000 : 15000);
       let response;
-      try { response = await this.fetchImpl(url, {...options, headers:{...options.headers, Authorization:'Bearer ' + token}, credentials:'omit', redirect:'error', referrerPolicy:'no-referrer', signal:controller.signal}); }
+      try { response = await this.fetchImpl(url, {...fetchOptions, headers:{...options.headers, Authorization:'Bearer ' + token}, credentials:'omit', redirect:'error', referrerPolicy:'no-referrer', signal:controller.signal}); }
       finally { clearTimeout(timeout); }
       this.check();
       if (response.status === 401 && !force) return this.request(url, options, raw, attempt, true);
-      if ((response.status === 429 || response.status >= 500) && attempt < 2) {
+      if (retry && (response.status === 429 || response.status >= 500) && attempt < 2) {
         await new Promise(resolve => setTimeout(resolve, (attempt + 1) * 1000));
         return this.request(url, options, raw, attempt + 1, force);
       }
@@ -108,6 +109,30 @@
       const item = await this.managed(fileId);
       if (item.mimeType !== 'application/pdf' || item.appProperties?.estudiemosCourse !== courseId) throw new Error('Solo pod\u00e9s compartir un PDF subido para esta materia.');
       return this.request(BASE + 'files/' + id(fileId) + '/permissions?fields=id', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({type:'anyone',role:'reader',allowFileDiscovery:false})});
+    }
+    async saveCourseMaterial(source, mode, parentId = this.rootId, title) {
+      if (!['copy','shortcut'].includes(mode)) throw new Error('Eleg\u00ed copia o acceso directo.');
+      let fileId = id(source?.id), key = source.resourceKey || '';
+      if (typeof key !== 'string' || key && !/^[A-Za-z0-9_-]{1,200}$/.test(key)) throw new Error('Enlace de Drive no v\u00e1lido.');
+      const safeTitle = name(title);
+      await this.parent(parentId);
+      const seen = new Set(); let item, headers;
+      // Resolve existing shortcuts without ever fetching document contents.
+      for (;;) {
+        if (seen.has(fileId) || seen.size >= 5) throw new Error('El acceso directo no tiene un destino v\u00e1lido.');
+        seen.add(fileId);
+        headers = key ? {'X-Goog-Drive-Resource-Keys':fileId + '/' + key} : {};
+        item = await this.request(BASE + 'files/' + fileId + '?fields=' + encodeURIComponent('id,mimeType,trashed,capabilities(canCopy),shortcutDetails(targetId,targetResourceKey)'), {headers});
+        if (item.trashed) throw new Error('El archivo ya no est\u00e1 disponible en Drive.');
+        if (item.mimeType !== 'application/vnd.google-apps.shortcut') break;
+        fileId = id(item.shortcutDetails?.targetId); key = item.shortcutDetails?.targetResourceKey || '';
+        if (typeof key !== 'string' || key && !/^[A-Za-z0-9_-]{1,200}$/.test(key)) throw new Error('Enlace de Drive no v\u00e1lido.');
+      }
+      if (mode === 'copy' && (item.mimeType === FOLDER || item.capabilities?.canCopy !== true)) throw new Error(item.mimeType === FOLDER ? 'Para una carpeta, eleg\u00ed acceso directo.' : 'Google no permite copiar este archivo con tu cuenta. Pod\u00e9s abrir el original o crear un acceso directo.');
+      const metadata = this.metadata(safeTitle, parentId);
+      const body = mode === 'copy' ? metadata : {...metadata, mimeType:'application/vnd.google-apps.shortcut', shortcutDetails:{targetId:fileId}};
+      // Creation is not idempotent: a failed response must not create multiple copies.
+      return this.request(BASE + (mode === 'copy' ? 'files/' + fileId + '/copy' : 'files') + '?fields=' + encodeURIComponent(FIELDS), {method:'POST', retry:false, headers:{...headers,'Content-Type':'application/json'}, body:JSON.stringify(body)});
     }
     async rename(fileId, title) { await this.managed(fileId); return this.patch(fileId, {name:name(title)}); }
     async trash(fileId) { await this.managed(fileId); return this.patch(fileId, {trashed:true}); }

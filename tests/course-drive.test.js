@@ -12,9 +12,10 @@ function boot(){
     async patch(id,values){this.check();operations.push(['patch',id,values]);return {id,name:'Guia.pdf',...values};}
     async upload(file,parent){operations.push(['upload',await file.text(),parent]);this.check();return {id:'file-pdf',appProperties:{estudiemosOwner:owner,estudiemosSpace:this.rootId}};}
     async shareCoursePdf(id,classId,consent){this.check();operations.push(['share',id,classId,consent]);}
+    async saveCourseMaterial(source,mode,parent,title){this.check();operations.push(['save',this.userId,{...source},mode,parent,title]);return {id:'personal-copy',name:title};}
   }
-  const window={EstudiemosAccount:{getUser:()=>owner?{id:owner}:null,getSession:()=>owner?{access_token:'session-'+owner}:null},EstudiemosDriveFiles:{DriveFiles:Drive,openUrl:item=>'https://drive.google.com/file/d/'+item.id+'/view'},addEventListener:(type,fn)=>listeners[type]=fn};
-  vm.runInNewContext(source,{window,URL,Date,File,AbortController,setTimeout,clearTimeout,document:{currentScript:{src:'https://app.test/scripts/course-drive.js'},body:{classList:{contains:()=>true}}},location:{assign:url=>navigation.push(String(url))},sessionStorage:{setItem:(key,value)=>saved.set(key,value)},fetch:async(url,options)=>{calls.push({url:String(url),options});const action=new URL(url).searchParams.get('drive');return Response.json(action==='status'?{connected:true}:action==='token'?{accessToken:'short-lived-fixture',expiresAt:Date.now()+3600000}:{url:'https://accounts.google.com/o/oauth2/v2/auth?fixture=1'});}});
+  const window={EstudiemosClassroomRules:require('../shared/classrooms'),dispatchEvent:()=>{},EstudiemosAccount:{getUser:()=>owner?{id:owner}:null,getSession:()=>owner?{access_token:'session-'+owner}:null},EstudiemosDriveFiles:{DriveFiles:Drive,openUrl:item=>'https://drive.google.com/file/d/'+item.id+'/view'},addEventListener:(type,fn)=>listeners[type]=fn};
+  vm.runInNewContext(source,{window,URL,Date,File,CustomEvent,AbortController,setTimeout,clearTimeout,document:{currentScript:{src:'https://app.test/scripts/course-drive.js'},body:{classList:{contains:()=>true}}},location:{assign:url=>navigation.push(String(url))},sessionStorage:{setItem:(key,value)=>saved.set(key,value),getItem:key=>saved.get(key),removeItem:key=>saved.delete(key)},fetch:async(url,options)=>{calls.push({url:String(url),options});const action=new URL(url).searchParams.get('drive');return Response.json(action==='status'?{connected:true}:action==='token'?{accessToken:'short-lived-fixture',expiresAt:Date.now()+3600000}:{url:'https://accounts.google.com/o/oauth2/v2/auth?fixture=1'});}});
   return {api:window.EstudiemosCourseDrive,calls,operations,saved,navigation,switchUser(id){owner=id;listeners['estudiemos:account-change']();}};
 }
 test('course uploads validate original PDF bytes before accessing Drive, without silently sharing them',async()=>{
@@ -34,4 +35,19 @@ test('upload destination lists only authorized app folders and never uses anothe
 });
 test('connecting Drive carries only a fixed workspace context and course identifier, never stored tokens',async()=>{
   const h=boot();await h.api.connect(course.id);const body=JSON.parse(h.calls[0].options.body);assert.deepEqual(body,{context:'teacher',classId:course.id});assert.equal(new URL(h.navigation[0]).origin,'https://accounts.google.com');assert.doesNotMatch(JSON.stringify([...h.saved]),/accessToken|refreshToken|session-alice/);await assert.rejects(h.api.connect('https://attacker.test'),/materia/);
+});
+test('students choose copy or shortcut using only their own connection and no classroom writes',async()=>{
+  const h=boot(),material={title:'Guia',url:'https://drive.google.com/file/d/SHARED_PDF/view'};
+  for(const mode of ['copy','shortcut'])await h.api.save(material,course,mode,'chosen-folder');
+  assert.deepEqual(h.operations.filter(op=>op[0]==='save').map(op=>[op[1],op[3],op[4]]),[['alice','copy','chosen-folder'],['alice','shortcut','chosen-folder']]);
+  h.switchUser('bob');await h.api.save(material,course,'copy','chosen-folder');
+  assert.equal(h.operations.filter(op=>op[0]==='save').at(-1)[1],'bob');
+  assert.ok(h.calls.every(call=>/drive=(status|token)/.test(call.url)));
+  assert.equal(h.saved.size,0);await assert.rejects(h.api.save({...material,url:'https://evil.test/file'},course,'copy'));
+});
+test('OAuth returns to the same material without copying automatically or carrying tokens in the pending intent',async()=>{
+  const h=boot(),materialId='10000000-0000-4000-8000-000000000001';
+  await h.api.connect(course.id,materialId);assert.equal(h.api.resumeSave(course.id),materialId);assert.equal(h.api.resumeSave(course.id),'');
+  assert.equal(h.operations.length,0);
+  await h.api.connect(course.id,materialId);h.switchUser('bob');assert.equal(h.api.resumeSave(course.id),'');
 });
