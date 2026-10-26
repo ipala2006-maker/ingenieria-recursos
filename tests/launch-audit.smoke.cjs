@@ -38,6 +38,11 @@ const output = path.join(root, "tmp/launch-audit");
     browser = process.env.TEST_WEBKIT === "1" ? await webkit.launch() : await chromium.launch({ channel: "chrome", args: ["--enable-unsafe-swiftshader"] });
     for (const width of [1440, 390, 320]) {
       const context = await browser.newContext({ viewport: { width, height: width < 500 ? 844 : 900 }, hasTouch: width < 500, isMobile: width < 500, serviceWorkers: 'block' });
+      // Regular-use fixture; onboarding.smoke.cjs exercises the first-run dialogs.
+      await context.addInitScript(() => {
+        localStorage.setItem('estudiemos_onboarding_v1', JSON.stringify({status:'completed'}));
+        localStorage.setItem('estudiemos_pomodoro_streak', JSON.stringify({version:3,days:{},goal:{minutes:25,updatedAt:Date.now()}}));
+      });
       await context.route("**/*", route => {
         const url = new URL(route.request().url());
         if (url.hostname === "noembed.com") return route.fulfill({ json: { title: '<img src=x onerror="window.__xss=true">' } });

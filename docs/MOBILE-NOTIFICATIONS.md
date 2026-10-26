@@ -13,13 +13,14 @@
 
 1. Ejecutar `supabase/mobile-notifications.sql` en el proyecto existente.
    Ejecutar también la versión actualizada de `supabase/windows-alarms.sql`: elimina el filtro antiguo que excluía en Windows las alarmas creadas en el celular. No agrega acceso público; sigue consultando solo el feed autorizado de esa cuenta.
-2. Generar VAPID con la biblioteca `web-push` (`generateVAPIDKeys()`). Guardar `WEB_PUSH_PUBLIC_KEY`, `WEB_PUSH_PRIVATE_KEY` y un `MOBILE_PUSH_CRON_SECRET` aleatorio de al menos 32 bytes en las variables de producción de Vercel. No poner claves privadas en archivos públicos ni Git.
+2. Aplicar `supabase/mobile-notifications-indexed.sql` y `supabase/android-widget-sync.sql`. La primera mantiene una cola privada indexada y la segunda permite lecturas propias por versiones. Seguir el orden de actualización de `docs/pilot-notifications.md` antes de cambiar un servidor existente.
+   Generar VAPID con la biblioteca `web-push` (`generateVAPIDKeys()`). Guardar `WEB_PUSH_PUBLIC_KEY`, `WEB_PUSH_PRIVATE_KEY` y un `MOBILE_PUSH_CRON_SECRET` aleatorio de al menos 32 bytes en las variables de producción de Vercel. No poner claves privadas en archivos públicos ni Git.
 3. Guardar el mismo secreto de cron en Supabase Vault, nombre `estudiemos_mobile_push_cron`. No incrustarlo en el SQL de un repositorio ni logs.
 4. Desplegar la app y ejecutar `supabase/mobile-notifications-cron.sql`. El cron verifica las tareas cada minuto en la base existente y solo llama al servidor cuando hay avisos pendientes.
 5. `GET /api/widget-push?mobilePush=1` debe devolver `enabled:true`. Mientras falten claves o un latido reciente del cron, la interfaz **no afirma que está conectada**.
 6. Probar con un iPhone real: permitir, recibir la prueba, programar una tarea unos minutos adelante, cerrar la app y comprobar el aviso. El consentimiento del teléfono solo puede darlo su usuario.
 
-No se activa ningún plan pago. Se utilizan recursos y cuotas de los servicios existentes: no es uso ilimitado ni una promesa de costo cero si se cambia de plan. El despliegue inicial limita a 5 navegadores por cuenta, 5 entregas por lote, 3 intentos por aviso y 5000 trabajos diarios. Vigilar cuotas antes de ampliar. Las alarmas nativas Android no necesitan estas llamadas periódicas.
+No se activa ningún plan pago. Se utilizan recursos y cuotas de los servicios existentes: no es uso ilimitado ni una promesa de costo cero si se cambia de plan. El despliegue indexado limita a 5 navegadores por cuenta, 500 alarmas activas por cuenta, 100 entregas por lote (hasta 4 lotes por minuto), 3 intentos por aviso y 20.000 trabajos diarios. Vigilar cuotas antes de ampliar. Las alarmas nativas Android no necesitan estas llamadas periódicas.
 
 ## Seguridad y mantenimiento
 

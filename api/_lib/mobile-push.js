@@ -33,18 +33,32 @@ async function send(subscription, payload) {
   });
 }
 async function dispatch() {
-  const jobs = await rpc('claim_mobile_push_jobs');
+  let jobs, legacy=false;
+  try { jobs = await rpc('claim_mobile_push_batch'); }
+  catch (error) {
+    if (error.status!==404 || error.data?.code!=='PGRST202') throw error;
+    legacy=true; jobs=await rpc('claim_mobile_push_jobs');
+  }
   let sent = 0, failed = 0;
-  for (const job of jobs || []) {
+  const results = [];
+  async function deliver(job) {
     try {
       await send(job.subscription, { title: job.title, body: 'Es hora de tu tarea.', tag: job.tag, owner: job.owner });
-      await rpc('finish_mobile_push_job', { p_id: job.id, p_ok: true, p_expired: false });
+      results.push({id:job.id,ok:true,expired:false});
       sent++;
     } catch (error) {
-      await rpc('finish_mobile_push_job', { p_id: job.id, p_ok: false, p_expired: [404, 410].includes(error.statusCode) });
+      results.push({id:job.id,ok:false,expired:[404,410].includes(error.statusCode)});
       failed++;
     }
   }
+  // Ten deliveries at a time, not 100 serial network waits. SQL bounds a
+  // claim to 100; one completion RPC replaces one RPC per notification.
+  for (let index=0; index<(jobs || []).length; index+=10) {
+    await Promise.all(jobs.slice(index,index+10).map(deliver));
+  }
+  if (legacy) {
+    for (const result of results) await rpc('finish_mobile_push_job',{p_id:result.id,p_ok:result.ok,p_expired:result.expired});
+  } else if (results.length) await rpc('finish_mobile_push_jobs', {p_results:results});
   return { sent, failed };
 }
 

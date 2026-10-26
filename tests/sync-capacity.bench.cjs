@@ -9,6 +9,7 @@ async function databaseTransport(clients, baseline) {
   await db.exec("create role anon;create role authenticated;create role service_role;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema auth to authenticated;grant execute on function auth.uid() to authenticated;");
   await db.exec(fs.readFileSync(require.resolve('../supabase/schema.sql'),'utf8'));
   await db.exec(fs.readFileSync(require.resolve('../supabase/account-sync-delta.sql'),'utf8'));
+  await db.exec(fs.readFileSync(require.resolve('../supabase/android-widget-sync.sql'),'utf8'));
   await db.query('insert into auth.users values($1)',[uid]);
   const row=clients[0].rows.get('alice');
   await db.query('insert into user_states(user_id,state,updated_at) values($1,$2,$3)',[uid,row.state,row.updated_at]);
@@ -24,17 +25,30 @@ async function databaseTransport(clients, baseline) {
   return db;
 }
 
-async function simulate({notes, minutes, edits, devices, baseline = false}) {
+async function simulate({notes, minutes, edits, devices, baseline = false, androidDevices=0, nativeAndroidClients=0, measureNative=false}) {
   const first=harness();
   first.rows.get('alice').state.values.bandeja_agenda=Array.from({length:notes},(_,id)=>({id:String(id),title:'Repasar ejercicios de la materia '+id,date:'2026-10-23',color:'blue',done:false}));
+  first.rows.get('alice').state.values.estudiemos_android_devices=Array.from({length:androidDevices},(_,i)=>({token:'fixture-only-token-'+i,platform:'android',updatedAt:1}));
   const clients=[first,...Array.from({length:devices-1},()=>harness(first.rows))];
+  clients.forEach((h,index)=>{if(index<nativeAndroidClients){h.context.hasAndroidBridge=()=>true;h.context.androidPushToken='fixture-only-token-'+index;}});
   const db=await databaseTransport(clients,baseline);
+  let nativeKnown={},pushCount=0,nativeRpcReceivedJsonBytes=0,nativePreviousFullStateJsonBytes=0;
+  const nativeRead=async()=>{
+    const data=(await db.query('select get_android_widget_state($1) data',[nativeKnown])).rows[0].data;
+    nativeKnown=data.versions;nativeRpcReceivedJsonBytes+=Buffer.byteLength(JSON.stringify(data));
+    const full=(await db.query('select state,updated_at from user_states')).rows;
+    nativePreviousFullStateJsonBytes+=Buffer.byteLength(JSON.stringify(full));
+  };
   try {
   const read=async(h,reason)=>{
     // null bypasses only the new fast paths; the pre-existing delta RPC still
     // runs and confirms writes, reproducing the previous read-before-write flow.
     if(baseline)h.context.compactAvailable=null;
     assert.equal(await h.read(reason),true);
+    if(measureNative){
+      const count=clients.reduce((n,client)=>n+client.pushRequests.length,0);
+      while(pushCount<count){await nativeRead();pushCount++;}
+    }
   };
   for(const h of clients)await read(h,'startup');
   for(let minute=1;minute<=minutes;minute++){
@@ -53,9 +67,11 @@ async function simulate({notes, minutes, edits, devices, baseline = false}) {
   // recovery runs at exactly the original two-minute backup interval.
   for(let tick=0;tick<60;tick++)for(const h of clients){h.advance(120000);await read(h,'poll');}
   const days=clients.map(h=>h.context.getSyncUsage().days['2026-10-23']);
+  if(measureNative)for(let tick=0;tick<96;tick++)await nativeRead();
   assert.ok(clients.every(h=>JSON.parse(h.local.get('estudiemos_pomodoro_streak')).days['2026-10-23']===minutes));
   return {receivedJsonBytes:days.reduce((n,d)=>n+d.receivedBytes,0),sentJsonBytes:days.reduce((n,d)=>n+d.sentBytes,0),
-    requests:clients.reduce((n,h)=>n+h.reads.length+h.rpcCalls.length,0),profileBytes:days[0].profileBytes};
+    requests:clients.reduce((n,h)=>n+h.reads.length+h.rpcCalls.length,0),profileBytes:days[0].profileBytes,
+    widgetPushRequests:clients.reduce((n,h)=>n+h.pushRequests.length,0),nativeRpcReceivedJsonBytes,nativePreviousFullStateJsonBytes};
   } finally {await db.close();}
 }
 
