@@ -60,6 +60,25 @@
     try{new Intl.DateTimeFormat('es',{timeZone:result.timezone}).format();}catch(_){throw new Error('INVALID_TIMEZONE');}
     return result;
   }
+  function calendarVersions(value={},limit=64){
+    if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).length>limit)throw new Error('INVALID_DATA');
+    for(const [key,version]of Object.entries(value))if(!UUID.test(key)||typeof version!=='string'||!/^[a-f0-9]{32}$/.test(version))throw new Error('INVALID_DATA');
+    return {...value};
+  }
+  function mergeCalendar(model,result){
+    if(Array.isArray(result.calendar))return {calendar:result.calendar,calendarVersions:undefined};
+    const patch=result.calendarPatch;
+    if(!patch||!Array.isArray(patch.classes)||!Array.isArray(patch.events)||!Array.isArray(result.classes))throw new Error('CALENDAR_REBASE_REQUIRED');
+    const versions=calendarVersions(patch.versions,512),changed=new Set(patch.classes),active=new Set(result.classes.filter(item=>!item.archived).map(item=>item.id));
+    if(changed.size!==patch.classes.length||Object.keys(versions).length!==active.size||Object.keys(versions).some(id=>!active.has(id))||[...changed].some(id=>!versions[id]))throw new Error('CALENDAR_REBASE_REQUIRED');
+    for(const id of active)if(!changed.has(id)&&model?.calendarVersions?.[id]!==versions[id])throw new Error('CALENDAR_REBASE_REQUIRED');
+    const calendar=(model?.calendar||[]).filter(item=>active.has(item.classId)&&!changed.has(item.classId)),seen=new Set(calendar.map(item=>item.id));
+    for(const item of patch.events){
+      if(!UUID.test(item.id||'')||!changed.has(item.classId)||seen.has(item.id))throw new Error('CALENDAR_REBASE_REQUIRED');
+      event(item.data);seen.add(item.id);calendar.push(item);
+    }
+    return {calendar,calendarVersions:versions};
+  }
   function occurrences(snapshot,from,until=from){
     if(!time.date(from)||!time.date(until))return [];
     const result=[];
@@ -73,5 +92,5 @@
     }
     return result;
   }
-  return Object.freeze({CACHE_KEY,PENDING_KEY,UUID,CODE,PERMISSIONS,isOwner,can,permissions,code,invitation,text,event,material,course,driveUrl,driveSource,occurrences});
+  return Object.freeze({CACHE_KEY,PENDING_KEY,UUID,CODE,PERMISSIONS,isOwner,can,permissions,code,invitation,text,event,material,course,driveUrl,driveSource,calendarVersions,mergeCalendar,occurrences});
 });

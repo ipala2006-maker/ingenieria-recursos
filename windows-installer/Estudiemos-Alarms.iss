@@ -1,7 +1,7 @@
 [Setup]
 AppId={{10257322-F14A-47E1-9C71-03CB33D39726}
 AppName=Alarmas de Estudiemos
-AppVersion=1.6.6.0
+AppVersion=2.0.0.0
 ChangesAssociations=yes
 AppPublisher=Estudiemos
 DefaultDirName={localappdata}\Estudiemos\Windows\AlarmService
@@ -19,7 +19,7 @@ Compression=lzma2
 OutputDir=..\downloads
 OutputBaseFilename=Activar-Alarmas-Estudiemos
 SetupIconFile=..\assets\estudiemos.ico
-VersionInfoVersion=1.6.5.0
+VersionInfoVersion=2.0.0.0
 VersionInfoDescription=Alarmas a pantalla completa de Estudiemos
 [Languages]
 Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
@@ -33,11 +33,17 @@ Source: "InboxAlarm.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "InstallInboxAlarm.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "ConnectInboxAlarms.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "ReadAlarmConnection.ps1"; DestDir: "{app}"; Flags: ignoreversion
+Source: "ReadLocalAlarms.ps1"; DestDir: "{app}"; Flags: ignoreversion
+Source: "InboxAlarm.ps1"; DestDir: "{localappdata}\Estudiemos\Windows"; Flags: ignoreversion; Check: LegacyWindowsSupport
+Source: "StreakReminder.ps1"; DestDir: "{localappdata}\Estudiemos\Windows"; Flags: ignoreversion; Check: LegacyWindowsSupport
+Source: "ReadLocalAlarms.ps1"; DestDir: "{localappdata}\Estudiemos\Windows"; Flags: ignoreversion; Check: LegacyWindowsSupport
+Source: "StudyToast.ps1"; DestDir: "{localappdata}\Estudiemos\Windows"; Flags: ignoreversion; Check: LegacyWindowsSupport
 Source: "AlarmLauncher.vbs"; Flags: dontcopy
 Source: "InboxAlarm.ps1"; Flags: dontcopy
 Source: "InstallInboxAlarm.ps1"; Flags: dontcopy
 Source: "ConnectInboxAlarms.ps1"; Flags: dontcopy
 Source: "ReadAlarmConnection.ps1"; Flags: dontcopy
+Source: "ReadLocalAlarms.ps1"; Flags: dontcopy
 [Icons]
 Name: "{userprograms}\Estudiemos Alarmas"; Filename: "{sys}\wscript.exe"; Parameters: """{app}\AppLauncher.vbs"""; WorkingDir: "{app}"; IconFilename: "{app}\estudiemos.ico"; AppUserModelID: "Estudiemos.Study"; AppUserModelToastActivatorCLSID: "77039F73-07C3-4E4C-9DFA-B3A4809C5C79"
 [Registry]
@@ -54,6 +60,12 @@ Root: HKCU; Subkey: "Software\Classes\Estudiemos.AlarmConnection\shell\open\comm
 Filename: "https://estudiemos-app.vercel.app/?alarms-setup=1"; Flags: shellexec nowait skipifsilent
 
 [Code]
+function LegacyWindowsSupport: Boolean;
+begin
+  Result := FileExists(ExpandConstant('{localappdata}\Estudiemos\Windows\InboxAlarm.ps1')) or
+    FileExists(ExpandConstant('{localappdata}\Estudiemos\Windows\StreakReminder.ps1'));
+end;
+
 procedure CheckAlarmFile(Name: String);
 begin
   ExtractTemporaryFile(Name);
@@ -70,5 +82,6 @@ begin
     CheckAlarmFile('InstallInboxAlarm.ps1');
     CheckAlarmFile('ConnectInboxAlarms.ps1');
     CheckAlarmFile('ReadAlarmConnection.ps1');
+    CheckAlarmFile('ReadLocalAlarms.ps1');
   end;
 end;

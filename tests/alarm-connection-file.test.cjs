@@ -22,9 +22,9 @@ test('native window interop compiles without opening a window', {skip:process.pl
   assert.match(result.stdout,/native-interop-compiled/);
 });
 
-test('connection and background refresh encrypt/decrypt with a restricted module search path', {skip:process.platform!=='win32'},()=>{
+test('one setup request seeds local scheduling; the background worker uses no credential or network', {skip:process.platform!=='win32'},()=>{
   const directory=fs.mkdtempSync(path.join(os.tmpdir(),'estudiemos-alarm-dpapi-'));
-  for(const name of ['ConnectInboxAlarms.ps1','InboxAlarm.ps1']){
+  for(const name of ['ConnectInboxAlarms.ps1','InboxAlarm.ps1','ReadLocalAlarms.ps1']){
     fs.copyFileSync(path.join(root,'windows-installer',name),path.join(directory,name));
   }
   fs.writeFileSync(path.join(directory,'InstallInboxAlarm.ps1'),"$true | Out-Null");
@@ -33,17 +33,24 @@ test('connection and background refresh encrypt/decrypt with a restricted module
     Import-Module Microsoft.PowerShell.Utility
     Import-Module Microsoft.PowerShell.Management
     $env:PSModulePath=$env:ALARM_TEST_DIR
-    function Invoke-RestMethod { @{feedToken='dummy-test-only';snapshot=@{version=1;items=@()};confirmation='dummy-confirmation';version=1;items=@()} }
+    $global:requests=0
+    function Invoke-RestMethod {
+      param($Uri,$TimeoutSec)
+      $global:requests++
+      if($global:requests -ne 1 -or $Uri -notmatch 'clientVersion=2.0.0&alarmSetup='){throw 'Unexpected background request'}
+      @{userId='00000000-0000-4000-8000-000000000001';snapshot=@{version=1;items=@()};confirmation='dummy-confirmation'}
+    }
     function Start-Process { Write-Output 'callback-requested' }
-    & (Join-Path $env:ALARM_TEST_DIR 'ConnectInboxAlarms.ps1') -Token 'pilot.signature'
+    & (Join-Path $env:ALARM_TEST_DIR 'ConnectInboxAlarms.ps1') -Token 'pilot.signature' -DocumentsDirectory $env:ALARM_TEST_DIR
     $state=Join-Path $env:LOCALAPPDATA 'Estudiemos\Windows\InboxAlarms'
-    $encrypted=Get-Content -LiteralPath (Join-Path $state 'feed.dpapi') -Raw
-    if($encrypted -match 'dummy-test-only'){throw 'Credential was not encrypted'}
+    if(Test-Path -LiteralPath (Join-Path $state 'feed.dpapi')){throw 'Unnecessary credential persisted'}
+    $config=Get-Content -LiteralPath (Join-Path $state 'local-config.json') -Raw | ConvertFrom-Json
+    if(!(Test-Path -LiteralPath $config.path)){throw 'Local schedule missing'}
     Remove-Module Microsoft.PowerShell.Security -ErrorAction SilentlyContinue
     & (Join-Path $env:ALARM_TEST_DIR 'InboxAlarm.ps1') -StateDirectory $state -DryRun
     $result=Get-Content -LiteralPath (Join-Path $state 'connection.json') -Raw | ConvertFrom-Json
-    if($result.status -ne 'connected'){throw 'Background refresh failed'}
-    Write-Output 'encrypted-background-refresh-ok'
+    if($result.status -ne 'local' -or $global:requests -ne 1){throw 'Local background scheduling failed'}
+    Write-Output 'local-background-no-network-ok'
   `;
   try{
     const result=spawnSync('powershell.exe',['-NoProfile','-NonInteractive','-Command',script],{
@@ -52,11 +59,11 @@ test('connection and background refresh encrypt/decrypt with a restricted module
     });
     assert.equal(result.status,0,result.stderr);
     assert.match(result.stdout,/callback-requested/);
-    assert.match(result.stdout,/encrypted-background-refresh-ok/);
+    assert.match(result.stdout,/local-background-no-network-ok/);
     const state=path.join(directory,'Estudiemos','Windows','InboxAlarms');
-    for(const name of ['activation-status.json','sync-status.json']){
+    for(const name of ['activation-status.json']){
       const diagnostic=JSON.parse(fs.readFileSync(path.join(state,name),'utf8').replace(/^\uFEFF/,''));
-      assert.equal(diagnostic.status,'connected');
+      assert.equal(diagnostic.status,name==='activation-status.json'?'connected':'local');
       assert.ok(Object.keys(diagnostic).every(key=>['status','stage','checkedAt'].includes(key)));
       assert.doesNotMatch(JSON.stringify(diagnostic),/dummy-test-only|dummy-confirmation|feedToken|title/);
     }

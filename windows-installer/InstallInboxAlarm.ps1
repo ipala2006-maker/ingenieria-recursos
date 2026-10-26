@@ -16,7 +16,7 @@ $service = New-Object -ComObject 'Schedule.Service'
 $service.Connect()
 $folder = $service.GetFolder('\')
 $task = $service.NewTask(0)
-$task.RegistrationInfo.Description = 'Alarmas de Estudiemos en esta sesion de Windows. Con permiso del usuario consulta solo sus alarmas mediante una credencial cifrada por Windows.'
+$task.RegistrationInfo.Description = 'Alarmas locales de Estudiemos en esta sesion de Windows. Lee la programacion sincronizada, sin consultar el servidor.'
 $task.Principal.UserId = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
 $task.Principal.LogonType = 3
 $task.Principal.RunLevel = 0

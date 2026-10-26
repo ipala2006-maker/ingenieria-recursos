@@ -1,4 +1,4 @@
-#define AppVersion "1.6.6.0"
+#define AppVersion "2.0.0.0"
 #define RainmeterInstaller "Rainmeter-4.5.26.exe"
 #ifndef OutputBaseName
   #define OutputBaseName "Estudiemos-Widgets-para-Windows"
@@ -58,12 +58,14 @@ Source: "InboxAlarm.ps1"; DestDir: "{app}\AlarmService"; Flags: ignoreversion
 Source: "InstallInboxAlarm.ps1"; DestDir: "{app}\AlarmService"; Flags: ignoreversion
 Source: "ConnectInboxAlarms.ps1"; DestDir: "{app}\AlarmService"; Flags: ignoreversion
 Source: "ReadAlarmConnection.ps1"; DestDir: "{app}\AlarmService"; Flags: ignoreversion
+Source: "ReadLocalAlarms.ps1"; DestDir: "{app}\AlarmService"; Flags: ignoreversion
 Source: "StreakReminder.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "InstallStreakReminders.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "InboxAlarm.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "InstallInboxAlarm.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "ConnectInboxAlarms.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "ReadAlarmConnection.ps1"; DestDir: "{app}"; Flags: ignoreversion
+Source: "ReadLocalAlarms.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\windows-rainmeter\Skins\Estudiemos\*"; DestDir: "{code:GetSkinDirectory}\Estudiemos"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\windows-rainmeter\Plugins\64bit\WebView2.dll"; DestDir: "{code:GetRainmeterPluginDirectory}"; Flags: ignoreversion restartreplace
 
@@ -210,7 +212,7 @@ begin
     ExecAsOriginalUser(RainmeterExe, '!RefreshApp', GetRainmeterDirectory(''), SW_HIDE,
       ewWaitUntilTerminated, ResultCode);
     ExecAsOriginalUser(RainmeterExe,
-      '!ActivateConfig "Estudiemos\AlarmBridge" "AlarmBridge.ini"',
+      '!DeactivateConfig "Estudiemos\AlarmBridge"',
       GetRainmeterDirectory(''), SW_HIDE, ewWaitUntilTerminated, ResultCode);
     Exec(ExpandConstant('{sys}\conhost.exe'),
       '--headless "' + ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe') + '" -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + ExpandConstant('{app}\AlarmService\InstallInboxAlarm.ps1') + '" -ResourceDirectory "' + GetSkinDirectory('') + '\Estudiemos\@Resources"',

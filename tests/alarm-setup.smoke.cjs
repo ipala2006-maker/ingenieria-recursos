@@ -1,22 +1,26 @@
 const {chromium}=require('../tmp/ui-check/node_modules/playwright');
 const assert=require('node:assert/strict');
-const fs=require('node:fs');
-const base=process.env.TEST_BASE_URL||'http://127.0.0.1:8149/';
+const fs=require('node:fs'),path=require('node:path'),http=require('node:http');
 (async()=>{
+  const root=path.resolve(__dirname,'..');let server;
+  if(!process.env.TEST_BASE_URL){server=http.createServer((req,res)=>{const url=new URL(req.url,'http://localhost'),file=path.resolve(root,'.'+(url.pathname==='/'?'/index.html':decodeURIComponent(url.pathname)));if(!file.startsWith(root+path.sep))return res.writeHead(403).end();try{res.setHeader('Content-Type',({'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml'})[path.extname(file)]||'application/octet-stream');res.end(fs.readFileSync(file));}catch(_){res.writeHead(404).end();}});await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));}
+  const base=process.env.TEST_BASE_URL||'http://127.0.0.1:'+server.address().port+'/';
   const browser=await chromium.launch({channel:'chrome'});
   try{
     const context=await browser.newContext({viewport:{width:1280,height:720}}),page=await context.newPage();
     const errors=[],calls=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
     await page.addInitScript(()=>{
       window.nativeLinks=[];window.notificationRequests=0;
-      window.EstudiemosAccount={whenReady:async()=>{},getClient:()=>null,getUser:()=>({id:'pilot'}),getSession:()=>({access_token:'test-session'}),sync:()=>{}};
+      let localReady=false;
+      window.EstudiemosWindowsLocalAlarms={ready:()=>localReady&&Boolean(window.EstudiemosAccount?.getSession?.()?.access_token),supported:()=>true,connectFile:async()=>{localReady=true;window.dispatchEvent(new CustomEvent('estudiemos:windows-local-alarm-status',{detail:{status:'ready'}}));}};
+      window.EstudiemosAccount={whenReady:async()=>({session:{access_token:'test-session'}}),isSynchronized:()=>true,getClient:()=>null,getUser:()=>({id:'pilot'}),getSession:()=>({access_token:'test-session'}),sync:()=>{}};
       document.addEventListener('click',e=>{const a=e.target.closest('a');if(a?.href.startsWith('estudiemos-alarms:')){e.preventDefault();window.nativeLinks.push(a.href);}},true);
       if(window.Notification)Notification.requestPermission=async()=>{window.notificationRequests++;return 'denied';};
     });
     await page.route('**/api/**',route=>{
       const req=route.request(),body=req.postDataJSON();
       if(body?.action==='alarms-connect'){calls.push(body);return route.fulfill({json:{token:'pilot.signature'}});}
-      if(body?.action==='alarms-confirm'){calls.push(body);return route.fulfill({json:{connected:true,userId:'pilot',version:'1.6.2',expiresAt:Math.floor(Date.now()/1000)+3600}});}
+      if(body?.action==='alarms-confirm'){calls.push(body);return route.fulfill({json:{connected:true,userId:'pilot',version:'2.0.0',mode:'local'}});}
       return route.fulfill({json:{enabled:false}});
     });
     await page.goto(new URL('?alarms-setup=1',base).href,{waitUntil:'networkidle'});
@@ -55,6 +59,8 @@ const base=process.env.TEST_BASE_URL||'http://127.0.0.1:8149/';
     assert.ok(await dialog.locator('[data-alarm-activate]').isDisabled(),'new account requires its own consent');
     assert.equal(await page.evaluate(()=>localStorage.getItem('estudiemos_windows_alarm_connection')),null);
     await page.goto(new URL('?windows-alarms-ready=receipt',base).href,{waitUntil:'networkidle'});
+    assert.equal(await dialog.getAttribute('data-ready'),'false','A native receipt alone is not permission to write the local schedule');
+    await dialog.locator('[data-alarm-consent]').check();await dialog.locator('[data-alarm-local-file]').click();
     assert.equal(await dialog.getAttribute('data-ready'),'true');
     await dialog.locator('[data-alarm-stage="test"] [data-alarm-native-test]').click();
     assert.deepEqual(await page.evaluate(()=>nativeLinks),['estudiemos-alarms://test']);
@@ -75,5 +81,5 @@ const base=process.env.TEST_BASE_URL||'http://127.0.0.1:8149/';
     await page.evaluate(()=>{window.EstudiemosAccount.getSession=window.savedSession;window.dispatchEvent(new Event('estudiemos:account-change'));});
     assert.ok(await dialog.isVisible(),'resume setup after sign-in');
     assert.deepEqual(errors,[]);console.log('PASS setup, explicit consent, verified receipt and native test action (protocol mocked)');
-  }finally{await browser.close();}
+  }finally{await browser.close();if(server)await new Promise(resolve=>server.close(resolve));}
 })().catch(e=>{console.error(e);process.exitCode=1;});

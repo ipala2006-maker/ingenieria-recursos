@@ -1,28 +1,42 @@
 (function(){
   if(window.EstudiemosClasses||!window.EstudiemosClassroomRules)return;
   const rules=window.EstudiemosClassroomRules,root=new URL('../',document.currentScript.src),endpoint=new URL('api/account-config?classes=1',root);
-  let owner='',model=null,epoch=0,serial=0,loading=null,writing=false,launching=false,lastRead=0,retryAt=0,failures=0,lastError=null,timer=0,uiPromise,projection=new Map();
+  let owner='',model=null,epoch=0,serial=0,loading=null,writing=false,launching=false,lastRead=0,retryAt=0,failures=0,lastError=null,timer=0,uiPromise,directRead=true,projection=new Map();
   const account=()=>window.EstudiemosAccount;
   const identity=()=>account()?.getUser()?.id||'';
   const emit=()=>{projection.clear();window.dispatchEvent(new CustomEvent('estudiemos:classes-updated'));};
   function snapshot(){return owner&&owner===identity()?model:null;}
   function persist(value){
-    if(!value||!/^[a-f0-9]{32}$/.test(value.revision)||!Array.isArray(value.classes)||!Array.isArray(value.calendar))throw new Error('No pudimos validar los datos de Clases.');
-    model={revision:value.revision,classes:value.classes,calendar:value.calendar};
+    if(!value||!/^[a-f0-9]{32}$/.test(value.revision)||!Array.isArray(value.classes))throw new Error('No pudimos validar los datos de Clases.');
+    const calendar=rules.mergeCalendar(model,value);
+    model={revision:value.revision,classes:value.classes,...calendar};
     try{localStorage.setItem(rules.CACHE_KEY,JSON.stringify({owner,model}));}catch(_){}
     emit();
   }
   function schedule(){clearTimeout(timer);if(!owner||!model?.classes?.length||document.hidden)return;timer=setTimeout(()=>refresh(),window.EstudiemosClassroomUI?.isOpen()?60000:300000);}
-  async function request(action='',data={},detailId=''){
+  async function request(action='',data={},detailId='',full=false,history=false){
     const current=owner,version=epoch,session=account()?.getSession();
     if(!current||current!==identity()||!session?.access_token)throw new Error('Iniciá sesión para abrir tus clases.');
-    const url=new URL(endpoint);if(detailId)url.searchParams.set('id',detailId);else if(!action&&model?.revision)url.searchParams.set('revision',model.revision);
+    const url=new URL(endpoint),calendarVersions=Object.fromEntries(Object.entries(full?{}:model?.calendarVersions||{}).slice(0,64));
+    if(detailId){url.searchParams.set('id',detailId);if(history)url.searchParams.set('history','1');}
+    else if(!action){url.searchParams.set('stateProtocol','2');url.searchParams.set('calendarVersions',JSON.stringify(calendarVersions));if(!full&&model?.revision)url.searchParams.set('revision',model.revision);}
     const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),15000);
     try{
-      const response=await fetch(url,{method:action?'POST':'GET',headers:{Authorization:'Bearer '+session.access_token,...(action?{'Content-Type':'application/json'}:{})},...(action?{body:JSON.stringify({action,...data})}:{}),signal:controller.signal,cache:'no-store',credentials:'same-origin'});
+      const client=account()?.getClient?.();
+      if(!action&&directRead&&typeof client?.rpc==='function'){
+        const operation=detailId?(history?'history':'detail'):'state',payload=detailId?{id:detailId}:{revision:full?'':model?.revision||'',calendarVersions};
+        let query=client.rpc('classroom_read',{p_action:operation,p_data:payload});if(query.abortSignal)query=query.abortSignal(controller.signal);
+        const {data:result,error}=await query;
+        if(current!==identity()||version!==epoch)throw new Error('La cuenta cambió. Volvé a abrir Clases.');
+        if(!error)return result;
+        // Old servers can roll out before this private read function; never retry writes.
+        if(['PGRST202','42883'].includes(error.code))directRead=false;
+        else throw new Error(error.message==='CLASS_UNAVAILABLE'?'La clase no está disponible o no tenés acceso.':error.message==='AUTH_REQUIRED'?'Iniciá sesión para abrir tus clases.':'No pudimos consultar tus materias. Volvé a intentar.');
+      }
+      const response=await fetch(url,{method:action?'POST':'GET',headers:{Authorization:'Bearer '+session.access_token,...(action?{'Content-Type':'application/json'}:{})},...(action?{body:JSON.stringify({action,...data,stateProtocol:2,calendarVersions})}:{}),signal:controller.signal,cache:'no-store',credentials:'same-origin'});
       const result=await response.json();
       if(current!==identity()||version!==epoch)throw new Error('La cuenta cambió. Volvé a abrir Clases.');
-      if(!response.ok)throw new Error(result.message||'No pudimos cargar Clases.');
+      if(!response.ok){const error=new Error(result.message||'No pudimos cargar Clases.');error.code=result.code;throw error;}
       return result;
     }finally{clearTimeout(timeout);}
   }
@@ -32,7 +46,7 @@
     if(!force&&(document.hidden||Date.now()<retryAt||Date.now()-lastRead<30000))return snapshot();
     const version=++serial;
     const task=(async()=>{
-      try{const result=await request();if(version!==serial)return snapshot();if(!result.unchanged)persist(result);lastRead=Date.now();failures=0;retryAt=0;lastError=null;return snapshot();}
+      try{const result=await request();if(version!==serial)return snapshot();if(!result.unchanged)try{persist(result);}catch(error){if(error.message!=='CALENDAR_REBASE_REQUIRED')throw error;const full=await request('',{},'',true);if(version!==serial)return snapshot();persist(full);}lastRead=Date.now();failures=0;retryAt=0;lastError=null;return snapshot();}
       catch(error){if(version!==serial)return snapshot();lastError=error;failures++;retryAt=Date.now()+Math.min(600000,30000*2**Math.min(failures-1,4));if(force)throw error;return snapshot();}
       finally{if(loading===task)loading=null;schedule();}
     })();
@@ -42,7 +56,7 @@
   async function act(action,data={}){
     if(writing)throw new Error('Esperá a que termine el cambio anterior.');
     writing=true;serial++;const version=epoch;
-    try{const result=await request(action,data);persist(result);lastRead=Date.now();failures=0;retryAt=0;lastError=null;return result;}
+    try{const result=await request(action,data);try{persist(result);}catch(error){if(error.message!=='CALENDAR_REBASE_REQUIRED')throw error;const full=await request('',{},'',true);persist(full);}lastRead=Date.now();failures=0;retryAt=0;lastError=null;return result;}
     finally{if(version===epoch){writing=false;schedule();}}
   }
   async function changed(){
@@ -58,10 +72,10 @@
   async function open(options={}){
     if(location.pathname.endsWith('/widget.html')){const url=new URL('./',root);url.searchParams.set('clase',options.id||'');return window.open(url,'_blank','noopener,noreferrer');}
     launching=true;
-    if(!uiPromise)uiPromise=Promise.all([new Promise((resolve,reject)=>{if(document.querySelector('link[href*="styles/classrooms.css"]'))return resolve();const css=document.createElement('link');css.rel='stylesheet';css.href=new URL('styles/classrooms.css?v=20261025-course-save',root);css.onload=resolve;css.onerror=reject;document.head.append(css);}),new Promise((resolve,reject)=>{const script=document.createElement('script');script.src=new URL('scripts/classrooms.js?v=20261025-course-save',root);script.onload=resolve;script.onerror=reject;document.head.append(script);})]).catch(error=>{uiPromise=null;throw error;});
+    if(!uiPromise)uiPromise=Promise.all([new Promise((resolve,reject)=>{if(document.querySelector('link[href*="styles/classrooms.css"]'))return resolve();const css=document.createElement('link');css.rel='stylesheet';css.href=new URL('styles/classrooms.css?v=20261026-resilience',root);css.onload=resolve;css.onerror=reject;document.head.append(css);}),new Promise((resolve,reject)=>{const script=document.createElement('script');script.src=new URL('scripts/classrooms.js?v=20261026-resilience',root);script.onload=resolve;script.onerror=reject;document.head.append(script);})]).catch(error=>{uiPromise=null;throw error;});
     try{await uiPromise;window.EstudiemosClassroomUI.open(options);}catch(_){window.EstudiemosAccount?.open();}finally{launching=false;}
   }
-  window.EstudiemosClasses=Object.freeze({snapshot,events,refresh,act,detail:id=>request('',{},id),open,pendingLaunch:()=>launching});
+  window.EstudiemosClasses=Object.freeze({snapshot,events,refresh,act,detail:id=>request('',{},id),history:id=>request('',{},id,false,true),open,pendingLaunch:()=>launching});
   if(!location.pathname.endsWith('/widget.html')&&!document.body.classList.contains('teacher-workspace')){
     const button=document.createElement('button');button.type='button';button.className='topbar__link topbar-icon-btn';button.dataset.classesOpen='';button.title='Materias y cátedras';button.setAttribute('aria-label','Abrir materias y cátedras');button.innerHTML=`<img src="${new URL('assets/icons/graduation-cap.svg',root)}" width="20" height="20" alt="">`;
     document.querySelector('.topbar__nav')?.append(button);button.addEventListener('click',()=>open());

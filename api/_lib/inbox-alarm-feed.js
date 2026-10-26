@@ -55,7 +55,7 @@ module.exports = async function alarmFeed(request,response) {
     if(request.body.action==='alarms-confirm'){
       const proof=verify(request.body.proof,'alarm-receipt');
       if(!proof||proof.sub!==user.id)return response.status(400).json({error:'No pudimos confirmar la conexión. Volvé a conectarla.'});
-      return response.status(200).json({connected:true,version:proof.version,userId:user.id,expiresAt:proof.feedExpiresAt});
+      return response.status(200).json({connected:true,version:proof.version,userId:user.id,expiresAt:proof.feedExpiresAt,...(proof.version==='2.0.0'?{mode:'local'}:{})});
     }
     if(request.body.consent!==true)return response.status(400).json({error:'Confirmá que querés recibir alarmas en esta PC.'});
     return response.status(200).json({token:sign(user.id,'alarm-setup',120)});
@@ -64,8 +64,8 @@ module.exports = async function alarmFeed(request,response) {
     const setup=verify(request.query.alarmSetup,'alarm-setup');
     if(!setup)return response.status(401).json({error:'El enlace venció. Conectá las alarmas de nuevo desde Estudiemos.'});
     const feedExpiresAt=seconds()+90*86400;
-    const version=['1.6.1','1.6.2','1.6.3'].includes(request.query.clientVersion)?request.query.clientVersion:'1.6.0';
-    return response.status(200).json({feedToken:sign(setup.sub,'alarm-feed',90*86400),snapshot:await snapshot(setup.sub),
+    const version=['1.6.1','1.6.2','1.6.3','2.0.0'].includes(request.query.clientVersion)?request.query.clientVersion:'1.6.0';
+    return response.status(200).json({... (version==='2.0.0'?{userId:setup.sub}:{feedToken:sign(setup.sub,'alarm-feed',90*86400)}),snapshot:await snapshot(setup.sub),
       confirmation:sign(setup.sub,'alarm-receipt',600,{version,feedExpiresAt})});
   }
   const feed=verify(String(request.headers.authorization||'').replace(/^Bearer /i,''),'alarm-feed');

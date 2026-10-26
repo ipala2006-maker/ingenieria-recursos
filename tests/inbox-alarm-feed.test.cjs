@@ -85,6 +85,15 @@ test('alarm RPC is server-only, owner-filtered and never grants table reads',()=
   assert.match(sql,/entry\.position <= 500/);
 });
 
+test('local v2 setup issues no long-lived read credential and confirms its local mode',async()=>{
+ const {call}=setup(),headers={authorization:'Bearer session'};
+ const started=await call('POST',{action:'alarms-connect',consent:true},{},headers);
+ const installed=await call('GET',{}, {alarmSetup:started.body.token,clientVersion:'2.0.0'});
+ assert.equal(installed.status,200);assert.equal(installed.body.userId,id);assert.equal(installed.body.feedToken,undefined);
+ const confirmed=await call('POST',{action:'alarms-confirm',proof:installed.body.confirmation},{},headers);
+ assert.equal(confirmed.body.mode,'local');assert.equal(confirmed.body.version,'2.0.0');
+});
+
 test('connected PCs receive only their local-day aggregate and keep alarms if progress is unavailable',async()=>{
   const {api,call,calls,setStudy}=setup(),date='2026-10-10';
   setStudy({date,minutes:45,goalMinutes:45,configured:true,email:'PRIVATE',days:{private:1}});
