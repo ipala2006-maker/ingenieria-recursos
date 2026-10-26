@@ -8,6 +8,7 @@ const textExtensions = new Set([
   ".cjs", ".mjs", ".jsx", ".ts", ".tsx", ".ps1", ".psm1", ".vbs", ".bat", ".cmd", ".py", ".sh", ".env", ".ini", ".config", ".txt"
 ]);
 const secretPatterns = [
+  ["age private identity", /AGE-SECRET-KEY-[A-Z0-9]{40,}/],
   ["private key", /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/],
   ["Google API key", /AIza[0-9A-Za-z_-]{35}/],
   ["Supabase secret key", /sb_secret_[0-9A-Za-z_-]{20,}/],

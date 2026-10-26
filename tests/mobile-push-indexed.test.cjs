@@ -90,7 +90,8 @@ test('dispatcher bounds parallel sends and acknowledges a mixed batch in one RPC
   const calls=[],jobs=Array.from({length:27},(_,i)=>({id:i+1,owner:user,tag:'inbox-'+(i+1),title:'Test',subscription:{endpoint:'https://web.push.apple.com/Q/'+i,keys:{p256dh:'B'.repeat(87),auth:'a'.repeat(22)}}}));
   let active=0,peak=0,legacy=false;
   const source=fs.readFileSync(require.resolve('../api/_lib/mobile-push'),'utf8');
-  const context={module:{exports:{}},URL,Intl,Buffer,process:{env:{WEB_PUSH_PUBLIC_KEY:'test',WEB_PUSH_PRIVATE_KEY:'test',MOBILE_PUSH_CRON_SECRET:'x'.repeat(40)}},require:name=>{
+  const waits=[];
+  const context={module:{exports:{}},URL,Intl,Buffer,setTimeout:(fn,ms)=>{waits.push(ms);fn();},process:{env:{WEB_PUSH_PUBLIC_KEY:'test',WEB_PUSH_PRIVATE_KEY:'test',MOBILE_PUSH_CRON_SECRET:'x'.repeat(40)}},require:name=>{
     if(name==='node:crypto')return require(name);
     if(name==='./supabase-admin')return {adminRequest:async(url,options)=>{const body=JSON.parse(options.body);calls.push({url,body});
       if(legacy&&url.endsWith('claim_mobile_push_batch'))throw {status:404,data:{code:'PGRST202'}};
@@ -109,4 +110,5 @@ test('dispatcher bounds parallel sends and acknowledges a mixed batch in one RPC
   await context.module.exports({method:'POST',query:{mobilePush:'dispatch'},headers:{authorization:'Bearer '+'x'.repeat(40)}},res);
   assert.equal(res.code,200);assert.equal(res.body.sent,4);assert.equal(res.body.failed,1);
   assert.equal(calls.length,7);assert.ok(calls.slice(2).every(call=>call.url.endsWith('finish_mobile_push_job')));
+  assert.equal(waits.length,2);assert.ok(waits.every(ms=>ms>=0&&ms<=750));
 });

@@ -12,7 +12,7 @@ module.exports = async function handler(request, response) {
     response.setHeader("Allow", "GET");
     return response.status(405).json({ message: "Método no permitido." });
   }
-  if (!(await enforceRateLimit(request, response, { route: "account-config", limit: 120, windowSeconds: 60 }))) return;
+  if (!(await enforceRateLimit(request, response, { route: "account-config", limit: 1000, windowSeconds: 60 }))) return;
 
   const url = process.env.SUPABASE_URL || "";
   const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY || "";

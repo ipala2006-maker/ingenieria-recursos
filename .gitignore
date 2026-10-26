@@ -13,6 +13,9 @@ Thumbs.db
 # Local audit artifacts, backups and private signing material.
 /tmp/
 /.backups/
+*.dump
+*.dump.age
+*.agekey
 *.jks
 *.keystore
 *.p12

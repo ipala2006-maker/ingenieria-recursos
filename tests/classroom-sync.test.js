@@ -12,7 +12,7 @@ function harness(){
 }
 test('class state uses conditional refresh, memoized projections, cooldown and visibility-sized polling',async()=>{
   const h=harness();await tick();assert.equal(h.calls.length,1);h.calls[0].resolve(state);await tick();assert.equal(h.api.snapshot().classes[0].id,alice);
-  assert.equal(h.timers.size,1);assert.equal([...h.timers.values()][0].delay,300000);
+  assert.equal(h.timers.size,1);const delay=[...h.timers.values()][0].delay;assert.ok(delay>=300000&&delay<330000);
   await h.api.refresh();assert.equal(h.calls.length,1,'Focus bursts do not add requests');
   const writes=h.writes,refresh=h.api.refresh(true);await tick();assert.match(h.calls[1].url,/revision=aaaaaaaa/);h.calls[1].resolve({revision:state.revision,unchanged:true});await refresh;assert.equal(h.writes,writes,'Unchanged state neither downloads calendar data nor rewrites cache');
   assert.strictEqual(h.api.events('2026-10-24'),h.api.events('2026-10-24'));

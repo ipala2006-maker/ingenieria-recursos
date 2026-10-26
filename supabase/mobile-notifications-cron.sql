@@ -7,6 +7,8 @@ create or replace function public.tick_mobile_push()
 returns void language plpgsql security definer set search_path = '' as $$
 declare token text; pending integer; worker integer;
 begin
+  -- Do not repeat queue work when two cron ticks overlap.
+  if not pg_catalog.pg_try_advisory_xact_lock(1793025042, 1) then return; end if;
   select decrypted_secret into token from vault.decrypted_secrets where name='estudiemos_mobile_push_cron' limit 1;
   if token is null or length(token)<32 then return; end if;
   insert into public.mobile_push_health(id,heartbeat) values(true,now())

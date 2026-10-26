@@ -10,17 +10,18 @@ module.exports=async function classrooms(req,res){
   if(!['GET','POST'].includes(req.method))return res.status(405).json({message:'Método no permitido.'});
   if(!isSameOriginRequest(req))return res.status(403).json({message:'Origen no permitido.'});
   if(rejectOversizedBody(req,res,8192)||req.method==='POST'&&!requireJsonRequest(req,res))return;
-  if(!await enforceRateLimit(req,res,{route:'classrooms',limit:360,windowSeconds:60}))return;
   if(req.method==='GET'&&req.query.invite){
-    if(!await enforceRateLimit(req,res,{route:'classroom-preview',limit:30,windowSeconds:60}))return;
     const code=rules.code(req.query.invite);if(!rules.CODE.test(code))return res.status(400).json({message:errors.INVALID_CODE});
+    if(!await enforceRateLimit(req,res,{route:'classroom-preview',limit:600,windowSeconds:60}))return;
     try{
       const preview=await require('./course-preview')(code,adminRequest);
       return res.status(200).json(preview);
     }catch(error){return res.status(error.message==='INVALID_CODE'?404:503).json({message:error.message==='INVALID_CODE'?errors.INVALID_CODE:'No pudimos preparar la invitación. Volvé a intentar.'});}
   }
+  if(!await enforceRateLimit(req,res,{route:'classroom-auth',limit:1000,windowSeconds:60,distributed:false}))return;
   const user=await authenticateBearer(req.headers.authorization);
   if(!user)return res.status(401).json({message:errors.AUTH_REQUIRED});
+  if(!await enforceRateLimit(req,res,{route:'classrooms',limit:120,ipLimit:1000,principal:user.id,windowSeconds:60}))return;
   const body=req.body||{},action=req.method==='GET'?(req.query.id?(req.query.history==='1'?'history':'detail'):'state'):body.action;
   if(req.method==='POST'&&!actions.has(action))return res.status(400).json({message:'Acción inválida.'});
   const data={};

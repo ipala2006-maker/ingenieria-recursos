@@ -16,6 +16,9 @@ tests/
 **/*.pfx
 **/*.pem
 **/*.key
+**/*.agekey
+**/*.dump
+**/*.dump.age
 **/*service-account*.json
 
 # Operational source and reports are not application assets.
@@ -27,3 +30,4 @@ google-apps-script/
 .github/
 scripts/security-check.js
 scripts/csp-check.js
+scripts/backup-database.cjs
