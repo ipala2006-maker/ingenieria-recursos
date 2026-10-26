@@ -7,7 +7,14 @@ const ids=[1,2,3,4].map(n=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')
 const base={title:'Física',teacherName:'Profesora Ana',institution:'Escuela piloto',timezone:'UTC',color:'teal',code:'ABCDEFGHJK'};
 const activity={title:'Parcial',date:'2026-10-26',start:'08:00',end:'10:00',allDay:false,type:'Examen',color:'amber',note:'Aula 2',repeat:'none',days:[],endDate:''};
 async function database(){const db=new PGlite();await db.exec('create role anon;create role authenticated;create role service_role;create schema auth;create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz);create table friend_profiles(user_id uuid primary key,username text);');for(const id of ids)await db.query('insert into auth.users values($1,$2,now())',[id,id+'@example.test']);await db.exec(sql);await db.exec(invitationSql);return db;}
-const call=async(db,user,action='state',data={})=>(await db.query('select classroom_action($1,$2,$3) as data',[user,action,data])).rows[0].data;
+const call=async(db,user,action='state',data={})=>{
+  if(['event_save','event_remove','material_save','material_remove'].includes(action)&&data.expectedVersion===undefined){
+    const detail=(await db.query('select classroom_action($1,$2,$3) as data',[user,'detail',{id:data.id}])).rows[0].data;
+    const value=(action.startsWith('event_')?detail.events:detail.materials).find(item=>item.id===data.itemId)?.version;
+    data={...data,expectedVersion:Number(value||0)};
+  }
+  return(await db.query('select classroom_action($1,$2,$3) as data',[user,action,data])).rows[0].data;
+};
 const create=async(db,user=ids[0],data={})=>call(db,user,'create',{...base,...data});
 
 test('members see team contacts and exact grants, never student emails or public contact leaks',async()=>{
@@ -195,7 +202,7 @@ test('each of the six grants controls only its own operation, including upserts 
     await grant(db,id,ids[1],Object.fromEntries(rules.PERMISSIONS.map(key=>[key,true])));
     await assert.rejects(call(db,ids[1],'event_save',{id,itemId:ids[3],event:activity}),/CLASS_UNAVAILABLE/);
     await assert.rejects(call(db,ids[1],'event_save',{id:other,itemId:ids[3],event:activity}),/CLASS_UNAVAILABLE/);
-    await call(db,ids[1],'event_remove',{id,itemId:ids[3]});assert.equal((await call(db,ids[2])).calendar.length,1,'Removing a foreign ID cannot affect another course');
+    await assert.rejects(call(db,ids[1],'event_remove',{id,itemId:ids[3]}),/CLASS_UNAVAILABLE/);assert.equal((await call(db,ids[2])).calendar.length,1,'Removing a foreign ID cannot affect another course');
   }finally{await db.close();}
 });
 

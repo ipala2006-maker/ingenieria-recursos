@@ -243,7 +243,7 @@ test('Windows alarm task uses headless console mode and stays hidden between che
   assert.doesNotMatch(packageSource,/InboxAlarmLauncher\.vbs/);
 });
 
-test('Windows reads its protected cloud feed without Rainmeter and retains an offline cache', {skip:process.platform!=='win32'}, t => {
+test('Windows reads the legacy cache without any background network request', {skip:process.platform!=='win32'}, t => {
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'estudiemos-alarm-test-'));
   t.after(()=>{assert.equal(path.dirname(path.resolve(dir)),path.resolve(os.tmpdir()));assert.match(path.basename(dir),/^estudiemos-alarm-test-/);fs.rmSync(dir,{recursive:true,force:true});});
   const snapshot={version:1,items:[{id:'cloud',title:'Alarma piloto',alarm:alarm()}]};
@@ -252,22 +252,21 @@ test('Windows reads its protected cloud feed without Rainmeter and retains an of
     const p=spawnSync('powershell.exe',['-NoProfile','-NonInteractive','-File',path.join(root,'tests/helpers/native-alarm-feed.ps1'),'-StateDirectory',dir,'-Scenario',scenario],{encoding:'utf8',windowsHide:true,env:{...process.env,PSModulePath:path.join(process.env.WINDIR,'System32/WindowsPowerShell/v1.0/Modules')}});
     assert.equal(p.status,0,p.stderr);
     assert.equal(JSON.parse(p.stdout).length,scenario==='empty'?0:1,scenario);
-    const status=JSON.parse(fs.readFileSync(path.join(dir,'connection.json'),'utf8').replace(/^\uFEFF/,''));
-    assert.equal(status.status,scenario==='offline'?'offline':'connected');
     assert.equal(fs.existsSync(path.join(dir,'delivered.json')),false,'dry run never delivers alerts');
   }
 });
 
-test('Windows keeps a hidden alarm bridge active without visible widgets', () => {
+test('the obsolete hidden cloud bridge is disabled in both entry points', () => {
   const bridge=fs.readFileSync(path.join(root,'windows-rainmeter/Skins/Estudiemos/AlarmBridge/AlarmBridge.ini'),'utf8');
   const packageSource=fs.readFileSync(path.join(root,'windows-installer/Estudiemos-Windows.iss'),'utf8');
   const launcher=fs.readFileSync(path.join(root,'windows-installer/WidgetLauncher.vbs'),'utf8');
   assert.match(bridge,/WindowX=-10000/);
   assert.match(bridge,/ClickThrough=1/);
-  assert.match(bridge,/refreshFromCloud/);
-  assert.match(packageSource,/ActivateConfig \"Estudiemos\\AlarmBridge\"/);
-  assert.match(launcher,/Estudiemos\\AlarmBridge/);
-  assert.match(packageSource,/#define AppVersion \"1\.6\.5\.0\"/);
+  assert.match(bridge,/URL=about:blank/);
+  assert.doesNotMatch(bridge,/refreshFromCloud|OnUpdateAction=/);
+  assert.match(packageSource,/!DeactivateConfig \"Estudiemos\\AlarmBridge\"/);
+  assert.match(launcher,/!DeactivateConfig/);
+  assert.match(packageSource,/#define AppVersion \"2\.0\.0\.0\"/);
 });
 
 test('due Windows alarms show their names in a dismissible full-screen alert with looping sound', () => {

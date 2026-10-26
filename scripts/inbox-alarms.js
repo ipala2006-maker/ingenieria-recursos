@@ -2,6 +2,11 @@
   if (window.EstudiemosInboxAlarms || !window.EstudiemosAlarmRules) return;
   const rules = window.EstudiemosAlarmRules;
   const root = new URL('../', document.currentScript.src);
+  if(/Windows/i.test(navigator.userAgent)&&!window.EstudiemosWindowsLocalAlarms){
+    const snapshot=document.createElement('script');snapshot.src=new URL('shared/windows-alarm-snapshot.js?v=20261026-local',root);
+    snapshot.onload=()=>{const bridge=document.createElement('script');bridge.src=new URL('scripts/windows-local-alarms.js?v=20261026-local',root);document.head.appendChild(bridge);};
+    document.head.appendChild(snapshot);
+  }
   if (!window.EstudiemosMobileNotifications) {
     const mobile = document.createElement('script');
     mobile.src = new URL('scripts/mobile-notifications.js?v=20260930', root);
@@ -31,11 +36,14 @@
     <nav class="alarm-setup-progress" aria-label="Activación de alarmas"><span data-alarm-step="install">1. Instalar</span><span data-alarm-step="connect">2. Conectar</span><span data-alarm-step="test">3. Probar</span></nav>
     <div class="alarm-setup-steps">
       <section data-alarm-stage="install"><strong>Prepará esta PC una sola vez</strong><p>Es un complemento pequeño. No necesitás instalar widgets ni Rainmeter.</p><a class="alarm-setup-download" href="${new URL('downloads/Activar-Alarmas-Estudiemos.exe',root)}" download>Descargar complemento de alarmas</a><p data-alarm-download-note hidden>Abrí <strong>Activar-Alarmas-Estudiemos.exe</strong> desde Descargas. Al terminar, Estudiemos vuelve al paso de conexión.</p><button type="button" data-alarm-installed>Ya lo instalé · Continuar</button></section>
-      <section data-alarm-stage="connect" hidden><strong>Conectá tus alarmas a esta PC</strong><label class="alarm-setup-consent"><input type="checkbox" data-alarm-consent> Permitir que esta PC consulte mis alarmas y muestre pantalla completa con sonido, incluso con la app cerrada.</label><button type="button" data-alarm-activate disabled>Conectar con Windows</button><a data-alarm-retry hidden>Abrir activación de Windows</a><p>Si aparece un aviso del navegador, elegí «Abrir». La conexión se confirma al volver desde Windows.</p><details class="alarm-setup-file"><summary>No se abrió nada</summary><p>Probá con un archivo de conexión: descargalo y abrilo antes de dos minutos. Es personal, no lo compartas. Requiere el complemento de alarmas 1.6.3 o posterior.</p><button type="button" data-alarm-file disabled>Conectar mediante archivo</button><a data-alarm-file-download hidden>Descargar archivo de conexión</a><button type="button" data-alarm-reinstall>Revisar instalación</button></details></section>
+      <section data-alarm-stage="connect" hidden><strong>Conectá tus alarmas a esta PC</strong><label class="alarm-setup-consent"><input type="checkbox" data-alarm-consent> Permitir que esta PC consulte mis alarmas y muestre pantalla completa con sonido, incluso con la app cerrada.</label><button type="button" data-alarm-activate disabled>Conectar con Windows</button><a data-alarm-retry hidden>Abrir activación de Windows</a><p>Si aparece un aviso del navegador, elegí «Abrir». La conexión se confirma al volver desde Windows.</p><details class="alarm-setup-file"><summary>No se abrió nada</summary><p>Probá con un archivo de conexión: descargalo y abrilo antes de dos minutos. Es personal, no lo compartas. Requiere el complemento de alarmas 2.0 o posterior.</p><button type="button" data-alarm-file disabled>Conectar mediante archivo</button><a data-alarm-file-download hidden>Descargar archivo de conexión</a><button type="button" data-alarm-reinstall>Revisar instalación</button></details></section>
       <section data-alarm-stage="test" hidden><strong>Tu cuenta está conectada</strong><p>Probá una vez el aviso fuera de Estudiemos. Sonará hasta que toques Entendido o Escape.</p><button type="button" data-alarm-native-test>Probar alarma de Windows</button><button type="button" data-alarm-finish hidden>Listo, vi la alarma</button></section>
     </div><p data-alarm-native-status role="status" aria-live="polite"></p><details class="alarm-setup-trouble"><summary>Ayuda y reparación</summary><p>La prueba comprueba el complemento, no la conexión de la cuenta. No necesitás desactivar el antivirus.</p><button type="button" data-alarm-native-test>Probar solo el complemento</button><button type="button" data-alarm-reinstall>Volver a la instalación</button><button type="button" data-alarm-reconnect>Volver a conectar mi cuenta</button><a href="${new URL('instalar.html#pc-widgets',root)}" target="_blank" rel="noopener">Ayuda con la descarga</a></details><small>La PC debe estar encendida, con la sesión iniciada y el volumen activo. Puede demorarse hasta un minuto.</small>`;
+  setup.querySelector('[data-alarm-stage=connect]').insertAdjacentHTML('beforeend','<div class="alarm-local-file"><p>Con el complemento 2.0 conectado, elegí una vez tu archivo <strong>.estudiemos-local</strong> de <strong>Documentos → Estudiemos</strong>. El navegador pedirá permiso para actualizarlo.</p><button type="button" data-alarm-local-file>Elegir archivo de programación local</button></div>');
+  setup.querySelector('.alarm-setup-consent').lastChild.textContent=' Permitir que esta PC guarde mi programación local y muestre alarmas a pantalla completa, incluso con la app cerrada.';
+  setup.insertAdjacentHTML('beforeend','<p class="alarm-local-warning">Esta PC no consulta el servidor en segundo plano. Las alarmas creadas o cambiadas desde otro dispositivo llegarán al abrir o sincronizar Estudiemos aquí.</p>');
   document.body.appendChild(setup);
-  function nativeReady(){let saved={};try{saved=JSON.parse(localStorage.getItem(CONNECTION_KEY)||'{}');}catch(_){}return saved.userId===window.EstudiemosAccount?.getUser?.()?.id&&saved.expiresAt*1000>Date.now()&&['1.6.1','1.6.2','1.6.3'].includes(saved.version);}
+  function nativeReady(){return window.EstudiemosWindowsLocalAlarms?.ready()===true;}
   function clearConnectionFile(){
     if(connectionFileUrl)URL.revokeObjectURL(connectionFileUrl);
     connectionFileUrl='';
@@ -143,10 +151,11 @@
     if(setupStage==='test'&&!ready)setupStage='connect';
     setup.querySelectorAll('[data-alarm-stage]').forEach(node=>node.hidden=node.dataset.alarmStage!==setupStage);
     setup.querySelectorAll('[data-alarm-step]').forEach(node=>{if(node.dataset.alarmStep===setupStage)node.setAttribute('aria-current','step');else node.removeAttribute('aria-current');});
-    document.querySelectorAll('[data-alarm-native-status]').forEach(node=>node.textContent=nativeMessage || (ready?'Conectada. Esta PC recibe también las alarmas que creás desde el celular.':setupStage==='install'?'':'Conectá esta PC una vez para recibir todas las alarmas de tu cuenta.'));
+    document.querySelectorAll('[data-alarm-native-status]').forEach(node=>node.textContent=nativeMessage || (ready?'Programación local activa. Se actualiza al abrir o sincronizar esta PC.':setupStage==='install'?'':'Conectá el complemento 2.0 y autorizá tu archivo local de programación.'));
     document.querySelectorAll('[data-alarm-native-connect]').forEach(button=>{button.textContent=ready?'Comprobar alarma de pantalla completa':'Activar pantalla completa en esta PC';});
     setup.querySelector('[data-alarm-activate]').disabled=nativeConnecting||!setup.querySelector('[data-alarm-consent]').checked;
     setup.querySelector('[data-alarm-file]').disabled=nativeConnecting||!setup.querySelector('[data-alarm-consent]').checked;
+    setup.querySelector('[data-alarm-local-file]').disabled=nativeConnecting||!setup.querySelector('[data-alarm-consent]').checked;
     setup.querySelector('[data-alarm-activate]').textContent=nativeConnecting?'Preparando conexión…':'Conectar con Windows';
   }
   async function connectWindows(mode='protocol') {
@@ -186,6 +195,7 @@
       if(!response.ok||!result.connected){renderNativeStatus(result.error||'La conexión venció. Volvé a conectar esta PC.');return;}
       url.searchParams.delete('windows-alarms-ready');history.replaceState(history.state,'',url.pathname+url.search+url.hash);
       localStorage.setItem(CONNECTION_KEY,JSON.stringify(result));localStorage.setItem(NATIVE_KEY,'true');renderNativeStatus('');
+      setupStage='connect';
       showSetup();
       window.dispatchEvent(new CustomEvent('estudiemos:home-navigate',{detail:{view:'inbox'}}));
       window.EstudiemosAccount?.sync?.();
@@ -279,7 +289,7 @@
     const alarm = rules.normalize(item.alarm), label = alarm ? rules.describe(alarm) : 'Agregar alarma';
     return `<button type="button" class="inbox-alarm-button ${alarm ? 'is-set' : ''}" data-inbox-alarm-id="${escape(item.id)}" title="${escape(label)}" aria-label="${escape(label)}: ${escape(item.title)}">${bell}</button>`;
   }
-  document.addEventListener('click', e => {
+  document.addEventListener('click', async e => {
     const b = e.target.closest('[data-inbox-alarm-id]'); if (b) { e.preventDefault(); open(b.dataset.inboxAlarmId); }
     if (e.target.closest('[data-alarm-close]')) dialog.close();
     if (e.target.closest('[data-alarm-test]')) enableSound().then(sound);
@@ -292,6 +302,14 @@
     if (e.target.closest('[data-alarm-finish]')) setup.close();
     if (e.target.closest('[data-alarm-activate]')) connectWindows();
     if (e.target.closest('[data-alarm-file]')) connectWindows('file');
+    if(e.target.closest('[data-alarm-local-file]')){
+      try{
+        if(!setup.querySelector('[data-alarm-consent]').checked)return;
+        if(!window.EstudiemosWindowsLocalAlarms)throw new Error('La programación local todavía se está cargando. Volvé a intentar.');
+        await window.EstudiemosWindowsLocalAlarms.connectFile();
+        if(nativeReady()){setupStage='test';nativeMessage='';renderNativeStatus();}
+      }catch(error){if(error.name!=='AbortError')renderNativeStatus(error.message);}
+    }
     if (e.target.closest('[data-alarm-setup-close]')) setup.close();
     if (e.target.closest('[data-alarm-native-test]')) {
       launchNative('estudiemos-alarms://test');
@@ -384,8 +402,9 @@
       return;
     }
     const user = window.EstudiemosAccount?.getUser?.();
-    const localConsent = nativeReady() || localStorage.getItem(NATIVE_KEY) === 'true';
-    const payload = { version: 1, items: user && localConsent ? items().filter(i => !i.done && rules.normalize(i.alarm)).map(i => ({ id: String(i.id).slice(0, 180), title: String(i.title).slice(0, 90), alarm: { ...rules.normalize(i.alarm), windows: true } })) : [] };
+    const localConsent = nativeReady() || localStorage.getItem(NATIVE_KEY) === 'true' || Boolean(window.RainmeterAPI?.Bang);
+    let study=null;try{const streak=JSON.parse(localStorage.getItem('estudiemos_pomodoro_streak')||'{}'),goal=window.EstudiemosStudyGoal?.read(streak),date=rules.dateKey(new Date());if(goal)study={date,minutes:Math.min(1440,Math.max(0,Math.floor(Number(streak.days?.[date])||0))),goalMinutes:goal.minutes,configured:goal.configured};}catch(_){}
+    const payload = { version: 1, owner:user?.id||'', study, items: user && localConsent ? items().filter(i => !i.done && rules.normalize(i.alarm)).map(i => ({ id: String(i.id).slice(0, 180), title: String(i.title).slice(0, 90), alarm: { ...rules.normalize(i.alarm), windows: true } })) : [] };
     const text = JSON.stringify(payload); if (text === lastNative) return;
     const encoded = btoa(Array.from(new TextEncoder().encode(text), b => String.fromCharCode(b)).join(''));
     const chunks = encoded.match(/.{1,3000}/g) || [];
@@ -396,6 +415,11 @@
     lastNative = text;
   }
   window.EstudiemosInboxAlarms = { readForm, readDate, button, open, check, showSetup, nativeReady };
+  window.addEventListener('estudiemos:windows-local-alarm-status',event=>{
+    nativeMessage=event.detail?.message||'';
+    if(nativeReady())setupStage='test';
+    renderNativeStatus();
+  });
   window.addEventListener('estudiemos:mobile-notifications', () => document.querySelectorAll('form:has(.inbox-alarm-fields)').forEach(renderPermission));
   const entry=new URL(location.href);
   if(entry.searchParams.get('alarms-setup')==='1'){setupStage='connect';entry.searchParams.delete('alarms-setup');history.replaceState(history.state,'',entry.pathname+entry.search+entry.hash);showSetup();}

@@ -130,6 +130,15 @@
 .classroom-save-modes strong { font-size:14px;color:var(--text);font-weight:550; }
 .classroom-save-modes small,.classroom-drive-help p { font-size:12px;line-height:1.6;color:var(--muted);overflow-wrap:anywhere; }
 .classroom-drive-help { border-top:1px solid var(--border);padding-top:8px; }
+.classroom-history { list-style:none;margin:0;padding:0; }
+.classroom-history li { padding:16px 0;border-bottom:1px solid var(--border);font-size:13px;overflow-wrap:anywhere; }
+.classroom-history li>div { display:flex;align-items:baseline;gap:8px;flex-wrap:wrap; }
+.classroom-history time { margin-left:auto; }
+.classroom-history span,.classroom-history time,.classroom-history small { color:var(--muted);font-size:12px;line-height:1.6; }
+.classroom-history p { margin:8px 0 4px; }
+.classroom-blocked { margin-top:24px;border-top:1px solid var(--border);padding-top:12px; }
+.classroom-blocked h4 { font-size:14px; }
+.classroom-blocked>div { display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:13px;padding:8px 0; }
 .classroom-content .classroom-row:has([data-class-save-drive]) { flex-wrap:wrap; }
 .classroom-content .classroom-row:has([data-class-save-drive])>.classroom-actions { flex-basis:100%;padding-left:32px; }
 .classroom-file-open { display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:8px;font-size:12px; }

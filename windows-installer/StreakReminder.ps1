@@ -12,20 +12,14 @@ try {
     $snapshot = Get-Content -LiteralPath $InputPath -Raw -Encoding UTF8 | ConvertFrom-Json
     $study = $snapshot.study
   } elseif (!$DryRun) {
-    $feedPath = Join-Path $StateDirectory 'feed.dpapi'
-    if (Test-Path -LiteralPath $feedPath) {
-      [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-      Import-Module (Join-Path $PSHOME 'Modules\Microsoft.PowerShell.Security\Microsoft.PowerShell.Security.psd1')
-      $secure = Get-Content -LiteralPath $feedPath -Raw | ConvertTo-SecureString
-      $credential = New-Object Management.Automation.PSCredential('alarm-feed', $secure)
-      $snapshot = Invoke-RestMethod -Uri ('https://estudiemos-app.vercel.app/api/widget-link?alarmFeed=1&localDate=' + $today) -Headers @{Authorization=('Bearer ' + $credential.GetNetworkCredential().Password)} -TimeoutSec 12
-      if ($snapshot.version -eq 1) { $study = $snapshot.study }
-    }
+    . (Join-Path $PSScriptRoot 'ReadLocalAlarms.ps1')
+    $snapshot = Read-EstudiemosLocalAlarms -StateDirectory $StateDirectory
+    if ($snapshot.version -eq 1) { $study = $snapshot.study }
   }
 } catch {
   # Offline or disconnected accounts cannot confirm that their goal is still pending.
   $study = $null
-} finally { $credential = $null; $secure = $null }
+}
 $minutes = 0
 $goal = 25
 $configured = $false
@@ -63,7 +57,7 @@ if ($configured -and $minutes -ge $goal) {
         (ConvertFrom-Json $saved).PSObject.Properties | Where-Object { $_.Name -ge $Now.AddDays(-2).ToString('yyyy-MM-dd') } | ForEach-Object { $history[$_.Name] = $_.Value }
       }
     }
-    $connection = if (Test-Path -LiteralPath (Join-Path $StateDirectory 'feed.dpapi')) { (Get-FileHash -LiteralPath (Join-Path $StateDirectory 'feed.dpapi') -Algorithm SHA256).Hash } else { 'local' }
+    $connection = if (Test-Path -LiteralPath (Join-Path $StateDirectory 'local-config.json')) { (Get-FileHash -LiteralPath (Join-Path $StateDirectory 'local-config.json') -Algorithm SHA256).Hash } else { 'local' }
     $key = $today + '|' + $slot + '|' + $connection
     if (!$history.ContainsKey($key)) {
       Show-EstudiemosToast -Title 'Momento de estudiar' -Body ('Te faltan {0} min para completar tu objetivo de hoy.' -f ($goal - $minutes))

@@ -210,31 +210,18 @@ if ($TestAlert) {
   exit 0
 }
 $snapshot = $null
-$feedPath = Join-Path $StateDirectory 'feed.dpapi'
 if (!$DryRun -and !$InputPath) {
   New-Item -ItemType Directory -Path $StateDirectory -Force | Out-Null
-  @{status='checking';hasConnection=(Test-Path -LiteralPath $feedPath);checkedAt=(Get-Date).ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $StateDirectory 'sync-status.json') -Encoding UTF8
+  @{status='local';checkedAt=(Get-Date).ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $StateDirectory 'sync-status.json') -Encoding UTF8
 }
-if (!$InputPath -and (Test-Path -LiteralPath $feedPath)) {
-  $cachePath = Join-Path $StateDirectory 'cloud.json'
-  try {
-    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-    Import-Module (Join-Path $PSHOME 'Modules\Microsoft.PowerShell.Security\Microsoft.PowerShell.Security.psd1') -ErrorAction Stop
-    $secure = Get-Content -LiteralPath $feedPath -Raw | ConvertTo-SecureString
-    $credential = New-Object System.Management.Automation.PSCredential('alarm-feed', $secure)
-    $snapshot = Invoke-RestMethod -Uri ('https://estudiemos-app.vercel.app/api/widget-link?alarmFeed=1&localDate=' + $Now.ToString('yyyy-MM-dd')) -Headers @{Authorization=('Bearer ' + $credential.GetNetworkCredential().Password)} -TimeoutSec 12
-    if ($snapshot.version -ne 1 -or @($snapshot.items).Count -gt 500) { throw 'Invalid alarm feed.' }
-    $snapshot | ConvertTo-Json -Depth 8 -Compress | Set-Content -LiteralPath $cachePath -Encoding UTF8
-    @{status='connected';checkedAt=(Get-Date).ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $StateDirectory 'sync-status.json') -Encoding UTF8
-    @{status='connected';lastSync=(Get-Date).ToString('o');version='1.6.3'} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $StateDirectory 'connection.json') -Encoding UTF8
-  } catch {
-    $status = if ($_.Exception.Response -and [int]$_.Exception.Response.StatusCode -in @(401,403)) { 'reconnect' } else { 'offline' }
-    $httpStatus = if ($_.Exception.Response) { [int]$_.Exception.Response.StatusCode } else { 0 }
-    @{status=$status;httpStatus=$httpStatus;errorType=$_.Exception.GetType().FullName;errorCode=$_.Exception.HResult;line=$_.InvocationInfo.ScriptLineNumber;checkedAt=(Get-Date).ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $StateDirectory 'sync-status.json') -Encoding UTF8
-    @{status=$status;checkedAt=(Get-Date).ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $StateDirectory 'connection.json') -Encoding UTF8
-    if ($status -eq 'reconnect') { exit 0 }
-    if (Test-Path -LiteralPath $cachePath) { $snapshot = Get-Content -LiteralPath $cachePath -Raw | ConvertFrom-Json }
-  } finally { $credential = $null; $secure = $null }
+if (!$InputPath -and (Test-Path -LiteralPath (Join-Path $StateDirectory 'local-config.json'))) {
+  . (Join-Path $PSScriptRoot 'ReadLocalAlarms.ps1')
+  $snapshot = Read-EstudiemosLocalAlarms -StateDirectory $StateDirectory
+  if (!$snapshot) { exit 0 }
+} elseif (!$InputPath -and (Test-Path -LiteralPath (Join-Path $StateDirectory 'cloud.json'))) {
+  # Keep the last schedule during upgrade, without using the former network credential.
+  $cache = Get-Item -LiteralPath (Join-Path $StateDirectory 'cloud.json')
+  if ($cache.Length -le 400000) { $snapshot = Get-Content -LiteralPath $cache.FullName -Raw -Encoding UTF8 | ConvertFrom-Json }
 }
 if (!$snapshot) {
 if (!$InputPath) {

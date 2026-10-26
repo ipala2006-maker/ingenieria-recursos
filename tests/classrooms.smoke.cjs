@@ -5,11 +5,12 @@ const root=path.resolve(__dirname,'..'),out=path.join(root,'tmp/classrooms');
 const teacher='00000000-0000-4000-8000-000000000001',student='00000000-0000-4000-8000-000000000002',moderator='00000000-0000-4000-8000-000000000003';
 const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)').headers;
 (async()=>{
-  let browser,server,lastPage;const db=new PGlite();
+  let browser,server,lastPage,directReads=0,legacyReads=0;const db=new PGlite();
   try{
     fs.mkdirSync(out,{recursive:true});
     await db.exec('create role anon;create role authenticated;create role service_role;create schema auth;create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz);create table friend_profiles(user_id uuid primary key,username text);');
     for(const [id,name]of[[teacher,'Teacher'],[student,'Student'],[moderator,'StudyMate42']]){await db.query('insert into auth.users values($1,$2,now())',[id,name+'@example.test']);await db.query('insert into friend_profiles values($1,$2)',[id,name]);}
+    await db.exec("create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;");
     await db.exec(fs.readFileSync(path.join(root,'supabase/classrooms.sql'),'utf8'));
     await db.exec(fs.readFileSync(path.join(root,'supabase/classroom-invitations.sql'),'utf8'));
     const file=path.join(root,'api/_lib/classrooms.js'),localRequire=createRequire(file),sandbox={module:{exports:{}},require(name){
@@ -23,9 +24,15 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
     }};vm.runInNewContext(fs.readFileSync(inviteFile,'utf8'),inviteSandbox);
     server=http.createServer(async(req,res)=>{
       const url=new URL(req.url,'http://localhost');
+      if(url.pathname==='/rest/v1/rpc/classroom_read'){
+        const user=req.headers.authorization?.replace('Bearer ','');if(![teacher,student,moderator].includes(user))return res.writeHead(401).end();
+        let raw='';for await(const chunk of req)raw+=chunk;const args=JSON.parse(raw);directReads++;
+        try{const value=await db.transaction(async tx=>{await tx.exec('set local role authenticated');await tx.query("select set_config('request.jwt.claim.sub',$1,true)",[user]);return(await tx.query('select classroom_read($1,$2) data',[args.p_action,args.p_data])).rows[0].data;});res.setHeader('Content-Type','application/json');return res.end(JSON.stringify({data:value,error:null}));}catch(error){res.setHeader('Content-Type','application/json');return res.end(JSON.stringify({data:null,error:{code:'P0001',message:error.message}}));}
+      }
       const friendly=/^\/materia\/([A-HJ-NP-Z2-9]{10})$/.exec(url.pathname);
       if(friendly){for(const{key,value}of headers)res.setHeader(key,key==='Content-Security-Policy'?value.replace(/;\s*upgrade-insecure-requests/,''):value);const setHeader=res.setHeader.bind(res);res.setHeader=(name,value)=>setHeader(name,name==='Content-Security-Policy'?value.replace(/;\s*upgrade-insecure-requests/,''):value);req.query={courseInvitation:friendly[1]};res.status=code=>{res.statusCode=code;return res;};res.json=value=>res.end(JSON.stringify(value));res.send=value=>res.end(value);return inviteSandbox.module.exports(req,res);}
       if(url.pathname==='/api/account-config'&&url.searchParams.get('classes')==='1'){
+        if(req.method==='GET'&&!url.searchParams.has('invite'))legacyReads++;
         let raw='';for await(const chunk of req)raw+=chunk;req.query=Object.fromEntries(url.searchParams);try{req.body=raw?JSON.parse(raw):{};}catch(_){return res.writeHead(400).end();}
         res.status=code=>{res.statusCode=code;return res;};res.json=value=>{res.setHeader('Content-Type','application/json');res.end(JSON.stringify(value));};return sandbox.module.exports(req,res);
       }
@@ -60,7 +67,7 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
         if(url.origin!==base)return route.abort();
         if(url.searchParams.get('drive')==='status')return route.fulfill({json:{connected:driveFixture}});
         if(url.searchParams.get('drive')==='token')return route.fulfill({json:{accessToken:'fixture-only',expiresAt:Date.now()+3600000}});
-        if(url.pathname==='/scripts/account.js')return route.fulfill({contentType:'text/javascript',body:`window.EstudiemosAccount={getUser:()=>window.__classUser?{id:window.__classUser}:null,getSession:()=>window.__classUser?{access_token:window.__classUser}:null,whenReady:()=>Promise.resolve({session:window.__classUser?{access_token:window.__classUser}:null}),isSynchronized:()=>true,getClient:()=>null,open:()=>{window.__loginOpened=true},refresh:async()=>{}};window.dispatchEvent(new CustomEvent('estudiemos:account-ready'));`});
+        if(url.pathname==='/scripts/account.js')return route.fulfill({contentType:'text/javascript',body:`window.EstudiemosAccount={getUser:()=>window.__classUser?{id:window.__classUser}:null,getSession:()=>window.__classUser?{access_token:window.__classUser}:null,whenReady:()=>Promise.resolve({session:window.__classUser?{access_token:window.__classUser}:null}),isSynchronized:()=>true,getClient:()=>({rpc:async(name,args)=>(await fetch('/rest/v1/rpc/'+name,{method:'POST',headers:{Authorization:'Bearer '+window.__classUser},body:JSON.stringify(args)})).json()}),open:()=>{window.__loginOpened=true},refresh:async()=>{}};window.dispatchEvent(new CustomEvent('estudiemos:account-ready'));`});
         return route.continue();
       });return ctx;
     }
@@ -107,6 +114,10 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
     lastPage=sp;await sp.locator('[data-class-tab=events]').click();await sp.locator('[data-class-refresh]').click();await sp.locator('.classroom-row strong').filter({hasText:'Parcial actualizado'}).waitFor();
     const dc=await context(teacher,1440,'teacher',true),dp=await dc.newPage();lastPage=dp;dp.on('pageerror',error=>errors.push(error.message));
     await dp.goto(base);await dp.waitForURL('**/materias.html');await dp.locator('[data-class-select="'+id+'"]').click();await dp.locator('.classroom-course-head h3').waitFor();
+    await dp.locator('[data-class-event]').filter({hasText:'Editar'}).click();const stale=dp.locator('[data-class-form=event_save]');await stale.locator('[name=title]').fill('Borrador conservado');
+    await tp.locator('[data-class-event]').filter({hasText:'Editar'}).click();await tp.locator('[data-class-form=event_save] [type=submit]').click();await tp.locator('.classroom-row strong').filter({hasText:'Parcial actualizado'}).waitFor();
+    await stale.locator('[type=submit]').click();await dp.locator('[data-class-conflict-reload]').waitFor();assert.equal(await stale.locator('[name=title]').inputValue(),'Borrador conservado');await dp.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-conflict-draft.png`)});
+    await dp.locator('[data-class-conflict-reload]').click();await dp.locator('.classroom-confirm button').filter({hasText:'Confirmar'}).click();await dp.locator('.classroom-tools').waitFor();
     assert.equal(await dp.locator('.classroom-tools button').count(),3);assert.equal(await dp.locator('[data-dashboard-widget], [data-study-goal-dialog], [data-pomodoro]').count(),0);
     assert.equal(await dp.locator('dialog.classroom-dialog').count(),0,'Teacher account controls must not be blocked by a native modal');
     await dp.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-dedicated-teacher.png`)});
@@ -145,6 +156,11 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
     await modEvent.locator('[type=submit]').click();await mp.locator('.classroom-status.is-error').waitFor();assert.match(await mp.locator('.classroom-status').innerText(),/No tenés permiso/);assert.equal(await mp.locator('[data-class-event]').count(),0,'Revoked permissions remove stale editor controls after a rejected save');assert.equal((await db.query('select count(*)::int n from classroom_events where class_id=$1',[shared.id])).rows[0].n,1);
     assert.match(await mp.locator('.classroom-team').innerText(),/Student@example\.test/);
     assert.equal(await mp.locator('.classroom-team').innerText().then(text=>text.includes('StudyMate42@example.test')),false,'Revoking delegation removes its contact from the current member detail');
+    await mp.locator('[data-class-history]').click();await mp.locator('.classroom-history li strong').first().waitFor();assert.match(await mp.locator('.classroom-history').innerText(),/Práctica colaborativa/);assert.doesNotMatch(await mp.locator('.classroom-history').innerText(),/@example\.test/);await mp.locator('[data-class-back]').click();
+    await rp.locator('[data-class-remove-member="'+moderator+'"]').click();await rp.locator('.classroom-confirm button').filter({hasText:'Confirmar'}).click();await rp.locator('[data-class-unblock="'+moderator+'"]').waitFor();
+    const blocked=await mp.evaluate(async code=>{try{await EstudiemosClasses.act('join',{code});return null;}catch(error){return error.code;}},shared.code);assert.equal(blocked,'CLASS_BLOCKED');
+    await rp.locator('[data-class-unblock="'+moderator+'"]').click();await rp.locator('.classroom-confirm button').filter({hasText:'Confirmar'}).click();await rp.waitForFunction(()=>!document.querySelector('[data-class-unblock]'));
+    await rp.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-moderation.png`)});
     await mc.close();await rc.close();await dc.close();
     await sp.evaluate(()=>{window.__classUser='';window.dispatchEvent(new CustomEvent('estudiemos:account-change'));});assert.equal(await sp.locator('.classroom-main').innerText().then(text=>text.includes('Parcial actualizado')),false);assert.equal(await sp.evaluate(()=>EstudiemosClasses.snapshot()),null);assert.equal(await sp.evaluate(()=>localStorage.getItem('estudiemos_classes_v1')),null);
     const previewResponse=await fetch(base+'/api/account-config?classes=1&invite='+code),preview=await previewResponse.json();assert.equal(previewResponse.status,200);assert.equal(preview.title,'Física · 1.º año');assert.equal(preview.calendar[0].data.note,'');assert.equal(preview.materials,undefined);assert.equal(preview.members,undefined);assert.equal(preview.owner_id,undefined);
@@ -157,7 +173,8 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
     await tp.locator('[data-class-settings]').click();await tp.locator('[data-class-settings-tab=manage]').click();await tp.locator('[data-class-delete-course]').click();await tp.locator('.classroom-confirm button').filter({hasText:'Confirmar'}).click();await tp.waitForFunction(id=>!EstudiemosClasses.snapshot()?.classes.some(course=>course.id===id),id);assert.equal((await db.query('select count(*)::int as total from classroom_events where class_id=$1',[id])).rows[0].total,0);assert.equal(dc.courseDriveCalls.filter(call=>call.method==='DELETE').length,0,'Removing a course does not delete Drive files');
     const direct=await context('',320),directPage=await direct.newPage();lastPage=directPage;await directPage.goto(base+'/?clase=');await directPage.locator('[data-class-login]').click();assert.equal(await directPage.locator('[data-study-goal-dialog][open]').count(),0,'A direct class link must also defer the daily goal until after sign-in');await direct.close();
     const teacherGuest=await context('',320,'teacher'),teacherGuestPage=await teacherGuest.newPage();lastPage=teacherGuestPage;await teacherGuestPage.goto(base+'/materias.html');await teacherGuestPage.locator('[data-class-login]').click();assert.equal(await teacherGuestPage.locator('.classroom-embedded').isVisible(),true,'Teacher sign-in overlays the regular page so cancelling cannot leave an empty workspace');await teacherGuest.close();
-    assert.deepEqual(errors,[]);console.log('PASS real HTTP + SQL: teacher creates class/date/Drive material; student joins by link, sees read-only calendar, receives edits, opens materials; owner privacy, logout, guest login and responsive UI verified.');
+    assert.ok(directReads>20);assert.equal(legacyReads,0,'All class reads bypass the Vercel endpoint');
+    assert.deepEqual(errors,[]);console.log('PASS real HTTP + SQL: direct authenticated reads, deltas, conflicts preserve drafts, history, blocks, teacher/student/Drive flows and responsive UI.');
     await tc.close();await sc.close();
   }catch(error){if(lastPage&&!lastPage.isClosed())await lastPage.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-failure.png`)});throw error;}
   finally{await browser?.close();if(server?.listening)await new Promise(resolve=>server.close(resolve));await db.close();}

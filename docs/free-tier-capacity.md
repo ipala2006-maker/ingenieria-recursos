@@ -1,6 +1,6 @@
 # Capacidad gratuita y presupuesto de sincronizacion
 
-Fecha: 25 de octubre de 2026. Objetivo: al menos 1.000 usuarios activos por mes.
+Fecha: 26 de octubre de 2026. Objetivo: 1.000-1.500 usuarios activos por mes.
 Estado: mejora de sincronizacion; **no es una certificacion de capacidad total**.
 
 ## Que mide esta mejora
@@ -59,19 +59,68 @@ una promesa de que 1.500 usuarios con todas las funciones entren gratis.
 | Vercel CPU | 4 horas activas/mes | requiere medicion del proveedor con trafico real |
 | Vercel Deployment Storage | 10 GB | depende de versiones retenidas, no del numero de estudiantes |
 
-**Bloqueo para prometer 1.000 usuarios con Windows conectado permanentemente:**
-el componente de alarmas consulta Vercel una vez por minuto mientras la PC esta
-encendida. No se altero este intervalo ni su interrupcion a pantalla completa.
-Son 14.400 solicitudes/mes con 8 horas diarias durante 30 dias, por PC. Solo ese
-trafico agotaria un millon con unas 69 PCs, antes de otras funciones. Si estuvieran
-encendidas 24 horas, el techo baja a unas 23. No sumar esos limites al techo web:
-el menor recurso manda. El siguiente trabajo de arquitectura debe resolver esta
-entrega sin prolongar alarmas ni desactivar funciones; un simple cache HTTP no
-elimina invocaciones al servidor ni garantiza la misma puntualidad.
+## Mejora local y catedras (26/10)
+
+Windows 2.0 elimina el sondeo del servidor de Inbox y racha. La tarea comprueba
+solo disco y reloj locales: **0 llamadas periodicas al servidor por esas alarmas**.
+Antes eran 14.400/mes por PC encendida 8 horas diarias durante 30 dias. A 1.000
+PCs equivalia a 14,4 millones. El ahorro requiere actualizar el complemento,
+desactivar el puente oculto antiguo y conectar el archivo local. No reduce a cero
+la sincronizacion de la app ni de widgets visibles. La pantalla completa sigue;
+una alarma nueva desde el celular requiere abrir/sincronizar esa PC.
+
+`node tests/classroom-capacity.bench.cjs` compara el SQL anterior y el nuevo con
+los mismos 39 chequeos, cinco materias y 100 fechas: 914.572 -> 128.034 bytes JSON,
+**86,0% menos**, con igualdad del calendario comprobada en cada paso. Incluye
+8 materiales, 5 inscripciones y 5 reprogramaciones, ademas de lecturas quietas.
+Son datos sinteticos, no el consumo diario de Ian. Los deltas son por catedra,
+no por fila. El historial guarda 30 cambios por catedra y no se descarga en cada
+chequeo. Los PDFs permanecen en Drive de cada publicador/alumno.
+
+Las lecturas privadas de catedras usan Supabase con la sesion del usuario y la
+funcion `classroom_read`, que liga la identidad a Auth y no permite mutaciones.
+No pasan por Vercel ni vuelven a consultar /auth/v1/user en cada chequeo.
+Escrituras, invitaciones publicas y otros servicios siguen usando Vercel. Clientes
+viejos o un servidor sin la migracion conservan la ruta anterior durante el
+despliegue; ese ahorro no existe hasta actualizar ambas partes.
 
 Materias conserva su comprobacion condicional cada 5 minutos visible y cada
-minuto con el panel abierto. Muchos alumnos dejandolo abierto tambien deben
-incluirse en Vercel y CPU. No se alargaron intervalos para inflar estos numeros.
+minuto con el panel abierto. Sigue consumiendo Supabase, aunque no Vercel para
+usuarios con la migracion. No se alargaron intervalos para inflar estos numeros.
+
+## Escenarios de planificacion, no capacidad garantizada
+
+Con un presupuesto de 3,5 GB/mes para el conjunto de trafico de usuario y 1,5 GB
+de reserva, los siguientes consumos **supuestos** dan estos techos por egress:
+
+| Perfil | Presupuesto supuesto total/MAU/mes | Techo aritmetico |
+| --- | ---: | ---: |
+| Pesimista: dos dispositivos intensivos, muchas clases/widgets | 8-12 MB | 290-437 |
+| Realista a validar: uso moderado y mezcla de dispositivos | 3-4 MB | 875-1.166 |
+| Optimista: principalmente un dispositivo y pocas reprogramaciones | 1,4-2 MB | 1.750-2.500 |
+
+Son presupuestos para medir, no resultados de una prueba de carga ni todos
+usuarios simultaneos. El escenario intensivo medido de cuenta sola ya consume
+6,64 MB/mes y no permite prometer 1.500 usuarios con ese mismo uso. Para 1.000
+MAU el total promedio deberia quedar bajo 3,5 MB/mes; para 1.500, bajo 2,33 MB,
+con esta reserva. El promedio se mide por todos los dias y dispositivos, no por
+el peso de una sola respuesta. Si CPU, DB, Realtime o correo se agotan antes,
+manda ese limite. No se debe vender la cifra de 1.500 como capacidad asegurada.
+
+**Condicion del hosting:** Vercel Hobby permite uso personal no comercial.
+Un piloto sin cobros de un producto que planea vender suscripciones no queda
+automaticamente autorizado por ser gratuito. Consultar con Vercel la elegibilidad
+antes de lanzar al publico; no activar Pro ni facturacion sin autorizacion.
+Supabase Free no exige pagar por alcanzar una cantidad concreta de alumnos:
+hay cuotas tecnicas, y una superacion puede restringir el servicio. Mantener
+ambas cuentas en Free/Hobby no equivale a una garantia de disponibilidad gratis.
+
+Antes del piloto tambien comprobar SMTP: el emisor predeterminado de Supabase
+no es un servicio de alta masiva (solo destinatarios autorizados del equipo y
+limites estrictos). Un link no puede inscribir a un usuario sin cuenta confirmada;
+la invitacion debe conservarse durante registro/confirmacion. Configurar un
+emisor apropiado dentro de sus cuotas gratuitas o corregir ese cuello de botella
+antes de compartir con cursos completos. Conservar backups propios de la base.
 
 ## Validacion continua
 
@@ -85,7 +134,10 @@ Repetir esta tabla despues de cada optimizacion. Mantener pruebas de regresion
 en cada cambio y no aprobarlo solo porque el consumo baja. El benchmark no debe
 generar carga en produccion ni recopilar textos, correos o credenciales.
 
-Fuentes oficiales consultadas el 25/10/2026:
+Fuentes oficiales consultadas el 26/10/2026:
 [Supabase cuotas](https://supabase.com/docs/guides/platform/billing-on-supabase),
-[Vercel limites](https://vercel.com/docs/limits),
+[Supabase Realtime](https://supabase.com/docs/guides/realtime/limits),
+[Supabase SMTP](https://supabase.com/docs/guides/auth/auth-smtp),
+[Vercel Hobby](https://vercel.com/docs/plans/hobby),
+[Vercel uso permitido](https://vercel.com/docs/limits/fair-use-guidelines),
 [Deployment Storage](https://vercel.com/docs/deployment-storage).

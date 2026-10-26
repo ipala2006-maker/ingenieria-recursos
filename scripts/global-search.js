@@ -38,18 +38,18 @@
   }
   if (!window.EstudiemosClassroomRules) {
     const classes = document.createElement('script');
-    classes.src = rootPath + 'shared/classrooms.js?v=20261025-course-save';
+    classes.src = rootPath + 'shared/classrooms.js?v=20261026-resilience';
     classes.onload = initialize;
     document.head.appendChild(classes);
     return;
   }
   if (!document.querySelector('script[data-classrooms]')) {
     const classes = document.createElement('script'); classes.dataset.classrooms = '';
-    classes.src = rootPath + 'scripts/classroom-sync.js?v=20261025-course-save';
+    classes.src = rootPath + 'scripts/classroom-sync.js?v=20261026-resilience';
     document.head.appendChild(classes);
   }
   if (!document.querySelector('script[data-course-drive]')) {
-    const drive=document.createElement('script');drive.dataset.courseDrive='';drive.src=rootPath+'scripts/course-drive.js?v=20261025-course-save';document.head.append(drive);
+    const drive=document.createElement('script');drive.dataset.courseDrive='';drive.src=rootPath+'scripts/course-drive.js?v=20261026-resilience';document.head.append(drive);
   }
   if (!document.querySelector('script[data-release-ui]')) {
     const releaseUi = document.createElement('script');
@@ -339,7 +339,7 @@
     rules.src = `${rootPath}shared/inbox-alarms.js?v=20260930-lead30`;
     rules.onload = () => {
       const ui = document.createElement('script');
-      ui.src = `${rootPath}scripts/inbox-alarms.js?v=20261018-reminder-owner`;
+      ui.src = `${rootPath}scripts/inbox-alarms.js?v=20261026-local`;
       document.head.appendChild(ui);
     };
     document.head.appendChild(rules);
