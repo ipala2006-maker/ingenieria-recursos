@@ -29,6 +29,7 @@ test('stale edits, stale removals and resurrecting a deleted item never overwrit
 test('expulsions survive valid links, private blocks never become a public roster, and unblocking restores no privileges',async()=>{
  const db=await setup();try{
   const {selected:id}=await create(db);for(const user of ids.slice(1,3))await call(db,user,'join',{code:'ABCDEFGHJK'});
+  await assert.rejects(call(db,ids[0],'member_remove',{id,itemId:ids[4]}),/CLASS_UNAVAILABLE/);
   await call(db,ids[0],'member_permissions',{id,itemId:ids[1],role:'moderator',permissions:{datesAdd:true}});
   await call(db,ids[0],'member_remove',{id,itemId:ids[1]});
   await assert.rejects(call(db,ids[1],'join',{code:'ABCDEFGHJK'}),/CLASS_BLOCKED/);

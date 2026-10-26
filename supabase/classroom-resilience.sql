@@ -219,6 +219,7 @@ begin
         perform public.classroom_record_change(course.id,p_user,case when (p_data->>'archived')::boolean then 'course_archive' else 'course_restore' end,course.title);
       elsif p_action='member_remove' then
         if (p_data->>'itemId')::uuid=course.owner_id then raise exception 'PERMISSION_DENIED'; end if;
+        if not exists(select 1 from public.classroom_members where class_id=course.id and user_id=(p_data->>'itemId')::uuid) then raise exception 'CLASS_UNAVAILABLE'; end if;
         insert into public.classroom_blocks(class_id,user_id) values(course.id,(p_data->>'itemId')::uuid) on conflict do nothing;
         delete from public.classroom_members where class_id=course.id and user_id=(p_data->>'itemId')::uuid;
         perform public.classroom_record_change(course.id,p_user,'member_remove','Participación actualizada');
