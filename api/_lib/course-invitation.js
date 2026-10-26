@@ -9,7 +9,7 @@ module.exports=async function courseInvitation(req,res){
   if(!['GET','HEAD'].includes(req.method)){res.setHeader('Allow','GET, HEAD');return res.status(405).json({message:'Método no permitido.'});}
   const code=req.query?.courseInvitation;
   if(typeof code!=='string'||!/^[A-HJ-NP-Z2-9]{10}$/.test(code))return res.status(404).json({message:'Invitación no disponible.'});
-  if(!await enforceRateLimit(req,res,{route:'course-invitation',limit:60,windowSeconds:60,distributed:false}))return;
+  if(!await enforceRateLimit(req,res,{route:'course-invitation',limit:600,windowSeconds:60}))return;
   let model=null,status='',http=200,unavailable=false;
   try{model=await preview(code);}catch(error){unavailable=error.message==='INVALID_CODE';http=unavailable?404:503;status=unavailable?'La cátedra ya no está disponible o cambió su enlace.':'No pudimos cargar la invitación. Podés continuar en la app o volver a intentar.';}
   const url=origin+'/materia/'+code,title=model?model.title+' · Invitación en Estudiemos':'Invitación a una cátedra · Estudiemos';

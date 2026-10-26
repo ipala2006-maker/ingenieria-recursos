@@ -13,7 +13,7 @@
     try{localStorage.setItem(rules.CACHE_KEY,JSON.stringify({owner,model}));}catch(_){}
     emit();
   }
-  function schedule(){clearTimeout(timer);if(!owner||!model?.classes?.length||document.hidden)return;timer=setTimeout(()=>refresh(),window.EstudiemosClassroomUI?.isOpen()?60000:300000);}
+  function schedule(){clearTimeout(timer);if(!owner||!model?.classes?.length||document.hidden)return;const interval=window.EstudiemosClassroomUI?.isOpen()?60000:300000;timer=setTimeout(()=>refresh(),interval+Math.floor(Math.random()*interval*.1));}
   async function request(action='',data={},detailId='',full=false,history=false){
     const current=owner,version=epoch,session=account()?.getSession();
     if(!current||current!==identity()||!session?.access_token)throw new Error('Iniciá sesión para abrir tus clases.');

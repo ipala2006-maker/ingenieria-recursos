@@ -78,11 +78,17 @@ async function enforceRateLimit(request, response, options = {}) {
   const windowSeconds = clampInteger(options.windowSeconds || 60, 1, 3600);
   const now = Date.now();
   const identity = clientIdentity(request);
-  const localKeys = [identity.ipKey, identity.credentialKey].filter(Boolean);
+  // Only handlers that have verified the session may supply this principal.
+  const principal = typeof options.principal === 'string' && options.principal.length > 0
+    ? `user:${secureHash(options.principal)}` : '';
+  const ipLimit = principal ? clampInteger(options.ipLimit || 1000, 1, 1000) : limit;
+  const localKeys = principal
+    ? [{ key: identity.ipKey, limit: ipLimit }, { key: principal, limit }]
+    : [identity.ipKey, identity.credentialKey].filter(Boolean).map(key => ({ key, limit }));
 
-  for (const key of localKeys) {
-    const result = consumeLocal(`${route}:${key}`, limit, windowSeconds, now);
-    setRateHeaders(response, result, limit);
+  for (const bucket of localKeys) {
+    const result = consumeLocal(`${route}:${bucket.key}`, bucket.limit, windowSeconds, now);
+    setRateHeaders(response, result, bucket.limit);
     if (!result.allowed) {
       sendRateLimitResponse(response, result);
       return false;
@@ -91,7 +97,7 @@ async function enforceRateLimit(request, response, options = {}) {
 
   if (options.distributed !== false && isConfigured() && now >= shared.distributedRetryAt) {
     try {
-      const result = await consumeDistributed(identity.ipKey, route, limit, windowSeconds);
+      const result = await consumeDistributed(principal || identity.ipKey, route, limit, windowSeconds);
       setRateHeaders(response, result, limit);
       if (!result.allowed) {
         sendRateLimitResponse(response, result);

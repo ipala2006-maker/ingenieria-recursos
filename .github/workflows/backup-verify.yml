@@ -1,0 +1,36 @@
+name: Verify encrypted backup restoration
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  restore-fixture:
+    runs-on: ubuntu-latest
+    container: postgres:18-bookworm
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:18-bookworm
+        env:
+          POSTGRES_PASSWORD: fixture-only
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - run: apt-get update -qq && apt-get install -y --no-install-recommends age ca-certificates
+      - run: node --test tests/database-backup.test.cjs
+      - name: Restore only disposable data; no production credentials
+        env:
+          BACKUP_INTEGRATION: 'true'
+          PGHOST: postgres
+        run: node tests/backup-restore.integration.cjs

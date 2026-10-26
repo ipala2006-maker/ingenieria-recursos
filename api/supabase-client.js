@@ -9,7 +9,7 @@ module.exports = async function handler(request, response) {
     response.setHeader("Allow", "GET");
     return response.status(405).send("Method Not Allowed");
   }
-  if (!(await enforceRateLimit(request, response, { route: "supabase-client", limit: 180, windowSeconds: 60 }))) return;
+  if (!(await enforceRateLimit(request, response, { route: "supabase-client", limit: 1000, windowSeconds: 60 }))) return;
 
   try {
     const upstream = await fetch(SUPABASE_CLIENT_URL, {

@@ -33,6 +33,8 @@ async function send(subscription, payload) {
   });
 }
 async function dispatch() {
+  // Spread the bounded cron workers, not the user's alarm occurrence.
+  await new Promise(resolve => setTimeout(resolve, crypto.randomInt(0, 751)));
   let jobs, legacy=false;
   try { jobs = await rpc('claim_mobile_push_batch'); }
   catch (error) {

@@ -1178,9 +1178,11 @@
   function startCloudPolling() {
     if (AUTH_ONLY) return;
     window.clearInterval(cloudPollTimer);
+    // Spread backup checks without delaying edits, alarms or Realtime events.
+    const interval = 5000 + Math.floor(Math.random() * 5001);
     cloudPollTimer = window.setInterval(() => {
       if (Date.now() - lastPullAt >= cloudCheckInterval()) synchronize("poll");
-    }, 5000);
+    }, interval);
   }
 
   function syncJsonBytes(value) {
