@@ -41,6 +41,7 @@
   let accountConfig = null;
   let accountInitializationComplete = false;
   let pendingNativeSession = null;
+  let androidPushToken = '';
   let applyingNativeSession = false;
   let syncTimer = 0;
   let syncing = false;
@@ -880,7 +881,7 @@
       localStorage.setItem(DIRTY_KEY, "false");
     } else { syncRequested = true; queuedSyncReason = "change"; }
     broadcastStateUpdate(userId, cloudRevision);
-    notifyAndroidWidgets();
+    notifyAndroidWidgets(state);
   }
 
   function compactKnown() { return {...compactVersions,_listDelta:1,_compactVersions:1}; }
@@ -1453,6 +1454,7 @@
   function registerAndroidPushToken(event) {
     const token = String(event?.detail?.token || "").trim();
     if (!token) return;
+    androidPushToken = token;
     const key = "estudiemos_android_devices";
     let devices = [];
     try {
@@ -1468,12 +1470,23 @@
     window.dispatchEvent(new CustomEvent("estudiemos:data-change", { detail: { key } }));
   }
 
-  async function notifyAndroidWidgets() {
+  async function notifyAndroidWidgets(state) {
     if (!session?.access_token) return;
+    // Use the committed account snapshot, not another account's local cache.
+    let devices = state?.values?.estudiemos_android_devices;
+    if (typeof devices === 'string') {
+      try { devices = JSON.parse(devices); } catch (_) { return; }
+    }
+    const ownToken = hasAndroidBridge() ? androidPushToken : '';
+    if (!Array.isArray(devices) || !devices.some(device => {
+      const token = typeof device === 'string' ? device : device?.token;
+      return typeof token === 'string' && token.trim().length > 0 && token.length <= 4096 && token !== ownToken;
+    })) return;
     try {
       await fetch(`${getRootPath()}api/widget-push`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${session.access_token}` },
+        headers: { Authorization: `Bearer ${session.access_token}`, ...(ownToken ? {'Content-Type':'application/json'} : {}) },
+        ...(ownToken ? {body:JSON.stringify({excludeToken:ownToken})} : {}),
         keepalive: true
       });
     } catch (_) {

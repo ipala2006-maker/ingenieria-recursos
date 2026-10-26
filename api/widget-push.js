@@ -14,10 +14,10 @@ module.exports = async function widgetPush(request, response) {
   if (!isConfigured()) return response.status(202).json({ enabled: false, sent: 0 });
 
   try {
-    const state = await readOwnState(request.headers.authorization);
-    const devices = state?.values?.estudiemos_android_devices;
+    const devices = await readOwnDevices(request.headers.authorization, user.id);
     const tokens = Array.isArray(devices)
-      ? devices.map((device) => typeof device === "string" ? device : device?.token).filter(Boolean)
+      ? devices.map((device) => typeof device === "string" ? device : device?.token)
+        .filter(token => typeof token === 'string' && token.trim().length > 0 && token.length <= 4096 && token !== request.body?.excludeToken)
       : [];
     const result = await sendWidgetSync(tokens);
     return response.status(200).json(result);
@@ -26,13 +26,18 @@ module.exports = async function widgetPush(request, response) {
   }
 };
 
-async function readOwnState(authorization) {
+async function readOwnDevices(authorization, userId) {
   const url = String(process.env.SUPABASE_URL || "").replace(/\/$/, "");
   const key = process.env.SUPABASE_PUBLISHABLE_KEY || "";
-  const response = await fetch(`${url}/rest/v1/user_states?select=state&limit=1`, {
+  const query = new URLSearchParams({select:'devices:state->values->estudiemos_android_devices',user_id:`eq.${userId}`,limit:'1'});
+  const response = await fetch(`${url}/rest/v1/user_states?${query}`, {
     headers: { apikey: key, Authorization: authorization }
   });
   if (!response.ok) throw new Error("STATE_READ_FAILED");
   const rows = await response.json();
-  return Array.isArray(rows) && rows[0] ? rows[0].state : null;
+  let devices = Array.isArray(rows) && rows[0] ? rows[0].devices : null;
+  if (typeof devices === 'string') {
+    try { devices = JSON.parse(devices); } catch (_) { return []; }
+  }
+  return devices;
 }

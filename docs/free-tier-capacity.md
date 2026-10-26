@@ -3,6 +3,50 @@
 Fecha: 26 de octubre de 2026. Objetivo: 1.000-1.500 usuarios activos por mes.
 Estado: mejora de sincronizacion; **no es una certificacion de capacidad total**.
 
+## Revision de rutas auxiliares del piloto
+
+`node tests/notification-capacity.bench.cjs` incluye el notificador web real,
+la RPC nativa real y una cola efimera de 1.500 destinos. No usa produccion.
+Los siguientes JSON corresponden a las rutas medidas, no a toda la factura:
+
+| Perfil modelado | Cuenta + tokens + lectura nativa / mes | Invocaciones widget-push / mes | Techo aritmetico de estas rutas con 3,5 GB |
+| --- | ---: | ---: | ---: |
+| Completo, dos navegadores sin Android vinculado | 2,28 MB | 0 | 1.533 |
+| Completo, PC y Android nativo alternados | 3,64 MB | 680 | 960 |
+| Completo, solo Android nativo | 1,98 MB | 0 | 1.770 |
+| Dos navegadores y Android receptor adicional | 3,95 MB | 1.360 | 886 |
+| Intensivo, dos navegadores sin Android | 6,65 MB | 0 | 526 |
+
+Completo: 300 notas, 60 minutos y 8 ediciones al dia, 20 dias activos/mes. La
+lectura nativa agrega 96 chequeos de reserva en cada dia modelado; no incluye
+los otros dias del mes, renovacion de Auth, Drive, clases, Realtime, cabeceras,
+compresion ni CPU. Son cuerpos JSON de una simulacion reproducible. La cuenta
+Android debe actualizar su APK a 1.6.8 y tener la RPC activa para obtenerlo.
+
+La lectura nativa PC+Android baja aproximadamente de 86,6 a 1,30 MB/mes en el
+modelo (98,5% menos para ese componente). La ruta de tokens pasa de leer todo
+el perfil a unas decenas de bytes por llamada. Sin Android no hay invocaciones;
+un Android no se envia push a si mismo, porque sus widgets reciben datos locales.
+No se ralentizaron los intervalos para conseguir este ahorro.
+
+La cola nueva usa el indice de proxima ocurrencia y cero barridos JSON por tick.
+La prueba de 1.500 destinos consume todos en cuatro ticks, con entregas ficticias,
+frente al limite anterior de 5 claims por minuto. Los proveedores reales pueden
+retener o fallar avisos: no es una promesa de 1.500 entregas instantaneas.
+
+**Dictamen actualizado:** 1.000 MAU sigue siendo una meta razonable para validar
+con una mezcla de uso, no un piso asegurado. 1.500 no es un techo seguro demostrado.
+Por ejemplo, 1.000 usuarios PC+Android de este modelo consumen 3,64 GB solo en
+estas rutas. Y 1.000 receptores del tercer dispositivo generarian 1,36 millones
+de invocaciones solo de widgets, mas que Hobby. La mezcla de dispositivos,
+intensidad, conexiones y consumo real del piloto determina la capacidad.
+
+El [protocolo del piloto](pilot-notifications.md) fija despliegue, pruebas fisicas
+y presupuestos de salida; el [informe SMTP](pilot-smtp.md) cubre el alta sin pagos.
+No convertir la division de una cuota en una garantia de estabilidad ni omitir
+las rutas nativas del proximo calculo. Las secciones siguientes describen el
+benchmark de cuenta original, no reemplazan este presupuesto combinado.
+
 ## Que mide esta mejora
 
 `node tests/sync-capacity.bench.cjs` ejecuta el cliente real con la funcion SQL

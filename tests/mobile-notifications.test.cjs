@@ -16,8 +16,11 @@ test('push becomes eligible 30 seconds early and retains the nominal deduplicati
     await db.exec("create role anon; create role authenticated; create role service_role; create schema auth; create table auth.users(id uuid primary key); create table public.user_states(user_id uuid primary key, state jsonb); create function public.test_clock() returns timestamptz language sql stable as $$select current_setting('test.clock')::timestamptz$$;");
     // Substitute only the clock in an isolated database; production uses now().
     const sql = fs.readFileSync(path.join(root, 'supabase/mobile-notifications.sql'), 'utf8');
+    await db.query("select set_config('test.clock',$1,false)",['2026-10-04T23:59:29Z']);
     await db.exec(sql.replace(/\bnow\(\)/g, 'public.test_clock()'));
+    await db.exec(fs.readFileSync(path.join(root, 'supabase/mobile-notifications-indexed.sql'), 'utf8').replace(/\bnow\(\)/g, 'public.test_clock()'));
     await db.query('insert into auth.users values ($1)', [user]);
+    await db.query('select register_mobile_push($1,$2,$3)',[user,subscription,'UTC']);
     const agenda = [{id:'early',title:'Pilot',alarm:{date:'2026-10-05',time:'00:00',repeat:'weekdays'}}];
     await db.query('insert into user_states values ($1,$2)', [user,{values:{bandeja_agenda:agenda}}]);
     const due = async clock => {
@@ -61,6 +64,7 @@ test('database enforces ownership, recurrence, deduplication and cancels complet
   try {
     await db.exec("create role anon; create role authenticated; create role service_role; create schema auth; create table auth.users(id uuid primary key); create table public.user_states(user_id uuid primary key, state jsonb, updated_at timestamptz default now());");
     await db.exec(fs.readFileSync(path.join(root, 'supabase/mobile-notifications.sql'), 'utf8'));
+    await db.exec(fs.readFileSync(path.join(root, 'supabase/mobile-notifications-indexed.sql'), 'utf8'));
     await db.exec(fs.readFileSync(path.join(root, 'supabase/windows-alarms.sql'), 'utf8'));
     await db.query('insert into auth.users values ($1),($2)', [user, other]);
     await db.query('select register_mobile_push($1,$2,$3)', [user, subscription, 'America/Argentina/Buenos_Aires']);

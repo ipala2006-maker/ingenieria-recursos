@@ -21,6 +21,8 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -39,6 +41,8 @@ final class WidgetSyncManager {
     private static final String KEY_REFRESH_TOKEN = "refresh_token";
     private static final String KEY_EXPIRES_AT = "expires_at";
     private static final String KEY_PUSH_TOKEN = "push_token";
+    private static final String KEY_WIDGET_VERSIONS = "widget_versions";
+    private static final String KEY_WIDGET_AGENDA = "widget_cloud_agenda";
     private static final String KEYSTORE_PROVIDER = "AndroidKeyStore";
     private static final String KEYSTORE_ALIAS = "estudiemos_widget_session_v1";
     private static final String ENCRYPTED_PREFIX = "enc:v1:";
@@ -125,12 +129,10 @@ final class WidgetSyncManager {
             try {
                 Session session = ensureFreshSession(app);
                 if (session == null || owner.isEmpty()) return;
-                Response response = get(session, "/rest/v1/user_states?select=state&limit=1");
+                Response response = get(session, widgetProjectionPath(session, "streak:state->values->estudiemos_pomodoro_streak"));
                 if (response.code < 200 || response.code >= 300) return;
                 JSONArray rows = new JSONArray(response.body);
-                JSONObject state = rows.length() > 0 ? rows.getJSONObject(0).optJSONObject("state") : null;
-                JSONObject values = state == null ? null : state.optJSONObject("values");
-                JSONObject streak = values == null ? null : asObject(values.opt("estudiemos_pomodoro_streak"));
+                JSONObject streak = rows.length() > 0 ? asObject(rows.getJSONObject(0).opt("streak")) : null;
                 if (streak == null || streak.optJSONObject("days") == null || streak.optJSONObject("goal") == null) return;
                 if (!owner.equals(app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_USER_ID, ""))) return;
                 StreakWidgetProvider.storeStreakHistory(app, streak.toString());
@@ -156,10 +158,7 @@ final class WidgetSyncManager {
         Session session = ensureFreshSession(context);
         if (session == null) return;
 
-        Response stateResponse = get(session, "/rest/v1/user_states?select=state,updated_at&limit=1");
-        if (stateResponse.code < 200 || stateResponse.code >= 300) return;
-
-        applyCloudState(context, stateResponse.body);
+        if (!synchronizeWidgetState(context, session)) return;
         if (!ReleaseFeatures.WORKSPACE) return;
         Response workspaceResponse = get(
                 session,
@@ -170,22 +169,77 @@ final class WidgetSyncManager {
         }
     }
 
-    private static void applyCloudState(Context context, String raw) {
+    private static boolean synchronizeWidgetState(Context context, Session session) {
         try {
-            JSONArray rows = new JSONArray(raw);
-            JSONObject row = rows.length() > 0 ? rows.optJSONObject(0) : null;
-            JSONObject state = row == null ? null : row.optJSONObject("state");
-            JSONObject values = state == null ? null : state.optJSONObject("values");
-            if (values == null) return;
+            SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+            JSONObject known;
+            try { known = new JSONObject(prefs.getString(KEY_WIDGET_VERSIONS, "{}")); }
+            catch (Exception ignored) { known = new JSONObject(); }
+            Response response = request("POST", session.url + "/rest/v1/rpc/get_android_widget_state",
+                    session.publicKey, session.accessToken, new JSONObject().put("p_known", known).toString());
+            JSONObject values;
+            JSONObject versions = null;
+            if (response.code == 404) {
+                // Older servers retain a small projection, never a full-profile fallback.
+                response = get(session, widgetProjectionPath(session, "agenda:state->values->bandeja_agenda,streak:state->values->estudiemos_pomodoro_streak"));
+                if (response.code < 200 || response.code >= 300) return false;
+                JSONArray rows = new JSONArray(response.body);
+                if (rows.length() == 0) return false;
+                JSONObject row = rows.getJSONObject(0);
+                values = new JSONObject().put("bandeja_agenda", row.opt("agenda"))
+                        .put("estudiemos_pomodoro_streak", row.opt("streak"));
+            } else {
+                if (response.code < 200 || response.code >= 300) return false;
+                JSONObject result = new JSONObject(response.body);
+                if (!session.userId.equals(result.optString("owner", ""))) return false;
+                values = result.optJSONObject("values");
+                versions = result.optJSONObject("versions");
+                if (values == null || versions == null) return false;
+                JSONObject lists = result.optJSONObject("lists");
+                JSONObject delta = lists == null ? null : lists.optJSONObject("bandeja_agenda");
+                if (delta != null) {
+                    if (!known.optString("bandeja_agenda").equals(delta.optString("base"))
+                            || !versions.optString("bandeja_agenda").equals(delta.optString("target")))
+                        throw new IllegalArgumentException("Delta version mismatch");
+                    JSONArray previous = new JSONArray(prefs.getString(KEY_WIDGET_AGENDA, "[]"));
+                    List<JSONObject> merged = WidgetListDelta.apply(objects(previous), objects(delta.getJSONArray("put")),
+                            strings(delta.getJSONArray("remove")), delta.isNull("order") ? null : strings(delta.getJSONArray("order")),
+                            item -> item.optString("id", ""));
+                    JSONArray updated = new JSONArray();
+                    for (JSONObject item : merged) updated.put(item);
+                    values.put("bandeja_agenda", updated);
+                }
+            }
+            if (!session.userId.equals(currentUserId(context))) return false;
 
             JSONArray agenda = asArray(values.opt("bandeja_agenda"));
             if (agenda != null) AgendaWidgetProvider.storeAgendaItems(context, agenda.toString());
 
             JSONObject streak = asObject(values.opt("estudiemos_pomodoro_streak"));
             if (streak != null) StreakWidgetProvider.storeStreakHistory(context, streak.toString());
+            SharedPreferences.Editor saved = prefs.edit();
+            if (agenda != null) saved.putString(KEY_WIDGET_AGENDA, agenda.toString());
+            if (versions != null) saved.putString(KEY_WIDGET_VERSIONS, versions.toString());
+            saved.apply();
+            return true;
         } catch (Exception ignored) {
             // Widgets retain their last complete state if a response is interrupted.
+            if (session.userId.equals(currentUserId(context)))
+                context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(KEY_WIDGET_VERSIONS).apply();
+            return false;
         }
+    }
+
+    private static List<JSONObject> objects(JSONArray items) throws Exception {
+        List<JSONObject> result = new ArrayList<>();
+        for (int index = 0; index < items.length(); index++) result.add(items.getJSONObject(index));
+        return result;
+    }
+
+    private static List<String> strings(JSONArray items) throws Exception {
+        List<String> result = new ArrayList<>();
+        for (int index = 0; index < items.length(); index++) result.add(items.getString(index));
+        return result;
     }
 
     private static void applyWorkspace(Context context, String raw) {
@@ -229,6 +283,13 @@ final class WidgetSyncManager {
 
     private static Response get(Session session, String path) {
         return request("GET", session.url + path, session.publicKey, session.accessToken, null);
+    }
+
+    private static String widgetProjectionPath(Session session, String projection) {
+        String query = new Uri.Builder().appendQueryParameter("select", projection)
+                .appendQueryParameter("user_id", "eq." + session.userId).appendQueryParameter("limit", "1")
+                .build().getEncodedQuery();
+        return "/rest/v1/user_states?" + query;
     }
 
     private static Response request(String method, String target, String publicKey, String accessToken, String body) {
@@ -447,6 +508,7 @@ final class WidgetSyncManager {
     }
 
     private static void clearWidgetData(Context context) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(KEY_WIDGET_VERSIONS).remove(KEY_WIDGET_AGENDA).apply();
         AgendaWidgetProvider.clearForAccount(context);
         StreakWidgetProvider.clearForAccount(context);
         WorkspaceWidgetProvider.clearForAccount(context);
