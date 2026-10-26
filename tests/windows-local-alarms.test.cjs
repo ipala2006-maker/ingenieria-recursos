@@ -48,3 +48,15 @@ test('native local schedule supports edits, completion, deletion and wrong-accou
   for(const name of ['InboxAlarm.ps1','StreakReminder.ps1','ReadLocalAlarms.ps1'])assert.doesNotMatch(fs.readFileSync(path.join(root,'windows-installer',name),'utf8'),/Invoke-RestMethod|Invoke-WebRequest|WebClient|feed\.dpapi/);
  }finally{assert.equal(path.dirname(path.resolve(dir)),path.resolve(os.tmpdir()));fs.rmSync(dir,{recursive:true,force:true});}
 });
+
+test('newer visible-widget snapshots update alarms locally but never cross accounts or override logout',{skip:process.platform!=='win32'},()=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'estudiemos-local-widget-')),file=path.join(dir,'Alarmas.estudiemos-local');
+ for(const name of['InboxAlarm.ps1','ReadLocalAlarms.ps1'])fs.copyFileSync(path.join(root,'windows-installer',name),path.join(dir,name));
+ const value=rules.create(owner,device,[{id:'a',title:'App',alarm}],{},new Date('2026-11-02T07:00:00'));
+ fs.writeFileSync(file,JSON.stringify(value));fs.utimesSync(file,new Date('2026-01-01'),new Date('2026-01-01'));
+ fs.writeFileSync(path.join(dir,'local-config.json'),JSON.stringify({path:file,owner,deviceId:device}));fs.writeFileSync(path.join(dir,'InboxAlarmConfig.json'),JSON.stringify({resourceDirectory:dir}));
+ const write=who=>fs.writeFileSync(path.join(dir,'InboxAlarms.inc'),'[Alarms]\nCount=1\nChunk0='+Buffer.from(JSON.stringify({version:1,owner:who,items:[{id:'a',title:'Widget',alarm}]})).toString('base64')+'\n');
+ const run=()=>{const p=spawnSync('powershell.exe',['-NoProfile','-NonInteractive','-File',path.join(dir,'InboxAlarm.ps1'),'-StateDirectory',dir,'-Now','2026-11-02T08:00:00','-DryRun'],{windowsHide:true,encoding:'utf8'});assert.equal(p.status,0,p.stderr);return JSON.parse(p.stdout);};
+ try{write(owner);assert.equal(run()[0].title,'Widget');write(device);assert.equal(run()[0].title,'App');value.disabled=true;fs.writeFileSync(file,JSON.stringify(value));write(owner);assert.deepEqual(run(),[]);}
+ finally{assert.equal(path.dirname(path.resolve(dir)),path.resolve(os.tmpdir()));fs.rmSync(dir,{recursive:true,force:true});}
+});

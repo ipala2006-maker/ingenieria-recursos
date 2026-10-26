@@ -20,7 +20,15 @@ if ($result.userId -notmatch '^[a-f0-9-]{36}$' -or $result.snapshot.version -ne 
 $directory = Join-Path $env:LOCALAPPDATA 'Estudiemos\Windows\InboxAlarms'
 New-Item -ItemType Directory -Path $directory -Force | Out-Null
 $stage = 'programador'
-& (Join-Path $PSScriptRoot 'InstallInboxAlarm.ps1')
+$resource = ''
+$widgetConfig = Join-Path $env:LOCALAPPDATA 'Estudiemos\Windows\InboxAlarmConfig.json'
+if ((Test-Path -LiteralPath $widgetConfig) -and (Get-Item -LiteralPath $widgetConfig).Length -le 4096) {
+  try {
+    $candidate = (Get-Content -LiteralPath $widgetConfig -Raw | ConvertFrom-Json).resourceDirectory
+    if ($candidate -match '^[A-Za-z]:\\' -and (Test-Path -LiteralPath $candidate -PathType Container)) { $resource = $candidate }
+  } catch { }
+}
+& (Join-Path $PSScriptRoot 'InstallInboxAlarm.ps1') -ResourceDirectory $resource
 if (!$?) { throw 'Could not register alarm task.' }
 $stage = 'programacion-guardado'
 if ($DocumentsDirectory -notmatch '^[A-Za-z]:\\') { throw 'A local Documents directory is required.' }

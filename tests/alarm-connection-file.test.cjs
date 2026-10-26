@@ -27,7 +27,8 @@ test('one setup request seeds local scheduling; the background worker uses no cr
   for(const name of ['ConnectInboxAlarms.ps1','InboxAlarm.ps1','ReadLocalAlarms.ps1']){
     fs.copyFileSync(path.join(root,'windows-installer',name),path.join(directory,name));
   }
-  fs.writeFileSync(path.join(directory,'InstallInboxAlarm.ps1'),"$true | Out-Null");
+  fs.writeFileSync(path.join(directory,'InstallInboxAlarm.ps1'),"param([string]$ResourceDirectory)\nif($ResourceDirectory -ne $env:ALARM_TEST_DIR){throw 'Visible widget resource lost'}\n@{resourceDirectory=$ResourceDirectory}|ConvertTo-Json|Set-Content (Join-Path $PSScriptRoot 'InboxAlarmConfig.json')");
+  const legacyRoot=path.join(directory,'Estudiemos','Windows');fs.mkdirSync(legacyRoot,{recursive:true});fs.writeFileSync(path.join(legacyRoot,'InboxAlarmConfig.json'),JSON.stringify({resourceDirectory:directory}));
   const script=String.raw`
     $ErrorActionPreference='Stop'
     Import-Module Microsoft.PowerShell.Utility
