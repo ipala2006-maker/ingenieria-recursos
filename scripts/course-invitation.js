@@ -29,15 +29,19 @@
     }
     let section=document.querySelector('.course-install-invitation');
     if(!section){section=document.createElement('section');section.className='course-install-invitation';section.setAttribute('aria-labelledby','courseInviteTitle');document.querySelector('main').prepend(section);}
+    const inApp=Boolean(window.EstudiemosAndroid)||matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: window-controls-overlay)').matches||navigator.standalone===true;
+    const appLinks=window.EstudiemosCourseAppLinks;
+    const nativePlatform=appLinks?.platform(navigator.userAgent,inApp)||'';
+    const nativeDestination=appLinks?.nativeUrl(code,nativePlatform,root)||'';
+    let webChosen=url.searchParams.get('abrir')==='web'||!nativeDestination;
     const destination=appUrl(code);let unavailable=false,seed=null,currentPreview=null,navigating=false;
     try{const data=JSON.parse(document.querySelector('[data-course-preview]')?.dataset.coursePreview||'null');if(data?.code===code)seed=data;}catch(_){}
     function paint(preview,status='',gone=false,loading=false){
       currentPreview=preview;unavailable=gone;
-      section.innerHTML=view.content(preview,{code,joinUrl:gone?new URL('./',root).href:destination.href,status,unavailable:gone,loading});
-      if(/Android/i.test(navigator.userAgent)&&!gone){const link=document.createElement('a');link.className='install-action install-action--quiet';link.textContent='Abrir app instalada';link.dataset.courseNative='';link.href='intent://open?materia='+code+'#Intent;scheme=estudiemos;package=com.estudiemos.app;S.browser_fallback_url='+encodeURIComponent(destination.href)+';end';section.querySelector('.install-hero__actions').append(link);}
+      section.innerHTML=view.content(preview,{code,joinUrl:gone?new URL('./',root).href:destination.href,status,unavailable:gone,loading,nativeUrl:nativeDestination,preferNative:!webChosen});
     }
     if(seed)paint(seed.preview,seed.status,seed.unavailable);else paint(null,'Preparando tu invitación…',false,true);
-    document.querySelectorAll('[data-open-estudiemos],a[href="https://estudiemos-app.vercel.app/"]').forEach(link=>link.href=destination);
+    document.querySelectorAll('[data-open-estudiemos],a[href="https://estudiemos-app.vercel.app/"]').forEach(link=>link.href=nativeDestination&&!webChosen?nativeDestination:destination);
     const android=document.querySelector('[data-install-android]');if(android)android.href='intent://open?materia='+code+'#Intent;scheme=estudiemos;package=com.estudiemos.app;S.browser_fallback_url=https%3A%2F%2Fgithub.com%2Fipala2006-maker%2Fingenieria-recursos%2Freleases%2Fdownload%2Fandroid-latest%2FEstudiemos-Android.apk;end';
     const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15000);
     try{
@@ -56,27 +60,45 @@
     if(unavailable)return;
     const continueInApp=()=>{
       const user=window.EstudiemosAccount?.getUser();
-      if(navigating||unavailable||!user)return;
+      if(navigating||unavailable||!user||!webChosen)return;
       navigating=true;save(code,user.id,currentPreview);location.replace(destination);
     };
     window.addEventListener('estudiemos:account-change',continueInApp);
-    const ready=new Promise(resolve=>{
+    let ready;
+    const loadAccount=()=>ready||(ready=new Promise(resolve=>{
       if(window.EstudiemosAccount)return resolve(window.EstudiemosAccount);
-      const script=document.createElement('script');script.src=new URL('scripts/account.js?v=20261026-course-links',root);
+      const script=document.createElement('script');script.src=new URL('scripts/account.js?v=20261027-installed-app',root);
       script.onload=()=>resolve(window.EstudiemosAccount||null);script.onerror=()=>resolve(null);document.head.append(script);
-    });
+    }));
     section.addEventListener('click',async event=>{
       if(event.target.closest('[data-course-retry]')){location.reload();return;}
+      if(event.target.closest('[data-course-native]')){
+        save(code,'',currentPreview);
+        const hint=section.querySelector('[data-course-open-status]');
+        if(hint)hint.textContent='Aceptá «Abrir Estudiemos» si el sistema lo pide. Si no se abre, podés continuar desde el navegador o actualizar la instalación.';
+        return; // Keep the original click activation; do not await Auth or substitute a timed redirect.
+      }
       if(!event.target.closest('[data-course-join]')||event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
-      event.preventDefault();save(code,'',currentPreview);
+      event.preventDefault();webChosen=true;save(code,'',currentPreview);
       const button=section.querySelector('[data-course-join]');button.setAttribute('aria-busy','true');
       let timer;
-      const account=await Promise.race([ready,new Promise(resolve=>{timer=setTimeout(()=>resolve(null),8000);})]);clearTimeout(timer);
+      const account=await Promise.race([loadAccount(),new Promise(resolve=>{timer=setTimeout(()=>resolve(null),8000);})]);clearTimeout(timer);
       button.removeAttribute('aria-busy');
       if(!account){location.assign(destination);return;}
       if(account.getUser())continueInApp();else account.open();
     });
-    const account=await ready;await account?.whenReady();continueInApp();
+    section.dataset.courseRouting='ready';
+    if(nativeDestination&&!webChosen){
+      // The marker is only a local installation hint, never proof that Windows opened the app.
+      if(nativePlatform==='windows')try{
+        const marker='estudiemos_course_app_attempt_v1',previous=JSON.parse(sessionStorage.getItem(marker)||'null');
+        if(localStorage.getItem('estudiemos_windows_app_links')==='true'&&!(previous?.code===code&&Date.now()-previous.at<60000)){
+          sessionStorage.setItem(marker,JSON.stringify({code,at:Date.now()}));section.querySelector('[data-course-native]')?.click();
+        }
+      }catch(_){}
+      return;
+    }
+    const account=await loadAccount();await account?.whenReady();continueInApp();
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })();

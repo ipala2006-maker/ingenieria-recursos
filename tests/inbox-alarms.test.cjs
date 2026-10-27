@@ -266,7 +266,7 @@ test('the obsolete hidden cloud bridge is disabled in both entry points', () => 
   assert.doesNotMatch(bridge,/refreshFromCloud|OnUpdateAction=/);
   assert.match(packageSource,/!DeactivateConfig \"Estudiemos\\AlarmBridge\"/);
   assert.match(launcher,/!DeactivateConfig/);
-  assert.match(packageSource,/#define AppVersion \"2\.0\.0\.0\"/);
+  assert.match(packageSource,/#define AppVersion \"2\.0\.1\.0\"/);
 });
 
 test('due Windows alarms show their names in a dismissible full-screen alert with looping sound', () => {

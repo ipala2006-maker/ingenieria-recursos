@@ -1,4 +1,4 @@
-#define AppVersion "2.0.0.0"
+#define AppVersion "2.0.1.0"
 #define RainmeterInstaller "Rainmeter-4.5.26.exe"
 #ifndef OutputBaseName
   #define OutputBaseName "Estudiemos-Widgets-para-Windows"
@@ -75,6 +75,10 @@ Name: "{userprograms}\Estudiemos"; Filename: "{sys}\wscript.exe"; Parameters: ""
 Name: "{userstartup}\Rainmeter"; Filename: "{code:GetRainmeterExecutable}"; WorkingDir: "{code:GetRainmeterDirectory}"; Comment: "Iniciar los widgets de Estudiemos con Windows"
 
 [Registry]
+Root: HKCU; Subkey: "Software\Classes\estudiemos-app"; ValueType: string; ValueData: "URL:Estudiemos"
+Root: HKCU; Subkey: "Software\Classes\estudiemos-app"; ValueName: "URL Protocol"; ValueType: string; ValueData: ""
+Root: HKCU; Subkey: "Software\Classes\estudiemos-app\DefaultIcon"; ValueType: string; ValueData: "{app}\estudiemos.ico"
+Root: HKCU; Subkey: "Software\Classes\estudiemos-app\shell\open\command"; ValueType: string; ValueData: """{sys}\wscript.exe"" ""{app}\AppLauncher.vbs"" ""%1"""
 Root: HKCU; Subkey: "Software\Classes\AppUserModelId\Estudiemos.Study"; ValueName: "DisplayName"; ValueType: string; ValueData: "Estudiemos"
 Root: HKCU; Subkey: "Software\Classes\AppUserModelId\Estudiemos.Study"; ValueName: "IconUri"; ValueType: string; ValueData: "{app}\icon-180.png"
 Root: HKCU; Subkey: "Software\Classes\estudiemos-alarms"; ValueType: string; ValueData: "URL:Estudiemos Alarmas"

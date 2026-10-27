@@ -1,11 +1,23 @@
 Option Explicit
 
-Dim shell, files, browser, candidate, url, roots, root
+Dim shell, files, browser, candidate, url, roots, root, pattern, matches, argument
 Set shell = CreateObject("WScript.Shell")
 Set files = CreateObject("Scripting.FileSystemObject")
-url = "https://estudiemos-app.vercel.app/?windows-bundle=1"
+url = "https://estudiemos-app.vercel.app/?windows-bundle=1&windows-app-links=1"
+If WScript.Arguments.Count > 1 Then WScript.Quit 2
 If WScript.Arguments.Count > 0 Then
-  If WScript.Arguments(0) = "--setup" Then url = url & "&alarms-setup=1"
+  If WScript.Arguments(0) = "--setup" Then
+    url = url & "&alarms-setup=1"
+  Else
+    argument = WScript.Arguments(0)
+    If Len(argument) > 100 Then WScript.Quit 2
+    Set pattern = New RegExp
+    pattern.Pattern = "^estudiemos-app://open/?\?materia=([A-HJ-NP-Z2-9]{10})$"
+    pattern.IgnoreCase = True
+    If Not pattern.Test(argument) Then WScript.Quit 2
+    Set matches = pattern.Execute(argument)
+    url = url & "&unirme=1&materia=" & UCase(matches(0).SubMatches(0))
+  End If
 End If
 
 ' Use the browser's normal profile so existing sign-in can be reused.
