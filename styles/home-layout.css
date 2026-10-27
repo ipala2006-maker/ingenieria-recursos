@@ -231,3 +231,22 @@
   .home-customizer__dimensions input { height:44px; }
 }
 @media(prefers-reduced-motion:reduce){.home-resize-handle::after{transition:none}}
+.home-tool-editbar { position:absolute;left:44px;right:44px;top:4px;height:32px;display:flex;align-items:center;justify-content:center;gap:8px;z-index:11;pointer-events:none; }
+.home-tool-editbar[hidden] { display:none; }
+.workspace-home.home-resizable .home-layout-toolbar--mobile { flex:none;align-self:stretch;justify-content:flex-end;min-height:52px;margin:6px 0; }
+.home-tool-editbar .home-move-handle { position:static;flex:none;width:40px;height:28px;pointer-events:auto; }
+.home-remove-tool { display:grid;place-items:center;flex:none;width:28px;height:28px;padding:0;border:1px solid var(--border);border-radius:6px;background:var(--panel);color:var(--muted);cursor:pointer;pointer-events:auto;touch-action:manipulation; }
+.home-remove-tool img { filter:invert(.75); }
+.theme-light .home-remove-tool img { filter:none; }
+.home-remove-tool:hover { color:var(--danger);border-color:var(--danger);background:var(--panel-2); }
+.home-remove-tool:focus-visible { outline:2px solid var(--accent);outline-offset:2px; }
+.workspace-home.home-layout-editing .workspace-page [data-home-space]:not([data-home-space="shortcuts"]) { padding-top:42px; }
+@media(pointer:coarse) {
+  .home-tool-editbar { left:94px;height:44px; }
+  .home-resizable:not(.home-board) .home-tool-editbar { left:44px; }
+  .home-tool-editbar .home-move-handle { width:44px;height:44px; }
+  .home-resize-handle[data-edge=n] { left:44px;right:auto;width:44px; }
+  .home-resize-handle[data-edge=n]::after { left:50%; }
+  .home-remove-tool { width:44px;height:44px; }
+  .workspace-home.home-layout-editing .workspace-page [data-home-space]:not([data-home-space="shortcuts"]) { padding-top:56px; }
+}

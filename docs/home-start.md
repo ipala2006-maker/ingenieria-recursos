@@ -12,7 +12,9 @@
 
 La distribución se conserva por dispositivo. No se reemplazan posiciones, tamaños, huecos ni datos de una instalación anterior. Cátedras empieza oculta para esas instalaciones y puede activarse desde las herramientas.
 
-Si no queda espacio al agregar una herramienta a una distribución personalizada, se ofrece **Reacomodar y agregar**. Solo ese botón autoriza reorganizar los paneles; el ajuste se puede deshacer desde el modo de edición.
+Al agregar una herramienta se aprovecha primero un hueco libre, adaptando su tamaño. Si no alcanza, se divide un panel que tenga espacio suficiente y, como última opción, se redistribuyen las herramientas sin superponerlas ni agregar desplazamiento a la página. El ajuste se puede deshacer desde el modo de edición.
+
+En el modo de edición, el botón de quitar de cada herramienta la retira solo del inicio: no borra tareas, materias, archivos, tiempos ni preferencias de la herramienta. Se puede recuperar desde **Herramientas** o con **Deshacer**. En celular la barra de edición permanece accesible al cambiar de vista.
 
 ## Panel Cátedras
 

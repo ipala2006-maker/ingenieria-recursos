@@ -19,7 +19,7 @@ else (async()=>{
   try {
     fs.mkdirSync(out,{recursive:true});await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
     browser=process.env.TEST_WEBKIT==='1'?await webkit.launch():await chromium.launch({channel:'chrome'});
-    for(const viewport of [{width:1440,height:900},{width:1024,height:768},{width:768,height:1024},{width:390,height:844},{width:320,height:640}]) {
+    for(const viewport of [{width:1440,height:900},{width:1024,height:768},{width:768,height:1024},{width:390,height:844},{width:320,height:640}].filter(size=>!process.env.TEST_WIDTH||size.width===Number(process.env.TEST_WIDTH))) {
       const mobile=viewport.width<=700,context=await browser.newContext({viewport,hasTouch:mobile,serviceWorkers:'block', ...(process.env.TEST_WEBKIT==='1'?{}:{isMobile:mobile})});
       const errors=[],page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));
       await context.route('**/*',route=>{
@@ -86,11 +86,30 @@ else (async()=>{
           value.placement=board.remember(board.layout(value.tree,w,h,value.visible),null,value.tree);value.preset='custom';
           EstudiemosHomeLayout.write(value);window.dispatchEvent(new StorageEvent('storage',{key:EstudiemosHomeLayout.key}));return JSON.stringify(value);
         });
-        assert.equal(await page.evaluate(()=>EstudiemosHomeCustomizer.show('focus')),false);
-        await page.locator('[data-home-reflow-add]').click();
+        assert.equal(await page.evaluate(()=>EstudiemosHomeCustomizer.show('focus')),true);
         assert.equal(await page.evaluate(()=>EstudiemosHomeLayout.read().visible.focus),true);
-        await page.locator('.home-customizer__done').click();await page.locator('[data-home-customize]').click();await page.locator('.home-layout-undo').click();
-        assert.equal(await page.evaluate(()=>JSON.stringify(EstudiemosHomeLayout.read())),previous,'Reflow can be undone without losing custom positions');
+        await page.locator('[data-home-customize]').click();await page.locator('.home-layout-undo').click();
+        assert.equal(await page.evaluate(()=>JSON.stringify(EstudiemosHomeLayout.read())),previous,'Automatic fitting can be undone without losing custom positions');
+        await page.locator('.home-layout-done').click();
+      }
+      if(mobile)await page.locator('[data-home-view=inbox]').click();
+      await page.locator('[data-home-tools-open]').click();await page.locator('[data-home-customizer-edit]').click();
+      if(mobile)await page.locator('[data-home-view=inbox]').click();
+      const notes=await page.evaluate(()=>localStorage.getItem('bandeja_agenda'));
+      await page.locator('[data-home-remove=inbox]').click();
+      assert.equal(await page.evaluate(()=>EstudiemosHomeLayout.read().visible.inbox),false);
+      assert.equal(await page.evaluate(()=>localStorage.getItem('bandeja_agenda')),notes,'Removing a panel never removes its data');
+      await page.locator('.home-layout-undo').click();
+      assert.equal(await page.evaluate(()=>EstudiemosHomeLayout.read().visible.inbox),true);
+      await page.locator('.home-layout-done').click();
+      assert.equal(await page.locator('[data-home-remove=inbox]').isVisible(),false);
+      if(viewport.width===1440||viewport.width===390){
+        await page.evaluate(()=>{EstudiemosHomeCustomizer.show('focus');window.dispatchEvent(new CustomEvent('estudiemos:home-navigate',{detail:{view:'overview'}}));});
+        await page.locator('[data-home-timer]').click();assert.equal(await page.evaluate(()=>EstudiemosStudy.snapshot().running),true);
+        await page.locator('[data-home-customize]').click();await page.locator('[data-home-remove=focus]').click();
+        assert.equal(await page.evaluate(()=>EstudiemosStudy.snapshot().running),true,'Removing Pomodoro from home must not deactivate or pause it');
+        await page.locator('.home-layout-undo').click();await page.locator('.home-layout-done').click();
+        await page.locator('[data-home-timer]').click();assert.equal(await page.evaluate(()=>EstudiemosStudy.snapshot().running),false);
       }
       assert.deepEqual(errors,[]);await context.close();
     }
