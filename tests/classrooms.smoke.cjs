@@ -50,6 +50,7 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
       await ctx.addInitScript(({user,role,actualAccount,launchPlatform})=>{
         const effectiveUser=localStorage.getItem('class_test_user')??user;
         localStorage.setItem('estudiemos_onboarding_v1',JSON.stringify({status:'completed'}));
+        localStorage.setItem('estudiemos_home_layout','{}');
         if(effectiveUser)localStorage.setItem('estudiemos_pomodoro_streak',JSON.stringify({days:{},goal:{minutes:25,updatedAt:1}}));
         if(role){localStorage.setItem('estudiemos_course_role:'+(effectiveUser||'guest'),role);if(effectiveUser)localStorage.setItem('estudiemos_course_role:owner',effectiveUser);}
         window.__classUser=effectiveUser;

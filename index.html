@@ -38,6 +38,7 @@
     <link rel="stylesheet" href="./styles/study-depth.css?v=20261007-flat-controls" />
     <link rel="stylesheet" href="./styles/home-console.css?v=20260914-custom-2" />
     <link rel="stylesheet" href="./styles/home-layout.css?v=20261024-polish" />
+    <link rel="stylesheet" href="./styles/home-start.css?v=20261027-light" />
     <link rel="stylesheet" href="./styles/study-chart.css?v=20261003-refined" />
     <link rel="stylesheet" href="./styles/calendar-month.css?v=20261007-compact-events" />
   </head>
@@ -110,6 +111,14 @@
             <form data-home-ai-form class="study-assistant__composer"><label for="homeAiPrompt">¿Qué organizamos?</label><textarea id="homeAiPrompt" maxlength="1200" rows="2" placeholder="Anotá un repaso de Física para mañana..."></textarea><button type="submit" class="study-icon" aria-label="Abrir chat con esta indicación" title="Continuar en el chat">↑</button></form>
             <div class="study-assistant__suggestions"><button type="button" data-home-prompt="Ayudame a organizar mi semana.">Mi semana <span aria-hidden="true">↗</span></button><button type="button" data-home-prompt="Ayudame a ordenar mis carpetas y archivos.">Mis archivos <span aria-hidden="true">↗</span></button></div>
           </section>
+      <section class="home-classes home-space-disabled" data-home-space="classes" aria-labelledby="homeClassesTitle" aria-hidden="true">
+        <header class="dashboard-widget__head">
+          <div><span class="dashboard-widget__eyebrow">Tu cursada</span><h2 id="homeClassesTitle">Cátedras</h2></div>
+          <button class="dashboard-widget__action" type="button" data-home-classes-open aria-label="Abrir mis cátedras" title="Abrir cátedras"><img src="./assets/icons/graduation-cap.svg" width="20" height="20" alt="" /></button>
+        </header>
+        <div class="home-classes__list" data-home-classes-list></div>
+        <button class="home-classes__all" type="button" data-home-classes-open>Ver mis cátedras</button>
+      </section>
         </div>
       </section>
       <dialog class="home-customizer" data-home-customizer aria-labelledby="homeCustomizerTitle">
@@ -225,7 +234,21 @@
                   <svg viewBox="0 0 24 24"><path d="M4 5h10v14H4V5Zm13 1 2 2-7.5 7.5-3 .7.7-3L17 6Z"/></svg>
                 </button>
               </header>
+              <div class="home-empty" data-home-empty hidden>
+                <img class="home-empty__icon" src="./assets/icons/book-open.svg" width="32" height="32" alt="" />
+                <h3>¡Bienvenido a Estudiemos!</h3>
+                <p>Arrancá con tu primera tarea o conectá Google Drive para tener tus apuntes a mano.</p>
+                <div class="home-empty__actions">
+                  <button type="button" class="home-start-primary" data-quick-note-open><img src="./assets/icons/plus.svg" width="18" height="18" alt="" />Crear mi primera tarea</button>
+                  <button type="button" data-home-connect-drive><img src="./assets/icons/folder.svg" width="18" height="18" alt="" />Conectar Google Drive</button>
+                </div>
+              </div>
               <div class="dashboard-agenda__list" data-dashboard-agenda></div>
+              <div class="home-suggestions" data-home-suggestions hidden>
+                <span>Sumá a tu inicio</span>
+                <div><button type="button" data-home-add-tool="focus"><img src="./assets/icons/plus.svg" width="16" height="16" alt="" />Pomodoro</button><button type="button" data-home-add-tool="classes"><img src="./assets/icons/plus.svg" width="16" height="16" alt="" />Cátedras</button></div>
+              </div>
+              <button class="home-tools-open" type="button" data-home-tools-open><img src="./assets/icons/settings-2.svg" width="18" height="18" alt="" />Herramientas del inicio</button>
               <button class="dashboard-agenda__open" type="button" data-dashboard-agenda-open>Ver Inbox</button>
             </section>
           </div>
@@ -248,18 +271,19 @@
     <!-- DATA SIEMPRE PRIMERO -->
     <script src="./scripts/onboarding.js?v=20261024-flow"></script>
     <script src="./data/data.js?v=20260804-quimica-completa"></script>
-    <script src="./shared/home-layout-storage.js?v=20260929-device"></script>
+    <script src="./shared/home-layout-storage.js?v=20261027-light"></script>
     <script src="./shared/study-goal.js?v=20261010-daily-goal"></script>
-    <script src="./scripts/global-search.js?v=20261027-installed-app"></script>
+    <script src="./scripts/global-search.js?v=20261027-light"></script>
 
     <script src="./shared/plans.js?v=20260827-real-plans"></script>
     <script src="./shared/drive-files.js?v=20261026-resilience"></script>
     <script src="./shared/drive-widget.js?v=20261020"></script>
-    <script src="./scripts/workspace-drive.js?v=20261026-resilience"></script>
+    <script src="./scripts/workspace-drive.js?v=20261027-home-state"></script>
     <script src="./scripts/dashboard.js?v=20261024-polish"></script>
     <script type="module" src="./scripts/study-home.js?v=20261024-tour"></script>
-    <script src="./shared/home-board.js?v=20260928-edges"></script>
-    <script src="./scripts/home-customizer.js?v=20261020-touch-layout"></script>
+    <script src="./shared/home-board.js?v=20261027-classes"></script>
+    <script src="./scripts/home-customizer.js?v=20261027-light"></script>
+    <script src="./scripts/home-start.js?v=20261027-light"></script>
 
     <script src="./scripts/page-shell.js?v=20260831-launch-audit"></script>
 

@@ -45,7 +45,7 @@
   }
   if (!document.querySelector('script[data-classrooms]')) {
     const classes = document.createElement('script'); classes.dataset.classrooms = '';
-    classes.src = rootPath + 'scripts/classroom-sync.js?v=20261026-course-links';
+    classes.src = rootPath + 'scripts/classroom-sync.js?v=20261027-home-state';
     document.head.appendChild(classes);
   }
   if (!document.querySelector('script[data-course-drive]')) {
@@ -253,7 +253,7 @@
   function loadProductInterface() {
     if (document.querySelector('script[src*="scripts/product-ui.js"]')) return;
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/product-ui.js?v=20261024-tour`;
+    script.src = `${rootPath}scripts/product-ui.js?v=20261027-light`;
     document.head.appendChild(script);
   }
 
