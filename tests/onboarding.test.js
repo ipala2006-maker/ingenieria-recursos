@@ -77,3 +77,36 @@ test('the tutorial has no network, timer commands, permissions, or account mutat
   assert.match(source, /prefers-reduced-motion/);
   assert.match(source, /estudiemos:onboarding-finished/);
 });
+
+function exitFixture(reduced=false) {
+  const calls={restored:0,removed:0,remembered:[],timers:[],events:[]};
+  const context={active:true,busy:false,closing:false,pending:true,transitionVersion:0,exitTimer:0,resizeFrame:0,reduced:{matches:reduced},
+    targetObserver:{disconnect(){}},restorePreview(){calls.restored++;},cancelAnimationFrame(){},clearTimeout(){},
+    layer:{classList:{add(){}},close(){},remove(){calls.removed++;}},tour:{destroy(){}},remember:value=>calls.remembered.push(value),original:null,savedFocus:null,
+    setTimeout(fn,delay){calls.timers.push({fn,delay});return calls.timers.length;},window:{dispatchEvent:event=>calls.events.push(event.type)},CustomEvent:class{constructor(type){this.type=type;}}};
+  vm.createContext(context);const start=source.indexOf('  function finish(status)');
+  vm.runInContext(source.slice(start,source.indexOf("  document.addEventListener('click', event => {",start)),context);
+  return {context,calls};
+}
+test('dismissal closes the preview behind the tour before releasing first-use prompts',()=>{
+  const {context,calls}=exitFixture();context.finish('skipped');
+  assert.equal(context.active,true);assert.equal(context.pending,true);assert.equal(context.closing,true);
+  assert.equal(calls.restored,1);assert.equal(calls.removed,0);assert.equal(calls.timers[0].delay,200);
+  calls.timers[0].fn();assert.equal(context.active,false);assert.equal(context.pending,false);assert.equal(calls.removed,1);assert.deepEqual(calls.remembered,['skipped']);
+});
+test('a real alarm interrupts even during the exit fade, without marking the tour completed',()=>{
+  const {context,calls}=exitFixture();context.finish('completed');context.finish('interrupted');
+  assert.equal(context.active,false);assert.equal(calls.removed,1);assert.deepEqual(calls.remembered,[]);
+  calls.timers[0].fn();assert.equal(calls.removed,1);assert.deepEqual(calls.remembered,[]);
+});
+test('reduced motion dismisses immediately instead of waiting for an invisible animation',()=>{
+  const {context,calls}=exitFixture(true);context.finish('skipped');assert.equal(context.active,false);assert.equal(calls.removed,1);assert.equal(calls.timers.length,0);
+});
+test('a stale step cannot reopen or advance a later replay after its preview was interrupted',async()=>{
+  let release;const frame=new Promise(resolve=>{release=resolve;}),calls={moved:0};
+  const context={active:true,busy:false,closing:false,current:0,transitionVersion:0,steps:[{id:'welcome'},{id:'note',view:'inbox',preview:'note'}],reduced:{matches:true},
+    layer:{open:true,classList:{add(){}},close(){this.open=false;},showModal(){this.open=true;}},restorePreview(){},navigate(){},openPreview:()=>()=>{},frame:()=>frame,settlePreview:async()=>{},tour:{moveTo(){calls.moved++;}},finish(){throw Error('A stale transition must not close the replay');}};
+  vm.createContext(context);vm.runInContext(source.slice(source.indexOf('  async function go(index)'),source.indexOf('  function next()')),context);
+  const moving=context.go(1);assert.equal(context.layer.open,true,'Restacking finishes before the next animation frame');
+  context.transitionVersion+=2;context.busy=false;release();await moving;assert.equal(calls.moved,0);assert.equal(context.current,0);assert.equal(context.busy,false);
+});

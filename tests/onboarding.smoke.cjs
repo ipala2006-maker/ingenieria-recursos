@@ -22,6 +22,11 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
       const apiRequests=[],errors=[],dialogs=[];
       if(width===1440)await context.addInitScript(()=>localStorage.setItem('estudiemos_home_layout','{}'));
       await context.addInitScript(()=>{window.__permissionRequests=0;window.__tourInputFocus=0;document.addEventListener('focusin',event=>{if(window.EstudiemosOnboarding?.isActive()&&event.target.matches('input,textarea,select'))window.__tourInputFocus++;});if(window.Notification)Notification.requestPermission=async()=>{window.__permissionRequests++;return 'denied';};});
+      await context.addInitScript(()=>{
+        window.__uncoveredTourFrames=0;
+        function sample(){if(window.EstudiemosOnboarding?.isActive()&&!document.querySelector('.onboarding-layer')?.open)window.__uncoveredTourFrames++;requestAnimationFrame(sample);}
+        requestAnimationFrame(sample);
+      });
       await context.route('**/*',route=>{
         const url=new URL(route.request().url());if(url.origin!==base)return route.abort();
         if(url.pathname.startsWith('/api/')){apiRequests.push(url.pathname+url.search);return route.fulfill({json:{enabled:false}});}
@@ -41,11 +46,21 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
         const focus=await layer.locator('.onboarding-focus').boundingBox();
         if(focus)assert.ok(Math.min(rect.x+rect.width,focus.x+focus.width)-Math.max(rect.x,focus.x)<=2||Math.min(rect.y+rect.height,focus.y+focus.height)-Math.max(rect.y,focus.y)<=2,`${width} ${step}: popover must not cover highlighted controls`);
         assert.equal(await popover.evaluate(el=>el.scrollWidth<=el.clientWidth+1),true);
+        assert.equal(await popover.locator('.tour-context').count(),1);
+        assert.equal(await popover.locator('.tour-hint').count(),1);
+        assert.ok(await popover.locator('.driver-popover-description').evaluate(el=>parseFloat(getComputedStyle(el).fontSize)>=14.5),'Description stays readable on small screens');
+        assert.equal(await popover.locator('.driver-popover-navigation-btns').isVisible(),false,'Navigation stays on the sides rather than adding next/previous buttons');
         assert.equal(await page.evaluate(()=>document.querySelectorAll('.onboarding-layer[open]').length),1);
         if(step!=='welcome'&&step!=='done')assert.equal(await page.evaluate(()=>document.querySelector('.driver-active-element')?.id!=='driver-dummy-element'),true,step+' must highlight a real tool');
         if(['welcome','alarms','program','session','drive','done'].includes(step))await page.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-${width}-${step}.png`)});
         if(step==='program')assert.equal(await page.locator('[data-calendar-reader]').evaluate(el=>el.open),true);
         if(step==='session')assert.equal(await page.locator('.study-session-dialog').evaluate(el=>el.open),true);
+        if(step==='session'&&width===1440){
+          await page.setViewportSize({width:844,height:390});await page.waitForTimeout(350);
+          assert.equal(await page.locator('.driver-active-element').evaluate(el=>el.classList.contains('study-session__field')),true,'Short viewports highlight one setting rather than covering the entire session');
+          await page.setViewportSize({width,height:900});await page.waitForTimeout(350);
+          assert.equal(await page.locator('.driver-active-element').evaluate(el=>el.classList.contains('study-session__fields')),true);
+        }
         if(step==='done'){await page.mouse.click(width-4,80);break;}
         await page.mouse.click(width-4,80);
         await page.waitForFunction(previous=>document.querySelector('.onboarding-layer')?.dataset.step!==previous,step);
@@ -56,6 +71,7 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
       const after=await page.evaluate(()=>({history:history.length,agenda:localStorage.getItem('bandeja_agenda'),schedules:localStorage.getItem('bandeja_horarios'),layout:localStorage.getItem('estudiemos_home_layout_local'),config:EstudiemosStudy.snapshot().config}));
       assert.deepEqual(after,before,'The tour must not change tasks, schedules, configuration, layout or history length');
       assert.equal(await page.evaluate(()=>EstudiemosStudy.snapshot().running),false);assert.equal(await page.evaluate(()=>window.__permissionRequests),0);assert.equal(await page.evaluate(()=>window.__tourInputFocus),0,'Do not summon a phone keyboard during previews');assert.deepEqual(dialogs,[]);
+      assert.equal(await page.evaluate(()=>window.__uncoveredTourFrames),0,'Native preview changes must not flash an uncovered app frame');
       assert.equal(await page.evaluate(()=>JSON.parse(localStorage.estudiemos_onboarding_v1).status),'completed');
       await page.locator('[data-study-goal-close]').click();
       await page.reload();await page.waitForFunction(()=>window.EstudiemosOnboarding&&window.EstudiemosStudy);
@@ -81,7 +97,7 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
     assert.equal(await page.locator('html').evaluate(el=>el.classList.contains('theme-light')),true);
     assert.equal(await page.evaluate(()=>location.search.includes('tutorial=')),false);
     await page.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-light-reduced.png`)});
-    await page.keyboard.press('ArrowRight');await page.waitForFunction(()=>document.querySelector('.onboarding-layer')?.dataset.step==='note');await page.waitForTimeout(100);
+    await layer.locator('.driver-popover-close-btn').focus();await page.keyboard.press('ArrowRight');await page.waitForFunction(()=>document.querySelector('.onboarding-layer')?.dataset.step==='note');await page.waitForTimeout(100);
     await page.mouse.click(386,4);await page.waitForFunction(()=>document.querySelector('.onboarding-layer')?.dataset.step==='alarms');await page.waitForTimeout(100);
     await page.keyboard.press('Escape');await layer.waitFor({state:'hidden'});
     assert.equal(await page.evaluate(()=>JSON.parse(localStorage.estudiemos_onboarding_v1).status),'skipped');
