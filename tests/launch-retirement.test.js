@@ -18,7 +18,7 @@ test('retirement preserves historical files, blocks upload/update and test plans
       create policy "Students delete their private files" on storage.objects for delete to authenticated using(owner=auth.uid());
       create policy "Students upload their private files" on storage.objects for insert to authenticated with check(owner=auth.uid());
       create policy "Students update their private files" on storage.objects for update to authenticated using(owner=auth.uid());
-      create table public.workspace_items(id text,user_id uuid);grant select,insert,update,delete on public.workspace_items to authenticated;
+      create table public.workspace_items(id text,user_id uuid);grant select,insert,update,delete,truncate,trigger,references on public.workspace_items to authenticated;
       create function public.set_test_plan(target_plan text) returns jsonb language sql as $$select '{}'::jsonb$$;grant execute on function public.set_test_plan(text) to authenticated;
       create function public.workspace_storage_upload_allowed(target_name text,target_metadata jsonb) returns boolean language sql as $$select true$$;
     `);
@@ -47,6 +47,7 @@ test('retirement preserves historical files, blocks upload/update and test plans
     await assert.rejects(db.query("insert into storage.objects values('new','workspace-files','new.pdf',$1,'{}')",[owner]),/row-level security/);
     assert.equal((await db.query("update storage.objects set name='changed.pdf' where id='old' returning id")).rows.length,0);
     await assert.rejects(db.query("insert into workspace_items values('new',$1)",[owner]),/permission denied/);
+    await assert.rejects(db.query('truncate workspace_items'),/permission denied/);
     await assert.rejects(db.query('select set_test_plan($1)',['pro']),/permission denied/);
     await assert.rejects(db.query('select get_windows_local_setup_snapshot($1,$2)',[owner,day]),/permission denied/);
     await db.exec('reset role');assert.deepEqual((await db.query('select * from storage.objects order by id')).rows,before);

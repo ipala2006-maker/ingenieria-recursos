@@ -19,7 +19,7 @@
 ## Archivos historicos y planes
 
 - El bucket privado `workspace-files` conserva sus objetos y politicas de lectura y eliminacion del propietario. Se niegan INSERT/UPDATE para anon/authenticated mediante politicas restrictivas.
-- Se retiran INSERT/UPDATE de la tabla antigua `workspace_items`; no se borran filas ni se mueven archivos. Las subidas nuevas siguen por Drive.
+- Se retiran INSERT/UPDATE de la tabla antigua `workspace_items` y permisos innecesarios TRUNCATE/TRIGGER/REFERENCES; no se borran filas ni se mueven archivos. Las subidas nuevas siguen por Drive.
 - `set_test_plan` ya no es ejecutable por los clientes ni `service_role`; su cuerpo tampoco permite asignaciones. El API de planes rechaza esa operacion con HTTP 410 antes de consultar servicios. Los planes existentes, catalogo historico y referidos no se alteran.
 
 ## Arranque de escritorio

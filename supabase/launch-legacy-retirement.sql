@@ -69,6 +69,7 @@ drop policy if exists "Retired workspace rejects updates" on storage.objects;
 create policy "Retired workspace rejects updates" on storage.objects as restrictive
   for update to anon,authenticated using(bucket_id<>'workspace-files') with check(bucket_id<>'workspace-files');
 revoke insert,update on public.workspace_items from anon,authenticated;
+revoke truncate,trigger,references on public.workspace_items from public,anon,authenticated,service_role;
 create or replace function public.workspace_storage_upload_allowed(target_name text,target_metadata jsonb)
 returns boolean language sql immutable set search_path='' as $$ select false $$;
 revoke all on function public.workspace_storage_upload_allowed(text,jsonb) from public,anon,authenticated;
