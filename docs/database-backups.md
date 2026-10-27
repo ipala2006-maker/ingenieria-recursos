@@ -38,6 +38,15 @@ fecha, proyecto, alcance, bytes y SHA-256; nunca contenido ni credenciales.
    pooler de sesion por compatibilidad IPv4 y certificado publico. Si se necesita
    una CA propia, configurar `BACKUP_SSL_ROOT_CERT` en el entorno del runner;
    nunca desactivar TLS para hacerlo funcionar.
+
+   El workflow usa `supabase/certs/prod-ca-2021.crt`, la CA publica de Supabase,
+   con `verify-full`. No basta el almacen de CAs del sistema para su pooler.
+   Fuente: https://supabase-downloads.s3-ap-southeast-1.amazonaws.com/prod/ssl/prod-ca-2021.crt
+   Huella SHA-256 del certificado DER:
+   `807025AD50D4ED219D2C9C7D299C004F824EB00CF7F65AFEF607D07B72E6CAFA`.
+   Vence el 26/04/2031; la prueba verifica huella, firma y vencimiento. Para una
+   rotacion, contrastar primero la CA con el proveedor y actualizar la prueba;
+   no cambiar a `require` ni desactivar la validacion del nombre del servidor.
 4. Crear `BACKUPS_ENABLED=true` y ejecutar manualmente **Encrypted database
    backup** en la rama principal. Descargar su artefacto y realizar la prueba
    de recuperacion antes de considerarlo activo. No se debe habilitar esta

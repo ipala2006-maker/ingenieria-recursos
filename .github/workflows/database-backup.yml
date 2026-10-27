@@ -32,6 +32,7 @@ jobs:
           BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
           BACKUP_PROJECT_REF: ${{ vars.BACKUP_PROJECT_REF }}
           BACKUP_AGE_RECIPIENT: ${{ vars.BACKUP_AGE_RECIPIENT }}
+          BACKUP_SSL_ROOT_CERT: supabase/certs/prod-ca-2021.crt
           BACKUP_OUTPUT_DIR: .backups/database
           BACKUP_MAX_BYTES: '33554432'
         run: node scripts/backup-database.cjs

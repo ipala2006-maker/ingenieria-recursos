@@ -35,6 +35,18 @@ function fakeTools({fail='',content=Buffer.from('PGDMP-fixture-records'),hang=fa
   return {spawnTool,calls};
 }
 
+test('the scheduled backup trusts the pinned Supabase CA and retains full TLS verification',async()=>{
+  const root=path.resolve(__dirname,'../supabase/certs/prod-ca-2021.crt');
+  const certificate=new crypto.X509Certificate(await fs.readFile(root));
+  assert.equal(certificate.fingerprint256.replaceAll(':',''),'807025AD50D4ED219D2C9C7D299C004F824EB00CF7F65AFEF607D07B72E6CAFA');
+  assert.equal(certificate.ca,true);assert.equal(certificate.verify(certificate.publicKey),true);
+  assert.ok(new Date(certificate.validTo)>new Date(),'Rotate the Supabase CA before it expires');
+  const workflow=await fs.readFile(path.resolve(__dirname,'../.github/workflows/database-backup.yml'),'utf8');
+  assert.match(workflow,/BACKUP_SSL_ROOT_CERT: supabase\/certs\/prod-ca-2021\.crt/);
+  const options=config({...environment,BACKUP_SSL_ROOT_CERT:root});
+  assert.equal(options.childEnv.PGSSLROOTCERT,root);assert.equal(options.childEnv.PGSSLMODE,'verify-full');
+});
+
 test('stream orchestration publishes only encrypted output and a content-free checksum manifest',async()=>{
   const directory=await fs.mkdtemp(path.join(os.tmpdir(),'estudiemos-backup-test-'));
   try{
