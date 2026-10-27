@@ -1,6 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
+    { "source": "/api/widget-link", "has": [{ "type": "query", "key": "alarmFeed", "value": "1" }], "missing": [{ "type": "query", "key": "alarmSetup" }], "destination": "/.well-known/windows-alarms-retired.json" },
     { "source": "/amistad/:token", "destination": "/api/account-config?friendInvitation=:token" },
     { "source": "/materia/:code", "destination": "/api/account-config?courseInvitation=:code" }
   ],
@@ -16,6 +17,11 @@
     }
   },
   "headers": [
+    { "source": "/.well-known/windows-alarms-retired.json", "headers": [
+      { "key": "Content-Type", "value": "application/json; charset=utf-8" },
+      { "key": "Cache-Control", "value": "public, max-age=86400" },
+      { "key": "X-Estudiemos-Deprecated", "value": "windows-alarm-feed" }
+    ] },
     {
       "source": "/.well-known/assetlinks.json",
       "headers": [

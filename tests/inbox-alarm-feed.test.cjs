@@ -10,7 +10,7 @@ const other='00000000-0000-4000-8000-000000000002';
 function setup(){
   let rows=[],study=null,user={id};const calls=[];const localRequire=createRequire(file);
   const sandbox={module:{exports:{}},Buffer,Date,process:{env:{SUPABASE_SECRET_KEY:'test-secret-not-a-live-key'}},require(name){
-    if(name==='./supabase-admin')return {authenticateBearer:async token=>token==='Bearer session'?user:null,adminRequest:async (url,options)=>{calls.push({url,...options});if(url.endsWith('get_windows_study_goal')){if(study instanceof Error)throw study;return study;}return rows;}};
+    if(name==='./supabase-admin')return {authenticateBearer:async token=>token==='Bearer session'?user:null,adminRequest:async (url,options)=>{calls.push({url,...options});return {items:rows[0]?.alarm_items||[],updatedAt:rows[0]?.updated_at,study:study instanceof Error?null:study};}};
     if(name==='./request-security')return {isSameOriginRequest:req=>req.headers.origin!=='https://foreign.example',requireJsonRequest:()=>true};
     return localRequire(name);
   }};
@@ -29,10 +29,10 @@ test('native feed connects only with authenticated explicit consent, confirms on
   assert.equal((await call('POST',{action:'alarms-connect',consent:true},{},{...headers,origin:'https://foreign.example'})).status,403);
   const started=await call('POST',{action:'alarms-connect',consent:true},{},headers);
   assert.equal(started.status,200);
-  const connected=await call('GET',{}, {alarmSetup:started.body.token});
+  const connected=await call('GET',{}, {alarmSetup:started.body.token,clientVersion:'2.0.0'});
   assert.equal(connected.status,200);
-  assert.equal(api.verify(connected.body.feedToken,'alarm-feed').sub,id);
-  assert.equal(api.verify(connected.body.feedToken,'alarm-setup'),null);
+  assert.equal(connected.body.feedToken,undefined);
+  assert.equal(connected.body.userId,id);
   setUser({id:other});
   assert.equal((await call('POST',{action:'alarms-confirm',proof:connected.body.confirmation},{},headers)).status,400);
   setUser({id});
@@ -49,29 +49,30 @@ test('alarm credentials are scoped, expiring and tamper-evident',()=>{
   assert.equal(api.verify('x'.repeat(3000),'alarm-feed'),null);
 });
 
-test('receipts distinguish the legacy helper from the independent installer',async()=>{
-  const {call}=setup(),headers={authorization:'Bearer session'};
-  for(const [clientVersion,expected] of [[undefined,'1.6.0'],['1.6.1','1.6.1'],['1.6.2','1.6.2'],['1.6.3','1.6.3'],['unknown','1.6.0']]){
+test('legacy installers are retired without data reads or new feed credentials',async()=>{
+  const {call,calls}=setup(),headers={authorization:'Bearer session'};
+  for(const clientVersion of [undefined,'1.6.1','1.6.2','1.6.3','unknown']){
     const started=await call('POST',{action:'alarms-connect',consent:true},{},headers);
     const installed=await call('GET',{}, {alarmSetup:started.body.token,clientVersion});
-    const confirmed=await call('POST',{action:'alarms-confirm',proof:installed.body.confirmation},{},headers);
-    assert.equal(confirmed.body.version,expected);
+    assert.equal(installed.status,410);assert.equal(installed.body.updateRequired,true);
+    assert.equal(installed.body.feedToken,undefined);
   }
+  assert.equal(calls.length,0);
 });
-test('feed queries only its owner and includes mobile-created alarms on authorized PCs',async()=>{
+test('one-time setup queries only its owner and includes mobile-created alarms',async()=>{
   const {api,call,calls,setRows}=setup();
   const alarm={date:'2026-09-15',time:'18:00',repeat:'daily',windows:true};
   setRows([{updated_at:'2026-09-14',alarm_items:[
     {id:'a',title:'Pilot',note:'private note',alarm},{id:'b',title:'done',done:true,alarm},
     {id:'c',alarm:{...alarm,windows:false}},{id:'d',title:'No alarm'}]}]);
-  const feed=await call('GET',{}, {alarmFeed:'1'},{authorization:`Bearer ${api.sign(id,'alarm-feed',60)}`});
+  const feed={status:200,body:await api.snapshot(id)};
   assert.equal(feed.status,200);assert.equal(feed.body.items.length,2);
   assert.equal(feed.body.items[1].alarm.windows,true,'mobile-created alarm reaches an already authorized Windows device');
   assert.deepEqual(Object.keys(feed.body.items[0]).sort(),['alarm','id','title']);
-  assert.equal(calls[0].url,'/rest/v1/rpc/get_windows_alarm_snapshot');
+  assert.equal(calls[0].url,'/rest/v1/rpc/get_windows_local_setup_snapshot');
   assert.equal(calls[0].method,'POST');
-  assert.deepEqual(JSON.parse(calls[0].body),{p_user_id:id});
-  assert.equal(feed.headers['Cache-Control'],'no-store');
+  assert.equal(JSON.parse(calls[0].body).p_user_id,id);
+  assert.equal(calls.length,1);
   setRows([]);assert.equal((await api.snapshot(id)).items.length,0);
 });
 
@@ -94,13 +95,22 @@ test('local v2 setup issues no long-lived read credential and confirms its local
  assert.equal(confirmed.body.mode,'local');assert.equal(confirmed.body.version,'2.0.0');
 });
 
-test('connected PCs receive only their local-day aggregate and keep alarms if progress is unavailable',async()=>{
+test('one-time setup receives only the local-day aggregate and keeps alarms if progress is unavailable',async()=>{
   const {api,call,calls,setStudy}=setup(),date='2026-10-10';
   setStudy({date,minutes:45,goalMinutes:45,configured:true,email:'PRIVATE',days:{private:1}});
-  const feed=await call('GET',{}, {alarmFeed:'1',localDate:date},{authorization:`Bearer ${api.sign(id,'alarm-feed',60)}`});
-  assert.deepEqual(feed.body.study,{date,minutes:45,goalMinutes:45,configured:true});
-  assert.deepEqual(JSON.parse(calls[1].body),{p_user_id:id,p_date:date});
+  const feed=await api.snapshot(id,date);
+  assert.deepEqual(JSON.parse(JSON.stringify(feed.study)),{date,minutes:45,goalMinutes:45,configured:true});
+  assert.deepEqual(JSON.parse(calls[0].body),{p_user_id:id,p_date:date});
   for(const value of [null,new Error('unavailable'),{date,minutes:-1,goalMinutes:45,configured:true},{date,minutes:0,goalMinutes:0,configured:true}]){
     setStudy(value);assert.equal((await api.snapshot(id,date)).study,null);
   }
+});
+test('periodic feed always returns a deprecation without verifying tokens or touching the database',async()=>{
+  const {api,call,calls}=setup();
+  for(const authorization of ['',`Bearer ${api.sign(id,'alarm-feed',60)}`]){
+    const retired=await call('GET',{}, {alarmFeed:'1'},{authorization});
+    assert.equal(retired.status,410);assert.equal(retired.body.code,'WINDOWS_LOCAL_ALARMS_REQUIRED');
+    assert.equal(retired.body.items,undefined,'A retirement response must not erase the last valid local schedule');
+  }
+  assert.equal(calls.length,0);
 });

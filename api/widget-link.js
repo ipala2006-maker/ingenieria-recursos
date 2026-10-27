@@ -8,10 +8,12 @@ const VALID_WIDGETS = new Set(["workspace", "inbox", "calendar", "pomodoro", "st
 
 module.exports = async function widgetLink(request, response) {
   setHeaders(response);
+  if(request.method==='GET' && request.query?.alarmFeed==='1' && !request.query?.alarmSetup){
+    return response.status(410).json(require('../.well-known/windows-alarms-retired.json'));
+  }
   if (!isConfigured()) return response.status(503).json({ message: "La conexión de cuenta no está disponible." });
   if (rejectOversizedBody(request, response, 8 * 1024)) return;
-  const isAlarmFeed = request.query?.alarmFeed === '1';
-  if (!(await enforceRateLimit(request, response, { route: isAlarmFeed ? 'alarm-feed' : 'widget-link', limit: isAlarmFeed ? 120 : 30, windowSeconds: 60 }))) return;
+  if (!(await enforceRateLimit(request, response, { route:'widget-link', limit:30, windowSeconds:60 }))) return;
 
   try {
     if (request.query?.alarmSetup || request.query?.alarmFeed === '1' || ['alarms-connect','alarms-confirm'].includes(request.body?.action)) {

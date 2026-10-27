@@ -160,7 +160,8 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
       await calendar.getByRole('button',{name:'Programar',exact:true}).click();
       assert.deepEqual(await page.evaluate(id=>JSON.parse(localStorage.bandeja_horarios).find(item=>item.id===id).recurrence,customId),{unit:'days',interval:13},'Unsaved unit changes do not alter the recurrence across reload');
       await page.evaluate(()=>{window.EstudiemosAccount.getUser=()=>({id:'other'});dispatchEvent(new CustomEvent('estudiemos:account-synced'));});
-      assert.equal(await reader.isVisible(),false);
+      assert.equal(await reader.evaluate(el=>el.open),false,'Account changes close the native dialog immediately');
+      await reader.waitFor({state:'hidden'});
       await page.goto(base+'/widget.html?view=calendar');await page.locator('.widget-calendar').waitFor({state:'visible'});
       await page.locator('[data-widget-calendar-view=week]').click();
       assert.ok(await page.locator('.calendar-entry.is-recurring.timetable-color--violet').count()>0);

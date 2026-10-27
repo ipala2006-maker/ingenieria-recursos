@@ -22,19 +22,17 @@ function verify(token,scope) {
   }catch(_){return null;}
 }
 async function snapshot(userId, requestedDate) {
-  const rows=await adminRequest('/rest/v1/rpc/get_windows_alarm_snapshot', {
-    method:'POST', body:JSON.stringify({p_user_id:userId})
-  });
-  const items=rows?.[0]?.alarm_items || [];
   const date = goals.validDate(requestedDate) ? requestedDate : new Date().toISOString().slice(0,10);
+  const value=await adminRequest('/rest/v1/rpc/get_windows_local_setup_snapshot', {
+    method:'POST', body:JSON.stringify({p_user_id:userId,p_date:date})
+  });
+  const items=value?.items || [];
   let study = null;
-  try {
-    const value = await adminRequest('/rest/v1/rpc/get_windows_study_goal', {method:'POST',body:JSON.stringify({p_user_id:userId,p_date:date})});
-    if (value?.date===date && Number.isSafeInteger(value.minutes) && value.minutes>=0 && value.minutes<=1440 && goals.validMinutes(value.goalMinutes) && typeof value.configured==='boolean') {
-      study={date,minutes:value.minutes,goalMinutes:value.goalMinutes,configured:value.configured};
-    }
-  } catch (_) { /* Existing alarms remain available while this optional projection is migrated. */ }
-  return {version:1,study,updatedAt:rows?.[0]?.updated_at || null,items:(Array.isArray(items)?items:[]).slice(0,500).flatMap(item=>{
+  const progress=value?.study;
+  if (progress?.date===date && Number.isSafeInteger(progress.minutes) && progress.minutes>=0 && progress.minutes<=1440 && goals.validMinutes(progress.goalMinutes) && typeof progress.configured==='boolean') {
+    study={date,minutes:progress.minutes,goalMinutes:progress.goalMinutes,configured:progress.configured};
+  }
+  return {version:1,study,updatedAt:value?.updatedAt || null,items:(Array.isArray(items)?items:[]).slice(0,500).flatMap(item=>{
     const alarm=rules.normalize(item?.alarm);
     if(!alarm||item.done||typeof item.id!=='string')return [];
     // Consent belongs to the connected Windows device, not the device creating the task.
@@ -47,6 +45,7 @@ module.exports = async function alarmFeed(request,response) {
   if(!['GET','POST'].includes(request.method)){
     response.setHeader('Allow','GET, POST');return response.status(405).json({error:'Método no permitido.'});
   }
+  if(request.method==='GET' && !request.query.alarmSetup) return retired(response);
   if(request.method==='POST'){
     if(!isSameOriginRequest(request))return response.status(403).json({error:'Origen no permitido.'});
     if(!requireJsonRequest(request,response))return;
@@ -55,23 +54,24 @@ module.exports = async function alarmFeed(request,response) {
     if(request.body.action==='alarms-confirm'){
       const proof=verify(request.body.proof,'alarm-receipt');
       if(!proof||proof.sub!==user.id)return response.status(400).json({error:'No pudimos confirmar la conexión. Volvé a conectarla.'});
+      if(proof.version!=='2.0.0')return retired(response);
       return response.status(200).json({connected:true,version:proof.version,userId:user.id,expiresAt:proof.feedExpiresAt,...(proof.version==='2.0.0'?{mode:'local'}:{})});
     }
     if(request.body.consent!==true)return response.status(400).json({error:'Confirmá que querés recibir alarmas en esta PC.'});
     return response.status(200).json({token:sign(user.id,'alarm-setup',120)});
   }
   if(request.method==='GET' && request.query.alarmSetup){
+    if(request.query.clientVersion!=='2.0.0')return retired(response);
     const setup=verify(request.query.alarmSetup,'alarm-setup');
     if(!setup)return response.status(401).json({error:'El enlace venció. Conectá las alarmas de nuevo desde Estudiemos.'});
     const feedExpiresAt=seconds()+90*86400;
-    const version=['1.6.1','1.6.2','1.6.3','2.0.0'].includes(request.query.clientVersion)?request.query.clientVersion:'1.6.0';
-    return response.status(200).json({... (version==='2.0.0'?{userId:setup.sub}:{feedToken:sign(setup.sub,'alarm-feed',90*86400)}),snapshot:await snapshot(setup.sub),
+    const version='2.0.0';
+    return response.status(200).json({userId:setup.sub,snapshot:await snapshot(setup.sub,request.query.localDate),
       confirmation:sign(setup.sub,'alarm-receipt',600,{version,feedExpiresAt})});
   }
-  const feed=verify(String(request.headers.authorization||'').replace(/^Bearer /i,''),'alarm-feed');
-  if(!feed)return response.status(401).json({error:'Volvé a conectar las alarmas desde Estudiemos.'});
-  return response.status(200).json(await snapshot(feed.sub,request.query.localDate));
+  return retired(response);
 };
+function retired(response){return response.status(410).json(require('../../.well-known/windows-alarms-retired.json'));}
 module.exports.verify=verify;
 module.exports.sign=sign;
 module.exports.snapshot=snapshot;
