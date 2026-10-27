@@ -26,6 +26,19 @@ La verificacion depende del dispositivo, sus preferencias y de que el navegador 
 
 iPhone sigue siendo una PWA sin app nativa con Universal Links. El sistema puede abrir Safari en lugar de la ventana instalada. Se mantiene el recorrido web sin perder la invitacion; no se inventa una asociacion iOS, que requeriria una app nativa y su identificador firmado.
 
+Confirmacion del caso reportado el 27/10: ocurre en iPhone/iPad. La presentacion
+explica esa limitacion, no ofrece un boton falso para abrir una PWA y aclara que
+la inscripcion se sincroniza al abrir Estudiemos con la misma cuenta. Tambien
+reconoce iPad con user agent de escritorio mediante el contexto tactil del cliente.
+No se pide reinstalar, aceptar permisos ficticios ni copiar sesiones de Safari.
+La prueba WebKit verifica la presentacion y el acceso, no el lanzamiento del icono
+desde WhatsApp: ese requisito queda pendiente de una distribucion iOS nativa.
+
+Referencias primarias:
+[WebKit iOS 26](https://webkit.org/blog/17333/webkit-features-in-safari-26-0/),
+[enlaces de PWAs (WICG)](https://github.com/WICG/pwa-url-handler/blob/main/explainer.md),
+[asociacion nativa Apple](https://developer.apple.com/documentation/xcode/supporting-associated-domains).
+
 ## Vista previa y privacidad
 
 La ruta publica devuelve HTML renderizado en el servidor, incluso sin JavaScript. Open Graph y Twitter incluyen titulo de materia, descripcion, URL limpia e imagen PNG 1200 x 630 existente. Android App Links tiene tambien sus etiquetas de compatibilidad. WhatsApp y Telegram pueden conservar una vista previa anterior en su cache; volver a compartir el enlace limpio no garantiza invalidar esa cache inmediatamente.

@@ -61,3 +61,10 @@ test('Android and Windows receive app-first actions even without JavaScript; exp
     assert.match(fallback.body,/data-course-join data-course-primary/);
   }
 });
+
+test('iPhone never receives a fake native-opening button or an Android/Windows URI',async()=>{
+  const h=boot(),res=response();await h.handler({method:'GET',query:{courseInvitation:code},headers:{'user-agent':'Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X)'}},res);
+  assert.match(res.body,/En iPhone y iPad/);assert.match(res.body,/misma cuenta/);assert.match(res.body,/data-course-join data-course-primary/);
+  const invitation=res.body.slice(res.body.indexOf('<section class="course-install-invitation"'),res.body.indexOf('<template data-course-preview'));
+  assert.doesNotMatch(invitation,/data-course-native|href="(?:intent:|estudiemos-app:|webapp:)/);
+});

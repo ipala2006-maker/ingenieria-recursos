@@ -3,8 +3,9 @@
   else root.EstudiemosCourseAppLinks=factory();
 })(typeof globalThis!=='undefined'?globalThis:this,function(){
   const CODE=/^[A-HJ-NP-Z2-9]{10}$/;
-  function platform(userAgent,inApp=false){
+  function platform(userAgent,inApp=false,macTouch=false){
     if(inApp)return '';
+    if(/iPhone|iPad|iPod/i.test(userAgent||'')||macTouch)return 'ios';
     if(/Android/i.test(userAgent||''))return 'android';
     if(/Windows/i.test(userAgent||''))return 'windows';
     return '';

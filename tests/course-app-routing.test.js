@@ -15,7 +15,11 @@ test('installed-app routes carry only a validated course, with a web landing fal
 test('the installed app is never launched recursively; web and unsupported platforms remain explicit',()=>{
   assert.equal(links.platform('Android'),'android');assert.equal(links.platform('Windows NT 10.0'),'windows');
   assert.equal(links.platform('Android',true),'');assert.equal(links.platform('Windows',true),'');
-  assert.equal(links.platform('iPhone'),'');assert.equal(links.platform('Macintosh'),'');
+  assert.equal(links.platform('iPhone'),'ios');assert.equal(links.platform('Macintosh'),'');
+  assert.equal(links.platform('Macintosh',false,true),'ios');assert.equal(links.platform('iPhone',true),'');
+  assert.equal(links.nativeUrl(code,'ios'),'');
+  const ios=view.content({title:'Física'},{code,joinUrl:'https://app.test/',platform:'ios'});
+  assert.doesNotMatch(ios,/data-course-native|intent:|estudiemos-app:/);assert.match(ios,/En iPhone y iPad/);
   const native=view.content({title:'Física'},{code,joinUrl:'https://app.test/',nativeUrl:links.nativeUrl(code,'windows'),preferNative:true});
   assert.match(native,/data-course-native data-course-primary/);assert.match(native,/Unirme desde el navegador/);
   assert.ok(native.indexOf('data-course-native')<native.indexOf('data-course-join'));

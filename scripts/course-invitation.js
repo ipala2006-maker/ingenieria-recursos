@@ -31,14 +31,14 @@
     if(!section){section=document.createElement('section');section.className='course-install-invitation';section.setAttribute('aria-labelledby','courseInviteTitle');document.querySelector('main').prepend(section);}
     const inApp=Boolean(window.EstudiemosAndroid)||matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: window-controls-overlay)').matches||navigator.standalone===true;
     const appLinks=window.EstudiemosCourseAppLinks;
-    const nativePlatform=appLinks?.platform(navigator.userAgent,inApp)||'';
+    const nativePlatform=appLinks?.platform(navigator.userAgent,inApp,navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1)||'';
     const nativeDestination=appLinks?.nativeUrl(code,nativePlatform,root)||'';
     let webChosen=url.searchParams.get('abrir')==='web'||!nativeDestination;
     const destination=appUrl(code);let unavailable=false,seed=null,currentPreview=null,navigating=false;
     try{const data=JSON.parse(document.querySelector('[data-course-preview]')?.dataset.coursePreview||'null');if(data?.code===code)seed=data;}catch(_){}
     function paint(preview,status='',gone=false,loading=false){
       currentPreview=preview;unavailable=gone;
-      section.innerHTML=view.content(preview,{code,joinUrl:gone?new URL('./',root).href:destination.href,status,unavailable:gone,loading,nativeUrl:nativeDestination,preferNative:!webChosen});
+      section.innerHTML=view.content(preview,{code,joinUrl:gone?new URL('./',root).href:destination.href,status,unavailable:gone,loading,nativeUrl:nativeDestination,platform:nativePlatform,preferNative:!webChosen});
     }
     if(seed)paint(seed.preview,seed.status,seed.unavailable);else paint(null,'Preparando tu invitación…',false,true);
     document.querySelectorAll('[data-open-estudiemos],a[href="https://estudiemos-app.vercel.app/"]').forEach(link=>link.href=nativeDestination&&!webChosen?nativeDestination:destination);
