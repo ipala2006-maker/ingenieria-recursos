@@ -72,8 +72,8 @@ test('plan assignment and retired feeds return before quota, Auth or database ca
     const result={},response={setHeader(){},status(status){result.status=status;return this;},json(body){result.body=body;}};
     await sandbox.module.exports(request,response);assert.equal(result.status,410);assert.equal(result.body.code,code);
   }
-  const config=require('../vercel.json'),rule=config.rewrites.find(r=>r.has?.some(h=>h.key==='alarmFeed'));
+  const config=require('../vercel.json'),rule=config.redirects.find(r=>r.has?.some(h=>h.key==='alarmFeed'));
   assert.equal(rule.source,'/api/widget-link');assert.equal(rule.destination,'/.well-known/windows-alarms-retired.json');
-  assert.ok(rule.missing.some(h=>h.key==='alarmSetup'));
+  assert.equal(rule.permanent,false);assert.ok(rule.missing.some(h=>h.key==='alarmSetup'));
   assert.doesNotMatch(fs.readFileSync(require.resolve('../scripts/workspace.js'),'utf8'),/data-workspace-plan-select|selectPlanPreview/);
 });

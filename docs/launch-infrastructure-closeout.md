@@ -9,8 +9,8 @@
 
 ## Alarmas Windows
 
-- `GET /api/widget-link?alarmFeed=1` sin `alarmSetup` se reescribe a un JSON estatico cacheable. No ejecuta la funcion ni consulta Supabase. La respuesta estatica es HTTP 200 con `deprecated:true`, no una agenda vacia valida.
-- Si se invoca directamente el handler sin la reescritura, responde HTTP 410 antes de autenticacion, cuota o consultas.
+- `GET /api/widget-link?alarmFeed=1` sin `alarmSetup` recibe una redireccion CDN HTTP 307 hacia un JSON estatico cacheable. No ejecuta la funcion ni consulta Supabase. Al seguir la redireccion, la respuesta estatica es HTTP 200 con `deprecated:true`, no una agenda vacia valida. La redireccion tiene prioridad sobre la ruta API existente; una reescritura comun no la tiene.
+- Si se invoca directamente el handler sin la redireccion, responde HTTP 410 antes de autenticacion, cuota o consultas.
 - Los RPC antiguos `get_windows_alarm_snapshot` y `get_windows_study_goal` devuelven constantes sin leer `user_states`, por si queda algun cliente anterior.
 - La conexion local 2.0.0 conserva el consentimiento, token firmado de dos minutos y comprobante de la misma cuenta. Solo durante esa conexion llama al nuevo RPC privado `get_windows_local_setup_snapshot`, con un maximo de 500 alarmas y el agregado del objetivo del dia. No emite una nueva credencial de sondeo de 90 dias.
 - El reloj y la ejecucion local no cambian. Una PC con software viejo debe actualizar y volver a conectar el complemento. Una respuesta del servidor no puede hacer que ese programa deje de realizar peticiones HTTP; estas llamadas ya no llegan a la base de datos.

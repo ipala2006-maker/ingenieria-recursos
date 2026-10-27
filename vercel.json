@@ -1,7 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "redirects": [
+    { "source": "/api/widget-link", "has": [{ "type": "query", "key": "alarmFeed", "value": "1" }], "missing": [{ "type": "query", "key": "alarmSetup" }], "destination": "/.well-known/windows-alarms-retired.json", "permanent": false }
+  ],
   "rewrites": [
-    { "source": "/api/widget-link", "has": [{ "type": "query", "key": "alarmFeed", "value": "1" }], "missing": [{ "type": "query", "key": "alarmSetup" }], "destination": "/.well-known/windows-alarms-retired.json" },
     { "source": "/amistad/:token", "destination": "/api/account-config?friendInvitation=:token" },
     { "source": "/materia/:code", "destination": "/api/account-config?courseInvitation=:code" }
   ],
