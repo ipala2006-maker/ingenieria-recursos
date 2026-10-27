@@ -163,7 +163,8 @@ public class MainActivity extends Activity {
         });
 
         String incomingCourse = getIntent().getData() == null ? "" : CourseLinks.appUrl(getIntent().getData().toString());
-        if (savedInstanceState == null || !incomingCourse.isEmpty()) {
+        String previousCourse = savedInstanceState == null ? "" : savedInstanceState.getString("course_launch_url", "");
+        if (savedInstanceState == null || (!incomingCourse.isEmpty() && !incomingCourse.equals(previousCourse))) {
             webView.loadUrl(initialUrl(getIntent()));
             openDriveItemIfRequested(getIntent());
         }
@@ -528,6 +529,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onSaveInstanceState(@NonNull Bundle outState) {
         webView.saveState(outState);
+        outState.putString("course_launch_url", getIntent().getData() == null ? "" : CourseLinks.appUrl(getIntent().getData().toString()));
         outState.putBoolean("update_permission", updateAfterPermission);
         super.onSaveInstanceState(outState);
     }

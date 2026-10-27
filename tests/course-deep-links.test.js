@@ -25,13 +25,22 @@ test('release signature must match the published URL-only domain association',()
   const digest=associations[0].target.sha256_cert_fingerprints[0].replace(/:/g,'').toLowerCase();
   assert.equal(verifySigners('Signer #1 certificate SHA-256 digest: '+digest+'\n',associations),1);
   assert.throws(()=>verifySigners('Signer #1 certificate SHA-256 digest: '+'a'.repeat(64),associations),/does not match/);
-  assert.throws(()=>verifySigners('SHA-256 file digest: '+digest,associations),/does not match/);
+  assert.throws(()=>verifySigners('SHA-256 file digest: '+digest,associations),/No APK certificate/);
+  assert.throws(()=>verifySigners('Signer #1 public key SHA-256 digest: '+digest,associations),/No APK certificate/);
+  assert.throws(()=>verifySigners('Source Stamp Signer certificate SHA-256 digest: '+digest,associations),/No APK certificate/);
+  const rotation='Signer (minSdkVersion=33, maxSdkVersion=2147483647) certificate SHA-256 digest: ';
+  assert.equal(verifySigners(rotation+digest+'\nSigner (minSdkVersion=26, maxSdkVersion=32) certificate SHA-256 digest: '+digest,associations),2);
+  assert.throws(()=>verifySigners(rotation+'a'.repeat(64),associations),/does not match/);
   assert.throws(()=>verifySigners('Signer #1 certificate SHA-256 digest: '+digest,[{...associations[0],relation:['delegate_permission/common.get_login_creds']}]),/URL-handling/);
   const manifest=fs.readFileSync(require.resolve('../android-app/app/src/main/AndroidManifest.xml'),'utf8');
   assert.match(manifest,/<intent-filter android:autoVerify="true">/);
   assert.match(manifest,/android:host="estudiemos-app.vercel.app" android:pathPrefix="\/materia\/"/);
   const handler=fs.readFileSync(require.resolve('../android-app/app/src/main/java/com/estudiemos/app/MainActivity.java'),'utf8');
   assert.match(handler,/CourseLinks.appUrl/);assert.doesNotMatch(handler,/clearCache\(|removeAllCookies\(/);
+  assert.match(handler,/getString\("course_launch_url", ""\)/);assert.match(handler,/!incomingCourse\.equals\(previousCourse\)/);
+  assert.match(handler,/outState\.putString\("course_launch_url"/,'Recreation preserves a later screen rather than reopening the original invitation');
+  const workflow=fs.readFileSync(require.resolve('../.github/workflows/android-app.yml'),'utf8');
+  assert.match(workflow,/build-tools\/35\.0\.0\/apksigner/);assert.doesNotMatch(workflow,/sort -V/);
 });
 
 test('PWA protocol launches retain a validated course while existing tool targets still work',()=>{
