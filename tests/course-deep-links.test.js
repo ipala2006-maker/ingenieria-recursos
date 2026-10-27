@@ -37,6 +37,8 @@ test('release signature must match the published URL-only domain association',()
   assert.match(manifest,/android:host="estudiemos-app.vercel.app" android:pathPrefix="\/materia\/"/);
   const handler=fs.readFileSync(require.resolve('../android-app/app/src/main/java/com/estudiemos/app/MainActivity.java'),'utf8');
   assert.match(handler,/CourseLinks.appUrl/);assert.doesNotMatch(handler,/clearCache\(|removeAllCookies\(/);
+  assert.match(handler,/getString\("course_launch_url", ""\)/);assert.match(handler,/!incomingCourse\.equals\(previousCourse\)/);
+  assert.match(handler,/outState\.putString\("course_launch_url"/,'Recreation preserves a later screen rather than reopening the original invitation');
   const workflow=fs.readFileSync(require.resolve('../.github/workflows/android-app.yml'),'utf8');
   assert.match(workflow,/build-tools\/35\.0\.0\/apksigner/);assert.doesNotMatch(workflow,/sort -V/);
 });
