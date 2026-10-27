@@ -20,6 +20,7 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
     for(const width of process.env.TEST_WIDTHS?process.env.TEST_WIDTHS.split(',').map(Number):[1440,1024,390,320]){
       const context=await browser.newContext({viewport:{width,height:width===320?568:900},hasTouch:width<500,isMobile:width<500,serviceWorkers:'block'});
       const apiRequests=[],errors=[],dialogs=[];
+      if(width===1440)await context.addInitScript(()=>localStorage.setItem('estudiemos_home_layout','{}'));
       await context.addInitScript(()=>{window.__permissionRequests=0;window.__tourInputFocus=0;document.addEventListener('focusin',event=>{if(window.EstudiemosOnboarding?.isActive()&&event.target.matches('input,textarea,select'))window.__tourInputFocus++;});if(window.Notification)Notification.requestPermission=async()=>{window.__permissionRequests++;return 'denied';};});
       await context.route('**/*',route=>{
         const url=new URL(route.request().url());if(url.origin!==base)return route.abort();
@@ -50,7 +51,7 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
         await page.waitForFunction(previous=>document.querySelector('.onboarding-layer')?.dataset.step!==previous,step);
       }
       assert.ok(visited.includes('done'),visited.join(','));
-      for(const step of ['note','alarms','calendar','program','pomodoro','session','progress','friends','drive','layout','account'])assert.ok(visited.includes(step),step+': '+visited.join(','));
+      for(const step of ['note','alarms','calendar','program','friends','layout','account',...(width===1440?['pomodoro','session','progress','drive']:[])])assert.ok(visited.includes(step),step+': '+visited.join(','));
       await layer.waitFor({state:'hidden'});await page.locator('[data-study-goal-dialog]').waitFor({state:'visible'});
       const after=await page.evaluate(()=>({history:history.length,agenda:localStorage.getItem('bandeja_agenda'),schedules:localStorage.getItem('bandeja_horarios'),layout:localStorage.getItem('estudiemos_home_layout_local'),config:EstudiemosStudy.snapshot().config}));
       assert.deepEqual(after,before,'The tour must not change tasks, schedules, configuration, layout or history length');

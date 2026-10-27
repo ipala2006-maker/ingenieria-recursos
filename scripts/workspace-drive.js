@@ -11,7 +11,7 @@
   };
   const icon = name => '<svg viewBox="0 0 24 24" aria-hidden="true">' + icons[name] + '</svg>';
   const size = value => { const n = Math.max(0,Number(value)||0); return n >= 1073741824 ? (n/1073741824).toFixed(1)+' GB' : n >= 1048576 ? (n/1048576).toFixed(1)+' MB' : Math.ceil(n/1024)+' KB'; };
-  let account, owner = '', epoch = 0, enabled = false, configReady = false, initializing = false, browseEnabled = false, connected = false, busy = false, fs, token = '', expiresAt = 0, items = [], current = '', crumbs = [], dialog, returnFocus, query = '', searchTimer, lastLoad = 0, connectAfterLogin = false;
+  let account, owner = '', epoch = 0, enabled = false, configReady = false, initializing = false, browseEnabled = false, connected = false, connectionKnown = false, busy = false, fs, token = '', expiresAt = 0, items = [], current = '', crumbs = [], dialog, returnFocus, query = '', searchTimer, lastLoad = 0, connectAfterLogin = false;
   const body = $('[data-workspace-items]'), state = $('[data-workspace-state]'), status = $('[data-workspace-status]');
   const full = document.body.classList.contains('drive-library-page');
   if (!full && !document.querySelector('[data-drive-library-link]')) {
@@ -66,7 +66,7 @@
   window.addEventListener('estudiemos-android-ready',render);
   window.addEventListener('estudiemos-android-widget-account-ready',publishNativeWidget);
   initialize();
-  window.EstudiemosDriveLibrary=Object.freeze({pick:async()=>{
+  window.EstudiemosDriveLibrary=Object.freeze({status:()=>({ready:configReady&&!initializing&&!busy&&(!owner||!enabled||connectionKnown)&&(!owner||account?.getUser()?.id===owner),connected}),pick:async()=>{
     if(!fs||!connected||busy)throw new Error('Conectá Google Drive desde Mi espacio, o pegá un enlace de Drive.');
     if(dialog?.open)throw new Error('Cerrá el panel de Drive antes de elegir un material.');
     const picker=modal('Elegir material de Drive','<div class="drive-picker"><div class="drive-picker__head"><button type="button" data-pick-back>Volver</button><strong data-pick-path></strong><button type="button" data-pick-folder>Elegir esta carpeta</button></div><div data-pick-items></div></div>');
@@ -95,9 +95,10 @@
     band.hidden=true;locations.hidden=true;
     const native=Boolean(window.EstudiemosAndroid);
     show('Tus apuntes, en tu Drive',browseEnabled?'Mi unidad se muestra en modo lectura. El contenido de tus archivos previos no se copia a Estudiemos.':'Acceso solo a los archivos de Estudiemos. Tu Drive y tus documentos siguen siendo tuyos.',`<button type="button" class="workspace-btn workspace-btn--primary drive-connect" data-drive-connect ${enabled||!owner?'':'disabled'}>${icon('cloud')}<span>${!owner?'Iniciar sesión para conectar Drive':enabled ? native ? 'Conectar desde el navegador' : 'Conectar Google Drive' : 'Conexión no habilitada para esta cuenta'}</span></button>${enabled?'<small class="drive-consent-note">Eleg\u00eds tu cuenta y autoriz\u00e1s el acceso en Google.</small>':''}`);
+    window.dispatchEvent(new CustomEvent('estudiemos:drive-state'));
   }
   async function initialize() {
-    clear(); enabled=false;configReady=false;initializing=true;lastLoad=Date.now();show('Preparando tu Drive…','');const initialEpoch=epoch;account=window.EstudiemosAccount;
+    clear(); connectionKnown=false;enabled=false;configReady=false;initializing=true;lastLoad=Date.now();show('Preparando tu Drive…','');const initialEpoch=epoch;account=window.EstudiemosAccount;
     if (!account) { await new Promise(resolve => { const timer=setTimeout(resolve,10000);window.addEventListener('estudiemos:account-ready',()=>{clearTimeout(timer);resolve();},{once:true}); }); account=window.EstudiemosAccount; }
     if (!account) {initializing=false;return show('No pudimos preparar Mi espacio','Revis\u00e1 tu conexi\u00f3n.', '<button class="workspace-btn" data-drive-retry>Reintentar</button>');}
     await account.whenReady();if(initialEpoch!==epoch)return; owner=account.getUser()?.id||'';
@@ -113,7 +114,7 @@
       if (signal==='cancelled')message('No se conect\u00f3 Drive. Pod\u00e9s hacerlo m\u00e1s adelante.');
       if (signal==='error')message('Google no complet\u00f3 la conexi\u00f3n. Volv\u00e9 a intentar.',true);
     } catch(error) {if(epoch===version){show('No pudimos conectar con Drive','Tus archivos siguen en Google Drive. Volvé a intentar sin desconectar tu cuenta.','<button class="workspace-btn" data-drive-retry>Reintentar</button>');message(error.name==='AbortError'?'La conexión tardó demasiado. Volvé a intentar.':error.message,true);}}
-    finally{if(epoch===version)initializing=false;}
+    finally{if(epoch===version){initializing=false;window.dispatchEvent(new CustomEvent('estudiemos:drive-state'));}}
   }
   async function api(action,method='POST',values={}) {
     const id=owner,version=epoch, session=account?.getSession();
@@ -148,12 +149,12 @@
     if(busy)return;busy=true;lastLoad=Date.now();const id=owner,version=epoch;
     if(!fs)show('Abriendo tu espacio...','');section.setAttribute('aria-busy','true');message('');
     try {
-      const result=await api('status','GET');if(!result.connected){publishNativeWidget(false);connected=false;token='';expiresAt=0;fs=null;items=[];body.replaceChildren();return renderDisconnected();}
+      const result=await api('status','GET');if(!result.connected){connectionKnown=true;publishNativeWidget(false);connected=false;token='';expiresAt=0;fs=null;items=[];body.replaceChildren();return renderDisconnected();}
       if(!fs || fs.browse !== (result.browse===true)){token='';expiresAt=0;const candidate=new rules.DriveFiles({userId:id,getToken:access,isCurrent:()=>currentUser(id,version),browse:result.browse===true});await candidate.initialize();if(!currentUser(id,version))return;fs=candidate;current=fs.browse?'root':fs.rootId;crumbs=[{id:current,name:fs.browse?'Mi unidad':'Mi espacio',writable:!fs.browse}];}
       items=await fs.list(current,query);if(!currentUser(id,version))return;
-      connected=true;busy=false;render();
+      connected=true;connectionKnown=true;busy=false;render();
     }catch(error){if(currentUser(id,version)){if(error.code==='DRIVE_CONNECT_REQUIRED'){publishNativeWidget(false);connected=false;token='';fs=null;renderDisconnected();}else {if(error.status===404)fs=null;show('No pudimos abrir tu Drive','Tus archivos no se modificaron.','<button class="workspace-btn" data-drive-retry>Reintentar</button>');}message(error.message,true);}}
-    finally{if(currentUser(id,version)){busy=false;section.removeAttribute('aria-busy');}}
+    finally{if(currentUser(id,version)){busy=false;section.removeAttribute('aria-busy');window.dispatchEvent(new CustomEvent('estudiemos:drive-state'));}}
   }
   async function loadFiles() {
     if(!fs||!connected||busy)return;busy=true;const id=owner,version=epoch;

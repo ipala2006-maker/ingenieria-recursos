@@ -48,7 +48,7 @@
     const task=(async()=>{
       try{const result=await request();if(version!==serial)return snapshot();if(!result.unchanged)try{persist(result);}catch(error){if(error.message!=='CALENDAR_REBASE_REQUIRED')throw error;const full=await request('',{},'',true);if(version!==serial)return snapshot();persist(full);}lastRead=Date.now();failures=0;retryAt=0;lastError=null;return snapshot();}
       catch(error){if(version!==serial)return snapshot();lastError=error;failures++;retryAt=Date.now()+Math.min(600000,30000*2**Math.min(failures-1,4));if(force)throw error;return snapshot();}
-      finally{if(loading===task)loading=null;schedule();}
+      finally{if(loading===task)loading=null;schedule();window.dispatchEvent(new CustomEvent('estudiemos:classes-status'));}
     })();
     loading=task;
     return loading;
@@ -75,7 +75,7 @@
     if(!uiPromise)uiPromise=Promise.all([new Promise((resolve,reject)=>{if(document.querySelector('link[href*="styles/classrooms.css"]'))return resolve();const css=document.createElement('link');css.rel='stylesheet';css.href=new URL('styles/classrooms.css?v=20261026-resilience',root);css.onload=resolve;css.onerror=reject;document.head.append(css);}),new Promise((resolve,reject)=>{const script=document.createElement('script');script.src=new URL('scripts/classrooms.js?v=20261026-resilience',root);script.onload=resolve;script.onerror=reject;document.head.append(script);})]).catch(error=>{uiPromise=null;throw error;});
     try{await uiPromise;window.EstudiemosClassroomUI.open(options);}catch(_){window.EstudiemosAccount?.open();}finally{launching=false;}
   }
-  window.EstudiemosClasses=Object.freeze({snapshot,events,refresh,act,detail:id=>request('',{},id),history:id=>request('',{},id,false,true),open,pendingLaunch:()=>launching});
+  window.EstudiemosClasses=Object.freeze({snapshot,status:()=>({loading:Boolean(loading),failed:Boolean(lastError)}),events,refresh,act,detail:id=>request('',{},id),history:id=>request('',{},id,false,true),open,pendingLaunch:()=>launching});
   if(!location.pathname.endsWith('/widget.html')&&!document.body.classList.contains('teacher-workspace')){
     const button=document.createElement('button');button.type='button';button.className='topbar__link topbar-icon-btn';button.dataset.classesOpen='';button.title='Materias y cátedras';button.setAttribute('aria-label','Abrir materias y cátedras');button.innerHTML=`<img src="${new URL('assets/icons/graduation-cap.svg',root)}" width="20" height="20" alt="">`;
     document.querySelector('.topbar__nav')?.append(button);button.addEventListener('click',()=>open());

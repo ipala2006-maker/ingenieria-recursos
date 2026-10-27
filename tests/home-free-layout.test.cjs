@@ -38,7 +38,7 @@ test('restoring hidden tools finds a vacant slot without displacing neighbors',(
   assert.deepEqual(visible.focus,l.boxes.focus);
 });
 test('resize to other desktop viewports preserves proportional gaps and non-overlap',()=>{
-  const l=initial(),saved=board.remember(l,null,tree);saved.boxes.focus={x:25,y:20,w:300,h:250};
+  const l=initial(),saved=board.remember(l,null,tree);saved.boxes.focus={x:25,y:20,w:300,h:200};
   for(const [w,h] of [[1000,470],[744,900],[1920,980],[1400,720]]){
     const resized=board.freeLayout(saved,tree,w,h);
     for(const [k,r] of Object.entries(resized.boxes))assert.ok(board.fits(r,resized.boxes,k,w,h));
@@ -52,7 +52,7 @@ test('malformed positions are rejected instead of hiding or overlapping tools',(
 });
 test('all tool visibility combinations preserve holes with free positioning',()=>{
   const l=initial(),saved=board.remember(l,null,tree);
-  for(let mask=0;mask<64;mask++){
+  for(let mask=0;mask<128;mask++){
     const visible=Object.fromEntries(board.keys.map((k,i)=>[k,!!(mask&(1<<i))]));
     const next=board.freeLayout(saved,tree,1400,720,visible);
     for(const [k,r] of Object.entries(next.boxes))assert.deepEqual(r,l.boxes[k]);

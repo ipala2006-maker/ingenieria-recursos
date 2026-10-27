@@ -24,7 +24,11 @@
   let current = views.some(([key]) => key === history.state?.homeView) ? history.state.homeView : views[0][0];
   let navigationAnimation = null;
   const isVisible = key => {
-    if (key === 'overview') return true;
+    if (key === 'overview') {
+      if (window.EstudiemosOnboarding?.isActive() || document.body.classList.contains('home-layout-editing')) return true;
+      const value=window.EstudiemosHomeLayout?.read()||{};
+      return ['focus','progress','classes'].some(tool=>value.visible?.[tool]===true || (tool!=='classes'&&value.visible?.[tool]!==false)) || value.visible?.inbox===false;
+    }
     const mapped = key === 'space' ? 'workspace' : key;
     if (mapped === 'workspace' && !window.EstudiemosRelease?.enabled('driveWorkspace')) return false;
     try {
@@ -45,7 +49,7 @@
   }
   page.appendChild(nav);
   const render = () => {
-    if (!isVisible(current)) current = 'overview';
+    if (!isVisible(current)) current = isVisible('inbox') ? 'inbox' : 'overview';
     if(mobile.matches && history.state?.estudiemosUi==='home-session' && document.querySelector('.study-session-dialog[open]')) current='overview';
     nav.hidden = !mobile.matches;
     if (overview) overview.hidden = mobile.matches && current !== 'overview';
@@ -106,6 +110,8 @@
   });
   mobile.addEventListener('change', render);
   window.addEventListener('estudiemos:home-customized', render);
+  window.addEventListener('estudiemos:home-editing', render);
+  window.addEventListener('estudiemos:onboarding-finished', render);
   window.addEventListener('storage', event => {
     if (event.key === window.EstudiemosHomeLayout?.key) render();
   });

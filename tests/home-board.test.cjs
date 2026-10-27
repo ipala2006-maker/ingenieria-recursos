@@ -1,9 +1,21 @@
 const test=require('node:test'),assert=require('node:assert/strict'),board=require('../shared/home-board');
 function bounded(layout,w,h){const boxes=Object.values(layout.boxes);for(const [i,a] of boxes.entries()){assert.ok(a.x>=0&&a.y>=0&&a.w>0&&a.h>0&&a.x+a.w<=w+.001&&a.y+a.h<=h+.001);for(const b of boxes.slice(i+1))assert.ok(a.x+a.w<=b.x+.001||b.x+b.w<=a.x+.001||a.y+a.h<=b.y+.001||b.y+b.h<=a.y+.001);}}
 test('all visibility combinations fit the board without overlaps or discarded tools',()=>{
-  for(const [w,h] of [[1896,950],[1342,620],[1000,470],[744,900]])for(let mask=0;mask<64;mask++){
+  for(const [w,h] of [[1896,950],[1342,620],[1000,470],[744,900]])for(let mask=0;mask<128;mask++){
     const visible=Object.fromEntries(board.keys.map((k,i)=>[k,!!(mask&(1<<i))]));const r=board.layout(board.defaults(),w,h,visible);bounded(r,w,h);assert.equal(Object.keys(r.boxes).length,Object.values(visible).filter(Boolean).length);
   }
+});
+
+test('adding the optional course tool preserves a complete six-tool tree and its saved gaps',()=>{
+  const original=board.defaults(board.keys.filter(key=>key!=='classes'));
+  board.setRatio(original,'',.6);board.setRatio(original,'a',.41);
+  const previous=board.layout(original,1400,720), migrated=board.sanitize(original),visible={classes:false};
+  assert.deepEqual(board.layout(migrated,1400,720,visible).boxes,previous.boxes);
+  const placement={width:1400,height:720,boxes:structuredClone(previous.boxes)};
+  placement.boxes.focus={...placement.boxes.focus,w:280,h:200,x:20,y:15};
+  assert.deepEqual(board.freeLayout(placement,migrated,1400,720,visible).boxes,placement.boxes);
+  const light=board.layout(board.defaults(),1400,720,Object.fromEntries(board.keys.map(key=>[key,['calendar','inbox'].includes(key)])));
+  assert.equal(light.boxes.calendar.w,light.boxes.inbox.w);
 });
 test('continuous resize, swapping and malicious saved preferences remain bounded',()=>{
   assert.deepEqual(board.sanitize({axis:'z',a:'focus'}),board.defaults());

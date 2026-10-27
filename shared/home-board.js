@@ -1,7 +1,9 @@
 (function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.EstudiemosHomeBoard=api;})(typeof window==='undefined'?globalThis:window,function(){
-  const keys=['focus','progress','assistant','workspace','calendar','inbox'];
+  const originalKeys=['focus','progress','assistant','workspace','calendar','inbox'];
+  const keys=[...originalKeys,'classes'];
   const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
-  function defaults(list=keys){
+  function defaults(list){
+    if(!list)return {axis:'y',ratio:.7,a:defaults(originalKeys),b:'classes'};
     const row=items=>items.length===1?items[0]:{axis:'x',ratio:1/items.length,a:items[0],b:row(items.slice(1))};
     if(!list.length)return null;if(list.length<=3)return row(list);
     const mid=Math.ceil(list.length/2);return {axis:'y',ratio:.5,a:row(list.slice(0,mid)),b:row(list.slice(mid))};
@@ -13,7 +15,11 @@
       if(!n||typeof n!=='object'||depth>8||!['x','y'].includes(n.axis))return null;
       const a=visit(n.a,depth+1),b=visit(n.b,depth+1);return a&&b?{axis:n.axis,ratio:Number.isFinite(n.ratio)?clamp(n.ratio,.05,.95):.5,a,b}:a||b;
     }
-    const tree=visit(raw,0);return seen.size===keys.length?tree:defaults();
+    const tree=visit(raw,0);
+    if(seen.size===keys.length)return tree;
+    // Append the optional tool without changing any existing split when it is hidden.
+    if(seen.size===originalKeys.length&&originalKeys.every(key=>seen.has(key)))return {axis:'y',ratio:.7,a:tree,b:'classes'};
+    return defaults();
   }
   function visibleTree(n,visible,path=''){
     if(typeof n==='string')return visible[n]===false?null:{key:n};if(!n)return null;
@@ -48,11 +54,11 @@
   function freeLayout(placement,tree,width,height,visible={}){
     const fallback=()=>({...layout(tree,width,height,visible),width,height});
     if(!placement||!Number.isFinite(placement.width)||!Number.isFinite(placement.height)||placement.width<=0||placement.height<=0)return fallback();
-    const boxes={},stored={};
+    const boxes={},stored={},scaleX=width/placement.width,scaleY=height/placement.height;
     for(const key of keys){
-      const r=placement.boxes?.[key];
+      const r=placement.boxes?.[key] || (key==='classes'&&visible.classes===false ? layout(tree,placement.width,placement.height).boxes.classes : null);
       if(!r||!['x','y','w','h'].every(k=>Number.isFinite(r[k]))||r.x<0||r.y<0||r.w<=0||r.h<=0||r.x+r.w>placement.width+.01||r.y+r.h>placement.height+.01)return fallback();
-      stored[key]={x:r.x*width/placement.width,y:r.y*height/placement.height,w:r.w*width/placement.width,h:r.h*height/placement.height};
+      stored[key]={x:r.x*scaleX,y:r.y*scaleY,w:r.w*scaleX,h:r.h*scaleY};
       if(visible[key]!==false)boxes[key]=stored[key];
     }
     // Reject corrupt overlapping preferences instead of obscuring another tool.

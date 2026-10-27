@@ -34,9 +34,10 @@ test('legacy migration snapshots this device once; later cloud writes cannot rep
   s.setItem(legacy, JSON.stringify({visible: {inbox: false}}));
   assert.deepEqual(createLayout(s).read(), original);
   const fresh = storage();
-  createLayout(fresh);
+  const starter = createLayout(fresh).read();
   fresh.setItem(legacy, JSON.stringify(original));
-  assert.deepEqual(createLayout(fresh).read(), {});
+  assert.deepEqual(createLayout(fresh).read(), starter);
+  assert.equal(starter.preset, 'light');
 });
 
 test('malformed preferences fall back safely; an existing local layout wins', () => {
@@ -75,4 +76,16 @@ test('home initializes local migration before dynamically loading account and na
   const customizer = fs.readFileSync(require.resolve('../scripts/home-customizer.js'), 'utf8');
   assert.ok(!customizer.includes('estudiemos:data-change'));
   assert.match(customizer, /layoutStorage\.write\(value\)/);
+});
+
+test('new installations start light without resetting existing profiles or device preferences', () => {
+  const fresh=storage(), first=createLayout(fresh).read();
+  assert.deepEqual(Object.keys(first.visible).filter(key=>first.visible[key]), ['calendar','inbox']);
+  fresh.setItem('estudiemos_onboarding_v1','{"status":"completed"}');
+  assert.deepEqual(createLayout(fresh).read(),first);
+  for(const [key,value] of [['bandeja_agenda','[{"title":"Estudiar"}]'],['bandeja_horarios','[{"id":"horario"}]'],['estudiemos_pomodoro_streak','{"days":{"2026-10-27":60}}'],[local,'{}']]) {
+    assert.deepEqual(createLayout(storage({[key]:value})).read(),{},key);
+  }
+  const signedUp=storage({estudiemos_cloud_user:'new-user',estudiemos_onboarding_v1:'{"status":"existing"}'});
+  assert.equal(createLayout(signedUp).read().preset,'light','Registration before the first home visit must still get the light layout');
 });

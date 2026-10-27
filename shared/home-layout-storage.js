@@ -12,7 +12,17 @@
   }
   // Snapshot this installation's old layout before account sync can restore a remote one.
   try {
-    if (storage.getItem(key) === null) storage.setItem(key, JSON.stringify(parse(storage.getItem(legacyKey))));
+    if (storage.getItem(key) === null) {
+      const legacy = storage.getItem(legacyKey);
+      const streak = parse(storage.getItem('estudiemos_pomodoro_streak'));
+      const used = Object.keys(streak.days || {}).length > 0 || Number(streak.goal?.updatedAt) > 0
+        || ['bandeja_agenda', 'bandeja_horarios'].some(name => { try { return JSON.parse(storage.getItem(name) || '[]').length > 0; } catch (_) { return true; } });
+      const initial = legacy !== null || used ? parse(legacy) : {
+        version: 5, preset: 'light',
+        visible: {focus:false, progress:false, assistant:false, shortcuts:false, workspace:false, classes:false, calendar:true, inbox:true}
+      };
+      storage.setItem(key, JSON.stringify(initial));
+    }
   } catch (_) {}
   return {
     key,
