@@ -10,6 +10,8 @@ on:
       - "scripts/pomodoro.js"
       - "scripts/workspace.js"
       - "scripts/account.js"
+      - "scripts/verify-android-links.cjs"
+      - ".well-known/assetlinks.json"
       - ".github/workflows/android-app.yml"
 
 permissions:
@@ -49,6 +51,12 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: gradle :app:testDebugUnitTest :app:assembleRelease --stacktrace
+
+      - name: Verify Android App Links signature
+        run: |
+          APKSIGNER=$(find "${ANDROID_HOME}/build-tools" -name apksigner -type f | sort -V | tail -n 1)
+          test -n "$APKSIGNER"
+          node scripts/verify-android-links.cjs "$APKSIGNER" android-app/app/build/outputs/apk/release/app-release.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4

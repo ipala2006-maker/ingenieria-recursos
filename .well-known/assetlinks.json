@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.estudiemos.app",
+      "sha256_cert_fingerprints": [
+        "0E:9A:A9:35:CB:71:3E:BB:B4:1D:B8:D4:2E:7A:22:0B:1E:B3:73:AD:B3:02:E2:D9:8B:9D:91:AA:41:E0:58:10"
+      ]
+    }
+  }
+]

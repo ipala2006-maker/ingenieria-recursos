@@ -162,7 +162,8 @@ public class MainActivity extends Activity {
             }
         });
 
-        if (savedInstanceState == null) {
+        String incomingCourse = getIntent().getData() == null ? "" : CourseLinks.appUrl(getIntent().getData().toString());
+        if (savedInstanceState == null || !incomingCourse.isEmpty()) {
             webView.loadUrl(initialUrl(getIntent()));
             openDriveItemIfRequested(getIntent());
         }
@@ -486,9 +487,13 @@ public class MainActivity extends Activity {
         agendaDateRequested = intent.getStringExtra(EXTRA_AGENDA_DATE);
         openPomodoroRequested = intent.getBooleanExtra(EXTRA_OPEN_POMODORO, false);
         String workspaceItemId = intent.getStringExtra(EXTRA_WORKSPACE_ITEM_ID);
+        String courseUrl = intent.getData() == null ? "" : CourseLinks.appUrl(intent.getData().toString());
         if (intent.getBooleanExtra(EXTRA_OPEN_DRIVE, false)) {
             webView.loadUrl(APP_URL + "mi-espacio.html");
             openDriveItemIfRequested(intent);
+        } else if (!courseUrl.isEmpty()) {
+            webReady = false;
+            webView.loadUrl(courseUrl);
         } else if (intent.getData() != null && "estudiemos".equals(intent.getData().getScheme())) {
             webView.loadUrl(invitationUrl(intent.getData()));
         } else if (workspaceItemId != null && !workspaceItemId.trim().isEmpty()) {
@@ -660,6 +665,8 @@ public class MainActivity extends Activity {
         if (intent == null) return APP_URL;
         if (intent.getBooleanExtra(EXTRA_OPEN_DRIVE, false)) return APP_URL + "mi-espacio.html";
         Uri data = intent.getData();
+        String courseUrl = data == null ? "" : CourseLinks.appUrl(data.toString());
+        if (!courseUrl.isEmpty()) return courseUrl;
         if (data != null && "estudiemos".equals(data.getScheme())) {
             return invitationUrl(data);
         }
@@ -677,10 +684,9 @@ public class MainActivity extends Activity {
     }
 
     private static String invitationUrl(Uri data) {
-        String code = data.getQueryParameter("materia");
-        if (code != null && code.matches("^[A-HJ-NP-Z2-9]{10}$")) {
-            return Uri.parse(APP_URL).buildUpon().appendQueryParameter("unirme", "1").fragment("materia=" + code).build().toString();
-        }
+        String courseUrl = CourseLinks.appUrl(data.toString());
+        if (!courseUrl.isEmpty()) return courseUrl;
+        if (data.getQueryParameter("materia") != null || data.getQueryParameter("clase") != null) return APP_URL;
         return referralUrl(data.getQueryParameter("ref"));
     }
 

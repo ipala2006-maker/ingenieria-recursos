@@ -11,13 +11,17 @@
 
       page.searchParams.delete("app_launch");
       var launch = new URL(rawLaunch);
-      if (launch.protocol !== "web+estudiemos:" || launch.hostname !== "open") {
+      if (launch.protocol !== "web+estudiemos:" || launch.hostname !== "open" || launch.username || launch.password || launch.port || (launch.pathname && launch.pathname !== '/')) {
         history.replaceState(history.state, "", page.pathname + page.search + page.hash);
         return;
       }
 
       var target = launch.searchParams.get("target");
-      if (target === "agenda") {
+      var course = (launch.searchParams.get('materia') || '').toUpperCase();
+      if (/^[A-HJ-NP-Z2-9]{10}$/.test(course) && launch.searchParams.getAll('materia').length === 1) {
+        page.searchParams.set('materia', course);
+        page.searchParams.set('unirme', '1');
+      } else if (target === "agenda") {
         page.searchParams.set("agenda", "1");
         var date = launch.searchParams.get("date") || "";
         if (/^\d{4}-\d{2}-\d{2}$/.test(date)) page.searchParams.set("date", date);
