@@ -29,6 +29,8 @@ const headers = require('../vercel.json').headers.find(rule => rule.source === '
     await context.route('**/*', route => new URL(route.request().url()).origin === base ? route.continue() : route.abort());
     await context.addInitScript(() => {
       if (location.hostname !== '127.0.0.1') return;
+      localStorage.setItem('estudiemos_home_layout','{}');localStorage.setItem('estudiemos_onboarding_v1','{"status":"completed"}');
+      localStorage.setItem('estudiemos_pomodoro_streak','{"days":{},"goal":{"minutes":25,"updatedAt":1}}');
       localStorage.setItem('estudiemos_pomodoro',JSON.stringify({config:{blocks:5,study:59,break:5},currentBlock:4,phase:'study',remaining:3300,running:false,autoStart:true,updatedAt:Date.now()}));
     });
     const page = await context.newPage(), errors = [];

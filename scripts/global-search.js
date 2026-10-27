@@ -237,6 +237,9 @@
   }
 
   function loadProductStyle() {
+    if (!document.querySelector('link[href*="styles/surface-motion.css"]')) {
+      const motion=document.createElement('link');motion.rel='stylesheet';motion.href=`${rootPath}styles/surface-motion.css?v=20261027-adaptive`;document.head.appendChild(motion);
+    }
     if (!document.querySelector('link[href*="styles/product-ui.css"]')) {
       const link = document.createElement("link");
       link.rel = "stylesheet";
@@ -253,7 +256,7 @@
   function loadProductInterface() {
     if (document.querySelector('script[src*="scripts/product-ui.js"]')) return;
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/product-ui.js?v=20261027-light`;
+    script.src = `${rootPath}scripts/product-ui.js?v=20261027-adaptive`;
     document.head.appendChild(script);
   }
 

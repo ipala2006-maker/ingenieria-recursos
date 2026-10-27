@@ -1,0 +1,56 @@
+:root {
+  --motion-fast:140ms;
+  --motion-panel:190ms;
+  --motion-ease:cubic-bezier(.2,.8,.2,1);
+  --surface-edge:color-mix(in srgb,var(--border) 70%,var(--panel));
+  --surface-light:color-mix(in srgb,var(--panel) 97%,white);
+  --surface-shadow:0 1px 2px #142c4810,0 12px 26px -18px #142c4855,inset 0 1px 0 #ffffffb3;
+  --overlay-shadow:0 24px 70px #162d4430,0 4px 14px #162d4414,inset 0 1px 0 #ffffffbf;
+}
+html.theme-dark {
+  --surface-light:color-mix(in srgb,var(--panel) 96%,white);
+  --surface-shadow:0 1px 2px #0005,0 10px 28px -18px #000c,inset 0 1px 0 #ffffff0d;
+  --overlay-shadow:0 24px 70px #0008,0 4px 14px #0004,inset 0 1px 0 #ffffff14;
+}
+html body.workspace-home.home-resizable .workspace-page [data-home-space] {
+  border:1px solid var(--surface-edge);border-radius:8px;
+  background:linear-gradient(160deg,var(--surface-light),var(--panel) 65%);
+  box-shadow:var(--surface-shadow);transform-origin:0 0;
+}
+html body.workspace-home.home-resizable .workspace-page [data-home-space].home-tool-moving,
+html body.workspace-home.home-resizable .workspace-page [data-home-space].is-resizing { box-shadow:var(--overlay-shadow); }
+html body :is(.account-panel,.quick-panel,.pomodoro-menu__panel,.streak-menu__panel,.agenda-board,.home-layout-toolbar),
+html body dialog:is(.home-customizer,.study-session-dialog,.study-goal-dialog,.calendar-reader,.calendar-tools-dialog,.friends-dialog,.classroom-dialog,.classroom-confirm,.drive-dialog,.windows-setup,.inbox-alarm-dialog) {
+  border-color:var(--surface-edge);border-radius:8px;
+  background:linear-gradient(160deg,var(--surface-light),var(--panel) 65%);box-shadow:var(--overlay-shadow);
+}
+html body .home-layout-toolbar { box-shadow:var(--surface-shadow); }
+html body :is(.workspace-search,.workspace-sort select,.workspace-view-toggle) { box-shadow:inset 0 1px 2px #00000005; }
+@media(prefers-reduced-motion:no-preference) {
+  html body :is(.home-remove-tool,.home-classes__row,.workspace-tool-icon,.dashboard-widget__action,.calendar-expand,.topbar-icon-btn) { transition:background var(--motion-fast),border-color var(--motion-fast),color var(--motion-fast); }
+  html body :is(.friends-dialog [data-panel],.classroom-content,.classroom-main>.classroom-form) { animation:surface-content-in var(--motion-fast) var(--motion-ease); }
+  @keyframes surface-content-in { from {opacity:.6;translate:0 3px} to {opacity:1;translate:0 0} }
+  ::view-transition-old(root),::view-transition-new(root) { animation-duration:var(--motion-fast);animation-timing-function:var(--motion-ease); }
+}
+/* Keep native focus and dismissal; unsupported browsers retain their existing dialog behavior. */
+@supports (transition-behavior:allow-discrete) and (overlay:auto) {
+  @media(prefers-reduced-motion:no-preference) {
+    html body.workspace-home.home-resizable .workspace-page [data-home-space] { transition:opacity var(--motion-fast) ease,display var(--motion-fast) allow-discrete; }
+    html body.workspace-home.home-resizable .workspace-page [data-home-space].home-space-disabled { opacity:0;pointer-events:none; }
+    html body dialog:is(.home-customizer,.study-session-dialog,.study-goal-dialog,.calendar-reader,.calendar-tools-dialog,.friends-dialog,.classroom-dialog,.classroom-confirm,.drive-dialog,.windows-setup,.inbox-alarm-dialog) {
+      opacity:0;translate:0 7px;animation:none;
+      transition:opacity var(--motion-panel) ease,translate var(--motion-panel) var(--motion-ease),display var(--motion-panel) allow-discrete,overlay var(--motion-panel) allow-discrete;
+    }
+    html body dialog:is(.home-customizer,.study-session-dialog,.study-goal-dialog,.calendar-reader,.calendar-tools-dialog,.friends-dialog,.classroom-dialog,.classroom-confirm,.drive-dialog,.windows-setup,.inbox-alarm-dialog)[open] { opacity:1;translate:0 0; }
+    @starting-style {
+      html body dialog:is(.home-customizer,.study-session-dialog,.study-goal-dialog,.calendar-reader,.calendar-tools-dialog,.friends-dialog,.classroom-dialog,.classroom-confirm,.drive-dialog,.windows-setup,.inbox-alarm-dialog)[open] { opacity:0;translate:0 7px; }
+    }
+    html body :is(.account-shell,.quick-panel-shell) { opacity:1;transition:opacity var(--motion-panel) ease,display var(--motion-panel) allow-discrete; }
+    html body :is(.account-shell,.quick-panel-shell)[hidden] { opacity:0;pointer-events:none; }
+    @starting-style { html body :is(.account-shell,.quick-panel-shell):not([hidden]) { opacity:0; } }
+  }
+}
+@media(prefers-reduced-motion:reduce) {
+  html body :is(.home-remove-tool,.home-classes__row,.classroom-content,.friends-dialog [data-panel]) { animation:none;transition:none; }
+  ::view-transition-old(root),::view-transition-new(root) { animation-duration:0s!important; }
+}

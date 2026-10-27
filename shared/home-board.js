@@ -51,6 +51,53 @@
     const candidates=[];for(const x of xs)for(const y of ys){const r={...box,x,y};if(fits(r,boxes,key,width,height))candidates.push(r);}
     return candidates.sort((a,b)=>Math.hypot(a.x-box.x,a.y-box.y)-Math.hypot(b.x-box.x,b.y-box.y))[0]||null;
   }
+  const minimumSize=(key,width,height)=>({w:Math.min(240,width),h:Math.min(key==='progress'?228:key==='focus'?200:180,height)});
+  function addTool(key,preferred,boxes,width,height){
+    if(!keys.includes(key)||!Number.isFinite(width)||!Number.isFinite(height)||width<=0||height<=0)return null;
+    const current=Object.fromEntries(Object.entries(boxes).filter(([name])=>keys.includes(name)).map(([name,r])=>[name,{...r}]));
+    if(current[key])return {boxes:current,mode:'space'};
+    const min=minimumSize(key,width,height),fallback={x:0,y:0,w:Math.max(min.w,width/3),h:Math.max(min.h,height/2)},wanted={...fallback};
+    for(const field of ['x','y','w','h'])if(Number.isFinite(preferred?.[field])&&(!['w','h'].includes(field)||preferred[field]>0))wanted[field]=preferred[field];
+    const direct=firstSpace(wanted,current,key,width,height);
+    if(direct)return {boxes:{...current,[key]:direct},mode:'space'};
+    // Maximal empty rectangles let a remembered large tool shrink into a smaller gap.
+    let holes=[{x:0,y:0,w:width,h:height}];
+    for(const r of Object.values(current)){
+      const obstacle={x:Math.max(0,r.x-8),y:Math.max(0,r.y-8),w:Math.min(width,r.x+r.w+8)-Math.max(0,r.x-8),h:Math.min(height,r.y+r.h+8)-Math.max(0,r.y-8)};
+      const next=[];
+      for(const h of holes){
+        if(!overlaps(h,obstacle)){next.push(h);continue;}
+        if(obstacle.x>h.x)next.push({...h,w:obstacle.x-h.x});
+        if(obstacle.x+obstacle.w<h.x+h.w)next.push({...h,x:obstacle.x+obstacle.w,w:h.x+h.w-obstacle.x-obstacle.w});
+        if(obstacle.y>h.y)next.push({...h,h:obstacle.y-h.y});
+        if(obstacle.y+obstacle.h<h.y+h.h)next.push({...h,y:obstacle.y+obstacle.h,h:h.y+h.h-obstacle.y-obstacle.h});
+      }
+      holes=next.filter((a,i)=>a.w>0&&a.h>0&&!next.some((b,j)=>j!==i&&b.x<=a.x&&b.y<=a.y&&b.x+b.w>=a.x+a.w&&b.y+b.h>=a.y+a.h&&(j<i||b.w*b.h>a.w*a.h)));
+    }
+    const vacant=holes.filter(r=>r.w>=min.w&&r.h>=min.h).map(h=>({x:clamp(wanted.x,h.x,h.x+h.w-Math.min(wanted.w,h.w)),y:clamp(wanted.y,h.y,h.y+h.h-Math.min(wanted.h,h.h)),w:Math.min(wanted.w,h.w),h:Math.min(wanted.h,h.h)}));
+    vacant.sort((a,b)=>b.w*b.h-a.w*a.h||Math.hypot(a.x-wanted.x,a.y-wanted.y)-Math.hypot(b.x-wanted.x,b.y-wanted.y));
+    if(vacant.length)return {boxes:{...current,[key]:vacant[0]},mode:'space'};
+    let best=null;
+    for(const [other,r] of Object.entries(current))for(const axis of ['x','y']){
+      const size=axis==='x'?'w':'h',cross=axis==='x'?'h':'w',otherMin=minimumSize(other,width,height),room=r[size]-8;
+      if(room<min[size]+otherMin[size]||r[cross]<Math.max(min[cross],otherMin[cross]))continue;
+      const newSize=clamp(room*wanted[size]/(wanted[size]+r[size]),min[size],room-otherMin[size]);
+      const kept={...r,[size]:room-newSize},added={...r,[axis]:r[axis]+room-newSize+8,[size]:newSize};
+      const score=Math.abs(Math.log(kept.w*kept.h/(r.w*r.h)))+.25*Math.abs(Math.log((added.w/added.h)/(wanted.w/wanted.h)))+.1*Math.hypot((added.x-wanted.x)/width,(added.y-wanted.y)/height);
+      if(!best||score<best.score)best={score,boxes:{...current,[other]:kept,[key]:added}};
+    }
+    if(best)return {boxes:best.boxes,mode:'split'};
+    const ordered=[...Object.keys(current).sort((a,b)=>current[a].y-current[b].y||current[a].x-current[b].x),key];
+    for(let cols=1;cols<=ordered.length;cols++){
+      const rows=Math.ceil(ordered.length/cols),gap=Math.min(8,width/(cols*3),height/(rows*3)),h=(height-gap*(rows-1))/rows,candidate={};let score=0;
+      for(let i=0;i<ordered.length;i++){
+        const name=ordered[i],row=Math.floor(i/cols),count=Math.min(cols,ordered.length-row*cols),w=(width-gap*(count-1))/count,r={x:(i%cols)*(w+gap),y:row*(h+gap),w,h},m=minimumSize(name,width,height),old=current[name]||wanted;
+        candidate[name]=r;score+=100*(Math.max(0,1-w/m.w)+Math.max(0,1-h/m.h))+Math.abs(Math.log((w/h)/(old.w/old.h)))+.1*Math.hypot((r.x-old.x)/width,(r.y-old.y)/height);
+      }
+      if(!best||score<best.score)best={score,boxes:candidate};
+    }
+    return {boxes:best.boxes,mode:'reflow'};
+  }
   function freeLayout(placement,tree,width,height,visible={}){
     const fallback=()=>({...layout(tree,width,height,visible),width,height});
     if(!placement||!Number.isFinite(placement.width)||!Number.isFinite(placement.height)||placement.width<=0||placement.height<=0)return fallback();
@@ -93,5 +140,15 @@
     }
     return {box:r,valid:fits(r,boxes,key,width,height),guides};
   }
-  return {keys,defaults,sanitize,layout,setRatio,swap,boundary,overlaps,fits,firstSpace,freeLayout,remember,proposal};
+  function resizeProposal(box,delta,boxes,key,width,height,snap=true,edge='se'){
+    const target=proposal(box,delta,'resize',boxes,key,width,height,snap,edge);
+    if(target.valid||!fits(box,boxes,key,width,height))return target;
+    let low=0,high=1,result={...box};
+    for(let i=0;i<28;i++){
+      const t=(low+high)/2,r=Object.fromEntries(['x','y','w','h'].map(field=>[field,box[field]+(target.box[field]-box[field])*t]));
+      if(fits(r,boxes,key,width,height)){low=t;result=r;}else high=t;
+    }
+    return {box:result,valid:true,guides:[],clamped:true};
+  }
+  return {keys,defaults,sanitize,layout,setRatio,swap,boundary,overlaps,fits,firstSpace,addTool,freeLayout,remember,proposal,resizeProposal};
 });

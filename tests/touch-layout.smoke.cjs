@@ -69,6 +69,8 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
       await press(page.locator('[data-home-customize]'));
       const saved=await page.evaluate(()=>localStorage.getItem(EstudiemosHomeLayout.key)),box=await focus.boundingBox();
       await down(handle);await move(board?-20:0,20);await cancel();
+      await page.waitForFunction(height=>Math.abs(document.querySelector('[data-home-space=focus]').getBoundingClientRect().height-height)<2,box.height);
+      await focus.evaluate(node=>Promise.all(node.getAnimations().map(animation=>animation.finished.catch(()=>{}))));
       assert.ok(Math.abs((await focus.boundingBox()).height-box.height)<2,'cancelled touch restores the preview');
       assert.equal(await page.evaluate(()=>localStorage.getItem(EstudiemosHomeLayout.key)),saved,'cancelled touch never saves');
       if(board){

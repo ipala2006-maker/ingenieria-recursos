@@ -83,7 +83,7 @@
     history[replace ? 'replaceState' : 'pushState'](nextState, '', location.href);
     render();
     if (mobile.matches && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      navigationAnimation = view[2].animate([{opacity:.65},{opacity:1}], {duration:140,easing:'ease-out'});
+      navigationAnimation = view[2].animate([{opacity:.65,translate:'0 4px'},{opacity:1,translate:'0 0'}], {duration:160,easing:'cubic-bezier(.2,.8,.2,1)'});
     }
     return true;
   }
