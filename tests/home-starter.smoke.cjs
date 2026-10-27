@@ -40,6 +40,8 @@ else (async()=>{
       if(mobile)assert.equal(await page.locator('[data-home-view=inbox]').getAttribute('aria-selected'),'true');
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
       if(!mobile)assert.equal(await page.evaluate(()=>document.documentElement.scrollHeight<=innerHeight+1),true);
+      const connect=await page.locator('[data-home-connect-drive]').boundingBox(),content=await page.locator('[data-home-empty]').boundingBox();
+      assert.ok(connect.y>=content.y-1&&connect.y+connect.height<=content.y+content.height+1,'Both welcome actions fit without a nested scroll');
       await page.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-${viewport.width}-empty.png`)});
       if(viewport.width===390){
         await page.evaluate(()=>EstudiemosTheme.set('light'));await page.waitForTimeout(220);

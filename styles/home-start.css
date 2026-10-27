@@ -34,3 +34,10 @@
   .home-empty h3 { font-size:22px; }
   .home-empty__actions { flex-direction:column;align-items:stretch; }
 }
+@media(max-height:740px) {
+  .home-empty { padding:8px; }
+  .home-empty__icon { display:none; }
+  .home-empty h3 { margin:4px 0 8px;font-size:20px; }
+  .home-empty__actions { margin-top:12px; }
+  .dashboard-agenda:has([data-home-empty]:not([hidden])) .home-suggestions { display:none; }
+}
