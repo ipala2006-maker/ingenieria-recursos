@@ -477,7 +477,8 @@
     if (!credentials) return;
     const captcha = getCaptchaOptions();
     if (captcha === null) return;
-    const emailRedirect = new URL(getRootPath(), location.href);
+    const baseRedirect = new URL(getRootPath(), location.href);
+    const emailRedirect = window.EstudiemosCourseInvitation?.confirmationUrl?.(baseRedirect) || baseRedirect;
     const pendingReferral = COMMERCIAL_LAUNCH_ENABLED ? normalizeReferralCode(localStorage.getItem(PENDING_REFERRAL_KEY)) : "";
     if (pendingReferral) emailRedirect.searchParams.set("ref", pendingReferral);
     setBusy(true, "Creando tu cuenta...");
@@ -1812,6 +1813,12 @@
     shell.hidden = false;
     shell.setAttribute("aria-hidden", "false");
     document.body.classList.add("account-open");
+    const invitation = !session && window.EstudiemosCourseInvitation?.pending();
+    const accountTitle = shell.querySelector('#accountTitle'), accountIntro = shell.querySelector('.account-intro');
+    if (accountTitle) accountTitle.textContent = invitation ? 'Unirte a la cátedra' : 'Tu cuenta';
+    if (accountIntro) accountIntro.textContent = invitation
+      ? (invitation.preview?.title ? 'Vas a unirte a ' + invitation.preview.title + '. Ingresá o creá tu cuenta para continuar.' : 'Ingresá o creá tu cuenta. Tu invitación está guardada para continuar en la cátedra.')
+      : 'Usá la misma cuenta en tu computadora, tablet y celular para mantener tus datos sincronizados.';
     renderSyncUsage();
     if (session && COMMERCIAL_LAUNCH_ENABLED && options.refreshReferrals !== false) refreshReferralStatus(true);
     if (sessionStorage.getItem("estudiemos_app_update_complete") === "true") {

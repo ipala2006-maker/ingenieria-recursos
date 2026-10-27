@@ -91,7 +91,7 @@
     if(rules.CODE.test(code)){
       const saved=window.EstudiemosCourseInvitation?.pending(identity());window.EstudiemosCourseInvitation?.save(code,identity(),saved?.code===code?saved.preview:undefined);
       try{sessionStorage.setItem(rules.PENDING_KEY,JSON.stringify({code,auto:true,expires:Date.now()+7*86400000,owner:identity(),...(saved?.code===code?{preview:saved.preview}:{})}));}catch(_){}
-      if(!identity()&&!url.searchParams.has('unirme')&&!window.EstudiemosAndroid&&!matchMedia('(display-mode: standalone)').matches&&!navigator.standalone){const install=new URL('instalar.html',root);if(['127.0.0.1','localhost'].includes(install.hostname))install.searchParams.set('local','1');install.hash='materia='+code;return location.replace(install);}
+      if(!identity()&&!url.searchParams.has('unirme')&&!window.EstudiemosAndroid&&!matchMedia('(display-mode: standalone)').matches&&!navigator.standalone){const invitation=window.EstudiemosCourseInvitation?.canonicalUrl?.(code)||new URL('materia/'+code,root);return location.replace(invitation);}
       if(!window.EstudiemosCourseRole?.get())window.EstudiemosCourseRole?.set('student');
       const hash=new URLSearchParams(url.hash.slice(1));hash.delete('clase');hash.delete('materia');url.hash=hash.toString();url.searchParams.delete('materia');url.searchParams.delete('unirme');history.replaceState(history.state,'',url);open({join:code,autoJoin:true});
     }

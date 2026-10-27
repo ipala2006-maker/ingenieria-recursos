@@ -1,4 +1,5 @@
 .course-invitation-page::before { display:none!important; }
+body.course-invitation-page { background:#10151e; }
 .course-install-invitation { width:min(720px,100%);margin:auto;padding:108px 24px 48px; }
 .course-invite-intro { text-align:center; }
 .course-invite-symbol { display:grid;place-items:center;margin:0 auto 16px;width:52px;height:52px;border:1px solid var(--install-line);border-radius:8px;background:var(--install-band); }
@@ -28,15 +29,26 @@
 .course-invite-type { font-size:11px;color:var(--date-color);margin-left:auto;padding-left:12px; }
 .course-invite-footer { padding-top:24px;text-align:center; }
 .course-invite-footer .install-hero__actions { margin-top:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px; }
-.course-invite-footer .install-action { min-width:0;border-radius:6px;min-height:48px;box-shadow:none;font-size:13px;padding:12px 16px; }
+.course-invite-footer .install-action { min-width:0;border-radius:6px;min-height:48px;box-shadow:none;font-size:14px;padding:12px 16px;transition:background-color .16s ease,border-color .16s ease; }
+.course-invite-footer .install-action>img { flex:none; }
+.course-invite-footer .install-action--primary>img { filter:brightness(0);transform:rotate(180deg); }
+.course-invite-footer .install-action[aria-busy="true"] { opacity:.7;pointer-events:none; }
+.course-invite-retry { margin-top:12px;min-height:44px;padding:8px 16px;background:transparent;color:var(--install-blue);border:1px solid var(--install-line);border-radius:6px;cursor:pointer; }
 .course-invite-footer .install-hero__actions>a:nth-child(3) { grid-column:1/-1; }
 .course-invite-note { font-size:11px;line-height:1.7;color:var(--install-muted);max-width:480px;margin:14px auto 0; }
-.course-invite-code { display:flex;align-items:center;justify-content:center;gap:10px;margin:18px 0 0;font-size:11px;line-height:1.6;color:var(--install-muted); }
-.course-invite-code strong { color:var(--install-text);font-weight:500;font-variant-numeric:tabular-nums; }
+.course-invite-code { margin:18px 0 0;font-size:12px;line-height:1.6;color:var(--install-muted);text-align:center; }
+.course-invite-code summary { width:fit-content;margin:auto;min-height:44px;padding:12px;cursor:pointer; }
+.course-invite-code strong { display:block;color:var(--install-text);font-weight:500;font-variant-numeric:tabular-nums;padding:4px 0 12px; }
 .course-invitation-page :is(.install-hero,.install-manifest,.install-widgets,.install-closing,.journey-rail),.course-invitation-page .install-nav>a[href="#descubrir"] { display:none; }
 .course-invitation-page .install-downloads { border-top:1px solid var(--install-line);padding-top:40px; }
 .course-invitation-page .install-header { border-radius:8px; }
 .course-invitation-page .install-downloads [data-reveal] { opacity:1;transform:none; }
+.course-invitation-page .account-panel { background:var(--install-band);color:var(--install-text);border-radius:8px;--panel-2:#121e30;--muted:var(--install-muted);--accent:var(--install-blue);--text:var(--install-text); }
+.course-invitation-page .account-head h2 { font-size:22px;line-height:1.3; }
+.course-invitation-page .account-form input { font:inherit;font-size:16px;border-radius:6px; }
+.course-invitation-page .account-form button { min-height:44px;border-radius:6px; }
+.course-invitation-page .account-primary { color:#10151e; }
+.course-invitation-page :is(.account-app-actions,.account-android-widgets) { display:none; }
 @media(max-width:600px) {
   .course-install-invitation { padding:96px 20px 32px; }
   .course-invite-intro h1 { font-size:26px; }
@@ -46,6 +58,7 @@
   .course-invite-agenda li { gap:10px; }
   .course-invite-type { display:none; }
   .course-invite-footer .install-hero__actions { grid-template-columns:minmax(0,1fr); }
-  .course-invite-owner,.course-invite-status { font-size:12px; }
+  .course-invite-owner,.course-invite-status { font-size:14px; }
 }
+@media(prefers-reduced-motion:reduce) { .course-invite-footer .install-action { transition:none; } }
 @view-transition { navigation:none; }
