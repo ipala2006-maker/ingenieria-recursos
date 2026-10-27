@@ -1,6 +1,6 @@
 # Widgets y alarmas: recorrido de instalacion
 
-## Instalacion completa de Windows (2.0.0)
+## Instalacion completa de Windows (2.0.1)
 
 El boton principal de instalar.html y el boton Instalar dentro de la web
 descargan Estudiemos-Para-Windows.exe. Es el mismo paquete verificado que
@@ -12,6 +12,12 @@ El acceso abre la web real en una ventana de Edge (Chrome como alternativa),
 sin crear otro perfil de navegador. No es un nuevo motor nativo ni una
 instalacion PWA silenciosa. La interfaz se actualiza desde la web; cambios
 del componente de Windows requieren actualizar el instalador.
+
+La version 2.0.1 incluye `estudiemos-app://open?materia=CODIGO` para abrir las
+invitaciones de catedra en esa ventana, usando la sesion del mismo perfil.
+Es una asociacion HKCU limitada a Estudiemos; no cambia el navegador principal.
+Las instalaciones anteriores requieren actualizar el paquete una vez. El
+navegador puede pedir confirmar la apertura de Estudiemos; no se evade ese aviso.
 
 Al finalizar abre directamente Conectar alarmas, sin otra descarga. Iniciar
 sesion y consentir la consulta de alarmas sigue siendo necesario. La marca

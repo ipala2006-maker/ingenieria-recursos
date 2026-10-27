@@ -1660,6 +1660,8 @@
     if (url.searchParams.get('windows-bundle') === '1') {
       localStorage.setItem(WINDOWS_WIDGETS_READY_KEY, 'true');
       localStorage.setItem('estudiemos_windows_bundle_installed', 'true');
+      if (url.searchParams.get('windows-app-links') === '1') localStorage.setItem('estudiemos_windows_app_links', 'true');
+      url.searchParams.delete('windows-app-links');
       url.searchParams.delete('windows-bundle');
       history.replaceState(history.state, '', `${url.pathname}${url.search}${url.hash}`);
     }

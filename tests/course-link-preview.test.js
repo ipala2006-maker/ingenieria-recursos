@@ -51,3 +51,20 @@ test('lowercase links normalize and temporary failures offer a safe retry',async
   assert.equal(invalid.headers['Content-Type'],'text/html; charset=utf-8');assert.match(invalid.body,/Invitación no disponible/);assert.doesNotMatch(invalid.body,/data-course-retry|al:android:url/);
   const view=require('../shared/course-invite-view');assert.doesNotMatch(view.content(null,{loading:true,status:'Preparing'}),/data-course-retry/);
 });
+
+test('Android and Windows receive app-first actions even without JavaScript; explicit web fallback wins',async()=>{
+  for(const [ua,scheme] of [['Android','intent://open?materia='],['Windows NT 10.0','estudiemos-app://open?materia=']]){
+    const h=boot(),res=response();await h.handler({method:'GET',query:{courseInvitation:code},headers:{'user-agent':ua}},res);
+    assert.match(res.body,/data-course-native data-course-primary/);assert.ok(res.body.includes(scheme+code));
+    assert.ok(res.body.indexOf('data-course-native')<res.body.indexOf('data-course-join'));assert.equal(h.calls.length,1);
+    const fallback=response();await h.handler({method:'GET',query:{courseInvitation:code,abrir:'web'},headers:{'user-agent':ua}},fallback);
+    assert.match(fallback.body,/data-course-join data-course-primary/);
+  }
+});
+
+test('iPhone never receives a fake native-opening button or an Android/Windows URI',async()=>{
+  const h=boot(),res=response();await h.handler({method:'GET',query:{courseInvitation:code},headers:{'user-agent':'Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X)'}},res);
+  assert.match(res.body,/En iPhone y iPad/);assert.match(res.body,/misma cuenta/);assert.match(res.body,/data-course-join data-course-primary/);
+  const invitation=res.body.slice(res.body.indexOf('<section class="course-install-invitation"'),res.body.indexOf('<template data-course-preview'));
+  assert.doesNotMatch(invitation,/data-course-native|href="(?:intent:|estudiemos-app:|webapp:)/);
+});

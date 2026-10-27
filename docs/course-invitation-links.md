@@ -3,7 +3,8 @@
 ## Recorrido
 
 - Compartir siempre `https://estudiemos-app.vercel.app/materia/CODIGO` desde la catedra. Los enlaces anteriores con `#materia=` siguen siendo compatibles; solo los enlaces nuevos tienen metadatos especificos para redes.
-- Con sesion activa, la invitacion abre e incorpora la catedra automaticamente. Una persona ya inscripta abre la misma catedra sin duplicar su membresia ni sus fechas.
+- Dentro de la app, o al elegir expresamente continuar por web, una sesion activa abre e incorpora la catedra automaticamente. Una persona ya inscripta abre la misma catedra sin duplicar su membresia ni sus fechas.
+- Si Android o Windows deja el HTTPS en el navegador, la primera accion es **Abrir en Estudiemos**. No se carga el SDK de Auth ni se aprovecha una sesion del navegador para mandar al usuario a la version web por sorpresa. **Unirme desde el navegador** es una eleccion separada y explicita.
 - Sin sesion, se muestra la materia, su responsable, institucion y una muestra de fechas. "Unirme a la catedra" abre el acceso sobre esa presentacion. Instalar es opcional.
 - La invitacion pendiente dura siete dias, esta ligada a la cuenta al continuar y se consume despues de una inscripcion exitosa. Los expulsados siguen bloqueados por el servidor.
 - El registro envia `emailRedirectTo` con `?materia=CODIGO&unirme=1`. El codigo no va en el fragmento que Supabase usa para la sesion. El proveedor de correo debe conservar `ConfirmationURL` y permitir el retorno al origen oficial. No se agregan dominios ajenos ni comodines entre dominios.
@@ -15,9 +16,28 @@ Android nativo, desde la version 1.6.9, declara App Links verificados solo para 
 
 La asociacion publica esta en `/.well-known/assetlinks.json`. Su huella es la del certificado de firma del APK oficial, verificado con Google apksig, no la huella del archivo APK. La publicacion de Android comprueba la firma de cada APK contra esa asociacion antes de publicarlo. No se concede acceso a credenciales con Digital Asset Links.
 
-Los APK anteriores requieren actualizar una vez; la presentacion conserva el boton Android "Abrir app instalada" con el protocolo existente y una alternativa web. La verificacion depende del dispositivo, sus preferencias y de que el navegador desde WhatsApp permita enlaces externos. La app no puede forzar ni saltar estas decisiones.
+Los APK anteriores requieren actualizar una vez. Si un navegador interno retiene el enlace, el boton principal usa un `intent:` directo, con el toque original y sin esperar la autenticacion. No se usan temporizadores para lanzar Android, porque pierden la activacion del usuario. Si la app no se encuentra o el navegador la bloquea, vuelve a la misma presentacion con `?abrir=web`: no descarga APKs por sorpresa ni intenta abrir de nuevo en bucle.
 
-iPhone y Windows actualmente son instalaciones web/PWA, no aplicaciones nativas con Universal Links. El sistema puede abrir el navegador en lugar de la ventana instalada. El recorrido web conserva la catedra y la sesion del navegador. No se promete interceptar todos los enlaces ni se inventa una asociacion iOS: eso requiere una app nativa y su identificador firmado.
+Windows 2.0.1 registra por usuario exclusivamente `estudiemos-app://open?materia=CODIGO`. AppLauncher valida el URI completo, rechaza cualquier opcion extra y abre solo el origen oficial mediante `--app`, en el perfil habitual de Edge (Chrome como alternativa). La entrada no se pasa a PowerShell ni a un shell de comandos. No se cambian `http`, `https`, el navegador predeterminado ni el protocolo PWA existente. Al actualizar y abrir el paquete se conserva una pista local de esta capacidad; en ese navegador se hace un intento automatico por invitacion, acotado para evitar bucles. La pista y la perdida de foco no se consideran prueba de que una app se abrio.
+
+El paquete viejo de Windows requiere actualizar una vez para instalar este protocolo. No es una nueva app WinUI ni una instalacion PWA silenciosa: sigue usando el navegador como motor, pero abre la ventana de Estudiemos, no una pestana de Internet. No se copian sesiones entre perfiles distintos.
+
+La verificacion depende del dispositivo, sus preferencias y de que el navegador desde WhatsApp permita enlaces externos. No se puede impedir que el sistema muestre **Abrir Estudiemos** o que el usuario deba tocar ese boton cuando un navegador retiene el HTTPS. No se promete interceptar todos los enlaces del sistema.
+
+iPhone sigue siendo una PWA sin app nativa con Universal Links. El sistema puede abrir Safari en lugar de la ventana instalada. Se mantiene el recorrido web sin perder la invitacion; no se inventa una asociacion iOS, que requeriria una app nativa y su identificador firmado.
+
+Confirmacion del caso reportado el 27/10: ocurre en iPhone/iPad. La presentacion
+explica esa limitacion, no ofrece un boton falso para abrir una PWA y aclara que
+la inscripcion se sincroniza al abrir Estudiemos con la misma cuenta. Tambien
+reconoce iPad con user agent de escritorio mediante el contexto tactil del cliente.
+No se pide reinstalar, aceptar permisos ficticios ni copiar sesiones de Safari.
+La prueba WebKit verifica la presentacion y el acceso, no el lanzamiento del icono
+desde WhatsApp: ese requisito queda pendiente de una distribucion iOS nativa.
+
+Referencias primarias:
+[WebKit iOS 26](https://webkit.org/blog/17333/webkit-features-in-safari-26-0/),
+[enlaces de PWAs (WICG)](https://github.com/WICG/pwa-url-handler/blob/main/explainer.md),
+[asociacion nativa Apple](https://developer.apple.com/documentation/xcode/supporting-associated-domains).
 
 ## Vista previa y privacidad
 
@@ -29,6 +49,7 @@ La respuesta publica no incluye correos, listas de alumnos, archivos privados, n
 
 ```powershell
 node --test tests/course-invitation.test.js tests/course-link-preview.test.js tests/course-deep-links.test.js tests/classroom-sync.test.js
+node --test tests/course-app-routing.test.js tests/windows-setup-flow.test.cjs
 node tests/classrooms.smoke.cjs
 $env:TEST_WEBKIT='1'
 node tests/classrooms.smoke.cjs
@@ -36,6 +57,8 @@ Remove-Item Env:TEST_WEBKIT
 ```
 
 El smoke usa SQL real en una base PGlite efimera, API HTTP local, cuentas ficticias y un SDK de Auth simulado: no manda correos ni modifica produccion. Comprueba acceso con/sin sesion, repeticion sin duplicados, entrada desde enlaces viejos, retorno del registro, HTML sin JavaScript, imagenes cargadas y controles sin desbordes en 320/390/768/1440 px. Chrome y WebKit no sustituyen una prueba en un Android/iPhone fisico.
+
+La prueba app-first intercepta los protocolos antes del sistema: comprueba href, activacion real del clic y ausencia de SDK/login del navegador, sin abrir programas en la PC. Script Host ejecuta el parser VBS con un shell ficticio: valida destino `--app`, rechazo de opciones/URLs maliciosas y conservacion del perfil. No modifica el registro durante las pruebas. Una apertura real de Windows/Android requiere comprobar ademas el componente instalado, no solo el DOM.
 
 En Android de prueba, despues de instalar el nuevo APK:
 

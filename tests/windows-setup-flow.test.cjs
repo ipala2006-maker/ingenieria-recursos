@@ -39,6 +39,13 @@ test('Windows download includes app shortcuts, widgets and the hidden alarm serv
   assert.doesNotMatch(launcher,/--user-data-dir|--disable-web-security|ExecutionPolicy/);
 });
 
+test('Windows app-link hint is device-local and never grants account access or an alarm connection',()=>{
+  const saved=new Map();let replaced;
+  const c={URL,location:{href:'https://estudiemos-app.vercel.app/?windows-bundle=1&windows-app-links=1&materia=ABCDEFGHJK&unirme=1'},history:{state:null,replaceState:(_s,_t,url)=>replaced=url},WINDOWS_WIDGETS_READY_KEY:'widgets',localStorage:{getItem:k=>saved.get(k),setItem:(k,v)=>saved.set(k,v)},window:{setTimeout:()=>assert.fail('No automatic account/alarm dialog')}};
+  vm.createContext(c);vm.runInContext(account.slice(account.indexOf('  function consumeWindowsWidgetsReadyMarker('),account.indexOf('  function setDesktopWidgetBusy(')),c);c.consumeWindowsWidgetsReadyMarker();
+  assert.equal(saved.get('estudiemos_windows_app_links'),'true');assert.equal(saved.size,3);assert.equal(replaced,'/?materia=ABCDEFGHJK&unirme=1');
+});
+
 function widgetHarness(){
   const saved=new Map(),links=[],messages=[],busy=[];
   const controls=new Map();

@@ -395,7 +395,7 @@
     if (document.querySelector('script[src*="scripts/account.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/account.js?v=20261026-course-links`;
+    script.src = `${rootPath}scripts/account.js?v=20261027-installed-app`;
     script.defer = true;
     document.head.appendChild(script);
   }
