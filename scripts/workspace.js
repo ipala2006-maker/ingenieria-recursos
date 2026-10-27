@@ -70,7 +70,6 @@
       const menu = event.target.closest("[data-workspace-menu]");
       const signIn = event.target.closest("[data-workspace-signin]");
       const plans = event.target.closest("[data-workspace-plans]");
-      const planSelect = event.target.closest("[data-workspace-plan-select]");
       const referralsOpen = event.target.closest("[data-workspace-referrals-open]");
 
       if (upload) runAuthenticated(() => elements.fileInput?.click());
@@ -84,7 +83,6 @@
       if (ai) runAuthenticated(openAiModal);
       if (signIn) window.EstudiemosAccount?.open();
       if (plans && COMMERCIAL_LAUNCH_ENABLED) openPlansModal();
-      if (planSelect && COMMERCIAL_LAUNCH_ENABLED) selectPlanPreview(planSelect.dataset.workspacePlanSelect);
       if (referralsOpen && COMMERCIAL_LAUNCH_ENABLED) {
         closeModal();
         window.EstudiemosAccount?.open();
@@ -396,7 +394,7 @@
         </header>
         <p>${escapeHtml(plan.description)}</p>
         <ul class="workspace-plan-features">${plan.features.map((feature) => `<li>${icon("check")}<span>${feature}</span></li>`).join("")}</ul>
-        <button class="workspace-btn ${featured && selected !== id ? "workspace-btn--primary" : ""}" type="button" data-workspace-plan-select="${id}" ${selected === id ? "disabled" : ""}>${selected === id ? "Plan de prueba activo" : `Probar ${plan.shortName}`}</button>
+        <span class="workspace-plan-availability">Planes no disponibles durante el lanzamiento gratuito.</span>
       </article>`;
     };
     openModal({
@@ -421,32 +419,6 @@
       </div>`,
       actions: '<button class="workspace-btn" type="button" data-workspace-modal-close>Cerrar</button>'
     });
-  }
-
-  async function selectPlanPreview(planId) {
-    if (!COMMERCIAL_LAUNCH_ENABLED) return;
-    if (!PLANS.ids().includes(planId)) return;
-    if (!state.user) return window.EstudiemosAccount?.open();
-    const accessToken = window.EstudiemosAccount?.getSession()?.access_token || "";
-    if (!accessToken) return window.EstudiemosAccount?.open();
-    const button = document.querySelector(`[data-workspace-plan-select="${planId}"]`);
-    if (button) button.disabled = true;
-    try {
-      const response = await fetch("/api/plan-status", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${accessToken}` },
-        body: JSON.stringify({ planId })
-      });
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(result.message || "No pudimos cambiar el plan de prueba.");
-      state.planStatus = normalizePlanStatus(result);
-      renderPlanSummary();
-      closeModal();
-      setStatus(`Ahora estás probando ${PLANS.get(planId).name}. No se realizó ningún cobro.`, "success");
-    } catch (error) {
-      if (button) button.disabled = false;
-      setModalError(error.message || "No pudimos cambiar el plan de prueba.");
-    }
   }
 
   function showState(title, message, type, action = "") {

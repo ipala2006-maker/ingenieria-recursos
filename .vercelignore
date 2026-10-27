@@ -32,3 +32,4 @@ scripts/security-check.js
 scripts/csp-check.js
 scripts/backup-database.cjs
 scripts/verify-android-links.cjs
+scripts/prune-vercel-deployments.cjs

@@ -1,0 +1,4 @@
+@media(min-width:901px),(min-width:701px) and (min-height:900px) {
+  html body.workspace-home .topbar { box-sizing:border-box;height:57px;min-height:57px;flex-shrink:0; }
+  html body.workspace-home .topbar__nav { width:min(556px,calc(100% - 184px));min-width:0;flex:none;justify-content:flex-end; }
+}

@@ -225,4 +225,5 @@
   window.addEventListener('estudiemos:home-view',placeToolbar);
   document.addEventListener('visibilitychange',()=>{if(document.hidden)cancelGesture();});
   new ResizeObserver(()=>{cancelAnimationFrame(frame);frame=requestAnimationFrame(()=>{if(!gesture)apply();});}).observe(page);apply();
+  window.EstudiemosHomeBoot?.release();
 })();

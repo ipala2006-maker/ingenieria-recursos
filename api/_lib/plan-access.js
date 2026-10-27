@@ -18,14 +18,6 @@ async function consumePlanAction(request, feature) {
   return { authenticated: true, user, usage };
 }
 
-async function setTestPlan(request, planId) {
-  const authorization = String(request.headers.authorization || "");
-  const user = await authenticateBearer(authorization);
-  if (!user?.id) return { authenticated: false };
-  const status = await userRpc(authorization, "set_test_plan", { target_plan: planId });
-  return { authenticated: true, user, status };
-}
-
 async function userRpc(authorization, functionName, body) {
   const url = String(process.env.SUPABASE_URL || "").replace(/\/$/, "");
   const key = process.env.SUPABASE_PUBLISHABLE_KEY || "";
@@ -60,4 +52,4 @@ function planLimitMessage(feature, usage) {
   return `Alcanzaste las ${usage?.limit || 0} ${label} incluidas este mes en tu plan.`;
 }
 
-module.exports = { consumePlanAction, getAuthenticatedPlan, planLimitMessage, setTestPlan, userRpc };
+module.exports = { consumePlanAction, getAuthenticatedPlan, planLimitMessage, userRpc };
