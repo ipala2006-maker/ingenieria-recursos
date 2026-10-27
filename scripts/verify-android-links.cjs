@@ -11,10 +11,11 @@ function verifySigners(output, associations) {
   }
   const normalize = value => String(value).replace(/:/g, '').toUpperCase();
   const allowed = entries[0].target.sha256_cert_fingerprints.map(normalize);
-  const signers = [...output.matchAll(/^Signer #\d+ certificate SHA-256 digest:\s*([a-f0-9]{64})\s*$/gmi)]
+  const signers = [...output.matchAll(/^Signer (?:#\d+|\(minSdkVersion=\d+(?: \(dev release=true\))?, maxSdkVersion=\d+\)) certificate SHA-256 digest:\s*([a-f0-9]{64})\s*$/gmi)]
     .map(match => normalize(match[1]));
-  if (!signers.length || signers.some(signer => !allowed.includes(signer))) {
-    throw new Error('APK signing certificate does not match the domain association.');
+  if (!signers.length) throw new Error('No APK certificate digests found in apksigner output.');
+  if (signers.some(signer => !allowed.includes(signer))) {
+    throw new Error('APK signing certificate does not match the domain association: ' + signers.join(', '));
   }
   return signers.length;
 }

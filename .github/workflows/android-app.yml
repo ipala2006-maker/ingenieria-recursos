@@ -54,8 +54,8 @@ jobs:
 
       - name: Verify Android App Links signature
         run: |
-          APKSIGNER=$(find "${ANDROID_HOME}/build-tools" -name apksigner -type f | sort -V | tail -n 1)
-          test -n "$APKSIGNER"
+          APKSIGNER="${ANDROID_HOME}/build-tools/35.0.0/apksigner"
+          test -x "$APKSIGNER"
           node scripts/verify-android-links.cjs "$APKSIGNER" android-app/app/build/outputs/apk/release/app-release.apk
 
       - name: Upload APK
