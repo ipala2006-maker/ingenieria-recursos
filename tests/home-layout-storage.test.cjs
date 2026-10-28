@@ -55,8 +55,10 @@ test('account upload, merge and restore exclude layout but still synchronize tas
   const keys = source.slice(source.indexOf('  const SYNC_KEYS'), source.indexOf('  const LINKED_USER_KEY'));
   const functions = source.slice(source.indexOf('  function captureLocalState()'), source.indexOf('  function prepareLocalAccountSwitch'));
   const s = storage({[local]: '{"visible":{"calendar":false}}', [legacy]: '{"density":"compact"}', keys: JSON.stringify({[legacy]: 100})});
+  let removedNotice = false;
   const context = vm.createContext({localStorage: s, window: {dispatchEvent() {},EstudiemosStudyGoal:require('../shared/study-goal')}, CustomEvent: function () {},
-    LINKED_USER_KEY: 'user', LOCAL_CHANGED_KEY: 'changed', KEY_CHANGED_KEY: 'keys', DIRTY_KEY: 'dirty', applyingCloud: false,accountGeneration:0});
+    document: {querySelector(selector) { assert.equal(selector, '[data-resume-sync-notice]'); return {remove() { removedNotice = true; }}; }},
+    LINKED_USER_KEY: 'user', LOCAL_CHANGED_KEY: 'changed', KEY_CHANGED_KEY: 'keys', DIRTY_KEY: 'dirty', applyingCloud: false,accountGeneration:0,lastResumeCheckAt:0});
   vm.runInContext(keys + functions + '\nthis.api={captureLocalState,applyCloudState,mergeAccountStates,clearLocalAccountData};', context);
   const remote = {values: {[legacy]: '{"visible":{"inbox":false}}', [local]: '{}', bandeja_agenda: [{id: 'task-1', title: 'Repasar'}]}, changedAt: {bandeja_agenda: 123}};
   const merged = context.api.mergeAccountStates(context.api.captureLocalState(), remote);
@@ -68,6 +70,7 @@ test('account upload, merge and restore exclude layout but still synchronize tas
   assert.equal(JSON.parse(s.getItem(local)).visible.calendar, false);
   context.api.clearLocalAccountData();
   assert.equal(JSON.parse(s.getItem(local)).visible.calendar, false);
+  assert.equal(removedNotice, true, 'Signing out must remove the previous account resume notice');
 });
 
 test('home initializes local migration before dynamically loading account and navigation', () => {
