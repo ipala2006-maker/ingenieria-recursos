@@ -41,6 +41,11 @@ jobs:
       - name: Run application tests
         run: node --test tests/*.test.js tests/free-release.test.cjs tests/commercial-launch-hidden.test.cjs tests/home-board.test.cjs tests/home-free-layout.test.cjs tests/home-layout-storage.test.cjs tests/windows-setup-flow.test.cjs tests/study-goal.test.cjs tests/inbox-alarm-feed.test.cjs tests/windows-local-alarms.test.cjs tests/inbox-alarms.test.cjs tests/alarm-connection-file.test.cjs
 
+      - name: Compile Cloudflare candidate without credentials or deployment
+        run: npm run cloudflare:check
+        env:
+          WRANGLER_SEND_METRICS: "false"
+
       - name: Check tracked files and dependencies
         run: node scripts/security-check.js
 

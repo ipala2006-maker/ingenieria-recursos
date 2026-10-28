@@ -20,7 +20,7 @@ const configured = () => {
   catch (_) {return false;}
 };
 function origin() {
-  const value = new URL(process.env.GOOGLE_DRIVE_APP_ORIGIN || 'https://estudiemos-app.vercel.app');
+  const value = new URL(process.env.GOOGLE_DRIVE_APP_ORIGIN || require('./app-origin').appOrigin());
   if (value.protocol !== 'https:' || value.pathname !== '/' || value.search || value.hash || value.username || value.password) throw new Error('DRIVE_NOT_CONFIGURED');
   return value.origin;
 }

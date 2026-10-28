@@ -50,6 +50,24 @@ test('Cloudflare reserves only four jobs and uses six logical subrequests with t
   assert.equal(h.calls[0].body.p_limit,4); assert.equal(h.acknowledged.length,4);
 });
 
+test('conservative Workers profile reserves two jobs with four logical subrequests', async () => {
+  const h = fixture(3);
+  const result = await dispatchPush({ profile:'cloudflare-free-small', rpc:h.rpc, send:h.send });
+  assert.deepEqual(result, { sent:2, failed:0, claimed:2, batches:1, subrequests:4 });
+  assert.equal(h.peak,2); assert.equal(h.pending.length,1);
+  assert.equal(h.calls[0].body.p_limit,2); assert.equal(h.acknowledged.length,2);
+  const empty = fixture(0);
+  assert.equal((await dispatchPush({ profile:'cloudflare-free-small', rpc:empty.rpc, send:empty.send })).subrequests,1);
+});
+
+test('bounded small-worker fanout preserves 400 jobs without claiming the remainder', async () => {
+  const h = fixture(401);
+  const results = await Promise.all(Array.from({ length:200 },()=>dispatchPush({ profile:'cloudflare-free-small', rpc:h.rpc, send:h.send })));
+  assert.equal(results.reduce((sum,result)=>sum+result.sent,0),400);
+  assert.equal(new Set(h.delivered).size,400);
+  assert.equal(h.acknowledged.length,400); assert.equal(h.pending.length,1);
+});
+
 test('Vercel keeps its 100-job capacity in five small batches and does not lease the remaining queue', async () => {
   const h = fixture(101,{ failSends:true });
   const result = await dispatchPush({ profile:'vercel', rpc:h.rpc, send:h.send });

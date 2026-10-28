@@ -7,6 +7,14 @@ public class CourseLinksTest {
     private static final String APP = "https://estudiemos-app.vercel.app/";
     private static final String EXPECTED = APP + "?unirme=1&materia=ABCDEFGHJK";
 
+    @Test public void configuredCloudflareOriginRetainsOldInvitationsWithoutTrustingOtherHosts() {
+        String target = "https://estudiemos.estudiemos-services.workers.dev";
+        assertEquals(target + "/?unirme=1&materia=ABCDEFGHJK", CourseLinks.appUrl(APP + "materia/ABCDEFGHJK", target));
+        assertEquals(EXPECTED, CourseLinks.appUrl(target + "/materia/ABCDEFGHJK"));
+        assertEquals("", CourseLinks.appUrl(APP + "materia/ABCDEFGHJK", "https://attacker.test"));
+        assertEquals("", CourseLinks.appUrl(target + ".attacker.test/materia/ABCDEFGHJK"));
+    }
+
     @Test public void friendlyLinksAndLegacyInvitationsReachTheSameCourse() {
         for (String url : new String[] {
                 APP + "materia/ABCDEFGHJK", APP + "materia/abcdefghjk/?utm_source=whatsapp",

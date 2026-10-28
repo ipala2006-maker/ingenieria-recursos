@@ -1,11 +1,11 @@
-const fs = require('node:fs');
-const path = require('node:path');
+const documentTemplate = require('./document-template');
+const { appOrigin, LEGACY_ORIGIN } = require('./app-origin');
 const { enforceRateLimit } = require('./request-security');
 
-const template = fs.readFileSync(path.join(__dirname, '../../amistad.html'), 'utf8');
-const origin = 'https://estudiemos-app.vercel.app';
 
 module.exports = async function friendInvitation(request, response) {
+  const origin = appOrigin();
+  const template = documentTemplate(request, 'amistad.html').replaceAll(LEGACY_ORIGIN, origin);
   if (!['GET', 'HEAD'].includes(request.method)) {
     response.setHeader('Allow', 'GET, HEAD');
     return response.status(405).json({ message: 'M\u00e9todo no permitido.' });

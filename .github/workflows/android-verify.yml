@@ -8,6 +8,9 @@ jobs:
   android:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      matrix:
+        origin: ["https://estudiemos-app.vercel.app", "https://estudiemos-candidate.estudiemos-services.workers.dev"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -17,5 +20,5 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.11.1"
-      - run: gradle :app:testDebugUnitTest :app:assembleDebug
+      - run: gradle :app:testDebugUnitTest :app:assembleDebug -PestudiemosAppOrigin=${{ matrix.origin }}
         working-directory: android-app

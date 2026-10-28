@@ -1,12 +1,12 @@
-const fs=require('node:fs'),path=require('node:path');
+const documentTemplate=require('./document-template');
+const {appOrigin,LEGACY_ORIGIN}=require('./app-origin');
 const {enforceRateLimit}=require('./request-security');
 const preview=require('./course-preview');
 const view=require('../../shared/course-invite-view');
 const appLinks=require('../../shared/course-app-links');
-const template=fs.readFileSync(path.join(__dirname,'../../instalar.html'),'utf8');
-const origin='https://estudiemos-app.vercel.app';
 const documentPolicy=require('../../vercel.json').headers.find(rule=>rule.source==='/(.*)').headers.find(header=>header.key==='Content-Security-Policy').value;
 module.exports=async function courseInvitation(req,res){
+  const origin=appOrigin(),template=documentTemplate(req,'instalar.html').replaceAll(LEGACY_ORIGIN,origin);
   if(!['GET','HEAD'].includes(req.method)){res.setHeader('Allow','GET, HEAD');return res.status(405).json({message:'Método no permitido.'});}
   const rawCode=req.query?.courseInvitation,code=typeof rawCode==='string'?rawCode.toUpperCase():'';
   const valid=/^[A-HJ-NP-Z2-9]{10}$/.test(code);

@@ -3,7 +3,7 @@ const { adminRequest, authenticateBearer, isConfigured } = require("./_lib/supab
 const { enforceRateLimit, isSameOriginRequest, rejectOversizedBody, requireJsonRequest, setSecurityHeaders } = require("./_lib/request-security");
 
 const LINK_LIFETIME_SECONDS = 120;
-const APP_ORIGIN = "https://estudiemos-app.vercel.app";
+const { appOrigin } = require('./_lib/app-origin');
 const VALID_WIDGETS = new Set(["workspace", "inbox", "calendar", "pomodoro", "streak"]);
 
 module.exports = async function widgetLink(request, response) {
@@ -63,7 +63,7 @@ async function redeemHandoff(request, response) {
   const user = await adminRequest(`/auth/v1/admin/users/${encodeURIComponent(payload.sub)}`);
   if (!user?.email) return response.status(404).send("No encontramos la cuenta.");
 
-  const redirectTo = `${APP_ORIGIN}/widget.html?view=${encodeURIComponent(widget)}&embed=rainmeter&linked=1`;
+  const redirectTo = `${appOrigin()}/widget.html?view=${encodeURIComponent(widget)}&embed=rainmeter&linked=1`;
   const generated = await adminRequest("/auth/v1/admin/generate_link", {
     method: "POST",
     body: JSON.stringify({ type: "magiclink", email: user.email, redirect_to: redirectTo })

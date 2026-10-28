@@ -70,7 +70,7 @@ module.exports = async function mobilePush(req, res) {
     if (await rpc('mobile_push_ready') !== true) return res.status(503).json({ message: 'El servicio de alarmas todavía no está activo. Volvé a intentarlo más tarde.' });
     const result = await rpc('register_mobile_push', { p_user: user.id, p_subscription: subscription, p_timezone: timezone });
     if (action === 'test') {
-      await send(subscription, { title: 'Estudiemos', body: 'Las notificaciones de este celular están conectadas.', tag: 'estudiemos-push-test', owner: user.id });
+      await (req.sendPush || send)(subscription, { title: 'Estudiemos', body: 'Las notificaciones de este celular están conectadas.', tag: 'estudiemos-push-test', owner: user.id });
     }
     return res.status(200).json({ connected: true, expiresAt: result });
   } catch (_) { return res.status(503).json({ message: 'No pudimos conectar las notificaciones. Volvé a intentarlo.' }); }

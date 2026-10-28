@@ -36,3 +36,11 @@ scripts/verify-android-links.cjs
 scripts/prune-vercel-deployments.cjs
 scripts/cleanup-vercel-after-deploy.cjs
 scripts/benchmark-push-budget.cjs
+cloudflare/
+dist-cloudflare/
+.wrangler/
+.dev.vars*
+wrangler.jsonc
+wrangler.probe.jsonc
+scripts/build-cloudflare.cjs
+scripts/measure-workers-cpu.cjs

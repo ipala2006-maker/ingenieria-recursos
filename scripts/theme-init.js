@@ -119,7 +119,7 @@
     try {
       theme = localStorage.getItem(STORAGE_KEY) || DEFAULT_THEME;
     } catch (error) {}
-    return theme === "dark" ? "dark" : "light";
+    return theme === "light" ? "light" : "dark";
   }
 
   function applyTheme(theme, notify, instant) {
@@ -186,6 +186,12 @@
   normalizeAppLaunch();
   installEarlyThemeStyles();
   applyTheme(readTheme(), false);
+  if (!document.querySelector('script[data-app-feedback]')) {
+    var feedback = document.createElement('script');
+    feedback.src = getRootPath() + 'scripts/app-feedback.js?v=20261028';
+    feedback.dataset.appFeedback = '';
+    document.head.appendChild(feedback);
+  }
   loadProfessionalStyleEarly();
   installSpeculationRules();
   registerServiceWorkerEarly();

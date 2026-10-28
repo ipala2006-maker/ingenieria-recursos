@@ -45,8 +45,8 @@ import java.util.Collections;
 import org.json.JSONObject;
 
 public class MainActivity extends Activity {
-    private static final String APP_URL = "https://estudiemos-app.vercel.app/";
-    private static final String APP_ORIGIN = "https://estudiemos-app.vercel.app";
+    private static final String APP_ORIGIN = BuildConfig.APP_ORIGIN;
+    private static final String APP_URL = APP_ORIGIN + "/";
     private static final String UPDATE_APK_URL = "https://github.com/ipala2006-maker/ingenieria-recursos/releases/download/android-latest/Estudiemos-Android.apk";
     public static final String EXTRA_OPEN_AGENDA = "open_agenda";
     public static final String EXTRA_AGENDA_DATE = "agenda_date";
@@ -140,7 +140,7 @@ public class MainActivity extends Activity {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri uri = request.getUrl();
-                if ("https".equals(uri.getScheme()) && "estudiemos-app.vercel.app".equals(uri.getHost())) {
+                if ("https".equals(uri.getScheme()) && Uri.parse(APP_ORIGIN).getHost().equals(uri.getHost()) && (uri.getPort() == -1 || uri.getPort() == 443)) {
                     return false;
                 }
                 startActivity(new Intent(Intent.ACTION_VIEW, uri));
@@ -162,7 +162,7 @@ public class MainActivity extends Activity {
             }
         });
 
-        String incomingCourse = getIntent().getData() == null ? "" : CourseLinks.appUrl(getIntent().getData().toString());
+        String incomingCourse = getIntent().getData() == null ? "" : CourseLinks.appUrl(getIntent().getData().toString(), APP_ORIGIN);
         String previousCourse = savedInstanceState == null ? "" : savedInstanceState.getString("course_launch_url", "");
         if (savedInstanceState == null || (!incomingCourse.isEmpty() && !incomingCourse.equals(previousCourse))) {
             webView.loadUrl(initialUrl(getIntent()));
@@ -216,7 +216,8 @@ public class MainActivity extends Activity {
         if (
                 !isMainFrame ||
                 !"https".equals(sourceOrigin.getScheme()) ||
-                !"estudiemos-app.vercel.app".equals(sourceOrigin.getHost())
+                !Uri.parse(APP_ORIGIN).getHost().equals(sourceOrigin.getHost()) ||
+                (sourceOrigin.getPort() != -1 && sourceOrigin.getPort() != 443)
         ) return;
         try {
             JSONObject payload = new JSONObject(message.getData());
@@ -231,7 +232,7 @@ public class MainActivity extends Activity {
                 if (("teacher".equals(context) || "student-course".equals(context)) && classId.matches("(?i)^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$")) {
                     target += (target.contains("?") ? "&" : "?") + "uploadClass=" + classId;
                 }
-                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://estudiemos-app.vercel.app/" + target)));
+                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(APP_URL + target)));
             } else if ("inbox-notifications-enable".equals(type)) {
                 InboxAlarmReceiver.enable(this);
                 if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
@@ -488,7 +489,7 @@ public class MainActivity extends Activity {
         agendaDateRequested = intent.getStringExtra(EXTRA_AGENDA_DATE);
         openPomodoroRequested = intent.getBooleanExtra(EXTRA_OPEN_POMODORO, false);
         String workspaceItemId = intent.getStringExtra(EXTRA_WORKSPACE_ITEM_ID);
-        String courseUrl = intent.getData() == null ? "" : CourseLinks.appUrl(intent.getData().toString());
+        String courseUrl = intent.getData() == null ? "" : CourseLinks.appUrl(intent.getData().toString(), APP_ORIGIN);
         if (intent.getBooleanExtra(EXTRA_OPEN_DRIVE, false)) {
             webView.loadUrl(APP_URL + "mi-espacio.html");
             openDriveItemIfRequested(intent);
@@ -529,7 +530,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onSaveInstanceState(@NonNull Bundle outState) {
         webView.saveState(outState);
-        outState.putString("course_launch_url", getIntent().getData() == null ? "" : CourseLinks.appUrl(getIntent().getData().toString()));
+        outState.putString("course_launch_url", getIntent().getData() == null ? "" : CourseLinks.appUrl(getIntent().getData().toString(), APP_ORIGIN));
         outState.putBoolean("update_permission", updateAfterPermission);
         super.onSaveInstanceState(outState);
     }
@@ -667,7 +668,7 @@ public class MainActivity extends Activity {
         if (intent == null) return APP_URL;
         if (intent.getBooleanExtra(EXTRA_OPEN_DRIVE, false)) return APP_URL + "mi-espacio.html";
         Uri data = intent.getData();
-        String courseUrl = data == null ? "" : CourseLinks.appUrl(data.toString());
+        String courseUrl = data == null ? "" : CourseLinks.appUrl(data.toString(), APP_ORIGIN);
         if (!courseUrl.isEmpty()) return courseUrl;
         if (data != null && "estudiemos".equals(data.getScheme())) {
             return invitationUrl(data);
@@ -686,7 +687,7 @@ public class MainActivity extends Activity {
     }
 
     private static String invitationUrl(Uri data) {
-        String courseUrl = CourseLinks.appUrl(data.toString());
+        String courseUrl = CourseLinks.appUrl(data.toString(), APP_ORIGIN);
         if (!courseUrl.isEmpty()) return courseUrl;
         if (data.getQueryParameter("materia") != null || data.getQueryParameter("clase") != null) return APP_URL;
         return referralUrl(data.getQueryParameter("ref"));

@@ -2,9 +2,14 @@ plugins {
     id "com.android.application"
 }
 
+def appOrigin = providers.gradleProperty('estudiemosAppOrigin').getOrElse('https://estudiemos-app.vercel.app')
+def allowedOrigins = ['https://estudiemos-app.vercel.app', 'https://estudiemos-candidate.estudiemos-services.workers.dev', 'https://estudiemos.estudiemos-services.workers.dev']
+if (!allowedOrigins.contains(appOrigin)) throw new GradleException('Untrusted Estudiemos app origin')
+
 android {
     namespace "com.estudiemos.app"
     compileSdk 35
+    buildFeatures { buildConfig true }
 
     defaultConfig {
         applicationId "com.estudiemos.app"
@@ -12,6 +17,8 @@ android {
         targetSdk 35
         versionCode 37
         versionName "1.6.9"
+        buildConfigField 'String', 'APP_ORIGIN', '"' + appOrigin + '"'
+        manifestPlaceholders = [estudiemosAppHost: new URI(appOrigin).host]
     }
 
     signingConfigs {
