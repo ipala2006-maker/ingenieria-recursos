@@ -86,16 +86,34 @@ test('all indexed schedule data and helper functions stay inaccessible to public
     }
   }finally{await db.close();}
 });
-test('dispatcher bounds parallel sends and acknowledges a mixed batch in one RPC without real notifications',async()=>{
+test('a bounded SQL claim leaves every unclaimed notification available without consuming its attempts',async()=>{
+  const h=await mobileDatabase();const {db}=h;
+  try{
+    await h.save(Array.from({length:30},(_,i)=>alarm(String(i))));await h.register();await db.exec('select enqueue_mobile_push_jobs()');
+    const first=(await db.query('select * from claim_mobile_push_batch($1)',[4])).rows;
+    assert.equal(first.length,4);
+    assert.equal((await db.query('select count(*)::int n from mobile_push_jobs where attempts=0')).rows[0].n,26);
+    await db.query('select finish_mobile_push_jobs($1)',[first.map(job=>({id:job.id,ok:true,expired:false}))]);
+    const rest=(await db.query('select * from claim_mobile_push_batch($1)',[20])).rows;
+    assert.equal(rest.length,20);assert.ok(rest.every(job=>!first.some(previous=>previous.id===job.id)));
+    assert.equal((await db.query('select count(*)::int n from mobile_push_jobs where attempts=0')).rows[0].n,6);
+    assert.equal((await db.query('select count(*)::int n from mobile_push_jobs where sent_at is not null')).rows[0].n,4);
+  }finally{await db.close();}
+});
+
+test('dispatcher bounds parallel sends and acknowledges each small mixed batch without real notifications',async()=>{
   const calls=[],jobs=Array.from({length:27},(_,i)=>({id:i+1,owner:user,tag:'inbox-'+(i+1),title:'Test',subscription:{endpoint:'https://web.push.apple.com/Q/'+i,keys:{p256dh:'B'.repeat(87),auth:'a'.repeat(22)}}}));
+  const pending=jobs.slice();
   let active=0,peak=0,legacy=false;
   const source=fs.readFileSync(require.resolve('../api/_lib/mobile-push'),'utf8');
   const waits=[];
   const context={module:{exports:{}},URL,Intl,Buffer,setTimeout:(fn,ms)=>{waits.push(ms);fn();},process:{env:{WEB_PUSH_PUBLIC_KEY:'test',WEB_PUSH_PRIVATE_KEY:'test',MOBILE_PUSH_CRON_SECRET:'x'.repeat(40)}},require:name=>{
     if(name==='node:crypto')return require(name);
+    if(name==='./push-dispatch')return require('../api/_lib/push-dispatch');
     if(name==='./supabase-admin')return {adminRequest:async(url,options)=>{const body=JSON.parse(options.body);calls.push({url,body});
+      assert.equal(options.redirect,'error');
       if(legacy&&url.endsWith('claim_mobile_push_batch'))throw {status:404,data:{code:'PGRST202'}};
-      return url.endsWith('claim_mobile_push_batch')?jobs:url.endsWith('claim_mobile_push_jobs')?jobs.slice(0,5):null;}};
+      return url.endsWith('claim_mobile_push_batch')?pending.splice(0,body.p_limit):url.endsWith('claim_mobile_push_jobs')?jobs.slice(0,5):null;}};
     if(name==='./request-security')return {};
     if(name==='web-push')return {sendNotification:async(sub)=>{active++;peak=Math.max(peak,active);await new Promise(resolve=>setImmediate(resolve));active--;if(sub.endpoint.endsWith('/3'))throw {statusCode:410};}};
     throw Error(name);
@@ -104,8 +122,9 @@ test('dispatcher bounds parallel sends and acknowledges a mixed batch in one RPC
   const res={status(code){this.code=code;return this;},json(body){this.body=body;return this;}};
   await context.module.exports({method:'POST',query:{mobilePush:'dispatch'},headers:{authorization:'Bearer '+'x'.repeat(40)}},res);
   assert.equal(res.code,200);assert.equal(res.body.sent,26);assert.equal(res.body.failed,1);assert.equal(peak,10);
-  assert.equal(calls.length,2);assert.ok(calls[1].url.endsWith('finish_mobile_push_jobs'));
-  assert.equal(calls[1].body.p_results.length,27);assert.ok(calls[1].body.p_results.some(r=>r.expired&&r.id===4));
+  assert.equal(calls.length,4);assert.ok(calls[1].url.endsWith('finish_mobile_push_jobs'));assert.ok(calls[3].url.endsWith('finish_mobile_push_jobs'));
+  assert.equal(calls[0].body.p_limit,20);assert.equal(calls[1].body.p_results.length,20);assert.equal(calls[3].body.p_results.length,7);
+  assert.ok(calls[1].body.p_results.some(r=>r.expired&&r.id===4));
   legacy=true;calls.length=0;
   await context.module.exports({method:'POST',query:{mobilePush:'dispatch'},headers:{authorization:'Bearer '+'x'.repeat(40)}},res);
   assert.equal(res.code,200);assert.equal(res.body.sent,4);assert.equal(res.body.failed,1);

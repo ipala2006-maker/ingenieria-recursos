@@ -1,6 +1,7 @@
 const crypto = require('node:crypto');
 const { adminRequest, authenticateBearer } = require('./supabase-admin');
 const { isSameOriginRequest, requireJsonRequest, enforceRateLimit, rejectOversizedBody } = require('./request-security');
+const { dispatchPush } = require('./push-dispatch');
 
 const configured = () => Boolean(process.env.WEB_PUSH_PUBLIC_KEY && process.env.WEB_PUSH_PRIVATE_KEY && process.env.MOBILE_PUSH_CRON_SECRET);
 const rpc = (name, body = {}) => adminRequest(`/rest/v1/rpc/${name}`, { method: 'POST', body: JSON.stringify(body) });
@@ -35,32 +36,11 @@ async function send(subscription, payload) {
 async function dispatch() {
   // Spread the bounded cron workers, not the user's alarm occurrence.
   await new Promise(resolve => setTimeout(resolve, crypto.randomInt(0, 751)));
-  let jobs, legacy=false;
-  try { jobs = await rpc('claim_mobile_push_batch'); }
-  catch (error) {
-    if (error.status!==404 || error.data?.code!=='PGRST202') throw error;
-    legacy=true; jobs=await rpc('claim_mobile_push_jobs');
-  }
-  let sent = 0, failed = 0;
-  const results = [];
-  async function deliver(job) {
-    try {
-      await send(job.subscription, { title: job.title, body: 'Es hora de tu tarea.', tag: job.tag, owner: job.owner });
-      results.push({id:job.id,ok:true,expired:false});
-      sent++;
-    } catch (error) {
-      results.push({id:job.id,ok:false,expired:[404,410].includes(error.statusCode)});
-      failed++;
-    }
-  }
-  // Ten deliveries at a time, not 100 serial network waits. SQL bounds a
-  // claim to 100; one completion RPC replaces one RPC per notification.
-  for (let index=0; index<(jobs || []).length; index+=10) {
-    await Promise.all(jobs.slice(index,index+10).map(deliver));
-  }
-  if (legacy) {
-    for (const result of results) await rpc('finish_mobile_push_job',{p_id:result.id,p_ok:result.ok,p_expired:result.expired});
-  } else if (results.length) await rpc('finish_mobile_push_jobs', {p_results:results});
+  const { sent, failed } = await dispatchPush({
+    profile: 'vercel',
+    rpc: (name, body) => adminRequest(`/rest/v1/rpc/${name}`, { method: 'POST', body: JSON.stringify(body), redirect: 'error' }),
+    send: job => send(job.subscription, { title: job.title, body: 'Es hora de tu tarea.', tag: job.tag, owner: job.owner })
+  });
   return { sent, failed };
 }
 
