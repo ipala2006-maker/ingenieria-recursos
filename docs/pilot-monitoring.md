@@ -75,8 +75,9 @@ se actualiza al abrir/enfocar/sincronizar. No se reintroduce el puente oculto.
 
 ## Limpieza post-despliegue
 
-`deployment-retention.yml` corre tras una produccion exitosa o manualmente desde
-main. Siempre usa codigo de main, nunca el de un PR con secretos, y valida el
+`deployment-retention.yml` corre tras una produccion exitosa o promovida mediante
+repository_dispatch de Vercel, o manualmente desde main. El evento usa el
+workflow de la rama predeterminada y siempre usa codigo de main, nunca el de un PR con secretos, y valida el
 commit con la produccion real consultada a Vercel. Conserva la activa y la
 produccion READY anterior; no borra durante builds ni si cambia produccion.
 

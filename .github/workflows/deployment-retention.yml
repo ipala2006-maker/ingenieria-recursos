@@ -1,6 +1,7 @@
 name: Keep production and one rollback
 on:
-  deployment_status:
+  repository_dispatch:
+    types: [vercel.deployment.success, vercel.deployment.promoted]
   workflow_dispatch:
 permissions:
   contents: read
@@ -12,8 +13,8 @@ jobs:
     if: >-
       vars.VERCEL_CLEANUP_ENABLED == 'true' && (
       (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success' &&
-      (github.event.deployment.production_environment == true || github.event.deployment.environment == 'Production')))
+      (github.event_name == 'repository_dispatch' && github.event.client_payload.environment == 'production' &&
+      github.event.client_payload.project.id == 'prj_BDIVyIanCqTDh32fhWkloZJi9Cbp'))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

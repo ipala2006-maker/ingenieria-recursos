@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict');
-const {cleanup,PROJECT,TEAM}=require('../scripts/cleanup-vercel-after-deploy.cjs');
+const {cleanup,eventSha,PROJECT,TEAM}=require('../scripts/cleanup-vercel-after-deploy.cjs');
 const sha='a'.repeat(40);
 function fixture({changed=false,building=false}={}){
   let reads=0;const removed=[],requests=[],all=[{uid:'dpl_current',name:'estudiemos-app',created:100,target:'production',state:'READY'},{uid:'dpl_backup',name:'estudiemos-app',created:90,target:'production',state:'READY'},
@@ -26,4 +26,16 @@ test('stale events, in-flight builds and production changes never expand a delet
   const stale=fixture();assert.ok((await cleanup({token:'fixture',expectedSha:'b'.repeat(40),apply:true,request:stale.request})).skipped);assert.deepEqual(stale.removed,[]);
   const busy=fixture({building:true});assert.ok((await cleanup({token:'fixture',expectedSha:sha,apply:true,request:busy.request})).skipped);assert.deepEqual(busy.removed,[]);
   const changed=fixture({changed:true});await assert.rejects(cleanup({token:'fixture',expectedSha:sha,apply:true,request:changed.request}),/cambio/);assert.deepEqual(changed.removed,[]);
+});
+
+test('cleanup workflow cannot use preview/foreign dispatches or execute workflow code from deployed PRs',()=>{
+  const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),directory=fs.mkdtempSync(path.join(os.tmpdir(),'retention-event-')),file=path.join(directory,'event.json');
+  try{
+    const event={action:'vercel.deployment.success',client_payload:{environment:'production',project:{id:PROJECT},git:{sha}}};
+    fs.writeFileSync(file,JSON.stringify(event));assert.equal(eventSha({GITHUB_EVENT_NAME:'repository_dispatch',GITHUB_EVENT_PATH:file}),sha);
+    event.client_payload.environment='preview';fs.writeFileSync(file,JSON.stringify(event));assert.throws(()=>eventSha({GITHUB_EVENT_NAME:'repository_dispatch',GITHUB_EVENT_PATH:file}));
+    assert.throws(()=>eventSha({GITHUB_EVENT_NAME:'pull_request',GITHUB_SHA:sha}));
+    const workflow=fs.readFileSync(require.resolve('../.github/workflows/deployment-retention.yml'),'utf8');
+    assert.match(workflow,/repository_dispatch:/);assert.match(workflow,/ref: main/);assert.doesNotMatch(workflow,/pull_request_target|deployment_status:/);
+  }finally{fs.rmSync(file);fs.rmdirSync(directory);}
 });

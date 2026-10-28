@@ -43,10 +43,10 @@ async function cleanup({token,expectedSha,apply=false,request=fetch}){
 }
 
 function eventSha(env=process.env){
-  if(env.GITHUB_EVENT_NAME==='deployment_status'){
+  if(env.GITHUB_EVENT_NAME==='repository_dispatch'){
     const event=JSON.parse(fs.readFileSync(env.GITHUB_EVENT_PATH,'utf8'));
-    if(event.deployment_status?.state!=='success'||!(event.deployment?.production_environment===true||event.deployment?.environment==='Production'))throw Error('El evento no es una publicacion exitosa de produccion.');
-    return event.deployment.sha;
+    if(!['vercel.deployment.success','vercel.deployment.promoted'].includes(event.action)||event.client_payload?.environment!=='production'||event.client_payload.project?.id!==PROJECT)throw Error('El evento no es una publicacion exitosa de este proyecto.');
+    return event.client_payload.git?.sha;
   }
   if(env.GITHUB_EVENT_NAME==='workflow_dispatch'&&env.GITHUB_REF==='refs/heads/main')return env.GITHUB_SHA;
   throw Error('La limpieza solo se ejecuta por produccion o desde main.');
