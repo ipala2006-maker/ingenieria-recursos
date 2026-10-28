@@ -88,6 +88,7 @@
     isSynchronized: () => Boolean(session?.user?.id && (AUTH_ONLY || synchronizedUserId === session.user.id)),
     getSession: () => session,
     getClient: () => client,
+    getAccessMode: () => accountConfig?.accessMode || 'pilot',
     whenReady: () => readyPromise,
     open: () => openDialog(),
     updateApp: () => updateApplication()
@@ -347,7 +348,8 @@
         url: config.url,
         publishableKey: config.publishableKey,
         captchaSiteKey: config.captchaSiteKey || "",
-        firebase: config.firebase || null
+        firebase: config.firebase || null,
+        accessMode: config.accessMode === 'restricted' ? 'restricted' : 'pilot'
       };
       stage = "library";
       await loadSupabaseLibrary();

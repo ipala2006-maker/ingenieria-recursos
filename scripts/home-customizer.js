@@ -6,7 +6,7 @@
   spaces.push(['classes','Cátedras',240]);
   const canResize=key=>!mobile.matches||['focus','progress','assistant','classes'].includes(key);
   const available=key=>key!=='shortcuts'&&(window.EstudiemosRelease?.homeSpaceEnabled?.(key) ?? (key==='assistant'?window.EstudiemosRelease?.enabled('ai')===true:key==='workspace'?window.EstudiemosRelease?.enabled('driveWorkspace')===true:true));
-  const effectiveVisibility=visible=>Object.fromEntries(spaces.map(([key])=>[key,available(key)&&visible[key]!==false]));
+  const effectiveVisibility=visible=>Object.fromEntries(spaces.map(([key])=>[key,window.EstudiemosAccess?.snapshot().fullAccess===false?['calendar','classes'].includes(key):available(key)&&visible[key]!==false]));
   const reduced=matchMedia('(prefers-reduced-motion:reduce)'),nodes=new Map(spaces.map(([key])=>[key,document.querySelector(`[data-home-space="${key}"]`)])),list=dialog.querySelector('[data-home-customizer-spaces]');
   let editing=false,gesture=null,frame=0,lastLayout=null,undoValue=null,armed=null;
   const animations=new WeakMap();
@@ -223,6 +223,7 @@
   window.addEventListener('blur',cancelGesture);
   window.addEventListener('pagehide',cancelGesture);
   window.addEventListener('estudiemos:home-view',placeToolbar);
+  window.addEventListener('estudiemos:access-change',()=>{cancelGesture();setEditing(false);apply();});
   document.addEventListener('visibilitychange',()=>{if(document.hidden)cancelGesture();});
   new ResizeObserver(()=>{cancelAnimationFrame(frame);frame=requestAnimationFrame(()=>{if(!gesture)apply();});}).observe(page);apply();
   window.EstudiemosHomeBoot?.release();

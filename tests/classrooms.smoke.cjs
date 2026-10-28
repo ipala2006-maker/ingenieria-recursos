@@ -42,9 +42,10 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
     });
     await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const base='http://127.0.0.1:'+server.address().port;
     browser=process.env.TEST_WEBKIT==='1'?await webkit.launch():await chromium.launch({channel:'chrome'});
-    async function context(user,width,role='student',driveFixture=false,actualAccount=false,launchPlatform=''){
+    async function context(user,width,role='student',driveFixture=false,actualAccount=false,launchPlatform='',accessMode='pilot'){
       const userAgent=launchPlatform.includes('ios')?'Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/605.1.15 Version/26.0 Mobile/15E148 Safari/604.1':launchPlatform==='ipad'?'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15) AppleWebKit/605.1.15 Version/26.0 Safari/605.1.15':launchPlatform.includes('android')?'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/140.0.0.0 Mobile Safari/537.36':launchPlatform.startsWith('windows')?'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140.0.0.0 Safari/537.36':'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/140.0.0.0 Safari/537.36';
       const ctx=await browser.newContext({viewport:{width,height:900},isMobile:width<500,hasTouch:width<500,serviceWorkers:'block',userAgent});
+      ctx.accessReason='free';
       const driveItems=new Map(),driveCalls=[];let driveId=0,pendingUpload;
       const driveRoot={id:'course-root',name:'Estudiemos',mimeType:'application/vnd.google-apps.folder'};ctx.courseDriveCalls=driveCalls;
       await ctx.addInitScript(({user,role,actualAccount,launchPlatform})=>{
@@ -80,10 +81,11 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
           return route.fulfill({status:404,json:{error:{message:'Fixture file missing'}}});
         }
         if(url.origin!==base)return route.abort();
+        if(url.pathname==='/api/plan-status'&&url.searchParams.get('access')==='1')return route.fulfill({json:require('../shared/app-access').resolve({mode:accessMode,paidPro:ctx.accessReason==='subscription',ownsClass:ctx.accessReason==='class-owner'})});
         if(url.searchParams.get('drive')==='status')return route.fulfill({json:{connected:driveFixture}});
         if(url.searchParams.get('drive')==='token')return route.fulfill({json:{accessToken:'fixture-only',expiresAt:Date.now()+3600000}});
         if(actualAccount&&url.pathname==='/api/account-config'&&!url.search)return route.fulfill({json:{enabled:true,url:'https://fixture.supabase.co',publishableKey:'test-only',captchaSiteKey:''}});
-        if(url.pathname==='/scripts/account.js'&&!actualAccount)return route.fulfill({contentType:'text/javascript',body:`window.EstudiemosAccount={getUser:()=>window.__classUser?{id:window.__classUser}:null,getSession:()=>window.__classUser?{access_token:window.__classUser}:null,whenReady:()=>Promise.resolve({session:window.__classUser?{access_token:window.__classUser}:null}),isSynchronized:()=>true,getClient:()=>({rpc:async(name,args)=>(await fetch('/rest/v1/rpc/'+name,{method:'POST',headers:{Authorization:'Bearer '+window.__classUser},body:JSON.stringify(args)})).json()}),open:()=>{window.__loginOpened=true},refresh:async()=>{}};window.dispatchEvent(new CustomEvent('estudiemos:account-ready'));`});
+        if(url.pathname==='/scripts/account.js'&&!actualAccount)return route.fulfill({contentType:'text/javascript',body:`window.EstudiemosAccount={getAccessMode:()=>${JSON.stringify(accessMode)},getUser:()=>window.__classUser?{id:window.__classUser}:null,getSession:()=>window.__classUser?{access_token:window.__classUser}:null,whenReady:()=>Promise.resolve({session:window.__classUser?{access_token:window.__classUser}:null}),isSynchronized:()=>true,getClient:()=>({rpc:async(name,args)=>(await fetch('/rest/v1/rpc/'+name,{method:'POST',headers:{Authorization:'Bearer '+window.__classUser},body:JSON.stringify(args)})).json()}),open:()=>{window.__loginOpened=true},refresh:async()=>{}};window.dispatchEvent(new CustomEvent('estudiemos:account-ready'));`});
         return route.continue();
       });return ctx;
     }
@@ -99,6 +101,8 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
     await tp.locator('[data-class-tab=materials]').click();await tp.locator('[data-class-material]').click();const mf=tp.locator('[data-class-form=material_save]');await mf.locator('[name=title]').fill('Guía de ejercicios');await mf.locator('[name=url]').fill('https://drive.google.com/file/d/FILE_123/view');await mf.locator('[type=submit]').click();await tp.locator('.classroom-material-link').waitFor();
     await tp.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-teacher-materials.png`)});
     lastPage=sp;await sp.goto(base+'/#materia='+code);const sd=sp.locator('.classroom-dialog');await sd.waitFor({state:'visible'});await sp.locator('.classroom-course-head h3').waitFor();await sp.locator('.classroom-row strong').filter({hasText:'Parcial de física'}).waitFor();
+    assert.equal(await sd.evaluate(node=>node.classList.contains('is-focused')),true,'A student invitation opens only its course, not the personal dashboard');
+    assert.equal(await sp.locator('[data-class-close]').innerText(),'Abrir Estudiemos');
     assert.equal(await sp.locator('[data-class-code]').count(),0);assert.equal(await sp.locator('[data-class-event]').count(),0);assert.equal(await sp.locator('[data-class-tab=members]').count(),0);
     assert.equal(await sp.evaluate(()=>JSON.parse(localStorage.getItem('bandeja_agenda')||'[]').some(item=>item.title==='Parcial de física')),false,'Class dates never become editable personal copies');
     await sp.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-student-dates.png`)});
@@ -207,6 +211,20 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
     const longCode='JKLMNPQRST';await db.query('select classroom_action($1,$2,$3)',[teacher,'create',{code:longCode,title:'Análisis Matemático y Aplicaciones para Ingeniería · Comisión del turno de la tarde',teacherName:'Departamento de Ciencias Básicas · Equipo docente',institution:'Universidad del grupo de prueba',timezone:'UTC',ownerRole:'teacher',color:'teal'}]);
     const responsive=await context('',390),responsivePage=await responsive.newPage();lastPage=responsivePage;
     for(const width of [320,390,768,1440]){await responsivePage.setViewportSize({width,height:844});await responsivePage.goto(base+'/materia/'+longCode);await responsivePage.locator('[data-course-join]').waitFor();await responsivePage.locator('.course-invite-symbol img').evaluate(img=>img.decode());assert.equal(await responsivePage.locator('.course-install-invitation img').evaluateAll(images=>images.every(img=>img.complete&&img.naturalWidth>0)),true,'All invitation icons render');assert.equal(await responsivePage.locator('body').evaluate(el=>el.scrollWidth<=innerWidth),true,'Long course names do not overflow');assert.equal(await responsivePage.locator('[data-course-join]').evaluate(el=>el.getBoundingClientRect().bottom<=innerHeight),true,'Primary action stays in the first viewport');await responsivePage.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-invitation-long-${width}.png`)});}await responsive.close();
+    for(const width of [390,1440]){
+      const freeContext=await context(student,width,'student',false,false,'','restricted'),freePage=await freeContext.newPage();lastPage=freePage;
+      await freePage.goto(base);await freePage.waitForFunction(()=>window.EstudiemosAccess?.snapshot().reason==='free');
+      assert.equal(await freePage.locator('dialog[open]').count(),0,'No unsolicited paywall or upsell modal');
+      assert.equal(await freePage.locator('[data-home-space=calendar]').isVisible(),true);assert.equal(await freePage.locator('[data-home-space=classes]').isVisible(),true);
+      assert.equal(await freePage.locator('[data-home-space=focus]').isVisible(),false);assert.equal(await freePage.locator('[data-home-space=workspace]').isVisible(),false);
+      assert.equal(await freePage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
+      await freePage.screenshot({path:path.join(out,`free-${width}.png`)});
+      const layoutBefore=await freePage.evaluate(()=>localStorage.getItem('estudiemos_home_layout'));
+      await freePage.locator('[data-pro-feature=pomodoro]').filter({visible:true}).first().click();await freePage.locator('.access-feature-preview').waitFor();assert.equal(await freePage.locator('dialog[open]').count(),0);
+      freeContext.accessReason='subscription';await freePage.evaluate(()=>EstudiemosAccess.refresh(true));assert.equal(await freePage.evaluate(()=>EstudiemosAccess.snapshot().fullAccess),true);
+      assert.equal(await freePage.evaluate(()=>localStorage.getItem('estudiemos_home_layout')),layoutBefore,'Access changes never overwrite the saved personal layout');
+      await freeContext.close();
+    }
     await sp.evaluate(id=>{window.__classUser=id;window.dispatchEvent(new CustomEvent('estudiemos:account-change'));},student);await sp.locator('[data-class-select="'+id+'"]').click();await sp.locator('[data-class-leave]').click();await sp.locator('.classroom-confirm button').filter({hasText:'Confirmar'}).click();await sp.waitForFunction(id=>!EstudiemosClasses.snapshot()?.classes.some(course=>course.id===id),id);assert.equal(await sp.evaluate(()=>JSON.parse(localStorage.getItem('bandeja_agenda')||'[]').length),0);
     await tp.locator('[data-class-settings]').click();await tp.locator('[data-class-settings-tab=manage]').click();await tp.locator('[data-class-delete-course]').click();await tp.locator('.classroom-confirm button').filter({hasText:'Confirmar'}).click();await tp.waitForFunction(id=>!EstudiemosClasses.snapshot()?.classes.some(course=>course.id===id),id);assert.equal((await db.query('select count(*)::int as total from classroom_events where class_id=$1',[id])).rows[0].total,0);assert.equal(dc.courseDriveCalls.filter(call=>call.method==='DELETE').length,0,'Removing a course does not delete Drive files');
     const direct=await context('',320),directPage=await direct.newPage();lastPage=directPage;await directPage.goto(base+'/?clase=');await directPage.locator('[data-class-login]').click();assert.equal(await directPage.locator('[data-study-goal-dialog][open]').count(),0,'A direct class link must also defer the daily goal until after sign-in');await direct.close();

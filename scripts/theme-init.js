@@ -193,6 +193,18 @@
     document.head.appendChild(feedback);
   }
   loadProfessionalStyleEarly();
+  function loadAccessUI() {
+    if (document.querySelector('script[data-app-access-rules]')) return;
+    var base = getRootPath();
+    var rules = document.createElement('script'); rules.dataset.appAccessRules = '';
+    rules.src = base + 'shared/app-access.js?v=20261028';
+    rules.onload = function () {
+      function start() { var ui=document.createElement('script'); ui.src=base+'scripts/app-access.js?v=20261028';document.head.appendChild(ui); }
+      if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
+    };
+    document.head.appendChild(rules);
+  }
+  loadAccessUI();
   installSpeculationRules();
   registerServiceWorkerEarly();
   loadSmoothNavigation();

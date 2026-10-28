@@ -70,3 +70,57 @@ equivocada. No borrar suscripciones existentes para simular una migracion exitos
 El candidato es verificable y la migracion sigue preparada, pero NO se corta
 produccion hasta resolver estos tres frentes. Esto conserva la funcionalidad de
 las alarmas, las cuentas y los Drives actuales sin gastos ni extraccion de claves.
+
+## Orden operativo y condiciones de avance
+
+| Paso | Accion | Comprobacion antes de avanzar |
+| --- | --- | --- |
+| 0 | Mantener Vercel, inventariar nombres/consumidores sin copiar valores; comprobar backup cifrado y restore aislado | Inventario y recuperacion probados, sin secretos en logs |
+| 1 | Crear una clave de servidor Supabase adicional y guardarla en Cloudflare y un gestor protegido | Consulta autenticada de piloto; no cambiar JWT signing keys ni sesiones |
+| 2 | Agregar un secreto al MISMO cliente Google OAuth, conservando el anterior | Renovar un refresh token existente con el secreto nuevo, sin pedir otro consentimiento |
+| 3 | Crear clave del mismo service account Firebase y guardar solo en servidor | Envio a un dispositivo de prueba del mismo proyecto, sin tocar tokens de alumnos |
+| 4 | Implementar lectura dual y formato de sobre con version de clave para Drive en un PR dedicado | Pruebas de cifrado, alteracion, proposito/usuario y claves faltantes |
+| 5 | Generar nueva clave AES y respaldarla; desplegar primero lectores compatibles en Vercel | TODAS las versiones capaces de escribir tokens entienden ambos formatos |
+| 6 | Migrar dentro de Vercel en lotes limitados, con comparacion de version | Cero registros fallidos o pendientes y cero sobreescrituras concurrentes |
+| 7 | Validar conexiones desde Workers con nuevo secreto OAuth y nueva AES | Listar, renovar token vencido, subir un PDF de prueba y regresar sin reconectar Drive |
+| 8 | Preparar dos generaciones de Web Push, probar recepcion y configurar callbacks/origen final | Cada suscripcion se entrega con la clave que la creo; no mezclar reservas |
+| 9 | Cambiar un solo cron y publicar clientes firmados/origen | Auth, invitacion, Drive, alarmas, permisos nuevos y rollback verificados |
+| 10 | Retirar credenciales antiguas despues de convivencia y ventana de backups | No quedan lectores/escritores ni copias necesarias dependientes de la AES anterior |
+
+Google permite agregar un secreto nuevo mientras el anterior sigue habilitado:
+usar esa rotacion, no eliminar el cliente. Los refresh tokens estan ligados al
+cliente; conservar su ID y probar una renovacion real antes del corte.
+[Documentacion de Google](https://support.google.com/cloud/answer/15549257?hl=en-GB).
+Supabase permite separar claves de API del servidor de las claves de firma de
+Auth: [claves de API](https://supabase.com/docs/guides/getting-started/api-keys).
+
+### Contrato del trabajo de recifrado pendiente
+
+No se ejecuta desde el navegador ni se descarga un dump descifrado. El trabajo
+legado solo puede transformar `drive_connections.credentials`, con pagina
+acotada, destino de clave fijado en entorno y sin tabla/usuario/clave arbitrarios
+en el cuerpo de una peticion. Devuelve contadores, no autorizaciones ni claves.
+
+Cada fila se descifra con su proposito `user:<id>` (AAD legado completo:
+`estudiemos.drive.v1:user:<id>`) y se vuelve a cifrar manteniendo su identidad
+de usuario y el AAD del formato que corresponda. El `UPDATE` compara simultaneamente la version/updated_at y el texto
+cifrado leido; si otra renovacion gano, no actualiza y relee en un lote posterior.
+Una fila ya migrada no se vuelve a migrar. Un error de autenticacion GCM no se
+interpreta como permiso para borrar/reconectar la cuenta. No se registra el error
+con su payload. Antes de empezar hay dry-run y prueba con filas ficticias.
+
+La cookie OAuth de diez minutos tambien usa el vault: mantener lectura del
+formato anterior hasta vencer consentimientos en curso. No usar el nuevo origen
+para recibir callbacks iniciados con cookies del origen viejo.
+
+### Recuperacion y cambio de origen
+
+Un backup previo conserva tokens bajo la clave vieja que solo conoce Vercel.
+Conservar ese entorno mientras sea necesario restaurarlo; tras recifrar, generar
+y probar una copia nueva recuperable con la AES nueva. No borrar la ultima via
+de lectura de respaldos viejos antes de vencer su retencion.
+
+La continuidad de Drive no implica conservar automaticamente la sesion PWA:
+el nuevo origen necesita login/permisos propios. No enviar access/refresh tokens
+en query strings para intentar trasladar sesiones. La clave age privada de los
+backups no se usa como AES de Drive ni se sube a Cloudflare/GitHub.

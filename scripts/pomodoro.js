@@ -336,6 +336,7 @@
   }
 
   function maybeAskStudyGoal() {
+    if(window.EstudiemosAccess?.can('progress')===false)return;
     if (window.EstudiemosOnboarding?.pending()) return;
     if (window.EstudiemosClasses?.pendingLaunch?.()) return;
     if (document.querySelector('dialog[open]') || ['clase','materia'].some(key=>new URLSearchParams(location.hash.slice(1)).has(key)) || ['clase','materia','materias','uploadClass'].some(key=>new URLSearchParams(location.search || '').has(key))) return;
