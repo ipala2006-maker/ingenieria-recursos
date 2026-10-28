@@ -28,12 +28,15 @@ async function verifyArchive(backupPath,manifestPath){
   return manifest;
 }
 
-function exited(child,label){
-  child.stderr.resume();
-  return new Promise((resolve,reject)=>{child.once('error',()=>reject(Error(`No se pudo iniciar ${label}.`)));child.once('close',code=>code===0?resolve():reject(Error(`Fallo ${label}; se descartara la base temporal.`)));});
+function exited(child,label,onDiagnostic){
+  let diagnostic='';
+  if(onDiagnostic)child.stderr.on('data',chunk=>{diagnostic=(diagnostic+chunk.toString()).slice(0,4096);});else child.stderr.resume();
+  return new Promise((resolve,reject)=>{child.once('error',()=>reject(Error(`No se pudo iniciar ${label}.`)));child.once('close',code=>{
+    if(code===0)return resolve();if(onDiagnostic)onDiagnostic(label,diagnostic);reject(Error(`Fallo ${label}; se descartara la base temporal.`));
+  });});
 }
 
-async function restoreTest({backupPath,identityPath,manifestPath=backupPath+'.json',env=process.env,validate,psql='psql',age='age',pgRestore='pg_restore',timeoutMs=600000}){
+async function restoreTest({backupPath,identityPath,manifestPath=backupPath+'.json',env=process.env,validate,onDiagnostic,psql='psql',age='age',pgRestore='pg_restore',timeoutMs=600000}){
   const local=connection(env),manifest=await verifyArchive(backupPath,manifestPath);
   if(env.BACKUP_PROJECT_REF&&manifest.project!==env.BACKUP_PROJECT_REF)throw Error('El respaldo no corresponde al proyecto esperado.');
   await fsp.access(identityPath,fs.constants.R_OK);
@@ -43,6 +46,8 @@ async function restoreTest({backupPath,identityPath,manifestPath=backupPath+'.js
   process.once('SIGINT',abort);process.once('SIGTERM',abort);
   try{
     sql('postgres',`create database ${database}`,local,psql);created=true;
+    // A fresh database contains an empty public schema; the archive recreates it.
+    sql(database,'drop schema public',local,psql);
     const toolEnv={...local};delete toolEnv.PGPASSWORD;
     const decrypt=spawn(age,['--decrypt','--identity',path.resolve(identityPath),path.resolve(backupPath)],{env:toolEnv,windowsHide:true,stdio:['ignore','pipe','pipe'],signal:controller.signal});children.push(decrypt);
     const restore=spawn(pgRestore,['--no-owner','--no-privileges','--exit-on-error','--single-transaction','--dbname='+database],{env:local,windowsHide:true,stdio:['pipe','ignore','pipe'],signal:controller.signal});children.push(restore);
@@ -51,7 +56,7 @@ async function restoreTest({backupPath,identityPath,manifestPath=backupPath+'.js
       if(prefix.length<5){prefix=Buffer.concat([prefix,chunk]).subarray(0,5);if(prefix.length===5&&prefix.toString()!=='PGDMP')return callback(Error('El archivo descifrado no es un dump PostgreSQL.'));}
       callback(null,chunk);
     }});
-    await Promise.all([exited(decrypt,'age'),exited(restore,'pg_restore'),pipeline(decrypt.stdout,check,restore.stdin,{signal:controller.signal})]);
+    await Promise.all([exited(decrypt,'age',onDiagnostic),exited(restore,'pg_restore',onDiagnostic),pipeline(decrypt.stdout,check,restore.stdin,{signal:controller.signal})]);
     if(prefix.toString()!=='PGDMP')throw Error('Respaldo vacio.');
     const query=text=>sql(database,text,local,psql);
     const missing=Number(query(`select count(*) from unnest(array[${REQUIRED.map(t=>`'${t}'`).join(',')}]) t where to_regclass(t) is null`));

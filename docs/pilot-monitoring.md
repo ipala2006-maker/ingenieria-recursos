@@ -10,6 +10,7 @@ confundir conexiones de PostgreSQL con clientes Realtime. No se activa un plan.
 - API: https://supabase.com/dashboard/project/gxilgicgxhkdjmmyhrdd/observability/api-overview
 - Consumo: https://supabase.com/dashboard/org/vnnwsinhqgesopxiobgg/usage
 - Informe guardado: https://supabase.com/dashboard/project/gxilgicgxhkdjmmyhrdd/observability/6fc7aaf8-8596-467b-8691-0abbdb1278aa
+- Consulta de Auth guardada: https://supabase.com/dashboard/project/gxilgicgxhkdjmmyhrdd/logs/explorer?queryId=f9309276-a85f-4cbd-a445-95e8af360458
 
 El informe personalizado guardado agrupa solicitudes de conexion Realtime y
 solicitudes de Auth. Esos contadores NO son clientes simultaneos ni latencia.

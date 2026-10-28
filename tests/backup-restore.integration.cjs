@@ -45,7 +45,8 @@ async function run(){
     const damaged=await fs.readFile(encrypted);damaged[damaged.length-1]^=1;
     const rejected=spawnSync('age',['--decrypt','--identity',identity],{input:damaged,maxBuffer:1024*1024});
     assert.notEqual(rejected.status,0,'Tampered ciphertext must not decrypt successfully');
-    const restored=await restoreTest({backupPath:encrypted,identityPath:identity,env:{...env,CI:process.env.CI,BACKUP_INTEGRATION:'true',BACKUP_PROJECT_REF:'a'.repeat(20)},validate(query){
+    const restored=await restoreTest({backupPath:encrypted,identityPath:identity,env:{...env,CI:process.env.CI,BACKUP_INTEGRATION:'true',BACKUP_PROJECT_REF:'a'.repeat(20)},
+      onDiagnostic:(tool,message)=>console.error('Disposable fixture diagnostic '+tool+': '+message),validate(query){
       for(const table of ['auth.sessions','private.api_rate_limits','public.mobile_push_subscriptions'])assert.equal(query(`select count(*) from ${table}`),'0',table);
       assert.equal(query('select backup_fixture_version()'),'42');
       assert.equal(query("select relrowsecurity and relforcerowsecurity from pg_class where oid='user_states'::regclass"),'t');
