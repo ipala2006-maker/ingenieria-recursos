@@ -1,0 +1,256 @@
+# Drive: lectura dual y recifrado controlado
+
+Estado: preparacion en PR dedicado, basado en #103. No se recifraron filas
+reales, no se aplico SQL de produccion ni se cambiaron secretos existentes.
+Los modulos NO se conectan a un endpoint HTTP, cron ni accion de usuario.
+
+## Compatibilidad
+
+Sin variables nuevas, `drive-vault` conserva las escrituras v1 y el mismo AAD
+de produccion. Puede leer grants y cookies OAuth existentes. Agregar un keyring
+sin elegir clave activa solo prepara lectores: no cambia el formato escrito.
+
+| Variable privada | Uso |
+| --- | --- |
+| DRIVE_TOKEN_ENCRYPTION_KEY | AES de 32 bytes en hexadecimal del formato legado; conservarla en Vercel |
+| DRIVE_TOKEN_KEYRING | JSON de hasta cuatro IDs y sus claves AES de 32 bytes; guardar como Secret |
+| DRIVE_TOKEN_ACTIVE_KEY_ID | ID explicito para escribir sobres v2; ausente mantiene v1 |
+| DRIVE_REKEY_ENABLED | Ausente/false impide confirmar lotes; no afecta las lecturas normales |
+
+Los IDs empiezan con letra minuscula, permiten letras, numeros, guion y guion
+bajo, hasta 32 caracteres. No cambiar la clave asociada a un ID que ya se uso:
+una rotacion posterior crea otro ID. No usar la clave de Supabase, el client
+secret de Google, VAPID ni la identidad age como clave AES.
+
+## Formato
+
+```text
+v1: base64url(IV de 12 bytes || tag GCM de 16 bytes || ciphertext JSON)
+v2: v2.<keyId>.<base64url(IV || tag || ciphertext JSON)>
+AAD v1: estudiemos.drive.v1:<purpose>
+AAD v2: estudiemos.drive.v2:<keyId>:<purpose>
+purpose de grant: user:<UUID de Estudiemos>
+purpose de cookie: oauth
+```
+
+AES-256-GCM utiliza un IV aleatorio nuevo por escritura. El ID, version y
+proposito quedan ligados por AAD: cambiar usuario, usar una cookie como grant
+o renombrar el ID (aunque tenga la misma clave) invalida la autenticacion.
+No se prueban otras claves a ciegas si falta el ID. Un error de GCM no borra la
+conexion ni obliga automaticamente al usuario a autorizar otra vez.
+
+El sobre no contiene claves. El limite de 24.000 caracteres se valida antes de
+guardar. Se conserva el formato legado, sin prefijar ni reescribir registros
+existentes solo por desplegar este codigo.
+
+## Orden de activacion posterior
+
+1. Revisar el PR, restaurar una copia cifrada en un entorno aislado y conservar
+   Vercel operativo. Verificar la renovacion OAuth con el secreto coexistente
+   del mismo cliente Google antes de depender de el.
+2. Desplegar lectores duales en TODAS las versiones que puedan escribir grants.
+   Aun sin clave activa: escrituras v1. Fijar un rollback tambien compatible
+   con ambos formatos, no una version antigua que solo entiende v1.
+3. Generar la nueva AES mediante CSPRNG, guardarla en un gestor independiente
+   y como secreto de Vercel/Cloudflare. No descargar ni exportar la AES antigua.
+   Agregar el keyring a Vercel, sin quitar DRIVE_TOKEN_ENCRYPTION_KEY.
+4. Elegir el ID activo solo tras probar lecturas, cookies y renovacion con datos
+   de prueba. A partir de este momento las renovaciones normales escriben v2.
+   Esperar que terminen invocaciones iniciadas con variables/versiones anteriores
+   (la API actual tiene maxDuration de 60 segundos), con margen, antes del barrido
+   final. No probar escrituras desde previews antiguos durante la migracion.
+5. Revisar/aplicar `supabase/drive-recipher.sql`. Solo agrega una funcion privada
+   service_role; aplicar el SQL no modifica filas. No se conceden permisos a
+   anon/authenticated ni se cambia el control de acceso de Drive.
+6. Ejecutar una simulacion del bloque servidor dentro de Vercel. Con
+   `recipherBatch()` commit es false por defecto: descifra/verifica en memoria,
+   calcula candidatos y devuelve contadores/checkpoint, nunca tokens ni claves.
+7. Para confirmar se necesitan las dos acciones: DRIVE_REKEY_ENABLED=true y
+   `commit:true` en el trabajo interno revisado. No hay un ejecutor publico en
+   este PR: su invocacion operativa se habilitara por separado, con autorizacion.
+8. Procesar hasta 25 filas por lote; revisar failed/conflicts/retryRequired.
+   No avanzar ni declarar exito solo porque hasMore sea false. Parar y revisar
+   fallos; no crear un bucle de reintentos ilimitado sobre una fila ilegible.
+9. Hacer un recorrido completo nuevo de verificacion, desde el principio,
+   despues de la migracion. Comprobar que todos los escritores usan v2 y que
+   Workers renueva tokens/lista archivos sin pedir otro consentimiento.
+10. Crear y restaurar un backup nuevo recuperable con la AES nueva. Mantener
+    el entorno legado hasta vencer la retencion/rollback de copias antiguas;
+    aquellas copias todavia necesitan la clave vieja o su entorno de lectura.
+11. Apagar DRIVE_REKEY_ENABLED. No borrar la clave antigua, conexiones o Vercel
+    como parte de este PR. No mezclar este paso con cambiar dominios/cron/pagos.
+
+## Concurrencia y seguridad del lote
+
+La actualizacion compara user_id, ciphertext previo Y updated_at preciso. No
+convierte el timestamp a milisegundos antes del CAS. Si otro proceso renovo el
+token, la comparacion falla sin pisarlo. Si el usuario desconecto Drive, UPDATE
+no inserta ni restaura su autorizacion.
+
+Las filas ya en la clave destino se descifran y verifican antes de contarlas
+como actuales. Un lote repetido es idempotente. El checkpoint no supera el
+primer conflicto o error, aunque otras filas del mismo lote si se conviertan.
+Un timeout puede haber confirmado una escritura: releer antes de reintentar.
+
+El listado usa cursor por UUID, orden estable y como maximo 26 filas para
+procesar 25. La respuesta contiene contadores, ID de clave y cursor tecnico;
+no publicarla ni enviarla a analitica. No registrar el cuerpo RPC, ciphertext,
+refresh/access tokens, claves, correos o titulos. El SQL CAS solo recibe los
+textos cifrados por POST, nunca como filtro de URL ni en un enlace compartido.
+
+## Paso 1 externo: clave adicional Supabase
+
+El titular confirmo haber creado y respaldado `estudiemos_cloudflare_backend`.
+La clave correcta es la fila con ESE NOMBRE dentro de Secret keys, no la
+publishable, default o estudiemos_widgets. Se verifico por la interfaz oficial
+de Wrangler que SUPABASE_SECRET_KEY esta guardado como secret_text en
+estudiemos-candidate, sin leer ni imprimir su valor. Se agrego SUPABASE_URL
+para el mismo proyecto, sin reemplazar la clave ni subir otro codigo.
+
+La prueba de conexion quedo aprobada: una invitacion aleatoria inexistente
+devolvio el 404 de clase no encontrada que corresponde a la consulta privada
+autorizada de Supabase, no el 503 de conexion fallida. No se imprimieron datos
+de alumnos ni se modificaron tareas, archivos o cuentas. Los controles normales
+de tasa pueden registrar el contador operativo de esa consulta.
+
+Esto completa la verificacion de la clave de servidor del candidato, no el
+corte de hosting ni los flujos Auth/Google/push. No se habilitaron registros
+de usuarios en el candidato ni se activaron notificaciones o recifrado.
+
+No cambiar JWT signing keys, contrasena de la BD ni las claves de Vercel.
+La siguiente comprobacion debe ser de solo lectura, con respuesta minima,
+sin abrir el registro de alumnos en el candidato ni activar el despachador.
+
+El navegador no permitio continuar la observacion de Google Cloud por un
+fallo temporal de su revision automatica. No se uso una via alternativa para
+leer ese panel ni crear secretos. El titular mostro despues una captura
+redactada con dos secretos habilitados del mismo cliente, de 19 y 28/10/2026,
+y confirmo guardar el segundo directamente en Cloudflare. No se presupone
+cual utiliza Vercel ni quien creo el segundo. No se deshabilito ninguno.
+
+Se verifico por metadatos oficiales de Wrangler que GOOGLE_DRIVE_CLIENT_SECRET
+esta presente como secret_text, sin leer su valor. Se agrego al candidato
+GOOGLE_DRIVE_CLIENT_ID con el identificador PUBLICO del mismo cliente existente.
+PUSH_DISPATCH_ENABLED sigue false. No se subio codigo local ni se reemplazaron
+secretos de Vercel; esta comprobacion no prueba que Google acepte la credencial.
+
+## Prueba privada de coexistencia OAuth: verificada en Vercel
+
+`api/_lib/drive-oauth-check.js` prepara `verifyNextOAuthSecret()` exclusivamente
+para el entorno legado de Vercel. No tiene ruta HTTP, cron, ejecutor automatico
+ni importacion desde las APIs de usuario. No ejecutarlo en el candidato, que
+todavia no dispone de la clave para descifrar los grants legados.
+
+Para preparar la prueba, el titular debe guardar directamente en Vercel una
+variable de tipo Secret, solo Production, llamada GOOGLE_DRIVE_CLIENT_SECRET_NEXT
+con el mismo segundo secreto de Google. Es ADICIONAL: no reemplaza
+GOOGLE_DRIVE_CLIENT_SECRET ni DRIVE_TOKEN_ENCRYPTION_KEY. Si ese nombre ya
+existe, revisar su configuracion antes de sobrescribirlo. Nunca pedir el valor
+por chat ni intentar recuperarlo del binding de Cloudflare.
+
+Un ejecutor privado revisado posteriormente debera usar una cuenta de prueba
+propia con Drive ya conectado y estas tres variables de activacion:
+
+- DRIVE_OAUTH_CHECK_USER_ID: UUID fijo de esa cuenta; no se acepta por URL/body.
+- DRIVE_OAUTH_CHECK_ENABLED=true: ausente/false no lee ni consulta Google.
+- DRIVE_OAUTH_CHECK_EXPIRES_AT: fecha ISO futura de como maximo una hora; vencida
+  o sin limite temporal valido, no hace IO.
+
+La prueba lee UNA fila de drive_connections, descifra solo en memoria con el
+proposito de ese usuario y renueva mediante el client ID existente y el secreto
+NEXT. Google dispone de 12 segundos, sin reintentos automaticos. El resultado
+solo contiene ok y un codigo fijo: nunca tokens, claves, correos ni errores
+crudos del proveedor. No lee archivos, pide scopes, guarda grants ni los borra.
+Si Google devuelve un refresh token distinto, se detiene para revision sobre
+esa cuenta de prueba; no reescribe ni da la continuidad por aprobada.
+
+El titular confirmo guardar NEXT en Vercel. Su existencia como Secret solo
+Production se verifico en el panel y con el CLI oficial, sin leer el valor.
+La consulta de preparacion obtuvo unicamente el UUID de su propia cuenta y
+la existencia de una conexion Drive, no credenciales ni archivos.
+
+Crear las variables no ejecuta la prueba. Su invocacion preparada es una
+compilacion aislada mediante `scripts/verify-drive-oauth-build.cjs`:
+
+1. Ejecutar `node scripts/verify-drive-oauth-build.cjs --package` desde la
+   raiz. Genera una carpeta nueva dentro de tmp, sin sobrescribir paquetes.
+2. Revisar con `vercel deploy --dry --json` esa carpeta. Solo debe incluir
+   package.json/lock, configuracion del build, ejecutor y tres modulos privados.
+   No hay api/, frontend, .env, datos ni archivos de usuario.
+3. Verificar proyecto prj_BDIVyIanCqTDh32fhWkloZJi9Cbp, equipo
+   team_hPWQUVpRlY5E5VjE9nBQ1CL2, produccion activa y proteccion existente.
+4. Desplegar ese paquete al MISMO proyecto con `--prod --skip-domain`, nunca
+   promote ni un redeploy de la app activa. Pasar las tres variables CHECK
+   anteriores mediante `--build-env`, solo al build, con vencimiento de una
+   hora como maximo. No pasar credenciales en argumentos; las actuales y NEXT
+   permanecen en Vercel y solo se inyectan en su entorno de compilacion.
+5. El ejecutor exige VERCEL=1, entorno production, proyecto Supabase y cliente
+   Google exactos. Hace una sola comprobacion, sin endpoints ni cron. Instala
+   dependencias desde el lock con npm ci --omit=dev --ignore-scripts.
+6. El build se DETIENE con salida no cero incluso si la comprobacion pasa.
+   Su estado ERROR es intencional: impide generar una version Ready, publicable
+   o elegible como respaldo por la retencion. No escribe public ni artefactos.
+   Los logs del ejecutor solo contienen ok/code y una marca fija de detencion.
+7. Verificar OAUTH_REFRESH_VERIFIED en ese build y comprobar otra vez que la
+   produccion y sus dominios siguen en la misma version. Nunca promover este
+   paquete: es una prueba, no una version recuperable de la app.
+
+El paquete no tiene funciones servidor y no llega a publicar ningun sitio:
+no puede consultar tokens por recibir trafico web. Otra ejecucion requiere
+otra compilacion del
+operador y una ventana temporal valida. La proteccion de Vercel se conserva.
+La clave AES legada y los tokens nunca se descargan ni se trasladan al CLI.
+
+Resultado real del 28/10/2026:
+
+- Codigo revisado 9b9c13c56275bca6bb8dbba85d3b282844e64cd8: 512 pruebas locales,
+  mas audit, restore-fixture y preview de Vercel aprobados antes de invocarlo.
+- Paquete exacto de siete archivos, 79.840 bytes; sus cuatro modulos coinciden
+  byte por byte con las fuentes revisadas. No contiene la app ni rutas API.
+- Compilacion dpl_6BRxaoaxEKG7GTUjpxyJrgFBfRVP, del proyecto/equipo correctos,
+  protegida por Vercel Authentication y con --prod --skip-domain.
+- Resultado extraido de sus logs: {"ok":true,"code":"OAUTH_REFRESH_VERIFIED"}.
+  Google acepto el secreto NEXT del mismo cliente al renovar el grant existente
+  de la cuenta propia, descifrado exclusivamente dentro de Vercel.
+- El marcador OAUTH_PROBE_VERIFIED_STOPPING_WITHOUT_RELEASE confirma la
+  detencion intencional. El estado ERROR de esa compilacion es esperado:
+  no existe version Ready, sitio, endpoint ni respaldo nuevo de la app.
+- No se escribieron grants, recifraron filas, listaron documentos ni pidieron
+  scopes. No se descargaron claves/tokens ni se deshabilito un secreto Google.
+- Los tres alias reales se resolvieron despues de la prueba y siguen en
+  dpl_4tQ3M9VTkT4D1ger6GTpKdvgLzB2, produccion 1516e7e. La ficha del probe
+  puede listar un alias previsto: esa lista NO prueba una asignacion; se
+  verifico el destino real de cada alias, no solo la ficha.
+- Las variables CHECK se pasaron solo al build con vencimiento; no se agregaron
+  al proyecto ni a la app. No hay nada escuchando para repetir la prueba via web.
+
+Esto cierra la comprobacion Google en el entorno legado, no el recifrado ni
+la conexion de Workers con los grants migrados. El binding de Cloudflare esta
+presente, pero su renovacion real se debe probar despues de preparar el cifrado.
+NEXT queda guardado para la continuidad prevista; no reemplaza todavia al
+secreto de produccion. No eliminar ningun secreto original en este paso.
+Desactivar y retirar la configuracion de prueba al concluir; no retirar los
+secretos originales ni cortar el hosting como parte de esta comprobacion.
+
+## Verificacion
+
+- 512/512 pruebas de regresion, sin omisiones, con fixtures Windows aislados.
+- Formato legado comprobado con un descifrador independiente; v2 tambien se
+  descifra independientemente con su AAD documentado.
+- Doble lectura de grants/cookies, nuevo IV, rechazo de alteracion, usuario/ID
+  equivocados, claves faltantes, keyrings invalidos y formato no soportado.
+- Simulacion sin escrituras, limite de pagina, lotes repetidos, conflictos,
+  checkpoint conservador y validacion SQL de timestamps con microsegundos.
+- El SQL real de prueba rechaza anon/authenticated y no recrea conexiones
+  eliminadas mientras el lote conserva una lectura anterior.
+- El runtime local de Workers, CSP, aislamiento de fuentes y descargas paso
+  las comprobaciones habituales; build y chequeo de seguridad aprobados.
+- La comprobacion OAuth usa fixtures: rechazo antes de IO si esta apagada,
+  vencida o mal configurada; una sola lectura; proposito ligado al usuario;
+  errores del proveedor reducidos a codigos fijos; timeout sin reintentos;
+  ausencia de escritura y revision explicita ante un refresh token rotado.
+- El empaquetado aislado contiene solo siete archivos revisados y el lock,
+  no APIs ni archivos de la app. La prueba del comando demuestra que incluso
+  el resultado verificado detiene el build y no crea artefactos publicos.
+- La prueba real de Google descrita arriba complementa los fixtures. No
+  certifica aun recifrado, proveedores push ni corte de hosting a Cloudflare.

@@ -9,7 +9,8 @@
   ],
   "functions": {
     "api/account-config.js": {
-      "maxDuration": 60
+      "maxDuration": 60,
+      "includeFiles": "{instalar,amistad}.html"
     },
     "api/widget-push.js": {
       "maxDuration": 90

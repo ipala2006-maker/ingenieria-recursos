@@ -10,7 +10,7 @@ function server() {
   const calls = [];
   const context = { module: { exports: {} }, __dirname: path.join(root, 'api/_lib'), require: name => {
     if (name === './request-security') return { enforceRateLimit: async (...args) => { calls.push(args[2]); return true; } };
-    return require(name);
+    return require(name.startsWith('./') ? path.join(root, 'api/_lib', name) : name);
   } };
   vm.runInNewContext(fs.readFileSync(path.join(root, 'api/_lib/friend-invitation.js'), 'utf8'), context);
   return { handler: context.module.exports, calls };

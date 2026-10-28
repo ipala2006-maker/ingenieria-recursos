@@ -867,3 +867,8 @@ html.theme-dark .theme-switcher__btn.is-active{
 @keyframes resume-notice-in { from { opacity:0;transform:translateY(4px); } to { opacity:1;transform:none; } }
 @media(max-width:700px) { .account-resume-notice { bottom:calc(86px + env(safe-area-inset-bottom,0px)); } }
 @media(prefers-reduced-motion:reduce) { .account-resume-notice { animation:none; } }
+/* Feedback stays outside the layout and never delays a saved task. */
+.task-completion-pulse{position:fixed;z-index:2147483000;width:24px;height:24px;margin:-12px;border:2px solid var(--accent,#8ab4f8);border-radius:50%;pointer-events:none;animation:task-completion-pulse .28s ease-out both;}
+@keyframes task-completion-pulse{from{opacity:.7;transform:scale(.75);}to{opacity:0;transform:scale(1.8);}}
+@media(prefers-reduced-motion:no-preference){button:not(:disabled):active,[role="button"]:active{transform:translateY(1px);}}
+@media(prefers-reduced-motion:reduce){.task-completion-pulse{display:none;}}

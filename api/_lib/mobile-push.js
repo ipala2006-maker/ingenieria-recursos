@@ -1,29 +1,11 @@
 const crypto = require('node:crypto');
 const { adminRequest, authenticateBearer } = require('./supabase-admin');
 const { isSameOriginRequest, requireJsonRequest, enforceRateLimit, rejectOversizedBody } = require('./request-security');
+const { dispatchPush } = require('./push-dispatch');
+const { validSubscription, validZone, cronAuthorized } = require('./push-credentials');
 
 const configured = () => Boolean(process.env.WEB_PUSH_PUBLIC_KEY && process.env.WEB_PUSH_PRIVATE_KEY && process.env.MOBILE_PUSH_CRON_SECRET);
 const rpc = (name, body = {}) => adminRequest(`/rest/v1/rpc/${name}`, { method: 'POST', body: JSON.stringify(body) });
-function validSubscription(value) {
-  try {
-    const url = new URL(value.endpoint);
-    const allowed = url.hostname === 'web.push.apple.com' || /^[a-z0-9-]+\.push\.apple\.com$/.test(url.hostname)
-      || url.hostname === 'fcm.googleapis.com' || url.hostname === 'updates.push.services.mozilla.com';
-    if (!allowed || url.protocol !== 'https:' || url.port || url.username || url.password || url.hash || value.endpoint.length > 2048) return false;
-    return /^[A-Za-z0-9_-]{87}$/.test(value.keys?.p256dh || '') && /^[A-Za-z0-9_-]{22}$/.test(value.keys?.auth || '');
-  } catch (_) { return false; }
-}
-function validZone(zone) {
-  if (typeof zone !== 'string' || zone.length > 80) return false;
-  try { new Intl.DateTimeFormat('en', { timeZone: zone }).format(); return true; } catch (_) { return false; }
-}
-function cronAuthorized(header) {
-  const expected = process.env.MOBILE_PUSH_CRON_SECRET;
-  if (!expected || expected.length < 32) return false;
-  const provided = String(header || '').replace(/^Bearer /, '');
-  const a = Buffer.from(expected), b = Buffer.from(provided);
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
-}
 async function send(subscription, payload) {
   if (!validSubscription(subscription)) throw new Error('Invalid push destination');
   const webpush = require('web-push');
@@ -35,32 +17,11 @@ async function send(subscription, payload) {
 async function dispatch() {
   // Spread the bounded cron workers, not the user's alarm occurrence.
   await new Promise(resolve => setTimeout(resolve, crypto.randomInt(0, 751)));
-  let jobs, legacy=false;
-  try { jobs = await rpc('claim_mobile_push_batch'); }
-  catch (error) {
-    if (error.status!==404 || error.data?.code!=='PGRST202') throw error;
-    legacy=true; jobs=await rpc('claim_mobile_push_jobs');
-  }
-  let sent = 0, failed = 0;
-  const results = [];
-  async function deliver(job) {
-    try {
-      await send(job.subscription, { title: job.title, body: 'Es hora de tu tarea.', tag: job.tag, owner: job.owner });
-      results.push({id:job.id,ok:true,expired:false});
-      sent++;
-    } catch (error) {
-      results.push({id:job.id,ok:false,expired:[404,410].includes(error.statusCode)});
-      failed++;
-    }
-  }
-  // Ten deliveries at a time, not 100 serial network waits. SQL bounds a
-  // claim to 100; one completion RPC replaces one RPC per notification.
-  for (let index=0; index<(jobs || []).length; index+=10) {
-    await Promise.all(jobs.slice(index,index+10).map(deliver));
-  }
-  if (legacy) {
-    for (const result of results) await rpc('finish_mobile_push_job',{p_id:result.id,p_ok:result.ok,p_expired:result.expired});
-  } else if (results.length) await rpc('finish_mobile_push_jobs', {p_results:results});
+  const { sent, failed } = await dispatchPush({
+    profile: 'vercel',
+    rpc: (name, body) => adminRequest(`/rest/v1/rpc/${name}`, { method: 'POST', body: JSON.stringify(body), redirect: 'error' }),
+    send: job => send(job.subscription, { title: job.title, body: 'Es hora de tu tarea.', tag: job.tag, owner: job.owner })
+  });
   return { sent, failed };
 }
 
@@ -90,7 +51,7 @@ module.exports = async function mobilePush(req, res) {
     if (await rpc('mobile_push_ready') !== true) return res.status(503).json({ message: 'El servicio de alarmas todavía no está activo. Volvé a intentarlo más tarde.' });
     const result = await rpc('register_mobile_push', { p_user: user.id, p_subscription: subscription, p_timezone: timezone });
     if (action === 'test') {
-      await send(subscription, { title: 'Estudiemos', body: 'Las notificaciones de este celular están conectadas.', tag: 'estudiemos-push-test', owner: user.id });
+      await (req.sendPush || send)(subscription, { title: 'Estudiemos', body: 'Las notificaciones de este celular están conectadas.', tag: 'estudiemos-push-test', owner: user.id });
     }
     return res.status(200).json({ connected: true, expiresAt: result });
   } catch (_) { return res.status(503).json({ message: 'No pudimos conectar las notificaciones. Volvé a intentarlo.' }); }

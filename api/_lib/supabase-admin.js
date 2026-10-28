@@ -11,6 +11,7 @@ async function adminRequest(path, options = {}) {
   try {
     const base = process.env.SUPABASE_URL.replace(/\/$/, "");
     const response = await fetch(`${base}${path}`, {
+      redirect: 'manual',
       ...options,
       headers: {
         apikey: process.env.SUPABASE_SECRET_KEY,

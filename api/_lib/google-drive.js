@@ -2,7 +2,7 @@ const crypto = require('node:crypto');
 const { OAuth2Client } = require('google-auth-library');
 const { authenticateBearer, adminRequest, isConfigured } = require('./supabase-admin');
 const { setSecurityHeaders, isSameOriginRequest, requireJsonRequest, rejectOversizedBody, enforceRateLimit } = require('./request-security');
-const { seal, unseal } = require('./drive-vault');
+const { seal, unseal, configured: vaultConfigured } = require('./drive-vault');
 
 const SCOPE = 'https://www.googleapis.com/auth/drive.file';
 const BROWSE_SCOPE = 'https://www.googleapis.com/auth/drive.metadata.readonly';
@@ -16,11 +16,11 @@ function pilotAllowed(user) {
   return !emails.length || Boolean(user?.email_confirmed_at && emails.includes(String(user.email || '').toLowerCase()));
 }
 const configured = () => {
-  try { origin(); return Boolean(isConfigured() && /^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$/i.test(process.env.GOOGLE_DRIVE_CLIENT_ID || '') && process.env.GOOGLE_DRIVE_CLIENT_SECRET && /^[a-f0-9]{64}$/i.test(process.env.DRIVE_TOKEN_ENCRYPTION_KEY || '')); }
+  try { origin(); return Boolean(isConfigured() && /^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$/i.test(process.env.GOOGLE_DRIVE_CLIENT_ID || '') && process.env.GOOGLE_DRIVE_CLIENT_SECRET && vaultConfigured(process.env)); }
   catch (_) {return false;}
 };
 function origin() {
-  const value = new URL(process.env.GOOGLE_DRIVE_APP_ORIGIN || 'https://estudiemos-app.vercel.app');
+  const value = new URL(process.env.GOOGLE_DRIVE_APP_ORIGIN || require('./app-origin').appOrigin());
   if (value.protocol !== 'https:' || value.pathname !== '/' || value.search || value.hash || value.username || value.password) throw new Error('DRIVE_NOT_CONFIGURED');
   return value.origin;
 }

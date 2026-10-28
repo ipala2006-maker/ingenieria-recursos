@@ -35,3 +35,15 @@ scripts/restore-database-test.cjs
 scripts/verify-android-links.cjs
 scripts/prune-vercel-deployments.cjs
 scripts/cleanup-vercel-after-deploy.cjs
+scripts/benchmark-push-budget.cjs
+cloudflare/
+dist-cloudflare/
+.wrangler/
+.dev.vars*
+wrangler.jsonc
+wrangler.probe.jsonc
+wrangler.push.jsonc
+scripts/build-cloudflare.cjs
+scripts/measure-workers-cpu.cjs
+scripts/read-workers-cpu.cjs
+scripts/verify-drive-oauth-build.cjs

@@ -52,6 +52,14 @@ test('configuration exposes no credentials and blocks missing or unsafe setup',a
   }
 });
 
+test('a versioned-only Workers vault exposes readiness without its keys or key IDs',async()=>{
+  const key=crypto.randomBytes(32).toString('hex');
+  const env={DRIVE_TOKEN_ENCRYPTION_KEY:'',DRIVE_TOKEN_KEYRING:JSON.stringify({cf202610:key}),DRIVE_TOKEN_ACTIVE_KEY_ID:'cf202610'};
+  const h=harness({env}),result=await h.request('config');assert.deepEqual(result.body,{enabled:true});assert.equal(h.calls.length,0);
+  assert.ok(!JSON.stringify(result).includes(key));assert.ok(!JSON.stringify(result).includes('cf202610'));
+  const missing=harness({env:{...env,DRIVE_TOKEN_ACTIVE_KEY_ID:'missing'}});assert.deepEqual((await missing.request('config')).body,{enabled:false});
+});
+
 test('pilot rollout is server-owned, requires verified identity and never reveals its allowlist',async()=>{
   const h=harness({env:{GOOGLE_DRIVE_PILOT_EMAILS:' ALICE@example.test '}});
   assert.deepEqual((await h.request('config')).body,{enabled:true});
