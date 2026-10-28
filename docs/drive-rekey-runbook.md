@@ -2,7 +2,7 @@
 
 Estado: preparacion en PR dedicado, basado en #103. No se recifraron filas
 reales, no se aplico SQL de produccion ni se cambiaron secretos existentes.
-El modulo NO se conecta a un endpoint HTTP, cron ni accion de usuario.
+Los modulos NO se conectan a un endpoint HTTP, cron ni accion de usuario.
 
 ## Compatibilidad
 
@@ -123,12 +123,56 @@ sin abrir el registro de alumnos en el candidato ni activar el despachador.
 
 El navegador no permitio continuar la observacion de Google Cloud por un
 fallo temporal de su revision automatica. No se uso una via alternativa para
-leer ese panel ni crear secretos. No se creo un segundo secreto Google ni se
-probo un refresh token real en esta entrega. El cliente existente se conserva.
+leer ese panel ni crear secretos. El titular mostro despues una captura
+redactada con dos secretos habilitados del mismo cliente, de 19 y 28/10/2026,
+y confirmo guardar el segundo directamente en Cloudflare. No se presupone
+cual utiliza Vercel ni quien creo el segundo. No se deshabilito ninguno.
+
+Se verifico por metadatos oficiales de Wrangler que GOOGLE_DRIVE_CLIENT_SECRET
+esta presente como secret_text, sin leer su valor. Se agrego al candidato
+GOOGLE_DRIVE_CLIENT_ID con el identificador PUBLICO del mismo cliente existente.
+PUSH_DISPATCH_ENABLED sigue false. No se subio codigo local ni se reemplazaron
+secretos de Vercel; esta comprobacion no prueba que Google acepte la credencial.
+
+## Prueba privada de coexistencia OAuth: preparada, no ejecutada
+
+`api/_lib/drive-oauth-check.js` prepara `verifyNextOAuthSecret()` exclusivamente
+para el entorno legado de Vercel. No tiene ruta HTTP, cron, ejecutor automatico
+ni importacion desde las APIs de usuario. No ejecutarlo en el candidato, que
+todavia no dispone de la clave para descifrar los grants legados.
+
+Para preparar la prueba, el titular debe guardar directamente en Vercel una
+variable de tipo Secret, solo Production, llamada GOOGLE_DRIVE_CLIENT_SECRET_NEXT
+con el mismo segundo secreto de Google. Es ADICIONAL: no reemplaza
+GOOGLE_DRIVE_CLIENT_SECRET ni DRIVE_TOKEN_ENCRYPTION_KEY. Si ese nombre ya
+existe, revisar su configuracion antes de sobrescribirlo. Nunca pedir el valor
+por chat ni intentar recuperarlo del binding de Cloudflare.
+
+Un ejecutor privado revisado posteriormente debera usar una cuenta de prueba
+propia con Drive ya conectado y estas tres variables de activacion:
+
+- DRIVE_OAUTH_CHECK_USER_ID: UUID fijo de esa cuenta; no se acepta por URL/body.
+- DRIVE_OAUTH_CHECK_ENABLED=true: ausente/false no lee ni consulta Google.
+- DRIVE_OAUTH_CHECK_EXPIRES_AT: fecha ISO futura de como maximo una hora; vencida
+  o sin limite temporal valido, no hace IO.
+
+La prueba lee UNA fila de drive_connections, descifra solo en memoria con el
+proposito de ese usuario y renueva mediante el client ID existente y el secreto
+NEXT. Google dispone de 12 segundos, sin reintentos automaticos. El resultado
+solo contiene ok y un codigo fijo: nunca tokens, claves, correos ni errores
+crudos del proveedor. No lee archivos, pide scopes, guarda grants ni los borra.
+Si Google devuelve un refresh token distinto, se detiene para revision sobre
+esa cuenta de prueba; no reescribe ni da la continuidad por aprobada.
+
+Crear las variables no ejecuta la prueba. Falta revisar/proveer su invocacion
+privada, desplegarla de forma controlada y obtener OAUTH_REFRESH_VERIFIED real.
+Las pruebas locales usan grants ficticios y no certifican el proveedor.
+Desactivar y retirar la configuracion de prueba al concluir; no retirar los
+secretos originales ni cortar el hosting como parte de esta comprobacion.
 
 ## Verificacion
 
-- 500/500 pruebas de regresion, sin omisiones, con fixtures Windows aislados.
+- 506/506 pruebas de regresion, sin omisiones, con fixtures Windows aislados.
 - Formato legado comprobado con un descifrador independiente; v2 tambien se
   descifra independientemente con su AAD documentado.
 - Doble lectura de grants/cookies, nuevo IV, rechazo de alteracion, usuario/ID
@@ -139,4 +183,8 @@ probo un refresh token real en esta entrega. El cliente existente se conserva.
   eliminadas mientras el lote conserva una lectura anterior.
 - El runtime local de Workers, CSP, aislamiento de fuentes y descargas paso
   las comprobaciones habituales; build y chequeo de seguridad aprobados.
+- La comprobacion OAuth usa fixtures: rechazo antes de IO si esta apagada,
+  vencida o mal configurada; una sola lectura; proposito ligado al usuario;
+  errores del proveedor reducidos a codigos fijos; timeout sin reintentos;
+  ausencia de escritura y revision explicita ante un refresh token rotado.
 - Nada de esto certifica todavia un refresh OAuth real con el nuevo secreto.
