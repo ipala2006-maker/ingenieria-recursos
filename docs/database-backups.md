@@ -125,8 +125,11 @@ El `.dump.age.json` debe estar junto al respaldo (o indicar `--manifest`). Se
 verifican bytes/SHA-256 antes de crear una base, se genera un nombre aleatorio
 propio y se restaura en una sola transaccion sin `--clean`. Se comprueban las
 tablas clave, cantidades, FK y RLS. La base temporal se elimina al terminar,
-incluso ante fallos. No se escribe texto descifrado en disco ni se muestran
-filas o errores sensibles. Fallar por roles/extensiones faltantes no equivale a
+incluso ante fallos. No se guarda un archivo dump descifrado ni se muestran
+filas o errores sensibles. La base temporal si contiene datos personales:
+usar un entorno local privado con disco cifrado. DROP no es borrado seguro
+de sectores ni de WAL; destruir el entorno desechable cuando corresponda.
+Fallar por roles/extensiones faltantes no equivale a
 un respaldo corrupto: preparar el entorno y repetir; no omitir errores.
 
 La prueba de fixtures no certifica un respaldo real. El archivo SQL tampoco
