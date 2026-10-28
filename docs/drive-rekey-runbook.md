@@ -102,9 +102,20 @@ textos cifrados por POST, nunca como filtro de URL ni en un enlace compartido.
 
 El titular confirmo haber creado y respaldado `estudiemos_cloudflare_backend`.
 La clave correcta es la fila con ESE NOMBRE dentro de Secret keys, no la
-publishable, default o estudiemos_widgets. Debe guardarse como Secret con
-nombre SUPABASE_SECRET_KEY en estudiemos-candidate. Su guardado y su prueba
-de conexion aun requieren confirmacion; no se afirma que ya esten terminados.
+publishable, default o estudiemos_widgets. Se verifico por la interfaz oficial
+de Wrangler que SUPABASE_SECRET_KEY esta guardado como secret_text en
+estudiemos-candidate, sin leer ni imprimir su valor. Se agrego SUPABASE_URL
+para el mismo proyecto, sin reemplazar la clave ni subir otro codigo.
+
+La prueba de conexion quedo aprobada: una invitacion aleatoria inexistente
+devolvio el 404 de clase no encontrada que corresponde a la consulta privada
+autorizada de Supabase, no el 503 de conexion fallida. No se imprimieron datos
+de alumnos ni se modificaron tareas, archivos o cuentas. Los controles normales
+de tasa pueden registrar el contador operativo de esa consulta.
+
+Esto completa la verificacion de la clave de servidor del candidato, no el
+corte de hosting ni los flujos Auth/Google/push. No se habilitaron registros
+de usuarios en el candidato ni se activaron notificaciones o recifrado.
 
 No cambiar JWT signing keys, contrasena de la BD ni las claves de Vercel.
 La siguiente comprobacion debe ser de solo lectura, con respuesta minima,
