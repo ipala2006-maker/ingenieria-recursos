@@ -5,6 +5,7 @@
   "compatibility_date": "2026-10-28",
   "compatibility_flags": ["nodejs_compat", "nodejs_compat_populate_process_env"],
   "workers_dev": true,
+  "version_metadata": { "binding": "PROBE_VERSION" },
   "assets": { "directory": "./dist-cloudflare", "binding": "ASSETS", "run_worker_first": ["/__cpu_probe"], "html_handling": "auto-trailing-slash", "not_found_handling": "404-page" },
   "rules": [{ "type": "Text", "globs": ["**/*.html"], "fallthrough": true }],
   "vars": { "PUSH_DISPATCH_ENABLED": "false" },

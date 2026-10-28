@@ -68,6 +68,14 @@ test('bounded small-worker fanout preserves 400 jobs without claiming the remain
   assert.equal(h.acknowledged.length,400); assert.equal(h.pending.length,1);
 });
 
+test('single-job Workers profile retains 400-message tick capacity through bounded fanout', async () => {
+  const h = fixture(401);
+  const results = await Promise.all(Array.from({ length:400 },()=>dispatchPush({ profile:'cloudflare-free-single', rpc:h.rpc, send:h.send })));
+  assert.ok(results.every(result=>result.sent===1 && result.subrequests===3));
+  assert.ok(h.calls.filter(call=>call.name==='claim_mobile_push_batch').every(call=>call.body.p_limit===1));
+  assert.equal(new Set(h.delivered).size,400); assert.equal(h.acknowledged.length,400); assert.equal(h.pending.length,1);
+});
+
 test('Vercel keeps its 100-job capacity in five small batches and does not lease the remaining queue', async () => {
   const h = fixture(101,{ failSends:true });
   const result = await dispatchPush({ profile:'vercel', rpc:h.rpc, send:h.send });

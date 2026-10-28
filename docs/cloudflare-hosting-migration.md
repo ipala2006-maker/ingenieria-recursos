@@ -57,6 +57,20 @@ La primera entrada nativa aun incluia todas las APIs. Se separo una entrada
 exclusiva para push: bundle 23,91 KiB (7,13 KiB gzip), arranque 8 ms; probe
 26,25 KiB (7,67 KiB gzip), arranque 7 ms. No son CPU por peticion.
 El ensayo independiente tambien completo 100 lotes (p95 HTTP 103,81 ms).
+La API oficial de Analytics para esa version aislada `0a141c3e` devolvio CPU
+p50 4,709 ms y p99 10,752 ms: aun sin margen suficiente para el objetivo estricto.
+
+**Perfil actual: `cloudflare-free-single`, un aviso y tres subpeticiones.**
+El ensayo final de 100 peticiones verifico la revision de codigo y la version
+`d41540d3-206d-4fba-bc8d-257378687b8c` en cada respuesta. Ventana del cliente:
+28/10/2026 16:59:01-16:59:09 UTC. Su p95 HTTP fue 96,94 ms, no CPU.
+Cloudflare GraphQL Analytics, con unidades comprobadas por introspeccion del
+esquema, devolvio CPU p50 **2,038 ms** y p99 **3,736 ms**, cero errores de runtime
+y 297 subpeticiones para 99 invocaciones contabilizadas en la consulta del
+proveedor. El cliente completo 100/100; los agregados adaptativos/ventanas del
+proveedor no se sustituyen por el contador del cliente. No se envio ningun aviso
+real ni se leyo la base de datos. Estos percentiles cumplen el presupuesto en
+este ensayo, no certifican todos los futuros casos de produccion ni un SLA.
 La CPU debe leerse en Metrics, filtrando por la version medida, sin mezclar
 ensayos anteriores ni peticiones 401 durante propagacion del secreto temporal.
 El resultado anonimizado queda en `tmp/cloudflare-cpu-probe.json`.
@@ -68,9 +82,9 @@ Startup Time de Wrangler tampoco es CPU por peticion. No anunciar un SLA.
 
 El SQL preparado `supabase/mobile-notifications-cloudflare-cron.sql` preserva
 Vercel por defecto. Solo cambia destino al configurar en Vault el objeto privado
-`estudiemos_mobile_push_dispatch_config`, con URL exacta permitida y batchSize 2.
-Un tick vacio no llama Workers. 400 avisos requieren HASTA 200 llamadas, no cuatro.
-No redirigir el cron antiguo sin este ajuste: bajaria de 400 a 8 avisos/tick.
+`estudiemos_mobile_push_dispatch_config`, con URL exacta permitida y batchSize 1.
+Un tick vacio no llama Workers. 400 avisos requieren HASTA 400 llamadas, no cuatro.
+No redirigir el cron antiguo sin este ajuste: bajaria de 400 a 4 avisos/tick.
 El destino del cron es el Worker exclusivo de push, no el Worker de la app.
 Se conservan leases, SKIP LOCKED, reintentos y las reglas de ocurrencia originales.
 No aplicar ni activar el SQL hasta comprobar cuotas de pg_net y un pico de cola
@@ -161,6 +175,11 @@ El dev server usa 127.0.0.1:8190 y, sin .dev.vars, no toca cuentas reales.
 despachador. `node scripts/measure-workers-cpu.cjs` renueva un secreto exclusivo
 del probe por stdin y ejecuta 100 muestras sinteticas; no envia avisos reales.
 Si falla HTTPS no desactivar TLS; esperar aprovisionamiento o diagnosticarlo.
+`node scripts/read-workers-cpu.cjs` consulta Analytics con la interfaz oficial
+OAuth de Wrangler, exclusivamente en memoria y contra Cloudflare. No lee archivos
+de credenciales, no imprime tokens ni escribe tokens en disco. Guarda solo las
+metricas agregadas en `tmp/cloudflare-cpu-metrics.json`. El CLI se invoca con
+`--json`, cuya salida no pasa por su logger de archivos.
 
 ## UX incluida
 
@@ -174,7 +193,7 @@ misma API de vibracion que Android: el feedback visual sigue funcionando.
 
 - `cloudflare/worker.mjs`, `http-adapter.mjs`, `push.mjs`: entrada, adaptador y envio.
 - `cloudflare/push-worker.mjs`, `wrangler.push.jsonc`: despachador sin las APIs pesadas.
-- `cloudflare/cpu-probe.mjs`, `wrangler.probe.jsonc`, `scripts/measure-workers-cpu.cjs`: ensayo aislado.
+- `cloudflare/cpu-probe.mjs`, `wrangler.probe.jsonc`, `scripts/measure-workers-cpu.cjs`, `scripts/read-workers-cpu.cjs`: ensayo aislado y metricas.
 - `wrangler.jsonc`, `scripts/build-cloudflare.cjs`, ignores y package-lock: build sin fuentes privadas.
 - Helpers API app-origin/document-template, invitaciones, Drive, widget-link,
   mobile-push y supabase-admin: origen, templates y transporte compatible.

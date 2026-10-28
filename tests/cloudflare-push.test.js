@@ -41,7 +41,7 @@ test('Workers transport uses one fetch without redirects and classifies provider
   } finally { global.fetch = originalFetch; process.env = previous; }
 });
 
-test('live dispatch refuses unauthorized/disabled requests and ACKs only two reserved jobs', async () => {
+test('live dispatch refuses unauthorized/disabled requests and ACKs only its single reserved job', async () => {
   const { dispatch } = await transport;
   const originalFetch = global.fetch, previous = { ...process.env };
   process.env.MOBILE_PUSH_CRON_SECRET = 'fixture-only-cron-authorization-'.repeat(2);
@@ -53,8 +53,8 @@ test('live dispatch refuses unauthorized/disabled requests and ACKs only two res
     global.fetch = async (url, options) => {
       calls++; assert.equal(options.redirect, 'manual');
       if (url.endsWith('/claim_mobile_push_batch')) {
-        assert.equal(JSON.parse(options.body).p_limit, 2);
-        return Response.json([1, 2].map(id => ({ id, title: 'Fixture', subscription })));
+        assert.equal(JSON.parse(options.body).p_limit, 1);
+        return Response.json([{ id: 1, title: 'Fixture', subscription }]);
       }
       if (url.endsWith('/finish_mobile_push_jobs')) { acknowledged = JSON.parse(options.body).p_results; return Response.json(null); }
       assert.equal(url, subscription.endpoint); return new Response('', { status: 201 });
@@ -64,7 +64,7 @@ test('live dispatch refuses unauthorized/disabled requests and ACKs only two res
     assert.equal(calls, 0);
     const response = await dispatch(authorized(), { PUSH_DISPATCH_ENABLED: 'true' });
     assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), { sent: 2, failed: 0, claimed: 2, batches: 1, subrequests: 4 });
-    assert.equal(calls, 4); assert.equal(acknowledged.length, 2);
+    assert.deepEqual(await response.json(), { sent: 1, failed: 0, claimed: 1, batches: 1, subrequests: 3 });
+    assert.equal(calls, 3); assert.equal(acknowledged.length, 1);
   } finally { global.fetch = originalFetch; process.env = previous; }
 });

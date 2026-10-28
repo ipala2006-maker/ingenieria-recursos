@@ -2,7 +2,7 @@
 
 Continuacion y estado de la migracion: [hosting HTTP y validacion real](cloudflare-hosting-migration.md).
 El perfil inicial de cuatro se conserva para comparacion; el candidato posterior
-usa `cloudflare-free-small` tras detectar picos de CPU en Workers real.
+usa `cloudflare-free-single` tras detectar picos de CPU en Workers real.
 
 Fecha: 28 de octubre de 2026. No cambia el proveedor de datos, Auth, dominio,
 suscripciones push, claves VAPID, callbacks, instaladores ni cron de produccion.

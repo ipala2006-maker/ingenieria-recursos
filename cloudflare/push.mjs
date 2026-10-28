@@ -28,7 +28,7 @@ export async function dispatch(request, env) {
   if (env.PUSH_DISPATCH_ENABLED !== 'true') return Response.json({ enabled: false }, { status: 503 });
   try {
     const metrics = await dispatcher.dispatchPush({
-      profile: 'cloudflare-free-small',
+      profile: 'cloudflare-free-single',
       rpc: (name, body) => admin.adminRequest(`/rest/v1/rpc/${name}`, {
         method: 'POST', body: JSON.stringify(body), redirect: 'manual'
       }),

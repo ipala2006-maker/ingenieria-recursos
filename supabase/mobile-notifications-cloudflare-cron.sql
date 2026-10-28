@@ -16,10 +16,10 @@ begin
     if settings->>'url' not in (
       'https://estudiemos-push-candidate.estudiemos-services.workers.dev/dispatch',
       'https://estudiemos-push.estudiemos-services.workers.dev/dispatch'
-    ) or settings->>'batchSize' is distinct from '2' or settings->>'url' is null then
+    ) or settings->>'batchSize' is distinct from '1' or settings->>'url' is null then
       raise exception 'INVALID_PUSH_DISPATCH_CONFIG';
     end if;
-    endpoint := settings->>'url'; batch_size := 2; timeout_ms := 60000;
+    endpoint := settings->>'url'; batch_size := 1; timeout_ms := 60000;
   end if;
   insert into public.mobile_push_health(id,heartbeat) values(true,now())
     on conflict(id) do update set heartbeat=excluded.heartbeat;
@@ -30,7 +30,7 @@ begin
     where sent_at is null and attempts<3 and available_at<=now()
       and occurrence-interval '30 seconds' between now()-interval '10 minutes' and now() limit 400) q;
   if pending>0 then
-    -- 400 jobs means 200 small Workers calls, not four. Empty ticks make no HTTP call.
+    -- 400 jobs means 400 small Workers calls, not four. Empty ticks make no HTTP call.
     for worker in 1..((pending+batch_size-1)/batch_size) loop
       perform net.http_post(url:=endpoint,
         headers:=jsonb_build_object('Authorization','Bearer '||token,'Content-Type','application/json'),

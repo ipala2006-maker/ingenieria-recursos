@@ -19,6 +19,7 @@ function allowed(file) {
 function build() {
   // Only remove our fixed build directory, never a caller-supplied path.
   if (path.dirname(output) !== root || path.basename(output) !== 'dist-cloudflare') throw new Error('Unsafe output');
+  if (fs.existsSync(output) && fs.lstatSync(output).isSymbolicLink()) throw new Error('Build output cannot be a symlink');
   fs.rmSync(output, { recursive: true, force: true });
   fs.mkdirSync(output, { recursive: true });
   const files = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], { cwd: root, encoding: 'utf8' }).split('\0').filter(allowed);

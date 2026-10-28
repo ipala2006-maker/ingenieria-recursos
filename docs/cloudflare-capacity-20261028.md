@@ -52,7 +52,7 @@ ser DB, CPU compartida, Realtime, envios de correo o rafagas antes del egress.
 
 El cron actual procesa hasta 400 avisos/tick. Ni 1.000 avisos a la misma hora
 ni 1.000 clientes conectados se deducen del presupuesto mensual. Se preparo el
-fan-out acorde a lotes de dos, pero falta validar pg_net/DB y cola bajo ese pico.
+fan-out acorde a un aviso por invocacion, pero falta validar pg_net/DB y cola bajo ese pico.
 Mas invocaciones cortas reduce CPU por invocacion, pero aumenta reservas/ACKs
 y trafico PostgREST por aviso; no presentarlo como ahorro neto de bytes.
 

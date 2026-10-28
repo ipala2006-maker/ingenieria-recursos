@@ -45,3 +45,4 @@ wrangler.probe.jsonc
 wrangler.push.jsonc
 scripts/build-cloudflare.cjs
 scripts/measure-workers-cpu.cjs
+scripts/read-workers-cpu.cjs

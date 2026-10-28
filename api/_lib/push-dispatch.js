@@ -1,7 +1,8 @@
 const PROFILES = Object.freeze({
   vercel: Object.freeze({ batchSize: 20, concurrency: 10, maxJobs: 100, subrequests: 160, legacy: true, wallTimeMs: 80000, batchReserveMs: 42000 }),
   'cloudflare-free': Object.freeze({ batchSize: 4, concurrency: 2, maxJobs: 4, subrequests: 40, legacy: false, wallTimeMs: 60000, batchReserveMs: 0 }),
-  'cloudflare-free-small': Object.freeze({ batchSize: 2, concurrency: 2, maxJobs: 2, subrequests: 40, legacy: false, wallTimeMs: 60000, batchReserveMs: 0 })
+  'cloudflare-free-small': Object.freeze({ batchSize: 2, concurrency: 2, maxJobs: 2, subrequests: 40, legacy: false, wallTimeMs: 60000, batchReserveMs: 0 }),
+  'cloudflare-free-single': Object.freeze({ batchSize: 1, concurrency: 1, maxJobs: 1, subrequests: 40, legacy: false, wallTimeMs: 60000, batchReserveMs: 0 })
 });
 
 function limitsFor(profile) {
