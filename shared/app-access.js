@@ -12,8 +12,9 @@
       features:Object.freeze([...free,...(full?advanced:[])]),proFeatures:advanced,billingEnabled:false});
   }
   function allows(access,feature){return Array.isArray(access?.features)&&access.features.includes(feature);}
-  function courseEntry({invited=false,selected=false,ownsClass=false,paidPro=false}={}){
-    return Boolean((invited||selected)&&!ownsClass&&!paidPro);
+  const configuredMode=(mode,published=false)=>published===true&&mode==='restricted'?'restricted':'pilot';
+  function courseEntry({mode='pilot',invited=false,selected=false,ownsClass=false,paidPro=false}={}){
+    return Boolean(mode==='restricted'&&(invited||selected)&&!ownsClass&&!paidPro);
   }
-  return Object.freeze({free,advanced,resolve,allows,courseEntry});
+  return Object.freeze({free,advanced,resolve,allows,courseEntry,configuredMode});
 });

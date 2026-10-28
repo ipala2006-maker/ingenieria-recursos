@@ -44,6 +44,8 @@ test("public config fails closed when a private key is accidentally configured",
       SUPABASE_URL: "https://example.supabase.co", SUPABASE_PUBLISHABLE_KEY: key
     } }, require(name) {
       if (name === "./_lib/public-config") return { isPublicSupabaseKey };
+      if (name === '../shared/app-access') return require('../shared/app-access');
+      if (name === '../shared/release') return require('../shared/release');
       if (name === "./_lib/request-security") return { setSecurityHeaders() {}, enforceRateLimit: async () => true };
       throw new Error("Unexpected dependency");
     } };
@@ -53,6 +55,7 @@ test("public config fails closed when a private key is accidentally configured",
     await sandbox.module.exports({ method: "GET", query: {} }, response);
     assert.equal(status, isPublicSupabaseKey(key) ? 200 : 503);
     assert.equal(body.enabled, isPublicSupabaseKey(key));
+    if(body.enabled)assert.equal(body.accessMode,'pilot');
     if (!isPublicSupabaseKey(key)) {
       assert.equal(JSON.stringify(body).includes(key), false);
       assert.equal("publishableKey" in body, false);

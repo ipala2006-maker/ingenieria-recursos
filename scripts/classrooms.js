@@ -19,7 +19,8 @@
   const teacher=()=>rules.isOwner(current());
   function updateFocus(){
     const full=window.EstudiemosAccess?.paidPro()||window.EstudiemosAccess?.ownsClass()||courses().some(course=>rules.isOwner(course));
-    const focused=!standalone&&focusedEntry&&!full;
+    const mode=window.EstudiemosAccess?.snapshot().mode||window.EstudiemosAccount?.getAccessMode?.()||'pilot';
+    const focused=!standalone&&mode==='restricted'&&focusedEntry&&!full;
     dialog.classList.toggle('is-focused',focused);
     const close=q('[data-class-close]');
     if(close){close.innerHTML=focused?'Abrir Estudiemos':icon('x');close.setAttribute('aria-label',focused?'Abrir Estudiemos':'Cerrar materias');close.title=focused?'Abrir Estudiemos':'Cerrar';}

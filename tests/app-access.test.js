@@ -12,17 +12,19 @@ test('pilot stays fully usable without payments, while Free keeps classes, creat
 });
 
 test('invited students enter course focus without limiting an owner or Pro subscriber',()=>{
-  assert.equal(rules.courseEntry({invited:true}),true);assert.equal(rules.courseEntry({selected:true}),true);
-  assert.equal(rules.courseEntry({invited:true,ownsClass:true}),false);assert.equal(rules.courseEntry({invited:true,paidPro:true}),false);
+  assert.equal(rules.courseEntry({invited:true}),false);assert.equal(rules.courseEntry({selected:true}),false);
+  assert.equal(rules.courseEntry({mode:'restricted',invited:true}),true);assert.equal(rules.courseEntry({mode:'restricted',selected:true}),true);
+  assert.equal(rules.courseEntry({mode:'restricted',invited:true,ownsClass:true}),false);assert.equal(rules.courseEntry({mode:'restricted',invited:true,paidPro:true}),false);
   assert.equal(rules.courseEntry({}),false);
 });
 
 test('server policy never trusts client plan claims and does not query entitlements during the free pilot',async()=>{
   const file=require.resolve('../api/_lib/app-access'),source=fs.readFileSync(file,'utf8'),local=createRequire(file),calls=[];
-  let facts={paidPro:false,ownsClass:false};const env={};const sandbox={module:{exports:{}},process:{env},require(name){return name==='./plan-access'?{userRpc:async(...args)=>{calls.push(args);return facts;}}:local(name);}};
+  let facts={paidPro:false,ownsClass:false},published=false;const env={};const sandbox={module:{exports:{}},process:{env},require(name){if(name==='../../shared/release')return {enabled:()=>published};return name==='./plan-access'?{userRpc:async(...args)=>{calls.push(args);return facts;}}:local(name);}};
   vm.runInNewContext(source,sandbox);const api=sandbox.module.exports;
   assert.equal((await api.accessForUser('Bearer alice')).reason,'pilot');assert.equal(calls.length,0);
-  env.APP_ACCESS_MODE='restricted';assert.equal((await api.accessForUser('Bearer alice')).reason,'free');assert.deepEqual(JSON.parse(JSON.stringify(calls[0])),['Bearer alice','get_app_access',{}]);
+  env.APP_ACCESS_MODE='restricted';assert.equal((await api.accessForUser('Bearer alice')).reason,'pilot');assert.equal(calls.length,0);
+  published=true;assert.equal((await api.accessForUser('Bearer alice')).reason,'free');assert.deepEqual(JSON.parse(JSON.stringify(calls[0])),['Bearer alice','get_app_access',{}]);
   facts={paidPro:false,ownsClass:true};assert.equal((await api.accessForUser('Bearer alice')).reason,'class-owner');
 });
 

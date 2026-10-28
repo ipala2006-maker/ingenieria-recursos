@@ -1,7 +1,8 @@
 const rules=require('../../shared/app-access');
+const release=require('../../shared/release');
 const {userRpc}=require('./plan-access');
 
-const accessMode=()=>process.env.APP_ACCESS_MODE==='restricted'?'restricted':'pilot';
+const accessMode=()=>rules.configuredMode(process.env.APP_ACCESS_MODE,release.enabled('commercialAccess'));
 async function accessForUser(authorization){
   if(accessMode()==='pilot')return rules.resolve();
   // No user ID, plan or role supplied by the browser is trusted here.

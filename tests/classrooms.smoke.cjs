@@ -101,8 +101,7 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
     await tp.locator('[data-class-tab=materials]').click();await tp.locator('[data-class-material]').click();const mf=tp.locator('[data-class-form=material_save]');await mf.locator('[name=title]').fill('Guía de ejercicios');await mf.locator('[name=url]').fill('https://drive.google.com/file/d/FILE_123/view');await mf.locator('[type=submit]').click();await tp.locator('.classroom-material-link').waitFor();
     await tp.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-teacher-materials.png`)});
     lastPage=sp;await sp.goto(base+'/#materia='+code);const sd=sp.locator('.classroom-dialog');await sd.waitFor({state:'visible'});await sp.locator('.classroom-course-head h3').waitFor();await sp.locator('.classroom-row strong').filter({hasText:'Parcial de física'}).waitFor();
-    assert.equal(await sd.evaluate(node=>node.classList.contains('is-focused')),true,'A student invitation opens only its course, not the personal dashboard');
-    assert.equal(await sp.locator('[data-class-close]').innerText(),'Abrir Estudiemos');
+    assert.equal(await sd.evaluate(node=>node.classList.contains('is-focused')),false,'The free pilot keeps the existing course presentation, with no plan-specific restrictions');
     assert.equal(await sp.locator('[data-class-code]').count(),0);assert.equal(await sp.locator('[data-class-event]').count(),0);assert.equal(await sp.locator('[data-class-tab=members]').count(),0);
     assert.equal(await sp.evaluate(()=>JSON.parse(localStorage.getItem('bandeja_agenda')||'[]').some(item=>item.title==='Parcial de física')),false,'Class dates never become editable personal copies');
     await sp.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-student-dates.png`)});

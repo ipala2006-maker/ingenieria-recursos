@@ -1,5 +1,7 @@
 const { enforceRateLimit, setSecurityHeaders } = require("./_lib/request-security");
 const { isPublicSupabaseKey } = require("./_lib/public-config");
+const accessRules=require('../shared/app-access');
+const release=require('../shared/release');
 
 module.exports = async function handler(request, response) {
   setSecurityHeaders(response);
@@ -35,7 +37,7 @@ module.exports = async function handler(request, response) {
     enabled: true,
     url,
     publishableKey,
-    accessMode: process.env.APP_ACCESS_MODE === 'restricted' ? 'restricted' : 'pilot',
+    accessMode: accessRules.configuredMode(process.env.APP_ACCESS_MODE,release.enabled('commercialAccess')),
     captchaSiteKey: process.env.TURNSTILE_SITE_KEY || "",
     firebase: firebaseEnabled ? firebase : null
   });

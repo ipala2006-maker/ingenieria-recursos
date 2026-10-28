@@ -1,8 +1,11 @@
 # Acceso Free / Pro: implementacion preparada
 
 Estado: rama de revision basada en PR #103. No se activo monetizacion ni se
-modifico produccion. `APP_ACCESS_MODE` ausente o distinto de `restricted` mantiene
-el piloto completo y no agrega consultas de planes al inicio de sesion.
+modifico produccion. `commercialAccess` esta fijado en `false` en el manifiesto
+de publicacion: aunque alguien configure `APP_ACCESS_MODE=restricted`, el
+servidor mantiene el piloto completo y no agrega consultas de planes al entrar.
+Activar la separacion exigira cambiar el flag mediante revision de codigo Y la
+variable de entorno. La presentacion enfocada por plan tambien esta inactiva.
 
 ## Reglas acordadas
 
@@ -27,7 +30,7 @@ Los delegados no heredan Pro global; conservan sus permisos dentro de su catedra
 
 ## Interfaz
 
-Abrir una invitacion o una materia concreta como alumno utiliza una vista
+En el futuro modo restringido, abrir una invitacion o una materia como alumno utiliza una vista
 enfocada de pantalla completa. No muestra herramientas personales de fondo.
 "Abrir Estudiemos" y Escape permiten salir normalmente; no es un encierro.
 El titular y un Pro verificado mantienen la vista normal con toda la app.
@@ -70,7 +73,8 @@ regresiva, precio, checkout ni aviso automatico para comprar.
    El boton de autoasignacion de planes sigue desactivado.
 4. Probar cuentas Free, Pro, titular, delegado, alumno expulsado y cambio de cuenta,
    incluyendo enlaces directos y clientes Android/Windows de versiones anteriores.
-5. Solo entonces cambiar `APP_ACCESS_MODE=restricted` en un despliegue de prueba,
+5. Solo entonces revisar el cambio de `commercialAccess` y configurar
+   `APP_ACCESS_MODE=restricted` en un despliegue de prueba,
    validar y aprobar la activacion publica. Nunca usar un flag de localStorage.
 
 El PR #103 puede seguir revisandose como migracion de infraestructura. Este
