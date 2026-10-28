@@ -31,5 +31,7 @@ google-apps-script/
 scripts/security-check.js
 scripts/csp-check.js
 scripts/backup-database.cjs
+scripts/restore-database-test.cjs
 scripts/verify-android-links.cjs
 scripts/prune-vercel-deployments.cjs
+scripts/cleanup-vercel-after-deploy.cjs

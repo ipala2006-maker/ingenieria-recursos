@@ -29,8 +29,8 @@ function config(env = process.env) {
   }
   if (url.port === '6543') throw Error('Usa conexion directa o pooler de sesion (5432), no transaccion.');
   if (!/^age1[0-9a-z]{58}$/.test(env.BACKUP_AGE_RECIPIENT || '')) throw Error('Falta el destinatario PUBLICO de age.');
-  const maxBytes = Number(env.BACKUP_MAX_BYTES || 32 * 1024 * 1024);
-  if (!Number.isSafeInteger(maxBytes) || maxBytes < 1024 || maxBytes > 32 * 1024 * 1024) throw Error('Limite de respaldo no valido (maximo 32 MiB).');
+  const maxBytes = Number(env.BACKUP_MAX_BYTES || 0);
+  if (!Number.isSafeInteger(maxBytes) || maxBytes < 0 || maxBytes>0 && maxBytes<1024) throw Error('Limite de respaldo no valido; usa 0 para streaming sin tope de tamano.');
   const toolEnv = {};
   for (const key of ['PATH', 'Path', 'SystemRoot', 'WINDIR', 'HOME', 'TEMP', 'TMP']) if (env[key]) toolEnv[key] = env[key];
   const childEnv = { ...toolEnv,
@@ -58,7 +58,7 @@ function exitOf(child, label) {
 async function preflight(options, signal) {
   const query = `select count(*) from unnest(array[${REQUIRED.map(table => `'${table}'`).join(',')}]) t where to_regclass(t) is null;`;
   const child = spawn(options.psql, ['--no-password', '-X', '-A', '-t', '-v', 'ON_ERROR_STOP=1', '-c', query],
-    { env: options.childEnv, stdio: ['ignore', 'pipe', 'pipe'], signal });
+    { env: options.childEnv, stdio: ['ignore', 'pipe', 'pipe'], signal, windowsHide:true });
   let result = '';
   child.stdout.on('data', chunk => { if (result.length < 100) result += chunk.toString(); });
   await exitOf(child, 'la comprobacion de tablas');
@@ -79,10 +79,10 @@ async function backup(options, { spawnTool = spawn, check = preflight, timeoutMs
     const args = ['--format=custom', '--compress=6', '--no-owner', '--no-privileges', '--no-password',
       '--lock-wait-timeout=5000', ...SCHEMAS.map(schema => '--schema=' + schema),
       ...OMIT_DATA.map(table => '--exclude-table-data=' + table)];
-    const dump = spawnTool(options.pgDump, args, { env: options.childEnv, stdio: ['ignore', 'pipe', 'pipe'], signal: controller.signal });
+    const dump = spawnTool(options.pgDump, args, { env: options.childEnv, stdio: ['ignore', 'pipe', 'pipe'], signal: controller.signal, windowsHide:true });
     children.push(dump);
     const encrypt = spawnTool(options.age, ['--encrypt', '--recipient', options.recipient],
-      { env: options.toolEnv, stdio: ['pipe', 'pipe', 'pipe'], signal: controller.signal });
+      { env: options.toolEnv, stdio: ['pipe', 'pipe', 'pipe'], signal: controller.signal, windowsHide:true });
     children.push(encrypt);
     const hash = createHash('sha256'), ageHeader = Buffer.from('age-encryption.org/v1\n');
     let bytes = 0, prefix = Buffer.alloc(0), encryptedPrefix = Buffer.alloc(0);
@@ -99,7 +99,7 @@ async function backup(options, { spawnTool = spawn, check = preflight, timeoutMs
         if (encryptedPrefix.length === ageHeader.length && !encryptedPrefix.equals(ageHeader)) return callback(Error('age no genero un archivo cifrado valido.'));
       }
       bytes += chunk.length;
-      if (bytes > options.maxBytes) return callback(Error('El respaldo excede 32 MiB o su limite configurado; revisar capacidad.'));
+      if (options.maxBytes>0 && bytes > options.maxBytes) return callback(Error('El respaldo excede su presupuesto de tamano configurado; revisar capacidad.'));
       hash.update(chunk); callback(null, chunk);
     } });
     await Promise.all([

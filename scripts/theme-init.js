@@ -93,7 +93,7 @@
     if (document.querySelector('link[href*="styles/professional.css"]')) return;
     var link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = getRootPath() + "styles/professional.css?v=20260824-study-metrics";
+    link.href = getRootPath() + "styles/professional.css?v=20261027-resume-check";
     document.head.appendChild(link);
   }
 

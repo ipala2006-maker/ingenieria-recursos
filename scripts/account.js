@@ -50,6 +50,7 @@
   let queuedSyncReason = "queued";
   let applyingCloud = false;
   let lastPullAt = 0;
+  let lastResumeCheckAt = 0;
   let cloudRevision = "", cloudRevisionUser = "";
   let cachedCloudState = null, accountGeneration = 0;
   let compactVersions = null, compactAvailable = null, syncConflicts = 0;
@@ -316,6 +317,9 @@
     });
 
     window.addEventListener("focus", () => scheduleRemoteRefresh());
+    window.addEventListener('estudiemos:resume-synced', event => {
+      if(event.detail?.userId===session?.user?.id)showResumeNotice();
+    });
     window.addEventListener("pageshow", () => {
       if (session) {
         connectRealtime(session.user.id);
@@ -742,9 +746,15 @@
     const generation = accountGeneration;
     const dirty = localStorage.getItem(DIRTY_KEY) === "true";
     const hydrated = synchronizedUserId === userId && localStorage.getItem(LINKED_USER_KEY) === userId;
+    const resuming = reason === 'resume';
+    if(resuming && hydrated && !dirty && Date.now()>=lastResumeCheckAt && Date.now()-lastResumeCheckAt<2500)return true;
     if (reason !== "manual" && Date.now() < syncRetryAt) return false;
     if (background && hydrated && !dirty && Date.now() - lastPullAt < cloudCheckInterval()) return true;
     syncing = true;
+    if(resuming)lastResumeCheckAt=Date.now();
+    const agendaBefore=localStorage.getItem('bandeja_agenda');
+    const previousCloudAgenda=JSON.stringify(cachedCloudState?.values?.bandeja_agenda);
+    const notifyResume=(resuming || reason==='startup' && !dirty) && localStorage.getItem(LINKED_USER_KEY)===userId;
     if (!background) updateSyncLabel("Sincronizando...");
     try {
       // The RPC checks the revision atomically. A fresh read before every own
@@ -759,12 +769,14 @@
       }
       // Quiet backup checks need just a timestamp, not every key fingerprint.
       // Only background reads use this probe, so user actions keep their latency.
-      if (background && hydrated && !dirty && compactAvailable === true && compactVersions && cachedCloudState && cloudRevisionUser === userId && cloudRevision) {
-        const probe = await client.from("user_states").select("updated_at").eq("user_id", userId).maybeSingle();
+      if ((background || resuming) && hydrated && !dirty && (resuming || compactAvailable === true && compactVersions) && cachedCloudState && cloudRevisionUser === userId && cloudRevision) {
+        let check=client.from('user_states').select('updated_at').eq('user_id',userId);
+        if(resuming)check=check.neq('updated_at',cloudRevision);
+        const probe = await check.maybeSingle();
         if (session?.user?.id !== userId || accountGeneration !== generation) return false;
         if (probe.error) throw probe.error;
         recordSyncUsage(userId, { checks: 1, receivedBytes: syncJsonBytes(probe.data) });
-        if (probe.data?.updated_at === cloudRevision && localStorage.getItem(DIRTY_KEY) !== "true") {
+        if ((resuming && !probe.data || probe.data?.updated_at === cloudRevision) && localStorage.getItem(DIRTY_KEY) !== "true") {
           recordSyncUsage(userId, { unchangedChecks: 1 });
           finishSynchronization(reason, userId, false);
           return true;
@@ -818,6 +830,9 @@
 
       if (session?.user?.id !== userId || accountGeneration !== generation) return false;
       finishSynchronization(reason, userId);
+      if(notifyResume && previousCloudAgenda!==JSON.stringify(cloudState?.values?.bandeja_agenda) && agendaBefore!==localStorage.getItem('bandeja_agenda')){
+        window.dispatchEvent(new CustomEvent('estudiemos:resume-synced',{detail:{userId}}));
+      }
       return true;
     } catch (error) {
       if (session?.user?.id !== userId || accountGeneration !== generation) return false;
@@ -1087,10 +1102,11 @@
   }
 
   function clearLocalAccountData() {
+    document.querySelector('[data-resume-sync-notice]')?.remove();
     compactVersions=null;syncConflicts=0;
     synchronizedUserId = ""; cloudRevision = ""; cloudRevisionUser = "";
     cachedCloudState = null; accountGeneration++;
-    lastPullAt = 0; syncFailures = 0; syncRetryAt = 0;
+    lastPullAt = 0; lastResumeCheckAt = 0; syncFailures = 0; syncRetryAt = 0;
     applyingCloud = true;
     try {
       PRIVATE_SYNC_KEYS.forEach((key) => {
@@ -1263,6 +1279,16 @@
       return null;
     }
     return { email, password };
+  }
+
+  function showResumeNotice(){
+    let notice=document.querySelector('[data-resume-sync-notice]');
+    if(!notice){
+      notice=document.createElement('div');notice.dataset.resumeSyncNotice='';notice.className='account-resume-notice';
+      notice.setAttribute('role','status');notice.setAttribute('aria-live','polite');document.body.appendChild(notice);
+    }
+    notice.textContent='Agenda actualizada desde otro dispositivo.';
+    window.clearTimeout(notice.hideTimer);notice.hideTimer=window.setTimeout(()=>notice.remove(),4500);
   }
 
 

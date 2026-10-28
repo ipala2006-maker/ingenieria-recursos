@@ -34,7 +34,7 @@ jobs:
           BACKUP_AGE_RECIPIENT: ${{ vars.BACKUP_AGE_RECIPIENT }}
           BACKUP_SSL_ROOT_CERT: supabase/certs/prod-ca-2021.crt
           BACKUP_OUTPUT_DIR: .backups/database
-          BACKUP_MAX_BYTES: '33554432'
+          BACKUP_MAX_BYTES: ${{ vars.BACKUP_MAX_BYTES || '0' }}
         run: node scripts/backup-database.cjs
       - name: Retain only encrypted output for seven days
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

@@ -2,6 +2,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs/promises'),os=require('node:os'),path=require('node:path');
 const {execFileSync,spawnSync}=require('node:child_process');
 const {config,backup}=require('../scripts/backup-database.cjs');
+const {restoreTest}=require('../scripts/restore-database-test.cjs');
 
 async function run(){
   if(process.env.BACKUP_INTEGRATION!=='true')throw Error('Integration fixture not enabled.');
@@ -9,10 +10,11 @@ async function run(){
   if(!['localhost','127.0.0.1','postgres'].includes(host))throw Error('Only the disposable local fixture is allowed.');
   const env={...process.env,PGHOST:host,PGUSER:'postgres',PGPASSWORD:'fixture-only',PGSSLMODE:'disable'};
   const sql=(database,text)=>execFileSync('psql',['-X','-A','-t','-v','ON_ERROR_STOP=1','-d',database,'-c',text],{env,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
-  sql('postgres','create database backup_source');sql('postgres','create database backup_restored');
+  const source='estudiemos_fixture_'+require('node:crypto').randomBytes(12).toString('hex');
+  sql('postgres',`create database ${source}`);
   const directory=await fs.mkdtemp(path.join(os.tmpdir(),'backup-roundtrip-'));
   try{
-    sql('backup_source',`create schema auth;create schema private;
+    sql(source,`create schema auth;create schema private;
       create table auth.users(id uuid primary key,email text);
       create table auth.identities(user_id uuid references auth.users(id),provider text);
       create table auth.sessions(id integer);
@@ -34,25 +36,34 @@ async function run(){
       insert into classroom_members values(1,'00000000-0000-4000-8000-000000000001');
       insert into classroom_events values(1,'{"title":"Parcial"}');
       insert into classroom_materials values(1,'https://drive.google.com/file/d/fixture/view');`);
+    if(process.env.RESTORE_LARGE_FIXTURE==='true')sql(source,`create table public.backup_large_fixture(id integer,payload text);
+      insert into public.backup_large_fixture select part,string_agg(md5(random()::text),'')
+      from generate_series(1,1152) part cross join generate_series(1,2048) chunk group by part;`);
     const identity=path.join(directory,'recovery.agekey');
     execFileSync('age-keygen',['-o',identity],{stdio:['ignore','pipe','pipe']});
     const recipient=execFileSync('age-keygen',['-y',identity],{encoding:'utf8'}).trim();
     const options=config({...process.env,BACKUP_LOCAL_TEST:'true',BACKUP_PROJECT_REF:'a'.repeat(20),
-      BACKUP_DATABASE_URL:`postgres://postgres:fixture-only@${host}:5432/backup_source`,BACKUP_AGE_RECIPIENT:recipient,BACKUP_OUTPUT_DIR:directory});
+      BACKUP_DATABASE_URL:`postgres://postgres:fixture-only@${host}:5432/${source}`,BACKUP_AGE_RECIPIENT:recipient,BACKUP_OUTPUT_DIR:directory});
     const manifest=await backup(options),encrypted=path.join(directory,manifest.file);
-    const archive=execFileSync('age',['--decrypt','--identity',identity,encrypted],{maxBuffer:32*1024*1024});
-    assert.equal(archive.subarray(0,5).toString(),'PGDMP');
+    if(process.env.RESTORE_LARGE_FIXTURE==='true')assert.ok(manifest.bytes>32*1024*1024,'Exercise a real encrypted archive larger than the retired 32 MiB ceiling');
     const damaged=await fs.readFile(encrypted);damaged[damaged.length-1]^=1;
-    const rejected=spawnSync('age',['--decrypt','--identity',identity],{input:damaged,maxBuffer:32*1024*1024});
+    const rejected=spawnSync('age',['--decrypt','--identity',identity],{input:damaged,maxBuffer:1024*1024});
     assert.notEqual(rejected.status,0,'Tampered ciphertext must not decrypt successfully');
-    const restored=spawnSync('pg_restore',['--clean','--if-exists','--no-owner','--no-privileges','--exit-on-error','--dbname=backup_restored'],{env,input:archive,maxBuffer:1024*1024});
-    if(restored.status!==0)throw Error('Fixture restore failed: '+restored.stderr.toString());
-    for(const table of ['auth.users','auth.identities','public.user_states','public.classrooms','public.classroom_members','public.classroom_events','public.classroom_materials'])assert.equal(sql('backup_restored',`select count(*) from ${table}`),'1',table);
-    for(const table of ['auth.sessions','private.api_rate_limits','public.mobile_push_subscriptions'])assert.equal(sql('backup_restored',`select count(*) from ${table}`),'0',table);
-    assert.equal(sql('backup_restored','select backup_fixture_version()'),'42');
-    assert.equal(sql('backup_restored',"select relrowsecurity and relforcerowsecurity from pg_class where oid='user_states'::regclass"),'t');
-    assert.equal(sql('backup_restored',"select count(*) from pg_policies where policyname='owner_only'"),'1');
+    const restored=await restoreTest({backupPath:encrypted,identityPath:identity,env:{...env,CI:process.env.CI,BACKUP_INTEGRATION:'true',BACKUP_PROJECT_REF:'a'.repeat(20)},
+      onDiagnostic:(tool,message)=>console.error('Disposable fixture diagnostic '+tool+': '+message),validate(query){
+      for(const table of ['auth.sessions','private.api_rate_limits','public.mobile_push_subscriptions'])assert.equal(query(`select count(*) from ${table}`),'0',table);
+      assert.equal(query('select backup_fixture_version()'),'42');
+      assert.equal(query("select relrowsecurity and relforcerowsecurity from pg_class where oid='user_states'::regclass"),'t');
+      assert.equal(query("select count(*) from pg_policies where policyname='owner_only'"),'1');
+      if(process.env.RESTORE_LARGE_FIXTURE==='true'){
+        assert.equal(query('select count(*) from public.backup_large_fixture'),'1152');
+        assert.equal(query('select min(length(payload)) from public.backup_large_fixture'),'65536');
+      }
+    }});
+    assert.ok(Object.values(restored.rows).every(count=>count===1));assert.equal(restored.isolated,true);
     console.log('PASS: pg_dump -> age -> decrypt -> pg_restore; accounts, classes, notes, schema, FK and RLS preserved.');
-  }finally{await fs.rm(directory,{recursive:true,force:true});}
+    console.log(JSON.stringify({fixtureOnly:true,encryptedBytes:manifest.bytes,largerThan32MiB:manifest.bytes>32*1024*1024}));
+  }finally{sql('postgres',`drop database ${source} with (force)`);await fs.rm(directory,{recursive:true,force:true});}
 }
-run().catch(error=>{console.error(error.message);process.exitCode=1;});
+module.exports={run};
+if(require.main===module)run().catch(error=>{console.error(error.message);process.exitCode=1;});

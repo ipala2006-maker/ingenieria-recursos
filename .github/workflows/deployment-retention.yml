@@ -1,0 +1,32 @@
+name: Keep production and one rollback
+on:
+  repository_dispatch:
+    types: [vercel.deployment.success, vercel.deployment.promoted]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: estudiemos-deployment-retention
+  cancel-in-progress: false
+jobs:
+  cleanup:
+    if: >-
+      vars.VERCEL_CLEANUP_ENABLED == 'true' && (
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'repository_dispatch' && github.event.client_payload.environment == 'production' &&
+      github.event.client_payload.project.id == 'prj_BDIVyIanCqTDh32fhWkloZJi9Cbp'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - name: Prune only this project, keeping active production and its previous ready release
+        env:
+          VERCEL_CLEANUP_TOKEN: ${{ secrets.VERCEL_CLEANUP_TOKEN }}
+          VERCEL_CLEANUP_APPLY: 'true'
+        run: node scripts/cleanup-vercel-after-deploy.cjs

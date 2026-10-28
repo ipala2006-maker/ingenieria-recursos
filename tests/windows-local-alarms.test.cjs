@@ -30,6 +30,13 @@ test('foreign accounts and cancelled pickers do not write or claim a connection'
  const h=harness();await tick();await h.changeUser(device);await assert.rejects(h.api.connectFile(),/archivo local/);assert.equal(h.writes,0);assert.equal(h.api.ready(),false);
  h.window.showOpenFilePicker=async()=>{throw Object.assign(new Error('Cancelled'),{name:'AbortError'});};await assert.rejects(h.api.connectFile(),{name:'AbortError'});assert.equal(h.writes,0);
 });
+
+test('a confirmed resume from another device updates the local schedule without network or additional consent',async()=>{
+ const h=harness();await tick();await h.api.connectFile();const before=h.writes;
+ h.storage.set('bandeja_agenda',JSON.stringify([{id:'phone',title:'Desde el celular',alarm:{...alarm,time:'09:15'}}]));
+ h.window.dispatchEvent({type:'estudiemos:account-synced'});await h.flush();
+ assert.equal(h.file.items[0].id,'phone');assert.equal(h.file.items[0].alarm.time,'09:15');assert.equal(h.writes,before+1);assert.equal(h.api.ready(),true);
+});
 test('logout cannot be undone by an older file close finishing late',async()=>{
  const h=harness();await tick();await h.api.connectFile();const release=h.holdClose();h.storage.set('bandeja_agenda',JSON.stringify([{id:'late',title:'Old account',alarm}]));
  const old=h.api.sync();await tick();await h.changeUser('');release();await old;await tick();await tick();assert.equal(h.api.ready(),false);assert.equal(h.file.disabled,true);assert.deepEqual(h.file.items,[]);
