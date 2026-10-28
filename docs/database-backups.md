@@ -15,9 +15,12 @@ suscripciones push ni contadores de rate limit. Tras restaurar, los usuarios
 inician sesion y vuelven a habilitar los avisos. Las alarmas se reproyectan al
 registrar cada dispositivo, sin reproducir notificaciones antiguas.
 
-La estructura de esas tablas temporales si se conserva. El limite es cinco
-minutos y 32 MiB por archivo cifrado. Ante error, falta de tablas o exceso de
-tamano no se publica ningun respaldo parcial. El manifiesto contiene solamente
+La estructura de esas tablas temporales si se conserva. Se conserva el limite
+de tiempo de cinco minutos, pero no hay tope fijo de 32 MiB: todo el contenido
+fluye por streams con backpressure. `BACKUP_MAX_BYTES=0` (predeterminado) no
+impone limite de tamano; una variable de Actions del mismo nombre permite
+fijar un presupuesto opcional, incluso mayor de 32 MiB. Ante error, falta de
+tablas o exceso del presupuesto no se publica ningun respaldo parcial. El manifiesto contiene solamente
 fecha, proyecto, alcance, bytes y SHA-256; nunca contenido ni credenciales.
 
 ## Activacion unica (todavia no se activa por fusionar el PR)
@@ -66,9 +69,10 @@ acepta silenciosamente un respaldo parcial. Mantener protegida la rama main.
 
 ## Cuota y costo de infraestructura
 
-No contrata planes ni habilita sobreconsumo. Siete archivos de 32 MiB son hasta
-224 MiB, mas manifiestos y eventuales reintentos; comparten cuota de artefactos
-con los otros workflows de GitHub. No se promete almacenamiento ilimitado.
+No contrata planes ni habilita sobreconsumo. Eliminar el tope no aumenta la cuota
+gratuita de GitHub: siete archivos, sus manifiestos y los reintentos comparten
+almacenamiento con los otros workflows. Vigilar su tamano y los fallos de
+Actions; conservar otra copia offline. No se promete almacenamiento ilimitado.
 
 **El respaldo tambien usa transferencia de salida de Supabase.** pg_dump recibe
 datos de PostgreSQL y los comprime en el cliente: el tamano final `.age` NO es
@@ -96,8 +100,56 @@ notas ni simular un respaldo exitoso para reducir consumo.
    ni ACL. Comprobar cuentas/identidades, notas, miembros, FK, funciones y RLS.
    Recuperar las claves de Drive/Vercel y SMTP por separado; sin la clave de
    cifrado de Drive sus tokens no son utilizables y hay que reconectar.
-5. Recien despues planificar la restauracion real. El script de respaldo no
-   tiene una accion de restauracion automatica ni puede borrar produccion.
+5. Recien despues planificar la restauracion real. El exportador no puede borrar
+   produccion. La prueba descrita abajo tampoco admite un destino remoto.
+
+### Comando de prueba aislada
+
+`npm run db:restore-test` ejecuta el ciclo de datos ficticios usado en CI:
+PostgreSQL real -> pg_dump -> age -> descifrado por streams -> pg_restore.
+El servicio de CI es desechable, con usuario postgres y clave fixture-only;
+no se usan credenciales de produccion. En una PC requiere ese servicio local y
+`psql`, `pg_dump`, `pg_restore`, `age` y `age-keygen` en PATH.
+
+Para probar una descarga real, con PostgreSQL local compatible y sus roles y
+extensiones ya preparados (por ejemplo un entorno Supabase local), ejecutar:
+
+```powershell
+$env:PGHOST = '127.0.0.1'
+# PGPORT, PGUSER y PGPASSWORD corresponden exclusivamente al entorno local.
+# No usar la conexion principal ni pegar la clave privada en la terminal/chat.
+npm run db:restore-test -- --backup '.backups/database/respaldo.dump.age' --identity 'C:/ruta-privada/estudiemos-recovery.agekey'
+```
+
+El `.dump.age.json` debe estar junto al respaldo (o indicar `--manifest`). Se
+verifican bytes/SHA-256 antes de crear una base, se genera un nombre aleatorio
+propio y se restaura en una sola transaccion sin `--clean`. Se comprueban las
+tablas clave, cantidades, FK y RLS. La base temporal se elimina al terminar,
+incluso ante fallos. No se escribe texto descifrado en disco ni se muestran
+filas o errores sensibles. Fallar por roles/extensiones faltantes no equivale a
+un respaldo corrupto: preparar el entorno y repetir; no omitir errores.
+
+La prueba de fixtures no certifica un respaldo real. El archivo SQL tampoco
+recrea secretos/SMTP/OAuth ni objetos fisicos de Storage, que se recuperan aparte.
+
+### Descargar los buckets historicos (solo lectura)
+
+Desde una carpeta local privada y con el CLI oficial de Supabase actualizado:
+
+```powershell
+supabase login
+supabase link --project-ref gxilgicgxhkdjmmyhrdd
+New-Item -ItemType Directory -Force -Path '.backups/storage/workspace-files'
+supabase storage cp --experimental --linked --recursive 'ss:///workspace-files/' '.backups/storage/workspace-files/'
+Get-ChildItem '.backups/storage/workspace-files' -File -Recurse | Get-FileHash -Algorithm SHA256
+```
+
+Es una copia remota -> local: no usar `storage mv`, `rm` ni invertir origen y
+destino. Consume egress. Cifrar y conservar esta carpeta fuera de Git/GitHub; no
+se incluye automaticamente en los artefactos de la base de datos. Repetir por
+cada bucket que aparezca en Storage y verificar cantidad, bytes y hashes.
+La CLI marca Storage como experimental: comprobar `supabase storage cp --help`
+si una version cambia los flags. No se suben de nuevo los archivos historicos.
 
 `backup-verify.yml` realiza con PostgreSQL y age reales un ciclo de exportacion,
 cifrado, descifrado y restauracion de datos ficticios. No usa secretos de

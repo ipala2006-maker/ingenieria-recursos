@@ -33,4 +33,4 @@ jobs:
         env:
           BACKUP_INTEGRATION: 'true'
           PGHOST: postgres
-        run: node tests/backup-restore.integration.cjs
+        run: npm run db:restore-test

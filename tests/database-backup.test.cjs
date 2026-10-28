@@ -17,7 +17,9 @@ test('backup connects only to its project over verified TLS, without secrets in 
     assert.throws(()=>config({...environment,BACKUP_DATABASE_URL:url}));
   }
   assert.equal(config({...environment,BACKUP_DATABASE_URL:`postgres://postgres.${project}:fixture-only@aws-0.pooler.supabase.com:5432/postgres`}).childEnv.PGPORT,'5432');
-  assert.throws(()=>config({...environment,BACKUP_MAX_BYTES:'33554433'}));
+  assert.equal(config(environment).maxBytes,0);
+  assert.equal(config({...environment,BACKUP_MAX_BYTES:'67108864'}).maxBytes,67108864);
+  assert.throws(()=>config({...environment,BACKUP_MAX_BYTES:'-1'}));
   assert.throws(()=>config({...environment,BACKUP_AGE_RECIPIENT:'not-a-public-key'}));
 });
 

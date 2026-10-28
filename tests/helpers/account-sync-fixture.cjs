@@ -33,7 +33,7 @@ function harness(sharedRows) {
   class Clock extends Date { constructor(...args) { super(...(args.length ? args : [now])); } static now() { return now; } }
   const context = {
     AUTH_ONLY:false, compactVersions:null, compactAvailable:null, syncConflicts:0, session:{user:{id:'alice'},access_token:'fixture-only'}, syncing:false, syncRequested:false, queuedSyncReason:'queued', synchronizedUserId:'', applyingCloud:false,
-    lastPullAt:0, cloudRevision:'', cloudRevisionUser:'', cachedCloudState:null, accountGeneration:0, syncFailures:0, syncRetryAt:0, realtimeConnected:true,
+    lastPullAt:0, lastResumeCheckAt:0, cloudRevision:'', cloudRevisionUser:'', cachedCloudState:null, accountGeneration:0, syncFailures:0, syncRetryAt:0, realtimeConnected:true,
     realtimeChannel:null, realtimeUserId:'', cloudPollTimer:0, remoteRefreshTimer:0, syncTimer:0, INSTANCE_ID:'fixture',
     Date:Clock, TextEncoder, Intl, navigator:{onLine:true}, CustomEvent:class { constructor(type) {this.type=type;} },
     document:{visibilityState:'visible',querySelector:()=>null},

@@ -863,3 +863,7 @@ html.theme-dark .theme-switcher__btn.is-active{
 }
 .account-app-actions [data-account-update-manual][hidden]{display:none}
 .account-app-actions [data-account-update-manual] svg{width:18px;height:18px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.7}
+.account-resume-notice { position:fixed;right:16px;bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:45;max-width:calc(100% - 32px);padding:10px 14px;box-sizing:border-box;border:1px solid var(--border);border-radius:6px;background:var(--panel);color:var(--text);box-shadow:0 4px 16px #0002;font-size:13px;line-height:1.5;pointer-events:none;animation:resume-notice-in 180ms ease-out; }
+@keyframes resume-notice-in { from { opacity:0;transform:translateY(4px); } to { opacity:1;transform:none; } }
+@media(max-width:700px) { .account-resume-notice { bottom:calc(86px + env(safe-area-inset-bottom,0px)); } }
+@media(prefers-reduced-motion:reduce) { .account-resume-notice { animation:none; } }

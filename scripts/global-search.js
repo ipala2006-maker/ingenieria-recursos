@@ -398,7 +398,7 @@
     if (document.querySelector('script[src*="scripts/account.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/account.js?v=20261027-installed-app`;
+    script.src = `${rootPath}scripts/account.js?v=20261027-resume-check`;
     script.defer = true;
     document.head.appendChild(script);
   }
