@@ -134,7 +134,7 @@ GOOGLE_DRIVE_CLIENT_ID con el identificador PUBLICO del mismo cliente existente.
 PUSH_DISPATCH_ENABLED sigue false. No se subio codigo local ni se reemplazaron
 secretos de Vercel; esta comprobacion no prueba que Google acepte la credencial.
 
-## Prueba privada de coexistencia OAuth: preparada, no ejecutada
+## Prueba privada de coexistencia OAuth: verificada en Vercel
 
 `api/_lib/drive-oauth-check.js` prepara `verifyNextOAuthSecret()` exclusivamente
 para el entorno legado de Vercel. No tiene ruta HTTP, cron, ejecutor automatico
@@ -200,7 +200,35 @@ no puede consultar tokens por recibir trafico web. Otra ejecucion requiere
 otra compilacion del
 operador y una ventana temporal valida. La proteccion de Vercel se conserva.
 La clave AES legada y los tokens nunca se descargan ni se trasladan al CLI.
-Falta ejecutar esta prueba real. Los fixtures no certifican el proveedor.
+
+Resultado real del 28/10/2026:
+
+- Codigo revisado 9b9c13c56275bca6bb8dbba85d3b282844e64cd8: 512 pruebas locales,
+  mas audit, restore-fixture y preview de Vercel aprobados antes de invocarlo.
+- Paquete exacto de siete archivos, 79.840 bytes; sus cuatro modulos coinciden
+  byte por byte con las fuentes revisadas. No contiene la app ni rutas API.
+- Compilacion dpl_6BRxaoaxEKG7GTUjpxyJrgFBfRVP, del proyecto/equipo correctos,
+  protegida por Vercel Authentication y con --prod --skip-domain.
+- Resultado extraido de sus logs: {"ok":true,"code":"OAUTH_REFRESH_VERIFIED"}.
+  Google acepto el secreto NEXT del mismo cliente al renovar el grant existente
+  de la cuenta propia, descifrado exclusivamente dentro de Vercel.
+- El marcador OAUTH_PROBE_VERIFIED_STOPPING_WITHOUT_RELEASE confirma la
+  detencion intencional. El estado ERROR de esa compilacion es esperado:
+  no existe version Ready, sitio, endpoint ni respaldo nuevo de la app.
+- No se escribieron grants, recifraron filas, listaron documentos ni pidieron
+  scopes. No se descargaron claves/tokens ni se deshabilito un secreto Google.
+- Los tres alias reales se resolvieron despues de la prueba y siguen en
+  dpl_4tQ3M9VTkT4D1ger6GTpKdvgLzB2, produccion 1516e7e. La ficha del probe
+  puede listar un alias previsto: esa lista NO prueba una asignacion; se
+  verifico el destino real de cada alias, no solo la ficha.
+- Las variables CHECK se pasaron solo al build con vencimiento; no se agregaron
+  al proyecto ni a la app. No hay nada escuchando para repetir la prueba via web.
+
+Esto cierra la comprobacion Google en el entorno legado, no el recifrado ni
+la conexion de Workers con los grants migrados. El binding de Cloudflare esta
+presente, pero su renovacion real se debe probar despues de preparar el cifrado.
+NEXT queda guardado para la continuidad prevista; no reemplaza todavia al
+secreto de produccion. No eliminar ningun secreto original en este paso.
 Desactivar y retirar la configuracion de prueba al concluir; no retirar los
 secretos originales ni cortar el hosting como parte de esta comprobacion.
 
@@ -224,4 +252,5 @@ secretos originales ni cortar el hosting como parte de esta comprobacion.
 - El empaquetado aislado contiene solo siete archivos revisados y el lock,
   no APIs ni archivos de la app. La prueba del comando demuestra que incluso
   el resultado verificado detiene el build y no crea artefactos publicos.
-- Nada de esto certifica todavia un refresh OAuth real con el nuevo secreto.
+- La prueba real de Google descrita arriba complementa los fixtures. No
+  certifica aun recifrado, proveedores push ni corte de hosting a Cloudflare.
