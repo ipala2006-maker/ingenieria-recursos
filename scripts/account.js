@@ -753,6 +753,8 @@
     syncing = true;
     if(resuming)lastResumeCheckAt=Date.now();
     const agendaBefore=localStorage.getItem('bandeja_agenda');
+    const previousCloudAgenda=JSON.stringify(cachedCloudState?.values?.bandeja_agenda);
+    const notifyResume=(resuming || reason==='startup' && !dirty) && localStorage.getItem(LINKED_USER_KEY)===userId;
     if (!background) updateSyncLabel("Sincronizando...");
     try {
       // The RPC checks the revision atomically. A fresh read before every own
@@ -828,7 +830,7 @@
 
       if (session?.user?.id !== userId || accountGeneration !== generation) return false;
       finishSynchronization(reason, userId);
-      if(resuming && agendaBefore!==localStorage.getItem('bandeja_agenda')){
+      if(notifyResume && previousCloudAgenda!==JSON.stringify(cloudState?.values?.bandeja_agenda) && agendaBefore!==localStorage.getItem('bandeja_agenda')){
         window.dispatchEvent(new CustomEvent('estudiemos:resume-synced',{detail:{userId}}));
       }
       return true;
@@ -1100,6 +1102,7 @@
   }
 
   function clearLocalAccountData() {
+    document.querySelector('[data-resume-sync-notice]')?.remove();
     compactVersions=null;syncConflicts=0;
     synchronizedUserId = ""; cloudRevision = ""; cloudRevisionUser = "";
     cachedCloudState = null; accountGeneration++;

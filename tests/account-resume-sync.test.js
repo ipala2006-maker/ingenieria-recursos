@@ -25,6 +25,7 @@ test('local edits, offline state and account switches remain protected during a 
   const h=harness();installCompact(h);await h.read('startup');
   h.local.set('bandeja_agenda',JSON.stringify([{id:'local',title:'Local draft'}]));h.context.markLocalChange('bandeja_agenda');
   await h.read('resume');assert.equal(h.reads.length,0);assert.equal(h.rows.get('alice').state.values.bandeja_agenda[0].title,'Local draft');
+  assert.equal(h.events.includes('estudiemos:resume-synced'),false,'Saving only local edits never claims an update from another device');
   h.context.navigator.onLine=false;assert.equal(await h.read('resume'),false);h.context.navigator.onLine=true;h.advance(2500);
   const pending=deferred();h.context.readHook=()=>pending.promise;
   const read=h.read('resume');h.context.session={user:{id:'bob'}};h.context.clearLocalAccountData();pending.resolve({data:{updated_at:'2026-10-24T13:00:00Z'}});
