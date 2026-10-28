@@ -1,0 +1,10 @@
+{
+  "$schema":"node_modules/wrangler/config-schema.json",
+  "name":"estudiemos-provider-probe",
+  "main":"cloudflare/provider-probe.mjs",
+  "compatibility_date":"2026-10-28",
+  "compatibility_flags":["nodejs_compat"],
+  "workers_dev":true,
+  "vars":{"PROBE_ENABLED":"false","PROBE_EXPIRES_AT":"0"},
+  "observability":{"enabled":true,"logs":{"enabled":true,"invocation_logs":false}}
+}

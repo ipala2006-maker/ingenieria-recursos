@@ -1,6 +1,8 @@
 const { getAuthenticatedPlan } = require("./_lib/plan-access");
 const { claimReferral, confirmReferralPhone, getReferralStatus, referralErrorMessage } = require("./_lib/referrals");
 const plans = require("../shared/plans");
+const {authenticateBearer}=require('./_lib/supabase-admin');
+const {accessForUser}=require('./_lib/app-access');
 const { enforceRateLimit, isSameOriginRequest, rejectOversizedBody, requireJsonRequest, setSecurityHeaders } = require("./_lib/request-security");
 
 module.exports = async function planStatus(request, response) {
@@ -13,10 +15,18 @@ module.exports = async function planStatus(request, response) {
   if(request.method==='POST' && !['claim-referral','confirm-referral-phone'].includes(String(request.body?.action||''))){
     return response.status(410).json({code:'PLAN_ASSIGNMENT_DISABLED',message:'La selección de planes está deshabilitada. No se realizan cobros.'});
   }
-  if (!(await enforceRateLimit(request, response, { route: "plan-status", limit: 60, windowSeconds: 60 }))) return;
+  const accessOnly=request.method==='GET'&&request.query?.access==='1';
+  if (!accessOnly&&!(await enforceRateLimit(request, response, { route: "plan-status", limit: 60, windowSeconds: 60 }))) return;
 
   try {
     if (request.method === "GET") {
+      if(accessOnly){
+        if(!await enforceRateLimit(request,response,{route:'app-access-auth',limit:1000,windowSeconds:60,distributed:false}))return;
+        const user=await authenticateBearer(request.headers.authorization);
+        if(!user?.id)return response.status(401).json({message:'Ingresá a tu cuenta para consultar el acceso.'});
+        if(!await enforceRateLimit(request,response,{route:'app-access',principal:user.id,limit:120,ipLimit:1000,windowSeconds:60}))return;
+        return response.status(200).json(await accessForUser(request.headers.authorization));
+      }
       const result = await getAuthenticatedPlan(request);
       if (!result.authenticated) return response.status(401).json({ message: "Ingresá a tu cuenta para ver el plan." });
       const referral = await referralStatus(request).catch(() => null);

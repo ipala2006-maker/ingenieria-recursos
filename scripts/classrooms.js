@@ -6,7 +6,7 @@
   const colors=['Azul','Turquesa','Violeta','Rosa','Amarillo'],days=[[1,'Lun'],[2,'Mar'],[3,'Mié'],[4,'Jue'],[5,'Vie'],[6,'Sáb'],[0,'Dom']];
   const dateLabel=value=>{const date=time.date(value);return date?new Intl.DateTimeFormat('es-AR',{day:'numeric',month:'short',year:'numeric'}).format(date):value;};
   const roles=window.EstudiemosCourseRole,standalone=document.body.classList.contains('teacher-workspace');
-  let selected='',detail=null,view='list',tab='events',busy=false,sequence=0,lastFocus,joinCode='',autoJoin=false,resume=false,uploaded=null,materialDraftId='',savingMaterial='';
+  let selected='',detail=null,view='list',tab='events',busy=false,sequence=0,lastFocus,joinCode='',autoJoin=false,resume=false,uploaded=null,materialDraftId='',savingMaterial='',focusedEntry=false;
   const dialog=document.createElement(standalone?'section':'dialog');dialog.className='classroom-dialog'+(standalone?' classroom-embedded':'');dialog.setAttribute('aria-labelledby','classroomTitle');
   dialog.innerHTML=`<header class="classroom-head"><div>${icon('graduation-cap')}<h2 id="classroomTitle">Materias y cátedras</h2></div><div class="classroom-actions"><button type="button" class="classroom-icon" data-class-role aria-label="Cambiar rol" title="Cambiar rol">${icon('users-round')}</button><button type="button" data-class-join>Unirme</button><button type="button" data-class-create>${icon('plus')}Crear materia</button>${standalone?'':`<button type="button" class="classroom-icon" data-class-close aria-label="Cerrar materias" title="Cerrar">${icon('x')}</button>`}</div></header><p class="classroom-status" role="status" aria-live="polite" hidden></p><div class="classroom-shell"><aside class="classroom-sidebar" aria-label="Mis materias"></aside><section class="classroom-main"></section></div>`;
   (standalone?document.querySelector('#teacherWorkspace'):document.body).append(dialog);
@@ -17,6 +17,14 @@
   const courses=()=>{const list=api.snapshot()?.classes||[];return standalone?list.filter(course=>rules.isOwner(course)):list;};
   const current=()=>courses().find(item=>item.id===selected);
   const teacher=()=>rules.isOwner(current());
+  function updateFocus(){
+    const full=window.EstudiemosAccess?.paidPro()||window.EstudiemosAccess?.ownsClass()||courses().some(course=>rules.isOwner(course));
+    const mode=window.EstudiemosAccess?.snapshot().mode||window.EstudiemosAccount?.getAccessMode?.()||'pilot';
+    const focused=!standalone&&mode==='restricted'&&focusedEntry&&!full;
+    dialog.classList.toggle('is-focused',focused);
+    const close=q('[data-class-close]');
+    if(close){close.innerHTML=focused?'Abrir Estudiemos':icon('x');close.setAttribute('aria-label',focused?'Abrir Estudiemos':'Cerrar materias');close.title=focused?'Abrir Estudiemos':'Cerrar';}
+  }
   const can=permission=>rules.can(current(),permission);
   const roleLabel=role=>({teacher:'Profesor',collaborator:'Colaborador',moderator:'Delegado',student:'Alumno'}[role]||'Alumno');
   const permissionLabels={datesAdd:'Agregar fechas',datesEdit:'Editar fechas',datesRemove:'Quitar fechas',filesAdd:'Agregar archivos',filesEdit:'Editar archivos',filesRemove:'Quitar archivos'};
@@ -35,6 +43,7 @@
     node.innerHTML=`<h3>Mis materias <span>${list.length}</span></h3>${list.map(course=>`<button type="button" data-class-select="${escape(course.id)}" aria-current="${course.id===selected?'page':'false'}" class="classroom-course classroom-color--${course.color}"><span class="classroom-dot"></span><span><strong>${escape(course.title)}</strong><small>${course.archived?'Archivada':rules.isOwner(course)?roleLabel(course.role)+' · '+course.memberCount+' alumnos':course.role==='moderator'?'Delegado':escape(course.teacherName)}</small></span></button>`).join('')||'<p class="classroom-muted">Todavía no tenés materias.</p>'}`;
   }
   function draw(){
+    updateFocus();
     dialog.dataset.view=view;
     sidebar();dialog.classList.toggle('has-selection',view!=='list');
     const choosing=view==='role'||!roles?.get();
@@ -302,7 +311,9 @@
   }
   window.addEventListener('estudiemos:account-change',()=>{sequence++;selected='';detail=null;uploaded=null;document.querySelectorAll('.classroom-confirm[open]').forEach(node=>node.close());view=joinCode?'join':'list';busy=false;draw();lock(false);if((resume||standalone||autoJoin)&&window.EstudiemosAccount?.getUser()){resume=false;showHost();refresh().then(joinInvitation);}});
   window.addEventListener('estudiemos:classes-updated',()=>{if(!isOpen())return;sidebar();if(view==='class'&&!busy){if(!current()){view='list';selected='';draw();}else choose(selected);}});
+  window.addEventListener('estudiemos:access-change',updateFocus);
   window.EstudiemosClassroomUI=Object.freeze({isOpen,open(options={}){
+    focusedEntry=Boolean(options.join||options.id||options.focused);
     lastFocus=document.activeElement;status('');joinCode=options.join||joinCode;autoJoin=options.autoJoin===true;
     if(!standalone&&!joinCode)try{const pending=JSON.parse(sessionStorage.getItem(rules.PENDING_KEY)||'null');if(pending?.expires>Date.now()&&(!pending.owner||pending.owner===window.EstudiemosAccount?.getUser()?.id))joinCode=pending.code;else sessionStorage.removeItem(rules.PENDING_KEY);}catch(_){}
     view=joinCode?'join':'list';selected=options.id||'';if(selected&&current())view='class';showHost();draw();
