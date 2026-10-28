@@ -11,6 +11,8 @@ No se contrataron servicios, activaron pagos ni cambiaron las claves originales.
 - Invitaciones `/materia/:code` y `/amistad/:token` conservan HTML y Open Graph.
 - Fuentes, .env, respaldos, pruebas y herramientas operativas no son assets.
 - CPU probe aislado: `estudiemos-cpu-probe`. No contiene claves de produccion.
+- Despachador aislado desplegado, desactivado: `estudiemos-push-candidate`.
+  No carga HTML, clases, SDK de Drive ni el transporte Node de web-push.
 - El candidato sigue SIN secretos de produccion. No es el sitio para registrar
   alumnos, instalar una nueva PWA ni conectar cuentas durante esta etapa.
 - Produccion, cron, callbacks, instaladores y sesiones actuales siguen en Vercel.
@@ -51,6 +53,10 @@ la puerta estricta de 10 ms. Por eso el candidato usa ahora WebCrypto nativo
 mediante `@block65/webcrypto-web-push@2.0.0`, sin cambiar el transporte Vercel.
 Se valido descifrando su mensaje con la implementacion independiente http_ece.
 El primer ensayo nativo de dos completo 100 lotes (p95 HTTP 102,01 ms).
+La primera entrada nativa aun incluia todas las APIs. Se separo una entrada
+exclusiva para push: bundle 23,91 KiB (7,13 KiB gzip), arranque 8 ms; probe
+26,25 KiB (7,67 KiB gzip), arranque 7 ms. No son CPU por peticion.
+El ensayo independiente tambien completo 100 lotes (p95 HTTP 103,81 ms).
 La CPU debe leerse en Metrics, filtrando por la version medida, sin mezclar
 ensayos anteriores ni peticiones 401 durante propagacion del secreto temporal.
 El resultado anonimizado queda en `tmp/cloudflare-cpu-probe.json`.
@@ -65,6 +71,7 @@ Vercel por defecto. Solo cambia destino al configurar en Vault el objeto privado
 `estudiemos_mobile_push_dispatch_config`, con URL exacta permitida y batchSize 2.
 Un tick vacio no llama Workers. 400 avisos requieren HASTA 200 llamadas, no cuatro.
 No redirigir el cron antiguo sin este ajuste: bajaria de 400 a 8 avisos/tick.
+El destino del cron es el Worker exclusivo de push, no el Worker de la app.
 Se conservan leases, SKIP LOCKED, reintentos y las reglas de ocurrencia originales.
 No aplicar ni activar el SQL hasta comprobar cuotas de pg_net y un pico de cola
 en un entorno aislado. No ejecutar ambos despachadores sobre la misma cola.
@@ -166,6 +173,7 @@ misma API de vibracion que Android: el feedback visual sigue funcionando.
 ## Archivos y APIs
 
 - `cloudflare/worker.mjs`, `http-adapter.mjs`, `push.mjs`: entrada, adaptador y envio.
+- `cloudflare/push-worker.mjs`, `wrangler.push.jsonc`: despachador sin las APIs pesadas.
 - `cloudflare/cpu-probe.mjs`, `wrangler.probe.jsonc`, `scripts/measure-workers-cpu.cjs`: ensayo aislado.
 - `wrangler.jsonc`, `scripts/build-cloudflare.cjs`, ignores y package-lock: build sin fuentes privadas.
 - Helpers API app-origin/document-template, invitaciones, Drive, widget-link,

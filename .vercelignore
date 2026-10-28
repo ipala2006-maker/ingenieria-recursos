@@ -42,5 +42,6 @@ dist-cloudflare/
 .dev.vars*
 wrangler.jsonc
 wrangler.probe.jsonc
+wrangler.push.jsonc
 scripts/build-cloudflare.cjs
 scripts/measure-workers-cpu.cjs

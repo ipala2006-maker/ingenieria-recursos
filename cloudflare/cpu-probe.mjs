@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import production from './worker.mjs';
+import production from './push-worker.mjs';
 import { preparePush } from './push.mjs';
 import dispatcher from '../api/_lib/push-dispatch.js';
 

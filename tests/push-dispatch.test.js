@@ -152,6 +152,11 @@ test('cron authorization and generic errors remain in the current HTTP adapter; 
     require:name=>{
       if(name==='node:crypto')return require(name);
       if(name==='./push-dispatch')return require('../api/_lib/push-dispatch');
+      if(name==='./push-credentials'){
+        const scoped={...context,module:{exports:{}}};
+        vm.runInNewContext(fs.readFileSync(require.resolve('../api/_lib/push-credentials'),'utf8'),scoped);
+        return scoped.module.exports;
+      }
       if(name==='./request-security')return {};
       if(name==='./supabase-admin')return { adminRequest:async(url,options)=>{
         calls.push({url,options}); if(rpcError)throw new Error('private-backend-details'); return [];

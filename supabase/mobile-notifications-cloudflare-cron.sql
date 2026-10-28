@@ -14,8 +14,8 @@ begin
   if settings is not null then
     -- Fixed destinations: never send the cron credential to a caller's URL.
     if settings->>'url' not in (
-      'https://estudiemos-candidate.estudiemos-services.workers.dev/api/widget-push?mobilePush=dispatch',
-      'https://estudiemos.estudiemos-services.workers.dev/api/widget-push?mobilePush=dispatch'
+      'https://estudiemos-push-candidate.estudiemos-services.workers.dev/dispatch',
+      'https://estudiemos-push.estudiemos-services.workers.dev/dispatch'
     ) or settings->>'batchSize' is distinct from '2' or settings->>'url' is null then
       raise exception 'INVALID_PUSH_DISPATCH_CONFIG';
     end if;
