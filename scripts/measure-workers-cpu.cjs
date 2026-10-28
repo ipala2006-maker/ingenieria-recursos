@@ -7,6 +7,8 @@ const webpush = require('web-push');
 async function main() {
   const token = crypto.randomBytes(32).toString('hex');
   const root = path.resolve(__dirname, '..');
+  fs.mkdirSync(path.join(root, 'tmp'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'tmp', 'cloudflare-cpu-probe.json'), JSON.stringify({ status: 'running', startedAt: new Date().toISOString() }));
   // Credential travels over stdin directly to Wrangler; never argv, logs or disk.
   execFileSync(process.execPath, ['node_modules/wrangler/bin/wrangler.js', 'secret', 'put', 'CPU_PROBE_TOKEN', '--config', 'wrangler.probe.jsonc'], {
     cwd: root, input: token, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe']
@@ -42,7 +44,7 @@ async function main() {
     samples.push(performance.now() - start);
   }
   samples.sort((a, b) => a - b);
-  const result = { runtime: 'cloudflare-live-synthetic', revision: 'isolated-webcrypto-single-v1', workerVersions: [...workerVersions],
+  const result = { status: 'complete', runtime: 'cloudflare-live-synthetic', revision: 'isolated-webcrypto-single-v1', workerVersions: [...workerVersions],
     startedAt, finishedAt: new Date().toISOString(), iterations: samples.length, jobsPerBatch: 1, subrequests: 3,
     realNotifications: 0, databaseRequests: 0, wallMs: { p95: samples[94], max: samples[99] },
     cpuMs: null, productionDeliveryVerified: false,

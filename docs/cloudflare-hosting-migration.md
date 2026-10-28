@@ -54,7 +54,7 @@ mediante `@block65/webcrypto-web-push@2.0.0`, sin cambiar el transporte Vercel.
 Se valido descifrando su mensaje con la implementacion independiente http_ece.
 El primer ensayo nativo de dos completo 100 lotes (p95 HTTP 102,01 ms).
 La primera entrada nativa aun incluia todas las APIs. Se separo una entrada
-exclusiva para push: bundle 23,91 KiB (7,13 KiB gzip), arranque 8 ms; probe
+exclusiva para push: bundle final 24,30 KiB (7,18 KiB gzip), arranque 8 ms; probe
 26,25 KiB (7,67 KiB gzip), arranque 7 ms. No son CPU por peticion.
 El ensayo independiente tambien completo 100 lotes (p95 HTTP 103,81 ms).
 La API oficial de Analytics para esa version aislada `0a141c3e` devolvio CPU
@@ -188,6 +188,21 @@ explicita de claro. Feedback de tareas solo con gestos reales, pulso breve sin
 desplazar el layout y vibracion de 8 ms donde el navegador la admita. No vibra
 por sincronizacion, al desmarcar ni con movimiento reducido. iOS no ofrece la
 misma API de vibracion que Android: el feedback visual sigue funcionando.
+
+## Verificacion y rendimiento
+
+La regresion local completa paso 493/493 pruebas, sin omisiones, incluyendo
+fixtures de Windows aislados. Las pruebas del transporte verifican tambien que
+una configuracion incompleta no reserve ni consuma intentos de la cola.
+El runtime local real de Workers paso las comprobaciones de escritorio/movil,
+tema, rutas privadas, invitaciones, CSP y descargas; Android se compila y prueba
+en CI tanto con el origen actual como con el candidato.
+
+Servir estaticos desde Cloudflare evita ejecutar las APIs para cada asset, pero
+Vercel ya usaba CDN: no se promete una mejora universal de latencia sin medir
+usuarios y regiones comparables. No hay SLA contratado ni garantia de puntualidad
+del sistema operativo. Antes del corte faltan los flujos autenticados reales y
+la prueba de pico de cola con SQL/proveedores, no solo fixtures.
 
 ## Archivos y APIs
 

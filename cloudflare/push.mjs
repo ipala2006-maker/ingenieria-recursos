@@ -25,7 +25,11 @@ export async function dispatch(request, env) {
   if (request.method !== 'POST' || !credentials.cronAuthorized(request.headers.get('authorization'))) {
     return Response.json({ message: 'Unauthorized' }, { status: 401, headers: { 'Cache-Control': 'no-store' } });
   }
-  if (env.PUSH_DISPATCH_ENABLED !== 'true') return Response.json({ enabled: false }, { status: 503 });
+  if (env.PUSH_DISPATCH_ENABLED !== 'true' || !admin.isConfigured()
+      || !/^[A-Za-z0-9_-]{87}$/.test(process.env.WEB_PUSH_PUBLIC_KEY || '')
+      || !/^[A-Za-z0-9_-]{43}$/.test(process.env.WEB_PUSH_PRIVATE_KEY || '')) {
+    return Response.json({ enabled: false }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
+  }
   try {
     const metrics = await dispatcher.dispatchPush({
       profile: 'cloudflare-free-single',

@@ -62,6 +62,10 @@ test('live dispatch refuses unauthorized/disabled requests and ACKs only its sin
     assert.equal((await dispatch(new Request('https://example.test/'), { PUSH_DISPATCH_ENABLED: 'true' })).status, 401);
     assert.equal((await dispatch(authorized(), { PUSH_DISPATCH_ENABLED: 'false' })).status, 503);
     assert.equal(calls, 0);
+    process.env.WEB_PUSH_PRIVATE_KEY = '';
+    assert.equal((await dispatch(authorized(), { PUSH_DISPATCH_ENABLED: 'true' })).status, 503);
+    assert.equal(calls, 0, 'incomplete configuration cannot consume queue attempts');
+    process.env.WEB_PUSH_PRIVATE_KEY = vapid.privateKey;
     const response = await dispatch(authorized(), { PUSH_DISPATCH_ENABLED: 'true' });
     assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), { sent: 1, failed: 0, claimed: 1, batches: 1, subrequests: 3 });
