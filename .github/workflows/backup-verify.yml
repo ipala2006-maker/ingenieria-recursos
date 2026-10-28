@@ -32,5 +32,6 @@ jobs:
       - name: Restore only disposable data; no production credentials
         env:
           BACKUP_INTEGRATION: 'true'
+          RESTORE_LARGE_FIXTURE: 'true'
           PGHOST: postgres
         run: npm run db:restore-test

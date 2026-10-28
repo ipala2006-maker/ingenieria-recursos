@@ -36,12 +36,16 @@ async function run(){
       insert into classroom_members values(1,'00000000-0000-4000-8000-000000000001');
       insert into classroom_events values(1,'{"title":"Parcial"}');
       insert into classroom_materials values(1,'https://drive.google.com/file/d/fixture/view');`);
+    if(process.env.RESTORE_LARGE_FIXTURE==='true')sql(source,`create table public.backup_large_fixture(id integer,payload text);
+      insert into public.backup_large_fixture select part,string_agg(md5(random()::text),'')
+      from generate_series(1,1152) part cross join generate_series(1,2048) chunk group by part;`);
     const identity=path.join(directory,'recovery.agekey');
     execFileSync('age-keygen',['-o',identity],{stdio:['ignore','pipe','pipe']});
     const recipient=execFileSync('age-keygen',['-y',identity],{encoding:'utf8'}).trim();
     const options=config({...process.env,BACKUP_LOCAL_TEST:'true',BACKUP_PROJECT_REF:'a'.repeat(20),
       BACKUP_DATABASE_URL:`postgres://postgres:fixture-only@${host}:5432/${source}`,BACKUP_AGE_RECIPIENT:recipient,BACKUP_OUTPUT_DIR:directory});
     const manifest=await backup(options),encrypted=path.join(directory,manifest.file);
+    if(process.env.RESTORE_LARGE_FIXTURE==='true')assert.ok(manifest.bytes>32*1024*1024,'Exercise a real encrypted archive larger than the retired 32 MiB ceiling');
     const damaged=await fs.readFile(encrypted);damaged[damaged.length-1]^=1;
     const rejected=spawnSync('age',['--decrypt','--identity',identity],{input:damaged,maxBuffer:1024*1024});
     assert.notEqual(rejected.status,0,'Tampered ciphertext must not decrypt successfully');
@@ -51,9 +55,14 @@ async function run(){
       assert.equal(query('select backup_fixture_version()'),'42');
       assert.equal(query("select relrowsecurity and relforcerowsecurity from pg_class where oid='user_states'::regclass"),'t');
       assert.equal(query("select count(*) from pg_policies where policyname='owner_only'"),'1');
+      if(process.env.RESTORE_LARGE_FIXTURE==='true'){
+        assert.equal(query('select count(*) from public.backup_large_fixture'),'1152');
+        assert.equal(query('select min(length(payload)) from public.backup_large_fixture'),'65536');
+      }
     }});
     assert.ok(Object.values(restored.rows).every(count=>count===1));assert.equal(restored.isolated,true);
     console.log('PASS: pg_dump -> age -> decrypt -> pg_restore; accounts, classes, notes, schema, FK and RLS preserved.');
+    console.log(JSON.stringify({fixtureOnly:true,encryptedBytes:manifest.bytes,largerThan32MiB:manifest.bytes>32*1024*1024}));
   }finally{sql('postgres',`drop database ${source} with (force)`);await fs.rm(directory,{recursive:true,force:true});}
 }
 module.exports={run};
