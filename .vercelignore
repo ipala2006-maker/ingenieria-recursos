@@ -46,3 +46,4 @@ wrangler.push.jsonc
 scripts/build-cloudflare.cjs
 scripts/measure-workers-cpu.cjs
 scripts/read-workers-cpu.cjs
+scripts/verify-drive-oauth-build.cjs

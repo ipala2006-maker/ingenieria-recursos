@@ -164,15 +164,49 @@ crudos del proveedor. No lee archivos, pide scopes, guarda grants ni los borra.
 Si Google devuelve un refresh token distinto, se detiene para revision sobre
 esa cuenta de prueba; no reescribe ni da la continuidad por aprobada.
 
-Crear las variables no ejecuta la prueba. Falta revisar/proveer su invocacion
-privada, desplegarla de forma controlada y obtener OAUTH_REFRESH_VERIFIED real.
-Las pruebas locales usan grants ficticios y no certifican el proveedor.
+El titular confirmo guardar NEXT en Vercel. Su existencia como Secret solo
+Production se verifico en el panel y con el CLI oficial, sin leer el valor.
+La consulta de preparacion obtuvo unicamente el UUID de su propia cuenta y
+la existencia de una conexion Drive, no credenciales ni archivos.
+
+Crear las variables no ejecuta la prueba. Su invocacion preparada es una
+compilacion aislada mediante `scripts/verify-drive-oauth-build.cjs`:
+
+1. Ejecutar `node scripts/verify-drive-oauth-build.cjs --package` desde la
+   raiz. Genera una carpeta nueva dentro de tmp, sin sobrescribir paquetes.
+2. Revisar con `vercel deploy --dry --json` esa carpeta. Solo debe incluir
+   package.json/lock, configuracion del build, ejecutor y tres modulos privados.
+   No hay api/, frontend, .env, datos ni archivos de usuario.
+3. Verificar proyecto prj_BDIVyIanCqTDh32fhWkloZJi9Cbp, equipo
+   team_hPWQUVpRlY5E5VjE9nBQ1CL2, produccion activa y proteccion existente.
+4. Desplegar ese paquete al MISMO proyecto con `--prod --skip-domain`, nunca
+   promote ni un redeploy de la app activa. Pasar las tres variables CHECK
+   anteriores mediante `--build-env`, solo al build, con vencimiento de una
+   hora como maximo. No pasar credenciales en argumentos; las actuales y NEXT
+   permanecen en Vercel y solo se inyectan en su entorno de compilacion.
+5. El ejecutor exige VERCEL=1, entorno production, proyecto Supabase y cliente
+   Google exactos. Hace una sola comprobacion, sin endpoints ni cron. Instala
+   dependencias desde el lock con npm ci --omit=dev --ignore-scripts.
+6. El build se DETIENE con salida no cero incluso si la comprobacion pasa.
+   Su estado ERROR es intencional: impide generar una version Ready, publicable
+   o elegible como respaldo por la retencion. No escribe public ni artefactos.
+   Los logs del ejecutor solo contienen ok/code y una marca fija de detencion.
+7. Verificar OAUTH_REFRESH_VERIFIED en ese build y comprobar otra vez que la
+   produccion y sus dominios siguen en la misma version. Nunca promover este
+   paquete: es una prueba, no una version recuperable de la app.
+
+El paquete no tiene funciones servidor y no llega a publicar ningun sitio:
+no puede consultar tokens por recibir trafico web. Otra ejecucion requiere
+otra compilacion del
+operador y una ventana temporal valida. La proteccion de Vercel se conserva.
+La clave AES legada y los tokens nunca se descargan ni se trasladan al CLI.
+Falta ejecutar esta prueba real. Los fixtures no certifican el proveedor.
 Desactivar y retirar la configuracion de prueba al concluir; no retirar los
 secretos originales ni cortar el hosting como parte de esta comprobacion.
 
 ## Verificacion
 
-- 506/506 pruebas de regresion, sin omisiones, con fixtures Windows aislados.
+- 512/512 pruebas de regresion, sin omisiones, con fixtures Windows aislados.
 - Formato legado comprobado con un descifrador independiente; v2 tambien se
   descifra independientemente con su AAD documentado.
 - Doble lectura de grants/cookies, nuevo IV, rechazo de alteracion, usuario/ID
@@ -187,4 +221,7 @@ secretos originales ni cortar el hosting como parte de esta comprobacion.
   vencida o mal configurada; una sola lectura; proposito ligado al usuario;
   errores del proveedor reducidos a codigos fijos; timeout sin reintentos;
   ausencia de escritura y revision explicita ante un refresh token rotado.
+- El empaquetado aislado contiene solo siete archivos revisados y el lock,
+  no APIs ni archivos de la app. La prueba del comando demuestra que incluso
+  el resultado verificado detiene el build y no crea artefactos publicos.
 - Nada de esto certifica todavia un refresh OAuth real con el nuevo secreto.
