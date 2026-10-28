@@ -55,7 +55,7 @@ test('Workers rejects invalid/oversized bodies before handlers and never leaks a
 
 test('public build allowlist never publishes server, operational code or secrets', () => {
   for (const file of ['.env', '.env.example', 'api/account-config.js', 'cloudflare/worker.mjs', 'package.json',
-    'tmp/key.json', 'scripts/backup-database.cjs', 'scripts/security-check.js', '.backups/db.age',
+    'tmp/key.json', 'scripts/backup-database.cjs', 'scripts/verify-drive-oauth-build.cjs', 'scripts/security-check.js', '.backups/db.age', 'api/_lib/drive-rekey.js', 'api/_lib/drive-oauth-check.js',
     'assets/.env', 'assets/../secret.json', 'docs/report.md', 'output/pdf/Guia-Legal-y-ARCA-Estudiemos.pdf']) assert.equal(allowed(file), false, file);
   for (const file of ['index.html', 'service-worker.js', 'site.webmanifest', '.well-known/assetlinks.json',
     'downloads/Estudiemos-Para-Windows.exe', 'scripts/app-feedback.js', 'pages/bandeja.html']) assert.equal(allowed(file), true, file);
