@@ -43,6 +43,13 @@ test('isolated OAuth package contains only reviewed modules and locked dependenc
   const audit = packageCheck(root, 'audit');
   assert.equal(files(audit).length, 7); assert.ok(files(audit).includes('scripts/lib/drive-cutover-audit.js'));
   assert.ok(!files(audit).includes('scripts/lib/drive-oauth-check.js'));
+  for (const name of ['drive-recipher-check.js', 'drive-rekey.js']) fs.copyFileSync(path.join(ROOT, 'api', '_lib', name), path.join(root, 'api', '_lib', name));
+  const recipher = packageCheck(root, 'recipher');
+  assert.equal(files(recipher).length, 8);
+  assert.ok(files(recipher).includes('scripts/lib/drive-recipher-check.js'));
+  assert.ok(files(recipher).includes('scripts/lib/drive-rekey.js'));
+  assert.ok(!files(recipher).includes('scripts/lib/drive-oauth-check.js'));
+  assert.ok(!files(recipher).includes('scripts/lib/drive-cutover-audit.js'));
   assert.throws(() => packageCheck(root, '../unexpected'), /INVALID_PROBE_KIND/);
 });
 
