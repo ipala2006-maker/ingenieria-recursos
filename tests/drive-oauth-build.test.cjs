@@ -39,6 +39,11 @@ test('isolated OAuth package contains only reviewed modules and locked dependenc
   assert.deepEqual(Object.keys(manifest.scripts), ['build']);
   assert.equal(fs.readFileSync(path.join(output, 'package-lock.json'), 'utf8'), fs.readFileSync(path.join(ROOT, 'package-lock.json'), 'utf8'));
   assert.notEqual(packageCheck(root), output, 'Packaging never overwrites a previous result');
+  fs.copyFileSync(path.join(ROOT, 'api', '_lib', 'drive-cutover-audit.js'), path.join(root, 'api', '_lib', 'drive-cutover-audit.js'));
+  const audit = packageCheck(root, 'audit');
+  assert.equal(files(audit).length, 7); assert.ok(files(audit).includes('scripts/lib/drive-cutover-audit.js'));
+  assert.ok(!files(audit).includes('scripts/lib/drive-oauth-check.js'));
+  assert.throws(() => packageCheck(root, '../unexpected'), /INVALID_PROBE_KIND/);
 });
 
 test('isolated build rejects local, preview, other projects and clients before calling the checker', async t => {
