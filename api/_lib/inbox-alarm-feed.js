@@ -3,6 +3,7 @@ const {adminRequest,authenticateBearer} = require('./supabase-admin');
 const {isSameOriginRequest,requireJsonRequest} = require('./request-security');
 const rules = require('../../shared/inbox-alarms');
 const goals = require('../../shared/study-goal');
+const {appOrigin} = require('./app-origin');
 const seconds = () => Math.floor(Date.now()/1000);
 const secret = () => {
   if(!process.env.SUPABASE_SECRET_KEY)throw new Error('Alarm connection is not configured');
@@ -58,7 +59,7 @@ module.exports = async function alarmFeed(request,response) {
       return response.status(200).json({connected:true,version:proof.version,userId:user.id,expiresAt:proof.feedExpiresAt,...(proof.version==='2.0.0'?{mode:'local'}:{})});
     }
     if(request.body.consent!==true)return response.status(400).json({error:'Confirmá que querés recibir alarmas en esta PC.'});
-    return response.status(200).json({token:sign(user.id,'alarm-setup',120)});
+    return response.status(200).json({token:sign(user.id,'alarm-setup',120,{origin:appOrigin()})});
   }
   if(request.method==='GET' && request.query.alarmSetup){
     if(request.query.clientVersion!=='2.0.0')return retired(response);

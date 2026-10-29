@@ -26,7 +26,7 @@ test('bundle marker skips only installation, never account consent or verificati
 test('Windows download includes app shortcuts, widgets and the hidden alarm service',()=>{
   const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
   const landing=read('instalar.html'),installer=read('windows-installer/Estudiemos-Windows.iss');
-  assert.match(landing,/data-install-pc href="https:\/\/estudiemos-app.vercel.app\/downloads\/Estudiemos-Para-Windows.exe" download/);
+  assert.match(landing,/data-install-pc href="https:\/\/estudiemos.estudiemos-services.workers.dev\/downloads\/Estudiemos-Para-Windows.exe" download/);
   assert.match(read('scripts/install-app.js'),/rootUrl\('downloads\/Estudiemos-Para-Windows.exe'\)/);
   assert.doesNotMatch(read('scripts/install-page.js'),/prompt\.prompt\(/,'PC download must not fall back to PWA-only installation');
   assert.match(installer,/Name: "\{userdesktop\}\\Estudiemos"/);
@@ -51,7 +51,7 @@ function widgetHarness(){
   const controls=new Map();
   const context={
     widgetLaunching:false,widgetResumeSignIn:false,session:{access_token:'pilot',user:{id:'pilot'}},
-    WINDOWS_WIDGET_PENDING_KEY:'pending',WINDOWS_WIDGETS_READY_KEY:'ready',URLSearchParams,AbortSignal,
+    WINDOWS_WIDGET_PENDING_KEY:'pending',WINDOWS_WIDGETS_READY_KEY:'ready',URLSearchParams,AbortSignal,location:{origin:'https://estudiemos-app.vercel.app'},
     localStorage:{setItem:(k,v)=>saved.set(k,v),getItem:k=>saved.get(k),removeItem:k=>saved.delete(k)},
     window:{EstudiemosRelease:{enabled:()=>false}},
     widgetSetup:{close(){context.closed=true;},querySelector(s){if(!controls.has(s))controls.set(s,{hidden:true,setAttribute(){},removeAttribute(){}});return controls.get(s);}},
@@ -69,6 +69,13 @@ test('opening a native protocol never marks a widget added or clears pending sel
   assert.equal(h.links.length,1);assert.match(h.links[0],/callback=1/);assert.match(h.links[0],/link=pilot.signature/);
   assert.equal(h.saved.get('pending'),'calendar');assert.equal(h.saved.has('ready'),false);
   assert.match(h.messages.at(-1),/Todavía no confirmamos/);assert.deepEqual(h.busy,[true,false]);
+});
+
+test('Cloudflare widgets select only the fixed Cloudflare helper recipient',async()=>{
+  const h=widgetHarness();h.context.location.origin='https://estudiemos.estudiemos-services.workers.dev';
+  await h.context.launchWindowsWidget('calendar');
+  assert.equal(new URL(h.links[0]).searchParams.get('source'),'cloudflare');
+  assert.ok(!h.links[0].includes('https%3A'),'no caller-provided remote endpoint');
 });
 test('offline or invalid account-link responses do not open a disconnected widget',async()=>{
   for(const fetch of [async()=>{throw Error('offline');},async()=>({ok:false,json:async()=>({})}),async()=>({ok:true,json:async()=>({})})]){
@@ -103,7 +110,7 @@ test('widget selection stays in the app and installer downloads remain explicit'
   assert.match(install,/showWidgetSetup/);assert.match(install,/data-widget-installed/);
   const landing=fs.readFileSync(path.join(__dirname,'../instalar.html'),'utf8');
   assert.doesNotMatch(landing,/install-widget-choices|pcAlarmsTitle|pcWidgetsTitle/);
-  assert.match(landing,/data-install-pc href="https:\/\/estudiemos-app.vercel.app\/downloads\/Estudiemos-Para-Windows.exe"/);
+  assert.match(landing,/data-install-pc href="https:\/\/estudiemos.estudiemos-services.workers.dev\/downloads\/Estudiemos-Para-Windows.exe"/);
   assert.match(landing,/id="pc-widgets"/,'old widget links still have a download destination');
 });
 test('alarm setup requires consent and authenticated receipt, not a download or test click',()=>{

@@ -3,7 +3,7 @@ Option Explicit
 Dim shell, files, browser, candidate, url, roots, root, pattern, matches, argument
 Set shell = CreateObject("WScript.Shell")
 Set files = CreateObject("Scripting.FileSystemObject")
-url = "https://estudiemos-app.vercel.app/?windows-bundle=1&windows-app-links=1"
+url = "https://estudiemos.estudiemos-services.workers.dev/?windows-bundle=1&windows-app-links=1"
 If WScript.Arguments.Count > 1 Then WScript.Quit 2
 If WScript.Arguments.Count > 0 Then
   If WScript.Arguments(0) = "--setup" Then

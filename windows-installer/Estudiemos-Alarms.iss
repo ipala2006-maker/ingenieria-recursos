@@ -1,7 +1,7 @@
 [Setup]
 AppId={{10257322-F14A-47E1-9C71-03CB33D39726}
 AppName=Alarmas de Estudiemos
-AppVersion=2.0.0.0
+AppVersion=2.1.0.0
 ChangesAssociations=yes
 AppPublisher=Estudiemos
 DefaultDirName={localappdata}\Estudiemos\Windows\AlarmService
@@ -19,7 +19,7 @@ Compression=lzma2
 OutputDir=..\downloads
 OutputBaseFilename=Activar-Alarmas-Estudiemos
 SetupIconFile=..\assets\estudiemos.ico
-VersionInfoVersion=2.0.0.0
+VersionInfoVersion=2.1.0.0
 VersionInfoDescription=Alarmas a pantalla completa de Estudiemos
 [Languages]
 Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
@@ -57,7 +57,7 @@ Root: HKCU; Subkey: "Software\Classes\Estudiemos.AlarmConnection"; ValueType: st
 Root: HKCU; Subkey: "Software\Classes\Estudiemos.AlarmConnection\DefaultIcon"; ValueType: string; ValueData: "{sys}\shell32.dll,110"
 Root: HKCU; Subkey: "Software\Classes\Estudiemos.AlarmConnection\shell\open\command"; ValueType: string; ValueData: "{sys}\wscript.exe ""{app}\AlarmLauncher.vbs"" ""%1"""
 [Run]
-Filename: "https://estudiemos-app.vercel.app/?alarms-setup=1"; Flags: shellexec nowait skipifsilent
+Filename: "https://estudiemos.estudiemos-services.workers.dev/?alarms-setup=1"; Flags: shellexec nowait skipifsilent
 
 [Code]
 function LegacyWindowsSupport: Boolean;

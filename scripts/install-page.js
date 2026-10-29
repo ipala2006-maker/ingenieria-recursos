@@ -38,8 +38,8 @@
   const referralCode = normalizeReferralCode(new URLSearchParams(location.search).get("ref"));
   if (referralCode) {
     localStorage.setItem("estudiemos_pending_referral", referralCode);
-    const appUrl = `https://estudiemos-app.vercel.app/?ref=${encodeURIComponent(referralCode)}`;
-    document.querySelectorAll("[data-open-estudiemos], a[href='https://estudiemos-app.vercel.app/']")
+    const appUrl = new URL(`/?ref=${encodeURIComponent(referralCode)}`, location.href).href;
+    document.querySelectorAll("[data-open-estudiemos], a[href='https://estudiemos-app.vercel.app/'], a[href='https://estudiemos.estudiemos-services.workers.dev/']")
       .forEach((link) => { link.href = appUrl; });
     const androidLink = document.querySelector("[data-install-android]");
     if (androidLink) {

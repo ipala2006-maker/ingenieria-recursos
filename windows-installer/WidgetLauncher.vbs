@@ -1,7 +1,7 @@
 Option Explicit
 
 Dim shell, fileSystem, rawRequest, request, rainmeterPath, configName, iniName, command, widgetKey, linkToken
-Dim screenWidth, screenHeight, positionX, positionY, markerPath, appPath, shouldPosition
+Dim screenWidth, screenHeight, positionX, positionY, markerPath, appPath, shouldPosition, appOrigin, source
 Set shell = CreateObject("WScript.Shell")
 Set fileSystem = CreateObject("Scripting.FileSystemObject")
 
@@ -9,6 +9,13 @@ If WScript.Arguments.Count = 0 Then WScript.Quit 1
 rawRequest = WScript.Arguments(0)
 request = LCase(rawRequest)
 linkToken = GetQueryValue(rawRequest, "link")
+source = GetQueryValue(rawRequest, "source")
+appOrigin = "https://estudiemos-app.vercel.app"
+If source = "cloudflare" Then
+  appOrigin = "https://estudiemos.estudiemos-services.workers.dev"
+ElseIf source <> "" Then
+  WScript.Quit 4
+End If
 If InStr(request, "estudiemos-widgets://alarms?") = 1 Then
   If Not IsSafeLinkToken(linkToken) Then WScript.Quit 4
   Dim alarmConnector, alarmPowerShell, alarmConsoleHost
@@ -143,7 +150,7 @@ If IsSafeLinkToken(linkToken) Then
   WScript.Sleep 1200
   command = Chr(34) & rainmeterPath & Chr(34) & " !CommandMeasure " & _
     Chr(34) & "WebView" & Chr(34) & " " & _
-    Chr(34) & "Navigate https://estudiemos-app.vercel.app/api/widget-link?token=" & linkToken & Chr(34) & " " & _
+    Chr(34) & "Navigate " & appOrigin & "/api/widget-link?token=" & linkToken & Chr(34) & " " & _
     Chr(34) & "Estudiemos\" & configName & Chr(34)
   shell.Run command, 0, False
 End If
@@ -152,10 +159,14 @@ If InStr(request, "callback=1") > 0 Then
   WScript.Sleep 900
   On Error Resume Next
   Err.Clear
-  shell.Run "web+estudiemos://open?target=widget-added&widget=" & widgetKey, 0, False
+  If source = "cloudflare" Then
+    shell.Run appOrigin & "/?windows-widget-added=" & widgetKey, 0, False
+  Else
+    shell.Run "web+estudiemos://open?target=widget-added&widget=" & widgetKey, 0, False
+  End If
   If Err.Number <> 0 Then
     Err.Clear
-    shell.Run "https://estudiemos-app.vercel.app/?windows-widget-added=" & widgetKey, 0, False
+    shell.Run appOrigin & "/?windows-widget-added=" & widgetKey, 0, False
   End If
   On Error GoTo 0
 End If

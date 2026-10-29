@@ -1,4 +1,4 @@
-#define AppVersion "2.0.1.0"
+#define AppVersion "2.1.0.0"
 #define RainmeterInstaller "Rainmeter-4.5.26.exe"
 #ifndef OutputBaseName
   #define OutputBaseName "Estudiemos-Widgets-para-Windows"
@@ -13,8 +13,8 @@ AppName=Estudiemos para Windows
 AppVersion={#AppVersion}
 ChangesAssociations=yes
 AppPublisher=Estudiemos
-AppPublisherURL=https://estudiemos-app.vercel.app/
-AppSupportURL=https://estudiemos-app.vercel.app/
+AppPublisherURL=https://estudiemos.estudiemos-services.workers.dev/
+AppSupportURL=https://estudiemos.estudiemos-services.workers.dev/
 DefaultDirName={localappdata}\Estudiemos\Windows
 CreateAppDir=yes
 Uninstallable=no

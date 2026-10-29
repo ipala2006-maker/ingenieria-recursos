@@ -41,7 +41,7 @@
       section.innerHTML=view.content(preview,{code,joinUrl:gone?new URL('./',root).href:destination.href,status,unavailable:gone,loading,nativeUrl:nativeDestination,platform:nativePlatform,preferNative:!webChosen});
     }
     if(seed)paint(seed.preview,seed.status,seed.unavailable);else paint(null,'Preparando tu invitación…',false,true);
-    document.querySelectorAll('[data-open-estudiemos],a[href="https://estudiemos-app.vercel.app/"]').forEach(link=>link.href=nativeDestination&&!webChosen?nativeDestination:destination);
+    document.querySelectorAll('[data-open-estudiemos],a[href="https://estudiemos-app.vercel.app/"],a[href="https://estudiemos.estudiemos-services.workers.dev/"]').forEach(link=>link.href=nativeDestination&&!webChosen?nativeDestination:destination);
     const android=document.querySelector('[data-install-android]');if(android)android.href='intent://open?materia='+code+'#Intent;scheme=estudiemos;package=com.estudiemos.app;S.browser_fallback_url=https%3A%2F%2Fgithub.com%2Fipala2006-maker%2Fingenieria-recursos%2Freleases%2Fdownload%2Fandroid-latest%2FEstudiemos-Android.apk;end';
     const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15000);
     try{

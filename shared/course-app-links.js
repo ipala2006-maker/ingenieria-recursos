@@ -10,7 +10,7 @@
     if(/Windows/i.test(userAgent||''))return 'windows';
     return '';
   }
-  function nativeUrl(code,kind,root='https://estudiemos-app.vercel.app/'){
+  function nativeUrl(code,kind,root='https://estudiemos.estudiemos-services.workers.dev/'){
     if(!CODE.test(code))return '';
     if(kind==='windows')return 'estudiemos-app://open?materia='+code;
     if(kind!=='android')return '';

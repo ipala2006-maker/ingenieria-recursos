@@ -7,9 +7,10 @@ const {createRequire}=require('node:module');
 const file=path.resolve(__dirname,'../api/_lib/inbox-alarm-feed.js');
 const id='00000000-0000-4000-8000-000000000001';
 const other='00000000-0000-4000-8000-000000000002';
-function setup(){
+function setup(origin='https://estudiemos-app.vercel.app'){
   let rows=[],study=null,user={id};const calls=[];const localRequire=createRequire(file);
   const sandbox={module:{exports:{}},Buffer,Date,process:{env:{SUPABASE_SECRET_KEY:'test-secret-not-a-live-key'}},require(name){
+    if(name==='./app-origin')return {appOrigin:()=>origin};
     if(name==='./supabase-admin')return {authenticateBearer:async token=>token==='Bearer session'?user:null,adminRequest:async (url,options)=>{calls.push({url,...options});return {items:rows[0]?.alarm_items||[],updatedAt:rows[0]?.updated_at,study:study instanceof Error?null:study};}};
     if(name==='./request-security')return {isSameOriginRequest:req=>req.headers.origin!=='https://foreign.example',requireJsonRequest:()=>true};
     return localRequire(name);
@@ -47,6 +48,17 @@ test('alarm credentials are scoped, expiring and tamper-evident',()=>{
   assert.equal(api.verify(api.sign('not-a-user','alarm-feed',60),'alarm-feed'),null);
   assert.equal(api.verify(token,'alarm-receipt'),null);
   assert.equal(api.verify('x'.repeat(3000),'alarm-feed'),null);
+});
+
+test('the signed setup carries its issuer so Windows never redeems a new token at the old server',async()=>{
+  const origin='https://estudiemos.estudiemos-services.workers.dev',{api,call}=setup(origin);
+  const started=await call('POST',{action:'alarms-connect',consent:true},{},{authorization:'Bearer session'});
+  assert.equal(started.status,200);
+  assert.equal(api.verify(started.body.token,'alarm-setup').origin,origin);
+  const [encoded,signature]=started.body.token.split('.');
+  const payload=JSON.parse(Buffer.from(encoded,'base64url').toString());
+  payload.origin='https://attacker.test';
+  assert.equal(api.verify(Buffer.from(JSON.stringify(payload)).toString('base64url')+'.'+signature,'alarm-setup'),null);
 });
 
 test('legacy installers are retired without data reads or new feed credentials',async()=>{

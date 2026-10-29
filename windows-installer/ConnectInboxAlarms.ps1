@@ -10,12 +10,13 @@ $stage = 'componente-cifrado'
 # Shell-launched processes can inherit a module path without Windows PowerShell modules.
 Import-Module (Join-Path $PSHOME 'Modules\Microsoft.PowerShell.Security\Microsoft.PowerShell.Security.psd1') -ErrorAction Stop
 $stage = 'archivo'
+. (Join-Path $PSScriptRoot 'ReadAlarmConnection.ps1')
 if ($ConnectionFile) {
-  . (Join-Path $PSScriptRoot 'ReadAlarmConnection.ps1')
   $Token = Read-AlarmConnectionToken -Path $ConnectionFile
 }
+$appOrigin = Get-AlarmConnectionOrigin -Token $Token
 $stage = 'conexion'
-$result = Invoke-RestMethod -Uri ('https://estudiemos-app.vercel.app/api/widget-link?clientVersion=2.0.0&alarmSetup=' + $Token) -TimeoutSec 20
+$result = Invoke-RestMethod -Uri ($appOrigin + '/api/widget-link?clientVersion=2.0.0&alarmSetup=' + $Token) -TimeoutSec 20 -MaximumRedirection 0
 if ($result.userId -notmatch '^[a-f0-9-]{36}$' -or $result.snapshot.version -ne 1 -or !$result.confirmation -or @($result.snapshot.items).Count -gt 500) { throw 'Invalid alarm connection.' }
 $directory = Join-Path $env:LOCALAPPDATA 'Estudiemos\Windows\InboxAlarms'
 New-Item -ItemType Directory -Path $directory -Force | Out-Null
@@ -47,7 +48,7 @@ foreach ($rainmeter in @((Join-Path $env:LOCALAPPDATA 'Estudiemos\Windows\Rainme
 $state = @{connectedAt=(Get-Date).ToString('o');version='2.0.0';lastSync=(Get-Date).ToString('o');status='local'}
 $state | ConvertTo-Json -Compress | Set-Content -LiteralPath (Join-Path $directory 'connection.json') -Encoding UTF8
 $stage = 'confirmacion'
-Start-Process ('https://estudiemos-app.vercel.app/?windows-alarms-ready=' + $result.confirmation)
+Start-Process ($appOrigin + '/?windows-alarms-ready=' + $result.confirmation)
 @{status='connected';stage='complete';checkedAt=(Get-Date).ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $directory 'activation-status.json') -Encoding UTF8
 } catch {
   $status = 0

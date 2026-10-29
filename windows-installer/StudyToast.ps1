@@ -2,7 +2,7 @@
 function New-EstudiemosToastXml {
   param([string]$Title, [string]$Body)
   $xml = New-Object System.Xml.XmlDocument
-  $xml.LoadXml('<toast activationType="protocol" launch="https://estudiemos-app.vercel.app/"><visual><binding template="ToastGeneric"><image placement="appLogoOverride"/><text/><text/></binding></visual></toast>')
+  $xml.LoadXml('<toast activationType="protocol" launch="https://estudiemos.estudiemos-services.workers.dev/"><visual><binding template="ToastGeneric"><image placement="appLogoOverride"/><text/><text/></binding></visual></toast>')
   $image = $xml.SelectSingleNode('//image')
   $image.SetAttribute('src', ([uri](Join-Path $PSScriptRoot 'icon-180.png')).AbsoluteUri)
   $nodes = $xml.SelectNodes('//text')

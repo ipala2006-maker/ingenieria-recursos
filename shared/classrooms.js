@@ -22,7 +22,7 @@
     try{
       const url=new URL(String(value).trim());
       if(url.protocol!=='https:'&&!(url.protocol==='http:'&&['127.0.0.1','localhost'].includes(url.hostname)))return '';
-      if(![origin,'https://estudiemos-app.vercel.app'].includes(url.origin)||url.username||url.password)return '';
+      if(![origin,'https://estudiemos-app.vercel.app','https://estudiemos.estudiemos-services.workers.dev'].includes(url.origin)||url.username||url.password)return '';
       const hash=new URLSearchParams(url.hash.slice(1)),path=/^\/materia\/([A-HJ-NP-Z2-9]{10})\/?$/i.exec(url.pathname);
       const tokens=[...(path?[path[1]]:[]),...hash.getAll('materia'),...hash.getAll('clase'),...url.searchParams.getAll('materia'),...url.searchParams.getAll('clase')].map(code);
       return tokens.length&&tokens.every(token=>CODE.test(token)&&token===tokens[0])?tokens[0]:'';
