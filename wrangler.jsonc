@@ -16,7 +16,7 @@
   "rules": [{ "type": "Text", "globs": ["**/*.html"], "fallthrough": true }],
   "vars": {
     "APP_ORIGIN": "https://estudiemos.estudiemos-services.workers.dev",
-    "PUSH_DISPATCH_ENABLED": "false"
+    "PUSH_DISPATCH_ENABLED": "true"
   },
   "observability": { "enabled": true, "head_sampling_rate": 1, "logs": { "invocation_logs": false } }
 }

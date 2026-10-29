@@ -1,6 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "redirects": [
+    { "source": "/instalar.html", "destination": "https://estudiemos.estudiemos-services.workers.dev/instalar.html", "permanent": false },
+    { "source": "/instalar", "destination": "https://estudiemos.estudiemos-services.workers.dev/instalar.html", "permanent": false },
+    { "source": "/materia/:code", "destination": "https://estudiemos.estudiemos-services.workers.dev/materia/:code", "permanent": false },
+    { "source": "/amistad/:token", "destination": "https://estudiemos.estudiemos-services.workers.dev/amistad/:token", "permanent": false },
     { "source": "/api/widget-link", "has": [{ "type": "query", "key": "alarmFeed", "value": "1" }], "missing": [{ "type": "query", "key": "alarmSetup" }], "destination": "/.well-known/windows-alarms-retired.json", "permanent": false }
   ],
   "rewrites": [

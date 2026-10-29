@@ -43,3 +43,18 @@ No se eliminan claves de Vercel. Para volver atras se conservan los artefactos
 anteriores en Git y los despliegues verificados; no se reescriben datos de usuario.
 La entrega real en un celular y el consumo de CPU con su proveedor deben
 comprobarse aparte: una compilacion o una cola vacia no acreditan una entrega.
+
+## Entrada publica y coexistencia
+
+Los enlaces antiguos `/instalar`, `/instalar.html`, `/materia/:code` y
+`/amistad/:token` redirigen temporalmente al origen nuevo. Se verifica el
+destino real despues del despliegue. No se redirige todo `/api/*`: las
+suscripciones web antiguas y conexiones breves firmadas por Vercel siguen
+necesitando su emisor original. Tampoco se fuerza un cambio de origen del
+inicio de los PWAs antiguos, que puede abrir Safari o perder datos locales.
+
+`PUSH_DISPATCH_ENABLED=true` deja versionada la activacion ya autorizada y
+vigente: `npm run cloudflare:deploy` ya no debe desactivarla por accidente.
+No se quitan la clave de cron, la seleccion fija de origen/clave ni las
+reservas SQL filtradas. Con secretos ausentes o incorrectos sigue cerrado.
+No implica que se haya certificado la entrega en el telefono fisico.

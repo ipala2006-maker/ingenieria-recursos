@@ -47,7 +47,7 @@ test('production configurations preserve the existing secret-bearing worker and 
   assert.equal(frontend.services[0].service, backend.name); assert.equal(backend.name, 'estudiemos-candidate');
   assert.equal(frontend.vars, undefined); assert.equal(frontend.secrets, undefined);
   assert.equal(backend.vars.APP_ORIGIN, 'https://estudiemos.estudiemos-services.workers.dev');
-  assert.equal(backend.vars.PUSH_DISPATCH_ENABLED, 'false');
+  assert.equal(backend.vars.PUSH_DISPATCH_ENABLED, 'true', 'ordinary deployments preserve the already-authorized live transport');
   assert.deepEqual(frontend.assets, backend.assets);
 });
 
