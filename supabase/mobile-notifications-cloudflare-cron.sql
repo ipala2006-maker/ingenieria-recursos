@@ -1,5 +1,8 @@
 -- Stage only. Apply after real CPU, delivery and secrets checks pass.
 -- With no dispatch config in Vault, existing Vercel delivery is preserved.
+do $$ begin
+  if to_regclass('public.mobile_push_origins') is not null then raise exception 'PUSH_ORIGIN_MIGRATION_ACTIVE'; end if;
+end $$;
 create or replace function public.tick_mobile_push()
 returns void language plpgsql security definer set search_path = '' as $$
 declare token text; pending integer; worker integer; settings jsonb;

@@ -48,12 +48,16 @@ test('live dispatch refuses unauthorized/disabled requests and ACKs only its sin
   process.env.SUPABASE_URL = 'https://database.example.test'; process.env.SUPABASE_SECRET_KEY = 'fixture-only-server-key';
   process.env.WEB_PUSH_PUBLIC_KEY = vapid.publicKey; process.env.WEB_PUSH_PRIVATE_KEY = vapid.privateKey;
   const authorized = () => new Request('https://example.test/api/widget-push?mobilePush=dispatch', { method: 'POST', headers: { Authorization: 'Bearer ' + process.env.MOBILE_PUSH_CRON_SECRET } });
+  process.env.APP_ORIGIN = 'https://estudiemos.estudiemos-services.workers.dev';
+  process.env.WEB_PUSH_KEY_ID = 'cf_20261029';
   let calls = 0, acknowledged;
   try {
     global.fetch = async (url, options) => {
       calls++; assert.equal(options.redirect, 'manual');
-      if (url.endsWith('/claim_mobile_push_batch')) {
+      if (url.endsWith('/claim_mobile_push_origin_batch')) {
         assert.equal(JSON.parse(options.body).p_limit, 1);
+        assert.equal(JSON.parse(options.body).p_origin, process.env.APP_ORIGIN);
+        assert.equal(JSON.parse(options.body).p_key_id, 'cf_20261029');
         return Response.json([{ id: 1, title: 'Fixture', subscription }]);
       }
       if (url.endsWith('/finish_mobile_push_jobs')) { acknowledged = JSON.parse(options.body).p_results; return Response.json(null); }

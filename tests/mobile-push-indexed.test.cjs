@@ -110,6 +110,7 @@ test('dispatcher bounds parallel sends and acknowledges each small mixed batch w
   const context={module:{exports:{}},URL,Intl,Buffer,setTimeout:(fn,ms)=>{waits.push(ms);fn();},process:{env:{WEB_PUSH_PUBLIC_KEY:'test',WEB_PUSH_PRIVATE_KEY:'test',MOBILE_PUSH_CRON_SECRET:'x'.repeat(40)}},require:name=>{
     if(name==='node:crypto')return require(name);
     if(name==='./push-dispatch')return require('../api/_lib/push-dispatch');
+    if(name==='./push-scope') {const scopes=require('../api/_lib/push-scope');return {...scopes,scopeForEnvironment:()=>scopes.scopeForEnvironment(context.process.env)};}
     if(name==='./push-credentials'){
       const scoped={...context,module:{exports:{}}};
       vm.runInNewContext(fs.readFileSync(require.resolve('../api/_lib/push-credentials'),'utf8'),scoped);
