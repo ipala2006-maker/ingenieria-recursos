@@ -9,10 +9,12 @@ const CODES = new Set(['CHECK_DISABLED', 'CHECK_NOT_CONFIGURED', 'TEST_GRANT_REA
   'OAUTH_PROVIDER_UNAVAILABLE', 'OAUTH_REFRESH_VERIFIED']);
 
 function packageCheck(root = path.resolve(__dirname, '..'), kind = 'oauth') {
-  if (!['oauth', 'audit'].includes(kind)) throw new Error('INVALID_PROBE_KIND');
+  if (!['oauth', 'audit', 'recipher'].includes(kind)) throw new Error('INVALID_PROBE_KIND');
   const destination = fs.mkdtempSync(path.join(root, 'tmp', 'drive-oauth-check-'));
   fs.mkdirSync(path.join(destination, 'scripts', 'lib'), { recursive: true });
-  for (const name of [kind === 'audit' ? 'drive-cutover-audit.js' : 'drive-oauth-check.js', 'drive-vault.js', 'supabase-admin.js']) {
+  const modules = [kind === 'audit' ? 'drive-cutover-audit.js' : kind === 'recipher' ? 'drive-recipher-check.js' : 'drive-oauth-check.js', 'drive-vault.js', 'supabase-admin.js'];
+  if (kind === 'recipher') modules.push('drive-rekey.js');
+  for (const name of modules) {
     fs.copyFileSync(path.join(root, 'api', '_lib', name), path.join(destination, 'scripts', 'lib', name));
   }
   fs.copyFileSync(__filename, path.join(destination, 'scripts', path.basename(__filename)));
@@ -42,9 +44,23 @@ async function run({ env = process.env, verify } = {}) {
   }
   let result;
   const kind = env.DRIVE_PROBE_MODE || 'oauth';
-  if (!['oauth', 'audit'].includes(kind)) return { ok: false, code: 'CHECK_FAILED' };
-  try { result = await (verify || (kind === 'audit' ? require('./lib/drive-cutover-audit').auditDriveConnections : require('./lib/drive-oauth-check').verifyNextOAuthSecret))(); }
+  if (!['oauth', 'audit', 'recipher'].includes(kind)) return { ok: false, code: 'CHECK_FAILED' };
+  try { result = await (verify || (kind === 'audit' ? require('./lib/drive-cutover-audit').auditDriveConnections : kind === 'recipher' ? require('./lib/drive-recipher-check').verifyRecipher : require('./lib/drive-oauth-check').verifyNextOAuthSecret))(); }
   catch { return { ok: false, code: 'CHECK_FAILED' }; }
+  if (kind === 'recipher') {
+    if (result && result.ok === false && ['CHECK_DISABLED', 'CHECK_NOT_CONFIGURED', 'DRIVE_RECIPHER_FAILED'].includes(result.code)) return { ok: false, code: result.code };
+    const counts = ['scanned', 'current', 'wouldChange', 'changed', 'conflicts', 'failed'];
+    if (!result || typeof result.ok !== 'boolean' || typeof result.dryRun !== 'boolean' ||
+        !['DRIVE_RECIPHER_PREVIEW_VERIFIED', 'DRIVE_RECIPHER_COMMITTED', 'DRIVE_RECIPHER_INCOMPLETE'].includes(result.code) ||
+        counts.some(key => !Number.isInteger(result[key]) || result[key] < 0 || result[key] > 25) ||
+        typeof result.hasMore !== 'boolean' || typeof result.retryRequired !== 'boolean' ||
+        result.current + result.wouldChange > result.scanned || result.changed > result.wouldChange || result.conflicts > result.wouldChange || result.failed > result.scanned ||
+        result.retryRequired !== (result.failed > 0 || result.conflicts > 0) || (result.dryRun && (result.changed || result.conflicts)) ||
+        result.ok !== (!result.hasMore && !result.retryRequired && result.current + result.wouldChange === result.scanned && (result.dryRun || result.changed === result.wouldChange)) ||
+        (result.code === 'DRIVE_RECIPHER_INCOMPLETE') === result.ok ||
+        (result.ok && result.code !== (result.dryRun ? 'DRIVE_RECIPHER_PREVIEW_VERIFIED' : 'DRIVE_RECIPHER_COMMITTED'))) return { ok: false, code: 'CHECK_FAILED' };
+    return Object.fromEntries(['ok', 'code', 'dryRun', ...counts, 'hasMore', 'retryRequired'].map(key => [key, result[key]]));
+  }
   if (kind === 'audit') {
     if (result && result.ok === false && ['CHECK_DISABLED', 'DRIVE_AUDIT_READ_FAILED'].includes(result.code)) return { ok: false, code: result.code };
     const counts = ['checked', 'legacy', 'versioned', 'unreadable'];
@@ -63,7 +79,7 @@ async function run({ env = process.env, verify } = {}) {
 }
 
 if (require.main === module) {
-  if (process.argv.length === 3 && ['--package', '--audit-package'].includes(process.argv[2])) console.log(packageCheck(undefined, process.argv[2] === '--audit-package' ? 'audit' : 'oauth'));
+  if (process.argv.length === 3 && ['--package', '--audit-package', '--recipher-package'].includes(process.argv[2])) console.log(packageCheck(undefined, process.argv[2] === '--audit-package' ? 'audit' : process.argv[2] === '--recipher-package' ? 'recipher' : 'oauth'));
   else if (process.argv.length === 2) run().then(result => {
     console.log(JSON.stringify(result));
     // Even a successful check must not create a promotable deployment or backup.

@@ -24,6 +24,10 @@ No anunciar 100% migrado ni modificar el cron hasta cerrar las puertas reales.
   secret_text existentes y PUSH_DISPATCH_ENABLED=false. No se habilito Auth
   incompleto ni se anuncio el candidato como sitio de lanzamiento.
 - Chequeo de seguridad del sitio aprobado tras publicar la compatibilidad.
+- PR #106 integrado despues en main 99aec9e028258d39b181a72af8e69a8128ec803a.
+  Produccion dpl_6qYEe9vELSpye6NAvuyR9JNzhUWP, Ready y HTTP 200.
+  Auditoria real dpl_5sLWFb8xtic4kz22nH13KWMgXZr6: una conexion legacy,
+  ninguna ilegible, recorrido completo. El build no genero salida publicable.
 - Se genero una identidad age de recuperacion nueva, privada y local en
   .backups/recovery/estudiemos-recovery-20261028.agekey. El directorio solo
   permite acceso al usuario actual de Windows; no se imprime ni se sube la
@@ -40,12 +44,13 @@ No anunciar 100% migrado ni modificar el cron hasta cerrar las puertas reales.
   La identidad privada necesita una copia independiente en el gestor seguro
   del titular: tenerla solo en esta PC no cubre la perdida del dispositivo.
 
-## Acceso externo que falta resolver
+## Avance posterior y acceso externo
 
-- Chrome dejo de contestar: nameSession/listado de pestanas e inventario no
-  respondieron, incluso despues de reiniciar la conexion y seguir la guia de
-  diagnostico. No se sustituyo por CDP ni se extrajeron cookies del navegador.
-  No se pudieron editar Google OAuth, Supabase Auth ni Turnstile desde sus paneles.
+- Chrome dejo de contestar inicialmente. El titular lo reabrio y se recupero
+  el acceso oficial a Supabase, sin CDP ni extraccion de cookies.
+- Se aplico supabase/drive-recipher.sql mediante SQL Editor y se comprobaron
+  sus permisos reales: service_role=true, anon=false, authenticated=false.
+  La conexion existente siguio legacy; crear la funcion no recifro ningun dato.
 - El CLI oficial de Supabase 2.122.0 no tiene sesion iniciada. En este entorno
   no hay herramientas execute_sql/apply_migration de un MCP Supabase ni
   recursos de ese servidor expuestos. No se inventa acceso de escritura SQL.
@@ -53,9 +58,14 @@ No anunciar 100% migrado ni modificar el cron hasta cerrar las puertas reales.
   una ubicacion local conocida. No se buscaron ni leyeron historiales o
   almacenes de credenciales. La identidad nueva y el respaldo recuperado
   resuelven la recuperacion previa a esta migracion, no la de archivos antiguos.
-- Cloudflare tiene solo SUPABASE_URL, SUPABASE_SECRET_KEY,
-  GOOGLE_DRIVE_CLIENT_ID y GOOGLE_DRIVE_CLIENT_SECRET. Faltan el cifrado
-  migrado y credenciales/configuracion de proveedores. No exportar secretos
+- Se preparo drive_20261028 y se verifico su respaldo cifrado local
+  .backups/recovery/drive-keyring-20261028.json.age. DRIVE_TOKEN_KEYRING se
+  guardo como Secret en Vercel produccion y secret_text en Cloudflare candidato.
+  No se eligio todavia una clave escritora; la AES legacy no se exporto ni cambio.
+  El deployment publico anterior a esta variable necesita un redeploy compatible
+  y un rollback tambien compatible antes de cualquier escritura v2.
+- Cloudflare tiene cinco secretos: los cuatro iniciales y el keyring nuevo.
+  Faltan credenciales/configuracion de proveedores. No exportar secretos
   marcados no exportables de Vercel para saltar esta limitacion.
 
 ## Auditoria previa de Drive
@@ -86,17 +96,14 @@ las pruebas con fixtures no son un resultado de produccion.
 
 ## Orden restante
 
-1. Verificar restauracion real, preparar y respaldar la AES nueva con prueba
-   de recuperacion; agregar keyring sin elegir aun clave activa.
-2. Confirmar/aplicar supabase/drive-recipher.sql mediante un acceso autorizado
-   al proyecto. No abrir permisos a anon/authenticated.
-3. Publicar lectores con keyring y conservar un rollback compatible. Preparar
+1. Publicar lectores con keyring y conservar un rollback compatible. Preparar
    escritor v2, drenar invocaciones antiguas, simular y confirmar CAS por lotes.
-4. Auditar otra vez todas las conexiones y probar refresh/listado en Workers
+   El ejecutor aislado y sus puertas se documentan en drive-recipher-executor.md.
+2. Auditar otra vez todas las conexiones y probar refresh/listado en Workers
    antes del corte. No borrar originales ni respaldos del entorno legado.
-5. Configurar callbacks y hostname CAPTCHA, probar Auth/Drive y preparar los
+3. Configurar callbacks y hostname CAPTCHA, probar Auth/Drive y preparar los
    instaladores y la transicion de datos locales de cada origen.
-6. Resolver VAPID/FCM y la convivencia de suscripciones sin doble despacho;
+4. Resolver VAPID/FCM y la convivencia de suscripciones sin doble despacho;
    probar proveedores y cola reales antes de cambiar un unico cron.
-7. Cambiar el sitio publico solo cuando estas pruebas pasen. Conservar Vercel
+5. Cambiar el sitio publico solo cuando estas pruebas pasen. Conservar Vercel
    como respaldo compatible y puente temporal donde sea necesario.
