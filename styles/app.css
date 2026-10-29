@@ -4518,8 +4518,11 @@ html.theme-light .app-install-sheet__close{
   line-height:1.55;
 }
 .account-form,.account-password-form{display:grid;gap:12px}
-.account-captcha{min-height:0;overflow:hidden;border-radius:10px}
-.account-captcha:not([hidden]){min-height:1px}
+.account-security{min-width:0}
+.account-captcha{min-height:65px;max-width:100%;border-radius:6px}
+.account-captcha-feedback{display:grid;gap:6px;margin-top:6px}
+.account-captcha-feedback p{margin:0;font-size:.8125rem;line-height:1.5;color:var(--muted)}
+.account-captcha-feedback .account-link{justify-self:start;min-height:44px;text-align:left}
 .account-form label,.account-password-form label{
   display:grid;
   gap:7px;
