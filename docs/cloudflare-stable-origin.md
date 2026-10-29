@@ -1,7 +1,9 @@
 # Origen estable de Cloudflare
 
-URL preparada: https://estudiemos.estudiemos-services.workers.dev.
-No anunciar ni redirigir Vercel hasta completar las validaciones de corte.
+Origen principal: https://estudiemos.estudiemos-services.workers.dev.
+Supabase Auth, clientes nuevos y enlaces publicos usan este origen. Vercel se
+conserva temporalmente para instalaciones y suscripciones web anteriores.
+La entrega real de notificaciones en celulares todavia debe comprobarse.
 
 ## Distribucion
 
@@ -58,8 +60,10 @@ mantienen por el nombre del Worker. Verificar sus nombres antes y despues.
   entrega real desde el Worker; autenticar ante Google no equivale a entregarla.
 - Web Push: conservar las suscripciones legacy y su despacho hasta validar la
   seleccion de claves/colas del origen nuevo; no reemplazar VAPID a ciegas.
-- PUSH_DISPATCH_ENABLED sigue false en Workers. Cambiar un solo cron despues
-  de entrega real, control de deduplicacion y medidas de CPU con proveedores.
+- PUSH_DISPATCH_ENABLED conserva en codigo la activacion ya autorizada en el
+  entorno real. El unico cron distingue origen y clave, sin mezclar colas.
+  La entrega real y CPU con proveedores siguen pendientes de certificacion;
+  no apagar el transporte anterior por una compilacion o una cola vacia.
 - Probar cuenta, catedra, Drive, calendario, Pomodoro y notificaciones antes
   de anunciar el nuevo sitio. Conservar Vercel como respaldo compatible.
 
