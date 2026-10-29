@@ -160,6 +160,7 @@ test('cron authorization and generic errors remain in the current HTTP adapter; 
     require:name=>{
       if(name==='node:crypto')return require(name);
       if(name==='./push-dispatch')return require('../api/_lib/push-dispatch');
+      if(name==='./push-scope'){const scopes=require('../api/_lib/push-scope');return {...scopes,scopeForEnvironment:()=>scopes.scopeForEnvironment(context.process.env)};}
       if(name==='./push-credentials'){
         const scoped={...context,module:{exports:{}}};
         vm.runInNewContext(fs.readFileSync(require.resolve('../api/_lib/push-credentials'),'utf8'),scoped);

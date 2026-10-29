@@ -10,7 +10,10 @@ function limitsFor(profile) {
   return PROFILES[profile];
 }
 
-async function dispatchPush({ profile, rpc, send, now = Date.now }) {
+async function dispatchPush({ profile, rpc, send, now = Date.now, scope = null }) {
+  // Keep this core transport- and environment-free, with a fixed migration scope.
+  if (scope !== null && (scope?.origin !== 'https://estudiemos.estudiemos-services.workers.dev' || scope?.keyId !== 'cf_20261029')) throw new Error('INVALID_PUSH_SCOPE');
+  const selectedScope = scope === null ? null : { origin: 'https://estudiemos.estudiemos-services.workers.dev', keyId: 'cf_20261029' };
   const limits = limitsFor(profile), deadline = now() + limits.wallTimeMs;
   const seen = new Set();
   let sent = 0, failed = 0, claimed = 0, batches = 0, subrequests = 0;
@@ -25,9 +28,12 @@ async function dispatchPush({ profile, rpc, send, now = Date.now }) {
     if (subrequests + size + 2 > limits.subrequests) break;
     let jobs, legacy = false;
     try {
-      jobs = await request(() => rpc('claim_mobile_push_batch', { p_limit: size }));
+      jobs = await request(() => rpc(selectedScope ? 'claim_mobile_push_origin_batch' : 'claim_mobile_push_batch', {
+        p_limit: size,
+        ...(selectedScope ? { p_origin: selectedScope.origin, p_key_id: selectedScope.keyId } : {})
+      }));
     } catch (error) {
-      if (!limits.legacy || error.status !== 404 || error.data?.code !== 'PGRST202') throw error;
+      if (selectedScope || !limits.legacy || error.status !== 404 || error.data?.code !== 'PGRST202') throw error;
       legacy = true;
       jobs = await request(() => rpc('claim_mobile_push_jobs', {}));
     }

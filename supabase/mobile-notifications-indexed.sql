@@ -1,6 +1,9 @@
 -- Apply after mobile-notifications.sql, then mobile-notifications-cron.sql.
 -- Private projections only. Personal notes remain in user_states unchanged.
 begin;
+do $$ begin
+  if to_regclass('public.mobile_push_origins') is not null then raise exception 'PUSH_ORIGIN_MIGRATION_ACTIVE'; end if;
+end $$;
 create table if not exists public.mobile_push_alarm_tasks (
   user_id uuid not null references auth.users(id) on delete cascade,
   task_id text not null check(length(task_id) between 1 and 180),

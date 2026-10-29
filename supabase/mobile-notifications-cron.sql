@@ -1,5 +1,8 @@
 -- Prerequisite: store MOBILE_PUSH_CRON_SECRET in Vault as estudiemos_mobile_push_cron.
 -- This job is internal to the existing database, not a paid Vercel Cron service.
+do $$ begin
+  if to_regclass('public.mobile_push_origins') is not null then raise exception 'PUSH_ORIGIN_MIGRATION_ACTIVE'; end if;
+end $$;
 create extension if not exists pg_cron;
 create extension if not exists pg_net with schema extensions;
 

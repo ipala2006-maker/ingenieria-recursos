@@ -1,4 +1,7 @@
 -- Server-only Web Push. No public table access; no paid scheduler or SMS provider.
+do $$ begin
+  if to_regclass('public.mobile_push_origins') is not null then raise exception 'PUSH_ORIGIN_MIGRATION_ACTIVE'; end if;
+end $$;
 create table if not exists public.mobile_push_subscriptions (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
