@@ -1,5 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
+  "account_id": "7dc38ab200688eea2a1a951a04225fa4",
   "name": "estudiemos-candidate",
   "main": "cloudflare/worker.mjs",
   "compatibility_date": "2026-10-28",
@@ -14,7 +15,7 @@
   },
   "rules": [{ "type": "Text", "globs": ["**/*.html"], "fallthrough": true }],
   "vars": {
-    "APP_ORIGIN": "https://estudiemos-candidate.estudiemos-services.workers.dev",
+    "APP_ORIGIN": "https://estudiemos.estudiemos-services.workers.dev",
     "PUSH_DISPATCH_ENABLED": "false"
   },
   "observability": { "enabled": true, "head_sampling_rate": 1, "logs": { "invocation_logs": false } }
