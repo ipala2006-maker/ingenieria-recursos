@@ -76,6 +76,7 @@ const fs=require('node:fs'),path=require('node:path'),http=require('node:http');
     });
     await dialog.locator('[data-alarm-consent]').check();
     await dialog.locator('[data-alarm-activate]').click();
+    await dialog.waitFor({state:'hidden'});
     assert.equal(await dialog.isVisible(),false,'setup must not block the sign-in interface');
     assert.ok(await page.evaluate(()=>window.signInOpened));
     await page.evaluate(()=>{window.EstudiemosAccount.getSession=window.savedSession;window.dispatchEvent(new Event('estudiemos:account-change'));});

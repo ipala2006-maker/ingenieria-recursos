@@ -514,8 +514,11 @@
 
 .quick-panel{
   width:min(100%,470px);
+  min-height:0;
   max-height:min(680px,calc(100dvh - 36px));
   overflow:auto;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
   padding:18px;
   border:0;
   border-radius:8px;
@@ -942,7 +945,9 @@ html.theme-light .quick-panel--assistant{
 
 .quick-panel:not(.quick-panel--assistant){
   width:min(100%,400px);
-  overflow:hidden;
+  overflow-x:hidden;
+  overflow-y:auto;
+  padding-bottom:max(18px,env(safe-area-inset-bottom));
 }
 
 .quick-panel__form--note{

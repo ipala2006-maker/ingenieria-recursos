@@ -1,4 +1,4 @@
-.inbox-alarm-dialog { width:min(420px,calc(100% - 32px)); max-height:90dvh; overflow:auto; border:1px solid var(--border,#334155); border-radius:8px; padding:22px; background:var(--panel,#111c2b); color:var(--text,#e8eef7); box-shadow:0 20px 70px #0005; }
+.inbox-alarm-dialog { width:min(420px,calc(100% - 32px)); max-height:90dvh; overflow:auto; overscroll-behavior:contain; border:1px solid var(--border,#334155); border-radius:8px; padding:22px; background:var(--panel,#111c2b); color:var(--text,#e8eef7); box-shadow:0 20px 70px #0005; }
 .inbox-alarm-dialog::backdrop { background:#080f1f80; backdrop-filter:blur(4px); }
 .alarm-setup { width:min(500px,calc(100% - 24px)); }
 .alarm-setup h2 { font-size:20px; }
@@ -36,6 +36,7 @@
 .inbox-alarm-dialog button[type=submit] { background:#8bb5ff; color:#10213a; font-weight:700; }
 .inbox-alarm-form { grid-column:1/-1; width:100%; min-width:0; }
 .inbox-alarm-fields { border:0; padding:0; margin:12px 0; min-width:0; font-size:13px; }
+.inbox-alarm-fields button,.inbox-alarm-dialog button { font:inherit; }
 .inbox-alarm-fields svg,.inbox-alarm-button svg,.inbox-alarm-notice svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.7; }
 .inbox-alarm-switch { display:flex; gap:10px; align-items:center; min-height:60px; border-top:1px solid #8b9bb52b; cursor:pointer; }
 .inbox-alarm-switch>span { flex:1; min-width:0; }

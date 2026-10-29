@@ -71,6 +71,7 @@
   let captchaWidgetId = null;
   let captchaLoading = false;
   let captchaIssue = "";
+  let accountReturnFocus = null;
   let resolveReady;
   const readyPromise = new Promise((resolve) => { resolveReady = resolve; });
 
@@ -125,12 +126,13 @@
 
   function addAccountDialog() {
     if (document.querySelector(".account-shell")) return;
-    const shell = document.createElement("section");
+    const shell = document.createElement("dialog");
     shell.className = "account-shell";
     shell.hidden = true;
+    shell.setAttribute("aria-labelledby", "accountTitle");
     shell.setAttribute("aria-hidden", "true");
     shell.innerHTML = `
-      <div class="account-panel" role="dialog" aria-modal="true" aria-labelledby="accountTitle">
+      <div class="account-panel">
         <header class="account-head">
           <div>
             <p class="tray-kicker">Estudiemos</p>
@@ -313,8 +315,9 @@
       updatePassword();
     });
 
-    document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape" && !document.querySelector(".account-shell")?.hidden) closeDialog();
+    document.querySelector(".account-shell")?.addEventListener("cancel", (event) => {
+      event.preventDefault();
+      closeDialog();
     });
 
     window.addEventListener("estudiemos:data-change", (event) => {
@@ -1884,8 +1887,11 @@
   function openDialog(options = {}) {
     const shell = document.querySelector(".account-shell");
     if (!shell) return;
+    if (!shell.open) accountReturnFocus = document.activeElement;
     shell.hidden = false;
     shell.setAttribute("aria-hidden", "false");
+    // A native top-layer dialog remains usable above any alarm or calendar editor.
+    if (!shell.open) shell.showModal();
     document.body.classList.add("account-open");
     const invitation = !session && window.EstudiemosCourseInvitation?.pending();
     const accountTitle = shell.querySelector('#accountTitle'), accountIntro = shell.querySelector('.account-intro');
@@ -1902,16 +1908,20 @@
       setStatus("", "info");
     }
     setupCaptcha();
-    window.setTimeout(() => shell.querySelector("input, button")?.focus(), 0);
+    window.setTimeout(() => { if (shell.open) shell.querySelector("input, button")?.focus({ preventScroll: true }); }, 0);
   }
 
   function closeDialog() {
     const shell = document.querySelector(".account-shell");
-    if (!shell) return;
+    if (!shell || shell.hidden) return;
+    if (shell.open) shell.close();
     shell.hidden = true;
     shell.setAttribute("aria-hidden", "true");
     document.body.classList.remove("account-open");
-    document.querySelector("[data-account-open]")?.focus();
+    const target = accountReturnFocus?.isConnected && accountReturnFocus.getClientRects().length
+      ? accountReturnFocus : document.querySelector("[data-account-open]");
+    accountReturnFocus = null;
+    target?.focus({ preventScroll: true });
   }
 
   function userIcon() {

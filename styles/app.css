@@ -4485,18 +4485,32 @@ html.theme-light .app-install-sheet__close{
 .account-shell{
   position:fixed;
   inset:0;
+  width:100%;
+  height:100dvh;
+  max-width:none;
+  max-height:none;
+  margin:0;
+  border:0;
+  color:inherit;
+  overflow:hidden;
   z-index:1400;
   display:grid;
+  grid-template-rows:minmax(0,1fr);
   place-items:center;
   padding:18px;
   background:rgba(3,7,18,.58);
   backdrop-filter:blur(7px);
 }
 .account-shell[hidden]{display:none}
+.account-shell::backdrop{background:transparent}
+body.account-open{overflow:hidden}
 .account-panel{
   width:min(100%,430px);
-  max-height:min(680px,calc(100vh - 36px));
+  min-height:0;
+  max-height:min(680px,100%);
   overflow:auto;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
   padding:22px;
   border:1px solid rgba(255,255,255,.12);
   border-radius:16px;
@@ -4801,10 +4815,10 @@ html.theme-light .account-status[data-type="error"]{color:#b3261e}
 html.theme-light .account-status[data-type="success"]{color:#137333}
 
 @media (max-width:600px){
-  .account-shell{align-items:end;padding:10px}
+  .account-shell{align-items:end;padding:max(10px,env(safe-area-inset-top)) 10px max(10px,env(safe-area-inset-bottom))}
   .account-panel{
     width:100%;
-    max-height:calc(100dvh - 20px);
+    max-height:100%;
     padding:18px;
     border-radius:15px;
   }
