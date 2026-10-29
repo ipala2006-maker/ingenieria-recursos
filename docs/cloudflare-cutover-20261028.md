@@ -15,8 +15,9 @@ No anunciar 100% migrado ni modificar el cron hasta cerrar las puertas reales.
 - Codigo de compatibilidad publicado: main 40096c05f4b58b9aa1c55576e0c19773dbe6288d.
   Produccion Vercel: dpl_7SwDHGp5jwhWf5GrP21t8MhL43s3, estado Ready.
   Se conserva https://estudiemos-app.vercel.app y sus alias habituales.
-- Lectores duales activos, SIN clave activa nueva: las escrituras siguen v1.
-  No se recifraron autorizaciones ni se cambio la clave AES original.
+- Al publicar la compatibilidad los lectores duales seguian escribiendo v1.
+  El recifrado ejecutado posteriormente se registra abajo; la AES original
+  sigue intacta y solo en Vercel.
 - Google NEXT ya se verifico con un refresh real dentro de Vercel. No se
   deshabilito ninguno de los dos secretos del cliente existente.
 - Codigo aprobado actualizado en estudiemos-candidate, version Cloudflare
@@ -61,12 +62,39 @@ No anunciar 100% migrado ni modificar el cron hasta cerrar las puertas reales.
 - Se preparo drive_20261028 y se verifico su respaldo cifrado local
   .backups/recovery/drive-keyring-20261028.json.age. DRIVE_TOKEN_KEYRING se
   guardo como Secret en Vercel produccion y secret_text en Cloudflare candidato.
-  No se eligio todavia una clave escritora; la AES legacy no se exporto ni cambio.
-  El deployment publico anterior a esta variable necesita un redeploy compatible
-  y un rollback tambien compatible antes de cualquier escritura v2.
-- Cloudflare tiene cinco secretos: los cuatro iniciales y el keyring nuevo.
-  Faltan credenciales/configuracion de proveedores. No exportar secretos
+  En esa preparacion no se eligio una clave escritora; la AES legacy no se
+  exporto ni cambio. Los redeploys compatibles se completaron posteriormente.
+- Cloudflare tuvo entonces cinco secretos: los cuatro iniciales y el keyring.
+  Faltaban credenciales/configuracion de proveedores. No exportar secretos
   marcados no exportables de Vercel para saltar esta limitacion.
+
+## Recifrado ejecutado y comprobado
+
+- PR #107 integrado en main 0e8de70fd745814c9b42351d29096723d574ec65.
+  525 pruebas verificadas (523 generales y dos de navegador con fixture local),
+  CI, restauracion de fixture y compilacion Workers aprobados.
+- Lector compatible con keyring: dpl_C6BGYdFBCdVv3SKNj7jnbmGNNdaV.
+  Respaldo inmediato antes del escritor: dpl_J4W5RHTsYdHKANE1PpfUijwdPERQ.
+- Escritor v2 publicado: dpl_DsKajxjBAvhc8cTfo6FkaEV1EAUw, main #107.
+  Se verifico que era el deployment publico Ready y se drenaron mas de 90 s.
+- Simulacion privada dpl_xruuaqMnWXe8cBnc4gAtANxiD1CT: una conexion legible,
+  wouldChange=1, changed=0, conflicts=0, failed=0.
+- Commit privado dpl_HenGWrGRrYfDs5xxEBVqP2VaZukP: changed=1, conflictos=0,
+  errores=0, sin paginas pendientes. Se uso CAS, no un PATCH sin version.
+- Auditoria final dpl_74vPVKwWnFmKRCNxnVaJpRpZdQ5n: checked=1, legacy=0,
+  versioned=1, unreadable=0, complete=true y casRegistered=true.
+- Mi espacio abrio la conexion real y cargo sus carpetas despues del recifrado.
+  Ninguno de los builds operativos genero una app Ready ni recibio el dominio.
+- Backup previo fresco 40807453777 restaurado; posterior 40808982718 tambien
+  restaurado en PostgreSQL local. Este ultimo recupero y descifro la conexion v2
+  usando SOLO el keyring recuperado de su copia age: versionedDriveRecovered=1.
+  No se necesito la AES legacy para recuperar ese grant; no se imprimieron
+  credenciales, ni se escribio un dump descifrado en disco. Servidores cerrados.
+- Cloudflare tiene ahora 14 secretos: keyring, identificador activo y datos
+  publicos de clientes validados desde account-config, ademas de sus cuatro
+  iniciales. Drive queda limitado a las dos cuentas de prueba conocidas.
+  PUSH_DISPATCH_ENABLED sigue false y no hay corte publico ni cambio de cron.
+- La configuracion del origen estable se prepara en cloudflare-stable-origin.md.
 
 ## Auditoria previa de Drive
 
@@ -96,14 +124,11 @@ las pruebas con fixtures no son un resultado de produccion.
 
 ## Orden restante
 
-1. Publicar lectores con keyring y conservar un rollback compatible. Preparar
-   escritor v2, drenar invocaciones antiguas, simular y confirmar CAS por lotes.
-   El ejecutor aislado y sus puertas se documentan en drive-recipher-executor.md.
-2. Auditar otra vez todas las conexiones y probar refresh/listado en Workers
-   antes del corte. No borrar originales ni respaldos del entorno legado.
-3. Configurar callbacks y hostname CAPTCHA, probar Auth/Drive y preparar los
+1. Probar refresh/listado en Workers antes del corte. No borrar originales ni
+   respaldos del entorno legado. El recifrado ya se verifico completamente.
+2. Configurar callbacks y hostname CAPTCHA, probar Auth/Drive y preparar los
    instaladores y la transicion de datos locales de cada origen.
-4. Resolver VAPID/FCM y la convivencia de suscripciones sin doble despacho;
+3. Resolver VAPID/FCM y la convivencia de suscripciones sin doble despacho;
    probar proveedores y cola reales antes de cambiar un unico cron.
-5. Cambiar el sitio publico solo cuando estas pruebas pasen. Conservar Vercel
+4. Cambiar el sitio publico solo cuando estas pruebas pasen. Conservar Vercel
    como respaldo compatible y puente temporal donde sea necesario.
