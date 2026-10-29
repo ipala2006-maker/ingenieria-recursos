@@ -1,5 +1,7 @@
 import { invokeHandler } from './http-adapter.mjs';
 import { dispatch, sendPush } from './push.mjs';
+// Initialize the large CommonJS OAuth dependency before the first Drive request.
+import '../api/_lib/google-drive.js';
 import installTemplate from '../instalar.html';
 import friendTemplate from '../amistad.html';
 import config from '../vercel.json';

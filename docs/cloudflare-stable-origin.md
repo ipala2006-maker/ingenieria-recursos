@@ -52,9 +52,10 @@ mantienen por el nombre del Worker. Verificar sus nombres antes y despues.
   captcha_failed. No desactivar CAPTCHA ni aceptar comodines.
 - Sesiones, datos locales, instaladores Android/Windows y PWA: no asumir que un
   cambio de origen copia almacenamiento, permisos o la identidad de instalacion.
-- Firebase: clave adicional coexistente, creada por el titular, como Secret en
-  Cloudflare. El control de seguridad detuvo su creacion automatica; la anterior
-  sigue intacta y el formulario quedo preparado para la accion del titular.
+- Firebase: recuperada una copia local de la credencial original, validada ante
+  Google y guardada como Secret en Cloudflare con respaldo age verificado.
+  No se creo otra clave ni se exportaron secretos de Vercel. Falta probar la
+  entrega real desde el Worker; autenticar ante Google no equivale a entregarla.
 - Web Push: conservar las suscripciones legacy y su despacho hasta validar la
   seleccion de claves/colas del origen nuevo; no reemplazar VAPID a ciegas.
 - PUSH_DISPATCH_ENABLED sigue false en Workers. Cambiar un solo cron despues
@@ -76,8 +77,11 @@ el desafio. Los errores, vencimientos y timeouts invalidan el token; la API de
 Auth no se llama si falta. No se modifico la validacion del servidor.
 
 Las pruebas locales usan solo un proveedor simulado y no acreditan una solucion
-del desafio real. Falta completar el acceso humano en el origen nuevo y probar
-alli la renovacion/listado de Drive antes de cortar el sitio anterior.
+del desafio real. Luego el titular completo el acceso en el origen nuevo: la UI
+confirmo cuenta conectada y datos sincronizados. Mi espacio listo y actualizo
+las carpetas reales de Drive, y Materias cargo la catedra y sus permisos.
+El presupuesto de CPU y la entrega de notificaciones siguen siendo puertas de
+corte; ver cloudflare-runtime-readiness.md.
 
 Referencia de errores y configuracion oficial:
 https://developers.cloudflare.com/turnstile/troubleshooting/client-side-errors/error-codes/
