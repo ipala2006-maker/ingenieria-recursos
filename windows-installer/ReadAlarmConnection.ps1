@@ -1,3 +1,15 @@
+function Get-AlarmConnectionOrigin {
+  param([Parameter(Mandatory=$true)][ValidateLength(1,2048)][ValidatePattern('^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$')][string]$Token)
+  # This only selects an allowlisted recipient. That server must verify the signature.
+  $encoded = $Token.Split('.')[0].Replace('-','+').Replace('_','/')
+  $encoded = $encoded.PadRight($encoded.Length + ((4 - $encoded.Length % 4) % 4), '=')
+  $data = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($encoded)) | ConvertFrom-Json -ErrorAction Stop
+  if ($data -isnot [pscustomobject]) { throw 'Invalid connection metadata.' }
+  if (!$data.PSObject.Properties['origin']) { return 'https://estudiemos-app.vercel.app' }
+  if ($data.origin -isnot [string] -or $data.origin -cnotin @('https://estudiemos-app.vercel.app','https://estudiemos.estudiemos-services.workers.dev')) { throw 'Untrusted connection origin.' }
+  return $data.origin
+}
+
 function Read-AlarmConnectionToken {
   param([Parameter(Mandatory=$true)][string]$Path)
   if ($Path -notmatch '^[A-Za-z]:\\' -or [IO.Path]::GetExtension($Path) -ne '.estudiemos-alarmas') {

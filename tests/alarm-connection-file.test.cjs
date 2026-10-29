@@ -24,7 +24,7 @@ test('native window interop compiles without opening a window', {skip:process.pl
 
 test('one setup request seeds local scheduling; the background worker uses no credential or network', {skip:process.platform!=='win32'},()=>{
   const directory=fs.mkdtempSync(path.join(os.tmpdir(),'estudiemos-alarm-dpapi-'));
-  for(const name of ['ConnectInboxAlarms.ps1','InboxAlarm.ps1','ReadLocalAlarms.ps1']){
+  for(const name of ['ConnectInboxAlarms.ps1','InboxAlarm.ps1','ReadLocalAlarms.ps1','ReadAlarmConnection.ps1']){
     fs.copyFileSync(path.join(root,'windows-installer',name),path.join(directory,name));
   }
   fs.writeFileSync(path.join(directory,'InstallInboxAlarm.ps1'),"param([string]$ResourceDirectory)\nif($ResourceDirectory -ne $env:ALARM_TEST_DIR){throw 'Visible widget resource lost'}\n@{resourceDirectory=$ResourceDirectory}|ConvertTo-Json|Set-Content (Join-Path $PSScriptRoot 'InboxAlarmConfig.json')");
@@ -42,7 +42,7 @@ test('one setup request seeds local scheduling; the background worker uses no cr
       @{userId='00000000-0000-4000-8000-000000000001';snapshot=@{version=1;items=@()};confirmation='dummy-confirmation'}
     }
     function Start-Process { Write-Output 'callback-requested' }
-    & (Join-Path $env:ALARM_TEST_DIR 'ConnectInboxAlarms.ps1') -Token 'pilot.signature' -DocumentsDirectory $env:ALARM_TEST_DIR
+    & (Join-Path $env:ALARM_TEST_DIR 'ConnectInboxAlarms.ps1') -Token 'eyJzY29wZSI6ImFsYXJtLXNldHVwIn0.signature' -DocumentsDirectory $env:ALARM_TEST_DIR
     $state=Join-Path $env:LOCALAPPDATA 'Estudiemos\Windows\InboxAlarms'
     if(Test-Path -LiteralPath (Join-Path $state 'feed.dpapi')){throw 'Unnecessary credential persisted'}
     $config=Get-Content -LiteralPath (Join-Path $state 'local-config.json') -Raw | ConvertFrom-Json

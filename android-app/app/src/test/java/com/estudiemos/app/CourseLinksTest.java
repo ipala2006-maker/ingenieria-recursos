@@ -4,7 +4,7 @@ import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 
 public class CourseLinksTest {
-    private static final String APP = "https://estudiemos-app.vercel.app/";
+    private static final String APP = "https://estudiemos.estudiemos-services.workers.dev/";
     private static final String EXPECTED = APP + "?unirme=1&materia=ABCDEFGHJK";
 
     @Test public void configuredCloudflareOriginRetainsOldInvitationsWithoutTrustingOtherHosts() {

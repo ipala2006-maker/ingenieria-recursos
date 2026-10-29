@@ -135,7 +135,7 @@
     if(window.EstudiemosAndroid){
       lastLoad=0;
       window.EstudiemosAndroid.postMessage(JSON.stringify({type:'drive-connect-browser'}));
-      message('Complet\u00e1 la conexi\u00f3n en Chrome y volv\u00e9 a la app. Si no se abre, actualiz\u00e1 Estudiemos o abr\u00ed estudiemos-app.vercel.app/mi-espacio.html en Chrome.');return;
+      message('Complet\u00e1 la conexi\u00f3n en Chrome y volv\u00e9 a la app. Si no se abre, actualiz\u00e1 Estudiemos o abr\u00ed estudiemos.estudiemos-services.workers.dev/mi-espacio.html en Chrome.');return;
     }
     busy=true;section.querySelectorAll('[data-drive-connect]').forEach(button=>{button.disabled=true;button.querySelector('span').textContent='Abriendo Google...';});
     try {const result=await api('start','POST',{browse:browse===true && browseEnabled});const url=new URL(result.url);if(url.origin!=='https://accounts.google.com'||url.pathname!=='/o/oauth2/v2/auth')throw new Error('No se pudo abrir Google.');location.assign(url.href);}

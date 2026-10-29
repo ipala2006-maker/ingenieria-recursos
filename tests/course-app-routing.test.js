@@ -57,7 +57,7 @@ End Class
   try{
     for(const args of [[],['--setup'],[links.nativeUrl(code,'windows')],['estudiemos-app://open?materia=abcdefghjk']]){
       const result=run(...args);assert.equal(result.status,0,result.stderr);
-      assert.match(result.stdout,/msedge\.exe" --app="https:\/\/estudiemos-app.vercel.app\/\?windows-bundle=1/);
+      assert.match(result.stdout,/msedge\.exe" --app="https:\/\/estudiemos.estudiemos-services.workers.dev\/\?windows-bundle=1/);
       if(args[0]?.startsWith('estudiemos-app:'))assert.match(result.stdout,/&unirme=1&materia=ABCDEFGHJK/);
       assert.doesNotMatch(result.stdout,/--user-data-dir|--disable-web-security|cmd\.exe|powershell/);
     }

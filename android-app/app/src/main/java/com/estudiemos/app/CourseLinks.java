@@ -9,7 +9,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 final class CourseLinks {
-    private static final String ORIGIN = "https://estudiemos-app.vercel.app/";
+    private static final String ORIGIN = "https://estudiemos.estudiemos-services.workers.dev/";
     private static final Pattern PATH = Pattern.compile("^/materia/([A-HJ-NP-Z2-9]{10})/?$", Pattern.CASE_INSENSITIVE);
 
     static String appUrl(String incoming) {

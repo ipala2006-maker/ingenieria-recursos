@@ -27,7 +27,7 @@
   const DIRTY_KEY = "estudiemos_cloud_dirty";
   const WINDOWS_WIDGETS_READY_KEY = "estudiemos_windows_widgets_ready";
   const WINDOWS_WIDGET_PENDING_KEY = "estudiemos_windows_widget_pending";
-  const WINDOWS_WIDGET_SETUP_URL = "https://estudiemos-app.vercel.app/instalar.html#pc-widgets";
+  const WINDOWS_WIDGET_SETUP_URL = new URL('/instalar.html#pc-widgets', location.href).href;
   let widgetSetup = null, widgetLaunching = false, widgetResumeSignIn = false;
   const PENDING_REFERRAL_KEY = "estudiemos_pending_referral";
   const COMMERCIAL_LAUNCH_ENABLED = false;
@@ -626,7 +626,7 @@
     if (!COMMERCIAL_LAUNCH_ENABLED) return;
     const code = referralShareCode;
     if (!session || !code) return;
-    const link = `https://estudiemos-app.vercel.app/instalar.html?ref=${encodeURIComponent(code)}`;
+    const link = new URL(`/instalar.html?ref=${encodeURIComponent(code)}`, location.href).href;
     try {
       if (navigator.share) await navigator.share({ title: "Estudiemos", text: "Organizate conmigo en Estudiemos", url: link });
       else await navigator.clipboard.writeText(link);
@@ -1645,6 +1645,7 @@
       const accountLink = await createWindowsWidgetLink(widget);
       if (!session?.access_token || session.user?.id!==userId) throw new Error('La cuenta cambió. Volvé a intentar con tu sesión actual.');
       const query = new URLSearchParams({ widget, callback: '1', link: accountLink });
+      if (location.origin === 'https://estudiemos.estudiemos-services.workers.dev') query.set('source', 'cloudflare');
       const launcher = document.createElement('a');
       launcher.href = `estudiemos-widgets://add?${query.toString()}`;
       document.body.appendChild(launcher); launcher.click(); launcher.remove();
@@ -1696,7 +1697,7 @@
       const css=document.createElement('link');css.rel='stylesheet';css.href=`${getRootPath()}styles/windows-setup.css?v=20260929`;document.head.appendChild(css);
       widgetSetup=document.createElement('dialog');widgetSetup.className='windows-setup';widgetSetup.setAttribute('aria-labelledby','widgetSetupTitle');
       widgetSetup.innerHTML=`<header><div><small>ESCRITORIO DE WINDOWS</small><h2 id="widgetSetupTitle"></h2></div><button type="button" data-widget-close aria-label="Cerrar">×</button></header>
-        <section data-widget-install><p>Una sola instalación prepara los widgets. Después agregás únicamente los que elijas.</p><a class="windows-setup__primary" href="https://estudiemos-app.vercel.app/downloads/Estudiemos-Widgets-para-Windows.exe" download data-widget-download>Descargar complemento</a><p data-widget-download-note hidden>Abrí <strong>Estudiemos-Widgets-para-Windows.exe</strong> desde Descargas y completá la instalación. Al terminar volvés a Estudiemos con tu elección guardada.</p><button type="button" data-widget-installed>Ya lo instalé · Continuar</button></section>
+        <section data-widget-install><p>Una sola instalación prepara los widgets. Después agregás únicamente los que elijas.</p><a class="windows-setup__primary" href="${new URL('/downloads/Estudiemos-Widgets-para-Windows.exe', location.href).href}" download data-widget-download>Descargar complemento</a><p data-widget-download-note hidden>Abrí <strong>Estudiemos-Widgets-para-Windows.exe</strong> desde Descargas y completá la instalación. Al terminar volvés a Estudiemos con tu elección guardada.</p><button type="button" data-widget-installed>Ya lo instalé · Continuar</button></section>
         <section data-widget-launch hidden><p>El widget se conecta con tu sesión de Estudiemos. No necesitás volver a iniciar sesión dentro de él.</p><button class="windows-setup__primary" type="button" data-widget-open>Agregar al escritorio</button><button type="button" data-widget-confirm hidden>Ya lo veo en mi escritorio</button></section>
         <p data-widget-status role="status" aria-live="polite"></p>
         <details data-widget-help><summary>¿No apareció o se bloqueó?</summary><p>Si no se abrió el aviso del navegador, probá «Agregar al escritorio» otra vez. Si Windows no encuentra el complemento, instalalo una vez y volvé aquí.</p><button type="button" data-widget-repair>Instalar o reparar complemento</button><a href="${WINDOWS_WIDGET_SETUP_URL}" target="_blank" rel="noopener">Ayuda con la descarga de Windows</a></details>`;

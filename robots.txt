@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://estudiemos-app.vercel.app/sitemap.xml
+Sitemap: https://estudiemos.estudiemos-services.workers.dev/sitemap.xml
