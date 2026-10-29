@@ -69,6 +69,8 @@
   let readySettled = false;
   let captchaToken = "";
   let captchaWidgetId = null;
+  let captchaLoading = false;
+  let captchaIssue = "";
   let resolveReady;
   const readyPromise = new Promise((resolve) => { resolveReady = resolve; });
 
@@ -154,7 +156,13 @@
               <input type="password" name="password" minlength="${MIN_PASSWORD_LENGTH}" autocomplete="current-password" required placeholder="Mínimo ${MIN_PASSWORD_LENGTH} caracteres" />
             </label>
             <p class="account-referral-invite" data-account-signup-invite hidden>Invitación detectada. El descuento se aplicará al verificar tu cuenta.</p>
-            <div class="account-captcha" data-account-captcha hidden aria-label="Comprobación de seguridad"></div>
+            <div class="account-security" data-account-security hidden>
+              <div class="account-captcha" data-account-captcha aria-label="Comprobación de seguridad"></div>
+              <div class="account-captcha-feedback">
+                <p data-account-captcha-status role="status" aria-live="polite"></p>
+                <button class="account-link" type="button" data-account-captcha-retry hidden>Reintentar comprobación</button>
+              </div>
+            </div>
             <button class="account-primary" type="submit" data-account-signin>Ingresar</button>
             <button class="account-secondary" type="button" data-account-signup>Crear cuenta</button>
             <button class="account-link" type="button" data-account-reset>Olvidé mi contraseña</button>
@@ -280,6 +288,7 @@
       if (event.target.closest("[data-account-close]") || event.target === document.querySelector(".account-shell")) closeDialog();
       if (event.target.closest("[data-account-signup]")) signUp();
       if (event.target.closest("[data-account-reset]")) resetPassword();
+      if (event.target.closest("[data-account-captcha-retry]")) resetCaptcha();
       if (event.target.closest("[data-account-signout]")) signOut();
       if (event.target.closest("[data-account-sync]")) synchronize("manual");
       if (event.target.closest("[data-account-usage-export]")) exportSyncUsage();
@@ -354,7 +363,6 @@
       client = window.supabase.createClient(config.url, config.publishableKey, {
         auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
       });
-      setupCaptcha();
       configAvailable = true;
 
       stage = "session";
@@ -653,23 +661,47 @@
   function setupCaptcha() {
     const container = document.querySelector("[data-account-captcha]");
     const sitekey = accountConfig?.captchaSiteKey || "";
-    if (!container || !sitekey) return;
-    container.hidden = false;
-    loadExternalScript(TURNSTILE_SCRIPT).then(() => {
-      if (!window.turnstile || captchaWidgetId !== null) return;
+    if (!container || !sitekey || session || document.querySelector(".account-shell")?.hidden || document.querySelector("[data-account-auth]")?.hidden) return;
+    if (captchaLoading || captchaWidgetId !== null) return;
+    document.querySelector("[data-account-security]").hidden = false;
+    captchaLoading = true;
+    setCaptchaState("Comprobando seguridad...");
+    return loadExternalScript(TURNSTILE_SCRIPT).then(() => {
+      if (session || document.querySelector(".account-shell")?.hidden || document.querySelector("[data-account-auth]")?.hidden) return;
+      if (!window.turnstile) throw new Error("captcha-unavailable");
       captchaWidgetId = window.turnstile.render(container, {
         sitekey,
         theme: document.documentElement.classList.contains("theme-light") ? "light" : "dark",
-        size: "flexible",
-        appearance: "interaction-only",
+        size: container.clientWidth < 300 ? "compact" : "flexible",
+        appearance: "always",
+        retry: "never",
+        "refresh-expired": "manual",
+        "refresh-timeout": "manual",
         language: "es",
-        callback: (token) => { captchaToken = String(token || ""); },
-        "expired-callback": () => { captchaToken = ""; },
-        "error-callback": () => { captchaToken = ""; }
+        callback: (token) => {
+          captchaToken = String(token || "");
+          if (captchaToken) setCaptchaState("Comprobación completada.");
+        },
+        "expired-callback": () => setCaptchaState("La comprobación venció. Volvé a intentarlo.", true),
+        "timeout-callback": () => setCaptchaState("La comprobación tardó demasiado. Volvé a intentarlo.", true),
+        "error-callback": () => {
+          setCaptchaState("No pudimos verificar este navegador. Reintentá; si sigue fallando, probá abrir el enlace en otro navegador actualizado.", true);
+        }
       });
     }).catch(() => {
-      setStatus("No pudimos cargar la comprobación de seguridad. Revisá tu conexión.", "error");
+      setCaptchaState("No pudimos cargar la comprobación. Revisá tu conexión y reintentá.", true);
+    }).finally(() => {
+      captchaLoading = false;
     });
+  }
+
+  function setCaptchaState(message, failed = false) {
+    if (failed) captchaToken = "";
+    captchaIssue = failed ? message : "";
+    const status = document.querySelector("[data-account-captcha-status]");
+    if (status) status.textContent = message;
+    const retry = document.querySelector("[data-account-captcha-retry]");
+    if (retry) retry.hidden = !failed;
   }
 
   function loadExternalScript(source) {
@@ -677,9 +709,16 @@
     if (existing?.dataset.loaded === "true") return Promise.resolve();
     return new Promise((resolve, reject) => {
       const script = existing || document.createElement("script");
-      const loaded = () => { script.dataset.loaded = "true"; resolve(); };
+      const cleanup = () => {
+        window.clearTimeout(timeout);
+        script.removeEventListener("load", loaded);
+        script.removeEventListener("error", failed);
+      };
+      const loaded = () => { cleanup(); script.dataset.loaded = "true"; resolve(); };
+      const failed = () => { cleanup(); script.remove(); reject(new Error("captcha-load-failed")); };
+      const timeout = window.setTimeout(failed, 20000);
       script.addEventListener("load", loaded, { once: true });
-      script.addEventListener("error", reject, { once: true });
+      script.addEventListener("error", failed, { once: true });
       if (!existing) {
         script.src = source;
         script.async = true;
@@ -692,13 +731,19 @@
   function getCaptchaOptions() {
     if (!accountConfig?.captchaSiteKey) return {};
     if (captchaToken) return { captchaToken };
-    setStatus("Completá la comprobación de seguridad para continuar.", "error");
+    setupCaptcha();
+    setStatus(captchaIssue || "Completá la comprobación de seguridad que aparece junto al formulario.", "error");
+    document.querySelector("[data-account-security]")?.scrollIntoView({ block: "nearest", behavior: "smooth" });
     return null;
   }
 
   function resetCaptcha() {
     captchaToken = "";
-    if (captchaWidgetId !== null && window.turnstile) window.turnstile.reset(captchaWidgetId);
+    setCaptchaState("Comprobando seguridad...");
+    if (captchaWidgetId !== null && window.turnstile) {
+      try { window.turnstile.reset(captchaWidgetId); }
+      catch { setCaptchaState("No pudimos reiniciar la comprobación. Recargá la página para volver a intentar.", true); }
+    } else setupCaptcha();
   }
 
   async function updatePassword() {
@@ -1315,6 +1360,7 @@
     if (unavailable) unavailable.hidden = configAvailable;
     if (auth) auth.hidden = !configAvailable || Boolean(session);
     if (profile) profile.hidden = !configAvailable || !session;
+    if (!session && configAvailable) setupCaptcha();
     if (passwordForm) passwordForm.hidden = !recoveryMode || !session;
     const email = document.querySelector("[data-account-email]");
     if (email) email.textContent = session?.user?.email || "";
@@ -1855,6 +1901,7 @@
     } else {
       setStatus("", "info");
     }
+    setupCaptcha();
     window.setTimeout(() => shell.querySelector("input, button")?.focus(), 0);
   }
 

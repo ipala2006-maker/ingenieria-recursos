@@ -47,7 +47,9 @@ mantienen por el nombre del Worker. Verificar sus nombres antes y despues.
 - Supabase Auth: agregado el hostname exacto nuevo con sus rutas /**, como el
   origen legacy; los enlaces de confirmacion con invitacion conservan su query.
   Site URL permanece en Vercel y los retornos anteriores siguen permitidos.
-- Turnstile: autorizar el hostname exacto; no desactivar CAPTCHA ni aceptar comodines.
+- Turnstile: hostname nuevo y legacy autorizados y verificados en el panel.
+  Supabase mantiene CAPTCHA activo; una prueba sin token fue rechazada con
+  captcha_failed. No desactivar CAPTCHA ni aceptar comodines.
 - Sesiones, datos locales, instaladores Android/Windows y PWA: no asumir que un
   cambio de origen copia almacenamiento, permisos o la identidad de instalacion.
 - Firebase: clave adicional coexistente, creada por el titular, como Secret en
@@ -59,3 +61,24 @@ mantienen por el nombre del Worker. Verificar sus nombres antes y despues.
   de entrega real, control de deduplicacion y medidas de CPU con proveedores.
 - Probar cuenta, catedra, Drive, calendario, Pomodoro y notificaciones antes
   de anunciar el nuevo sitio. Conservar Vercel como respaldo compatible.
+
+## Comprobacion de acceso del 29 de octubre de 2026
+
+El navegador devolvio Turnstile 300030, un fallo generico de desafio. No es el
+codigo de hostname no autorizado (110200). No interpretar el script cargado
+como una verificacion completada ni emitir tokens ficticios en produccion.
+
+El formulario ahora carga el control al mostrarse, mantiene visible su estado
+y ofrece un reintento manual sin limpiar las credenciales. Los fallos de carga
+tienen timeout y eliminan el script fallido para permitir una solicitud nueva.
+En formularios menores de 300px se usa el modo compacto oficial, sin recortar
+el desafio. Los errores, vencimientos y timeouts invalidan el token; la API de
+Auth no se llama si falta. No se modifico la validacion del servidor.
+
+Las pruebas locales usan solo un proveedor simulado y no acreditan una solucion
+del desafio real. Falta completar el acceso humano en el origen nuevo y probar
+alli la renovacion/listado de Drive antes de cortar el sitio anterior.
+
+Referencia de errores y configuracion oficial:
+https://developers.cloudflare.com/turnstile/troubleshooting/client-side-errors/error-codes/
+https://developers.cloudflare.com/turnstile/get-started/client-side-rendering/widget-configurations/
