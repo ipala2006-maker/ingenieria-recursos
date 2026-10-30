@@ -1,6 +1,7 @@
 // Read-only public checks. No real accounts, AI calls, SMS or payments.
 const assert = require('node:assert/strict');
-const origin='https://estudiemos-app.vercel.app';
+const origin=process.env.ESTUDIEMOS_TEST_ORIGIN||'https://estudiemos.estudiemos-services.workers.dev';
+assert.ok(['https://estudiemos.estudiemos-services.workers.dev','https://estudiemos-app.vercel.app'].includes(origin),'Unexpected public test origin');
 (async()=>{
   const results=[];
   const page=await fetch(origin,{signal:AbortSignal.timeout(20000)});

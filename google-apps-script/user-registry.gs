@@ -1,5 +1,5 @@
-const ESTUDIEMOS_REGISTRY_ENDPOINT = "https://estudiemos-app.vercel.app/api/user-registry";
-const ESTUDIEMOS_MONITORING_ENDPOINT = "https://estudiemos-app.vercel.app/api/admin-monitoring";
+const ESTUDIEMOS_REGISTRY_ENDPOINT = "https://estudiemos.estudiemos-services.workers.dev/api/user-registry";
+const ESTUDIEMOS_MONITORING_ENDPOINT = "https://estudiemos.estudiemos-services.workers.dev/api/admin-monitoring";
 const ESTUDIEMOS_REGISTRY_SHEET = "Usuarios";
 const ESTUDIEMOS_MONITORING_SHEET = "Monitoreo";
 const ESTUDIEMOS_TOKEN_PROPERTY = "ESTUDIEMOS_USER_REGISTRY_TOKEN";
