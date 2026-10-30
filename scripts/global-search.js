@@ -45,7 +45,7 @@
   }
   if (!document.querySelector('script[data-classrooms]')) {
     const classes = document.createElement('script'); classes.dataset.classrooms = '';
-    classes.src = rootPath + 'scripts/classroom-sync.js?v=20261027-home-state';
+    classes.src = rootPath + 'scripts/classroom-sync.js?v=20261030-retry-recovery';
     document.head.appendChild(classes);
   }
   if (!document.querySelector('script[data-course-drive]')) {
