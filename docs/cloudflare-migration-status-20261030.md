@@ -1,5 +1,9 @@
 # Estudiemos: estado de la migracion a Cloudflare
 
+Actualizacion posterior: se decidio retirar la convivencia del origen viejo.
+El plan y su estado de aplicacion estan en `docs/cloudflare-only-cutover.md`;
+este informe conserva la fotografia anterior al corte.
+
 Fecha del informe: 30 de octubre de 2026. Incluye comprobaciones del 29 y 30.
 
 ## Conclusion

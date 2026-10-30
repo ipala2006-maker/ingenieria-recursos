@@ -1,6 +1,11 @@
 -- Additive migration. Preserve existing subscriptions, alarms and queued jobs.
 -- Cloudflare stays disabled until its credentials, code and delivery are tested.
 begin;
+do $$ begin
+  if pg_catalog.obj_description(to_regprocedure('public.tick_mobile_push()'), 'pg_proc') = 'estudiemos-cloudflare-only-v1' then
+    raise exception 'PUSH_CLOUDFLARE_ONLY_ACTIVE';
+  end if;
+end $$;
 create table if not exists public.mobile_push_origins (
   source_origin text not null,
   vapid_key_id text not null,

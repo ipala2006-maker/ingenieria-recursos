@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "git": { "deploymentEnabled": false },
   "redirects": [
     { "source": "/instalar.html", "destination": "https://estudiemos.estudiemos-services.workers.dev/instalar.html", "permanent": false },
     { "source": "/instalar", "destination": "https://estudiemos.estudiemos-services.workers.dev/instalar.html", "permanent": false },
