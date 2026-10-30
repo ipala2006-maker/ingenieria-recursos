@@ -6,9 +6,27 @@ Las cuentas y datos siguen en el mismo Supabase. No se activan pagos.
 
 ## Estado
 
-Cambios preparados y probados. La ejecucion de la migracion en Supabase requiere
-la confirmacion puntual solicitada por el control de seguridad. No se debe
-presentar el proyecto de Vercel como pausado hasta verificar la respuesta real.
+Migracion aplicada en produccion el 30/10/2026, despues de la confirmacion
+explicita de Ian. La verificacion posterior confirmo:
+
+- Cloudflare listo y habilitado; origen legacy deshabilitado.
+- Cron exclusivo de Cloudflare y marcador `estudiemos-cloudflare-only-v1`.
+- Claims legacy vacios y funciones privadas limitadas al servidor.
+- Datos personales sin cambios: 6 cuentas, 5 estados, 1 catedra, 1 conexion
+  Drive y 3 objetos historicos de Storage. Tambien se comparo la huella de los
+  estados personales antes y despues del corte, sin diferencias.
+- Inicio y configuracion publica de push de Cloudflare respondieron HTTP 200.
+- `VERCEL_CLEANUP_ENABLED=false` guardado en GitHub.
+
+**Pendiente humano:** la pausa del hosting Vercel. El CLI devuelve
+`interactive_confirmation_required` y exige que el usuario confirme el nombre
+del proyecto. Se dejo abierto en Chrome el dialogo oficial de pausa. Ian debe
+escribir `estudiemos-app` y tocar **Pause Project**. No se automatiza esa
+confirmacion ni se declara pausado hasta verificarla por HTTP.
+
+La cola antigua ya esta deshabilitada aunque el alojamiento anterior siga
+sirviendo paginas hasta esa confirmacion. Los permisos de los dispositivos
+todavia requieren las comprobaciones de la guia de activacion.
 
 ## Que cambia
 
@@ -45,6 +63,11 @@ presentar el proyecto de Vercel como pausado hasta verificar la respuesta real.
    Usar la pausa oficial y reversible de Vercel, no borrar el proyecto ni sus
    credenciales. El dominio anterior dejara de responder como app; no es una
    redireccion ni un proxy.
+   En el panel: **Settings > General > Pause Project**, escribir
+   `estudiemos-app` y confirmar. Si se prefiere el CLI, el usuario debe ejecutar
+   interactivamente `npx --yes --package=vercel@65.8.0 vercel project pause
+   estudiemos-app --scope ipala2006-makers-projects` y escribir el nombre cuando
+   se lo pida. No usar automatizacion para saltar esta confirmacion humana.
 5. Fijar `VERCEL_CLEANUP_ENABLED=false` en las variables del repositorio. No se
    borra ningun artefacto adicional ni se cambia el workflow de backups.
 6. Fusionar el PR si aun no esta en main. Con `git.deploymentEnabled=false` no
