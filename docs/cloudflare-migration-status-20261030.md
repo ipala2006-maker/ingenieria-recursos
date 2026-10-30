@@ -39,7 +39,7 @@ no se hizo. Los pendientes concretos se detallan abajo, sin marcarlos como aprob
 - Backend: `estudiemos-candidate` es un nombre historico; recibe las APIs del
   sitio estable mediante service binding. No significa que el sitio siga en preview.
 - Backend medido: `75770533-5020-45da-9366-f5bdd904bbd8`.
-- Ultimo cambio de secreto del backend: `8394e1df-d0d9-475a-b2bc-458e058ba5e7`.
+- Version publica del backend tras actualizar su configuracion: `8394e1df-d0d9-475a-b2bc-458e058ba5e7`.
   Conserva el mismo codigo y agrega el token existente del sincronizador privado.
 - `PUSH_DISPATCH_ENABLED=true` esta versionado: un despliegue ordinario no debe
   desactivar por accidente el despachador autorizado.
@@ -147,6 +147,9 @@ La vinculacion nativa termino con estado `connected`, etapa `complete` y
 archivo local version 2. Cuenta y dispositivo coinciden. Se retiro la credencial
 `feed.dpapi` que el corredor local ya no necesita. El archivo contenia cero
 alarmas activas al vincular: no se inventaron alarmas para el usuario.
+El corredor instalado tambien completo su diagnostico `-DryRun` con salida 0;
+la tarea estaba habilitada/oculta, usaba `--headless` y su ultima ejecucion
+termino con codigo 0. Ese diagnostico no equivale a conceder el permiso web.
 
 La pestaña nueva aun no confirmaba que pudiera escribir el archivo. Ian indico
 que creia haberlo autorizado; esa duda no se contabiliza como permiso comprobado.

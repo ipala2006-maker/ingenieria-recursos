@@ -1,0 +1,3 @@
+# Public Cloudflare deployment UUID in the migration report, not a credential.
+# The historical sentence's "secreto" keyword triggered generic-api-key.
+03af65ee450ae5a5c2f0d4c9cbfee40745516a73:docs/cloudflare-migration-status-20261030.md:generic-api-key:42
