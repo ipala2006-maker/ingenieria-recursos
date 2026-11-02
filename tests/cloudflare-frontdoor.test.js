@@ -44,11 +44,27 @@ test('production configurations preserve the existing secret-bearing worker and 
   const frontend = JSON.parse(fs.readFileSync(path.join(root, 'wrangler.frontdoor.jsonc'), 'utf8'));
   const backend = JSON.parse(fs.readFileSync(path.join(root, 'wrangler.jsonc'), 'utf8'));
   assert.equal(frontend.account_id, backend.account_id); assert.equal(frontend.name, 'estudiemos');
+  assert.deepEqual(frontend.routes,[{pattern:'estudiemos.ar',custom_domain:true}]);
+  assert.equal(frontend.workers_dev,true,'custom domain does not disable existing clients or callbacks');
+  assert.equal(backend.routes,undefined,'the private service worker is not the custom-domain entrypoint');
   assert.equal(frontend.services[0].service, backend.name); assert.equal(backend.name, 'estudiemos-candidate');
   assert.equal(frontend.vars, undefined); assert.equal(frontend.secrets, undefined);
   assert.equal(backend.vars.APP_ORIGIN, 'https://estudiemos.estudiemos-services.workers.dev');
   assert.equal(backend.vars.PUSH_DISPATCH_ENABLED, 'true', 'ordinary deployments preserve the already-authorized live transport');
   assert.deepEqual(frontend.assets, backend.assets);
+});
+
+test('custom domain preserves its host and request identity across static and private service bindings',async()=>{
+  const {default:worker}=await load();
+  for(const pathname of ['/','/api/account-config','/materia/ABCDEFGHJK','/amistad/example']){
+    const request=new Request('https://estudiemos.ar'+pathname,{headers:{Origin:'https://estudiemos.ar'}});
+    const target=pathname==='/'?'ASSETS':'BACKEND';
+    const response=await worker.fetch(request,{[target]:{fetch:async received=>{
+      assert.equal(received,request);assert.equal(new URL(received.url).host,'estudiemos.ar');
+      assert.equal(received.headers.get('origin'),'https://estudiemos.ar');return new Response('ok');
+    }}});
+    assert.equal(await response.text(),'ok');
+  }
 });
 
 test('one deployment command checks both workers and stops before frontend deployment when the backend fails', () => {
