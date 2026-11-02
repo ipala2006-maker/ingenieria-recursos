@@ -24,3 +24,8 @@ body.home-layout-editing .ad-banner { visibility:hidden;pointer-events:none; }
   html body.ad-banner-active.workspace-home:not(.drive-library-page) .workspace-page { padding-bottom:0; }
 }
 @media print { .ad-banner { display:none; }body.ad-banner-active { padding-bottom:0; } }
+/* Auto anchors own their dimensions and body inset. Keep the app in that inset,
+   without resizing, clipping, hiding or moving Google's ad elements. */
+body.ad-banner-managed { box-sizing:border-box; }
+html body.ad-banner-managed.workspace-home:not(.drive-library-page) { display:flex;flex-direction:column;height:100dvh;min-height:0; }
+html body.ad-banner-managed.workspace-home:not(.drive-library-page)>.workspace-page { flex:1 1 0;height:auto;min-height:0; }

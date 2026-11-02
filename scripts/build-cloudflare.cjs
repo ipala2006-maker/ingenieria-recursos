@@ -12,7 +12,7 @@ function allowed(file) {
   if (file.includes('..') || operationalScripts.has(file)) return false;
   if (/(?:service-account|credentials|secrets|\.agekey|\.dump)/i.test(file)) return false;
   const parts = file.split('/');
-  if (parts.length === 1) return /\.html$/.test(file) || ['service-worker.js', 'site.webmanifest', 'robots.txt', 'sitemap.xml'].includes(file);
+  if (parts.length === 1) return /\.html$/.test(file) || ['service-worker.js', 'site.webmanifest', 'robots.txt', 'sitemap.xml', 'ads.txt'].includes(file);
   return directories.has(parts[0]) && !parts.some(part => part.startsWith('.') && part !== '.well-known') && extensions.has(path.extname(file));
 }
 

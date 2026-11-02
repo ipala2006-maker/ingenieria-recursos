@@ -511,6 +511,9 @@
 }
 
 .quick-panel-shell[hidden]{display:none}
+dialog.quick-panel-shell{box-sizing:border-box;width:100%;max-width:none;height:100%;max-height:none;margin:0;border:0;color:var(--text)}
+dialog.quick-panel-shell:not([open]){display:none}
+dialog.quick-panel-shell::backdrop{background:transparent}
 
 .quick-panel{
   width:min(100%,470px);

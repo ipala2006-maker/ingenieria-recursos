@@ -32,7 +32,7 @@ function main() {
   const policy = config.headers.find(rule => rule.source === "/(.*)").headers.find(header => header.key === "Content-Security-Policy");
   const previousPolicy = policy.value;
   const { scripts, handlers } = collectHashes();
-  const expectedScripts = "script-src 'self' https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.min.js https://challenges.cloudflare.com " + scripts.join(" ");
+  const expectedScripts = "script-src 'self' https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.min.js https://challenges.cloudflare.com https://pagead2.googlesyndication.com " + scripts.join(" ");
   // Only four harmless, existing topic-navigation handlers are hash-approved.
   const expectedHandlers = "script-src-attr 'unsafe-hashes' " + handlers.join(" ");
   if (process.argv.includes("--write")) {
