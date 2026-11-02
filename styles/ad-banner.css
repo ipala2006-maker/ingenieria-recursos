@@ -1,0 +1,26 @@
+body.ad-banner-active {
+  --ad-creative-height:50px;
+  --ad-banner-reserved:calc(var(--ad-creative-height) + 27px + env(safe-area-inset-bottom,0px));
+  box-sizing:border-box;padding-bottom:var(--ad-banner-reserved);
+}
+.ad-banner {
+  position:fixed;inset:auto 0 0;z-index:30;box-sizing:border-box;
+  height:var(--ad-banner-reserved);padding:4px 8px calc(6px + env(safe-area-inset-bottom,0px));
+  display:flex;flex-direction:column;align-items:center;gap:0;
+  border-top:1px solid var(--border);background:var(--panel);color:var(--muted);
+}
+.ad-banner__label { flex:none;font-size:12px;line-height:16px; }
+.ad-banner__slot { width:min(100%,728px);height:var(--ad-creative-height);flex:none; }
+html body.ad-banner-active.workspace-home:not(.drive-library-page) .workspace-page {
+  height:calc(100dvh - var(--home-topbar-height,57px) - var(--ad-banner-reserved));
+  min-height:0;flex-shrink:0;
+}
+html body.ad-banner-active.drive-library-page .workspace-page { min-height:calc(100dvh - 57px - var(--ad-banner-reserved)); }
+body:has(dialog:modal,.quick-panel-shell:not([hidden]),.account-shell:not([hidden])) .ad-banner,
+body.home-layout-editing .ad-banner { visibility:hidden;pointer-events:none; }
+@media(min-width:800px) and (min-height:600px) { body.ad-banner-active { --ad-creative-height:90px; } }
+@media(max-width:900px) {
+  body:has(:is(input,textarea,[contenteditable=true]):focus) .ad-banner { visibility:hidden;pointer-events:none; }
+  html body.ad-banner-active.workspace-home:not(.drive-library-page) .workspace-page { padding-bottom:0; }
+}
+@media print { .ad-banner { display:none; }body.ad-banner-active { padding-bottom:0; } }
