@@ -17,6 +17,32 @@ const call=async(db,user,action='state',data={})=>{
 };
 const create=async(db,user=ids[0],data={})=>call(db,user,'create',{...base,...data});
 
+test('all active members can share the current invitation without gaining edit or roster access',async()=>{
+  const db=await database();try{
+    await db.exec(fs.readFileSync(path.join(root,'supabase/classroom-member-sharing.sql'),'utf8'));
+    const [owner,moderator,student,outsider]=ids,{selected:id}=await create(db,ids[0],{ownerRole:'collaborator'});
+    for(const user of [moderator,student])await call(db,user,'join',{code:base.code});
+    await call(db,owner,'member_permissions',{id,itemId:moderator,role:'moderator',permissions:{datesAdd:true}});
+    for(const user of [owner,moderator,student])assert.equal((await call(db,user,'detail',{id})).code,base.code);
+    for(const user of [moderator,student]){
+      assert.equal((await call(db,user)).classes[0].code,null,'no invitation bytes added to periodic sync');
+      assert.deepEqual((await call(db,user,'detail',{id})).members,[]);
+      await assert.rejects(call(db,user,'rotate',{id,code:'KLMNPQRSTU'}),/PERMISSION_DENIED/);
+    }
+    await assert.rejects(call(db,outsider,'detail',{id}),/CLASS_UNAVAILABLE/);
+    await call(db,owner,'rotate',{id,code:'KLMNPQRSTU'});
+    assert.equal((await call(db,student,'detail',{id})).code,'KLMNPQRSTU');
+    await call(db,owner,'archive',{id,archived:true});
+    assert.equal((await call(db,student,'detail',{id})).code,null);
+    await call(db,owner,'archive',{id,archived:false});
+    await call(db,owner,'member_remove',{id,itemId:student});
+    await assert.rejects(call(db,student,'detail',{id}),/CLASS_UNAVAILABLE/);
+    await assert.rejects(call(db,student,'join',{code:'KLMNPQRSTU'}),/CLASS_BLOCKED/);
+    await db.exec('set role authenticated');
+    await assert.rejects(db.query('select classroom_detail($1,$2)',[owner,id]),/permission denied/);
+  }finally{await db.close();}
+});
+
 test('members see team contacts and exact grants, never student emails or public contact leaks',async()=>{
   const db=await database();try{
     const [owner,delegate,student,outsider]=ids,{selected:id}=await create(db,owner,{ownerRole:'collaborator'});

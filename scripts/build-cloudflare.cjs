@@ -5,7 +5,7 @@ const root = path.resolve(__dirname, '..');
 const output = path.join(root, 'dist-cloudflare');
 const config = require('../vercel.json');
 const directories = new Set(['assets', 'data', 'downloads', 'pages', 'pdfs', 'scripts', 'shared', 'styles', 'widgets', '.well-known']);
-const extensions = new Set(['.html', '.css', '.js', '.json', '.webmanifest', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg', '.ico', '.woff', '.woff2', '.ttf', '.mp3', '.wav', '.mp4', '.webm', '.pdf', '.exe', '.apk', '.rmskin', '.txt', '.xml']);
+const extensions = new Set(['.html', '.css', '.js', '.json', '.webmanifest', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg', '.ico', '.woff', '.woff2', '.ttf', '.mp3', '.wav', '.mp4', '.webm', '.pdf', '.exe', '.apk', '.rmskin', '.txt', '.xml', '.sha256']);
 const operationalScripts = new Set(['scripts/security-check.js', 'scripts/csp-check.js']);
 
 function allowed(file) {

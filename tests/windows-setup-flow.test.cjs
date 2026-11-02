@@ -127,8 +127,8 @@ test('alarm stages show only the next action and never unlock connection without
   const steps=['install','connect','test'].map(step=>({dataset:{alarmStep:step},setAttribute(){},removeAttribute(){}}));
   const controls=new Map();
   const node=s=>{if(!controls.has(s))controls.set(s,{checked:false,disabled:false});return controls.get(s);};
-  let ready=false;
-  const c={setupStage:'install',nativeMessage:'',nativeConnecting:false,nativeReady:()=>ready,
+  let ready=false,linked=false;
+  const c={setupStage:'install',nativeMessage:'',nativeConnecting:false,nativeReady:()=>ready,nativeLinked:()=>linked,
     setup:{dataset:{},querySelector:node,querySelectorAll:s=>s==='[data-alarm-stage]'?stages:steps},
     document:{querySelectorAll:()=>[]}};
   vm.createContext(c);
@@ -139,5 +139,15 @@ test('alarm stages show only the next action and never unlock connection without
   assert.equal(node('[data-alarm-activate]').disabled,true);
   node('[data-alarm-consent]').checked=true;c.renderNativeStatus();assert.equal(node('[data-alarm-activate]').disabled,false);
   c.nativeConnecting=true;c.renderNativeStatus();assert.equal(node('[data-alarm-activate]').disabled,true);
+  linked=true;c.nativeConnecting=false;c.renderNativeStatus();
+  assert.equal(node('[data-alarm-activate]').hidden,true);assert.equal(node('.alarm-local-file').hidden,false);
   ready=true;c.setupStage='test';c.renderNativeStatus();assert.deepEqual(visible(),['test']);
+});
+
+test('a local native receipt is account-specific and never treated as a ready schedule',()=>{
+  const saved=new Map(),c={CONNECTION_KEY:'connection',localStorage:{getItem:key=>saved.get(key)},window:{EstudiemosAccount:{getUser:()=>({id:'pilot'})}}};
+  vm.createContext(c);vm.runInContext(alarms.slice(alarms.indexOf('  function nativeLinked('),alarms.indexOf('  function clearConnectionFile(')),c);
+  for(const value of [null,'broken',JSON.stringify({mode:'local',userId:'other'}),JSON.stringify({userId:'pilot',mode:'remote'})]){saved.set('connection',value);assert.equal(c.nativeLinked(),false);}
+  saved.set('connection',JSON.stringify({mode:'local',userId:'pilot'}));assert.equal(c.nativeLinked(),true);
+  assert.doesNotMatch(alarms.slice(alarms.indexOf('  function nativeReady('),alarms.indexOf('  function nativeLinked(')),/nativeLinked|CONNECTION_KEY/);
 });

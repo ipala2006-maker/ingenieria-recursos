@@ -22,7 +22,7 @@
   let setupStage = sessionStorage.getItem('estudiemos_alarm_setup_stage')==='connect'?'connect':'install';
   let audio, soundTimer, currentId, returnFocus, checking = false, lastNative = '', accountReady = false, waitingForAccount = false;
   const style = document.createElement('link');
-  style.rel = 'stylesheet'; style.href = new URL('styles/inbox-alarms.css?v=20261010-optional-date', root); document.head.appendChild(style);
+  style.rel = 'stylesheet'; style.href = new URL('styles/inbox-alarms.css?v=20261102-simple-setup', root); document.head.appendChild(style);
   const escape = value => String(value || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   // Reuse the existing icon set's bell geometry (also used by Pomodoro).
   const bell = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>';
@@ -32,18 +32,15 @@
   document.body.appendChild(dialog);
   const setup = document.createElement('dialog');setup.className='inbox-alarm-dialog alarm-setup';setup.setAttribute('aria-labelledby','alarmSetupTitle');
   setup.innerHTML=`<header><h2 id="alarmSetupTitle">Alarma en toda la pantalla</h2><button type="button" data-alarm-setup-close aria-label="Cerrar">×</button></header>
-    <p>Windows mostrará el nombre de tu tarea sobre las otras aplicaciones y repetirá el sonido, incluso con Estudiemos cerrado.</p>
-    <nav class="alarm-setup-progress" aria-label="Activación de alarmas"><span data-alarm-step="install">1. Instalar</span><span data-alarm-step="connect">2. Conectar</span><span data-alarm-step="test">3. Probar</span></nav>
+    <p data-alarm-setup-intro>Conectá esta PC para recibir tus alarmas incluso con Estudiemos cerrado.</p>
     <div class="alarm-setup-steps">
-      <section data-alarm-stage="install"><strong>Prepará esta PC una sola vez</strong><p>Es un complemento pequeño. No necesitás instalar widgets ni Rainmeter.</p><a class="alarm-setup-download" href="${new URL('downloads/Activar-Alarmas-Estudiemos.exe',root)}" download>Descargar complemento de alarmas</a><p data-alarm-download-note hidden>Abrí <strong>Activar-Alarmas-Estudiemos.exe</strong> desde Descargas. Al terminar, Estudiemos vuelve al paso de conexión.</p><button type="button" data-alarm-installed>Ya lo instalé · Continuar</button></section>
-      <section data-alarm-stage="connect" hidden><strong>Conectá tus alarmas a esta PC</strong><label class="alarm-setup-consent"><input type="checkbox" data-alarm-consent> Permitir que esta PC consulte mis alarmas y muestre pantalla completa con sonido, incluso con la app cerrada.</label><button type="button" data-alarm-activate disabled>Conectar con Windows</button><a data-alarm-retry hidden>Abrir activación de Windows</a><p>Si aparece un aviso del navegador, elegí «Abrir». La conexión se confirma al volver desde Windows.</p><details class="alarm-setup-file"><summary>No se abrió nada</summary><p>Probá con un archivo de conexión: descargalo y abrilo antes de dos minutos. Es personal, no lo compartas. Requiere el complemento de alarmas 2.0 o posterior.</p><button type="button" data-alarm-file disabled>Conectar mediante archivo</button><a data-alarm-file-download hidden>Descargar archivo de conexión</a><button type="button" data-alarm-reinstall>Revisar instalación</button></details></section>
-      <section data-alarm-stage="test" hidden><strong>Tu cuenta está conectada</strong><p>Probá una vez el aviso fuera de Estudiemos. Sonará hasta que toques Entendido o Escape.</p><button type="button" data-alarm-native-test>Probar alarma de Windows</button><button type="button" data-alarm-finish hidden>Listo, vi la alarma</button></section>
-    </div><p data-alarm-native-status role="status" aria-live="polite"></p><details class="alarm-setup-trouble"><summary>Ayuda y reparación</summary><p>La prueba comprueba el complemento, no la conexión de la cuenta. No necesitás desactivar el antivirus.</p><button type="button" data-alarm-native-test>Probar solo el complemento</button><button type="button" data-alarm-reinstall>Volver a la instalación</button><button type="button" data-alarm-reconnect>Volver a conectar mi cuenta</button><a href="${new URL('instalar.html#pc-widgets',root)}" target="_blank" rel="noopener">Ayuda con la descarga</a></details><small>La PC debe estar encendida, con la sesión iniciada y el volumen activo. Puede demorarse hasta un minuto.</small>`;
-  setup.querySelector('[data-alarm-stage=connect]').insertAdjacentHTML('beforeend','<div class="alarm-local-file"><p>Con el complemento 2.0 conectado, elegí una vez tu archivo <strong>.estudiemos-local</strong> de <strong>Documentos → Estudiemos</strong>. El navegador pedirá permiso para actualizarlo.</p><button type="button" data-alarm-local-file>Elegir archivo de programación local</button></div>');
-  setup.querySelector('.alarm-setup-consent').lastChild.textContent=' Permitir que esta PC guarde mi programación local y muestre alarmas a pantalla completa, incluso con la app cerrada.';
-  setup.insertAdjacentHTML('beforeend','<p class="alarm-local-warning">Esta PC no consulta el servidor en segundo plano. Las alarmas creadas o cambiadas desde otro dispositivo llegarán al abrir o sincronizar Estudiemos aquí.</p>');
+      <section data-alarm-stage="install"><a class="alarm-setup-download" href="${new URL('downloads/Activar-Alarmas-Estudiemos.exe',root)}" download>Instalar alarmas en Windows</a><p data-alarm-download-note hidden>Abrí <strong>Activar-Alarmas-Estudiemos.exe</strong> desde Descargas y volvé para conectar.</p><button type="button" data-alarm-installed>Ya está instalado</button></section>
+      <section data-alarm-stage="connect" hidden><label class="alarm-setup-consent"><input type="checkbox" data-alarm-consent> Permitir guardar mis alarmas en esta PC y mostrarlas con sonido en pantalla completa.</label><button type="button" data-alarm-activate disabled>Conectar con Windows</button><a data-alarm-retry hidden>Abrir activación de Windows</a><div class="alarm-local-file" hidden><p>Elegí el archivo <strong>Alarmas-….estudiemos-local</strong> en <strong>Documentos → Estudiemos</strong> y permití actualizarlo.</p><button type="button" data-alarm-local-file disabled>Autorizar y activar alarmas</button></div><details class="alarm-setup-file"><summary>No puedo conectar</summary><p>Si el navegador pregunta, elegí «Abrir». Como alternativa, abrí este archivo personal antes de dos minutos. No lo compartas.</p><button type="button" data-alarm-file disabled>Conectar mediante archivo</button><a data-alarm-file-download hidden>Descargar archivo de conexión</a><button type="button" data-alarm-reinstall>Revisar instalación</button></details></section>
+      <section data-alarm-stage="test" hidden><strong class="alarm-setup-success">Alarmas activadas en esta PC</strong><p>Aparecerán en toda la pantalla, incluso con Estudiemos cerrado.</p><button type="button" data-alarm-finish>Listo</button><details class="alarm-setup-check"><summary>Probar alarma</summary><p>La prueba suena hasta que toques Entendido o Escape.</p><button type="button" data-alarm-native-test>Enviar prueba a Windows</button></details></section>
+    </div><p data-alarm-native-status role="status" aria-live="polite"></p><details class="alarm-setup-trouble"><summary>Ayuda y ajustes</summary><p>La PC debe estar encendida, con tu sesión y el volumen activos. Las alarmas de otros dispositivos se actualizan al abrir o sincronizar Estudiemos aquí.</p><button type="button" data-alarm-native-test>Probar solo el complemento</button><button type="button" data-alarm-reinstall>Revisar instalación</button><button type="button" data-alarm-reconnect>Volver a conectar</button><a href="${new URL('instalar.html#pc-widgets',root)}" target="_blank" rel="noopener">Ayuda con la descarga</a></details>`;
   document.body.appendChild(setup);
   function nativeReady(){return window.EstudiemosWindowsLocalAlarms?.ready()===true;}
+  function nativeLinked(){try{const connection=JSON.parse(localStorage.getItem(CONNECTION_KEY)||'null'),user=window.EstudiemosAccount?.getUser?.();return !!user&&connection?.userId===user.id&&connection?.mode==='local';}catch(_){return false;}}
   function clearConnectionFile(){
     if(connectionFileUrl)URL.revokeObjectURL(connectionFileUrl);
     connectionFileUrl='';
@@ -147,12 +144,15 @@
   notice.addEventListener('cancel',stopAlert);
   function renderNativeStatus(message) {
     if(typeof message==='string')nativeMessage=message;
-    const ready=nativeReady();setup.dataset.ready=String(ready);
+    const ready=nativeReady(),linked=nativeLinked();setup.dataset.ready=String(ready);
     if(setupStage==='test'&&!ready)setupStage='connect';
     setup.querySelectorAll('[data-alarm-stage]').forEach(node=>node.hidden=node.dataset.alarmStage!==setupStage);
-    setup.querySelectorAll('[data-alarm-step]').forEach(node=>{if(node.dataset.alarmStep===setupStage)node.setAttribute('aria-current','step');else node.removeAttribute('aria-current');});
-    document.querySelectorAll('[data-alarm-native-status]').forEach(node=>node.textContent=nativeMessage || (ready?'Programación local activa. Se actualiza al abrir o sincronizar esta PC.':setupStage==='install'?'':'Conectá el complemento 2.0 y autorizá tu archivo local de programación.'));
-    document.querySelectorAll('[data-alarm-native-connect]').forEach(button=>{button.textContent=ready?'Comprobar alarma de pantalla completa':'Activar pantalla completa en esta PC';});
+    setup.querySelector('[data-alarm-setup-intro]').hidden=ready;
+    setup.querySelector('[data-alarm-activate]').hidden=linked;
+    setup.querySelector('.alarm-local-file').hidden=!linked;
+    if(linked)setup.querySelector('[data-alarm-retry]').hidden=true;
+    document.querySelectorAll('[data-alarm-native-status]').forEach(node=>node.textContent=node.closest('.alarm-setup')?nativeMessage:(ready?'Alarmas activadas en esta PC.':'Conectá Windows para recibirlas con la app cerrada.'));
+    document.querySelectorAll('[data-alarm-native-connect]').forEach(button=>{button.textContent=ready?'Alarmas activadas · Ajustes':'Conectar con Windows';});
     setup.querySelector('[data-alarm-activate]').disabled=nativeConnecting||!setup.querySelector('[data-alarm-consent]').checked;
     setup.querySelector('[data-alarm-file]').disabled=nativeConnecting||!setup.querySelector('[data-alarm-consent]').checked;
     setup.querySelector('[data-alarm-local-file]').disabled=nativeConnecting||!setup.querySelector('[data-alarm-consent]').checked;
@@ -179,7 +179,7 @@
       }
       const retry=setup.querySelector('[data-alarm-retry]');retry.href=`estudiemos-alarms://connect?link=${encodeURIComponent(result.token)}`;retry.dataset.expires=String(Date.now()+110000);retry.hidden=false;
       retry.click();
-      renderNativeStatus('Aceptá «Abrir» en el navegador. Si no apareció el aviso, tocá «Abrir activación de Windows». No hace falta descargar otra vez. La conexión todavía está pendiente.');
+      renderNativeStatus('La conexión todavía está pendiente. Aceptá «Abrir» en el navegador.');
     }catch(error){renderNativeStatus(error.message);}
     finally{nativeConnecting=false;renderNativeStatus();}
   }
@@ -313,8 +313,8 @@
     if (e.target.closest('[data-alarm-setup-close]')) setup.close();
     if (e.target.closest('[data-alarm-native-test]')) {
       launchNative('estudiemos-alarms://test');
-      if(nativeReady()){setup.querySelector('[data-alarm-finish]').hidden=false;renderNativeStatus('Esperando que veas el aviso de Windows. Si no aparece, abrí «Ayuda y reparación».');}
-      if(!nativeReady())renderNativeStatus('La prueba solo comprueba el instalador. Para recibir tus tareas con la app cerrada, también conectá tu cuenta en el paso 2.');
+      if(nativeReady())renderNativeStatus('Prueba enviada a Windows.');
+      if(!nativeReady())renderNativeStatus('La prueba comprueba el complemento. Tus alarmas todavía no están activadas.');
     }
     const retry=e.target.closest('[data-alarm-retry]');
     if(retry&&Number(retry.dataset.expires)<Date.now()){e.preventDefault();retry.hidden=true;renderNativeStatus('El enlace venció. Tocá Conectar con Windows para generar otro, sin reinstalar.');}

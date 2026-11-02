@@ -18,7 +18,7 @@ begin
         'filesAdd',m.permissions @> '{"filesAdd":true}'::jsonb,'filesEdit',m.permissions @> '{"filesEdit":true}'::jsonb,'filesRemove',m.permissions @> '{"filesRemove":true}'::jsonb)) order by m.joined_at,m.user_id),'[]') into delegates
       from public.classroom_members m left join public.friend_profiles p on p.user_id=m.user_id left join auth.users u on u.id=m.user_id where m.class_id=p_class and m.role='moderator';
   end if;
-  return jsonb_build_object('id',p_class,'events',events,'materials',materials,'members',members,
+  return jsonb_build_object('id',p_class,'code',case when not course.archived then course.invite_code else null end,'events',events,'materials',materials,'members',members,
     'blocked',case when course.owner_id=p_user then (select coalesce(jsonb_agg(jsonb_build_object('id',b.user_id,'name',coalesce(nullif(p.username,''),'Alumno')) order by b.created_at),'[]') from public.classroom_blocks b left join public.friend_profiles p on p.user_id=b.user_id where b.class_id=p_class) else '[]'::jsonb end,'team',
     jsonb_build_object('owner',jsonb_build_object('name',course.teacher_name,'role',course.owner_role,'email',(select u.email from auth.users u where u.id=course.owner_id)),'delegates',delegates));
 end $$;

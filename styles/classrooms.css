@@ -225,6 +225,7 @@ body.teacher-workspace { height:100dvh; min-height:0; display:flex; flex-directi
   .classroom-tools { gap:6px; }
   .classroom-tools { grid-template-columns:repeat(3,minmax(0,1fr)); }
   .classroom-tools button { flex-direction:column;font-size:12px;padding:12px 5px;min-height:76px; }
+  .classroom-tools button:only-child { grid-column:1/-1;flex-direction:row;min-height:44px; }
   .classroom-settings-tabs button { flex-direction:column;gap:4px;font-size:12px; }
   .classroom-form:is([data-class-form=create],[data-class-form=update]) { grid-template-columns:minmax(0,1fr); }
   .classroom-form>button[type=submit] { justify-self:stretch; }
