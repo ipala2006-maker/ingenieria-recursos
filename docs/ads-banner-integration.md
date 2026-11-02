@@ -1,92 +1,129 @@
-# Phase 2: bottom banner foundation
+# AdSense: bottom anchor integration
 
-Status: prepared, not monetizing. `shared/release.js` keeps `ads: false`, and `scripts/ad-provider.js` is unconfigured. No advertising account, third-party tag, tracking, billing, CSP exception or production change has been activated.
+Publisher: `ca-pub-9605920128105982` (public identifier, not a secret).
+Production code is enabled, but delivery is fail-closed until a confirmed Free account,
+valid advertising consent and the exact origin `https://estudiemos.ar` are present.
+No prices, checkout, tool restrictions or paid infrastructure are enabled.
 
-## Files and responsibilities
+## Deployment and external activation
 
-- `shared/release.js`: release switch; independent of tool access and payment flags.
-- `shared/ads.js`: eligibility and Pro/No Ads expiration rules.
-- `scripts/ad-banner.js`: asynchronous lifecycle, profile/consent changes, one mount per eligible account, timeout, cancellation and cleanup.
-- `scripts/ad-provider.js`: deliberately empty first-party adapter; the selected provider's official integration belongs here.
-- `styles/ad-banner.css`: fixed bottom band with its own reserved height and safe-area padding. The dashboard reflows within its remaining viewport; mobile navigation is above the band. Dialogs, layout editing and mobile text input hide the creative without shifting the underlying page.
-- `index.html`, `mi-espacio.html`, `materias.html`: deferred ES-module entry, not a blocking vendor tag. No ads in widgets, the floating timer, installation, public invitation or authentication pages.
-- `tests/ads.test.js`, `tests/ads-banner.smoke.cjs`: policy, privacy and local lifecycle/layout fixtures. The smoke uses a fake creative and sends no impressions to a real provider.
+- `wrangler.frontdoor.jsonc` binds `estudiemos.ar` as a custom domain to the public
+  Worker `estudiemos`. `estudiemos-services` is the account's workers.dev subdomain,
+  not the Worker name. The private backend service binding is unchanged.
+- Keep workers.dev enabled while DNS activates. Do not redirect existing sessions
+  or rewrite `APP_ORIGIN`, Auth, Drive OAuth or native origins in this release.
+  Binding the domain is not the same as completing that later canonical-origin migration.
+- At implementation time Cloudflare showed the zone pending. The authoritative .ar
+  delegation still listed alfa/beta, whereas this Cloudflare zone requires leif/luciane.
+  Check again after NIC publishes the change; do not disable certificate verification.
+- AdSense showed `Requiere revision` and unverified ownership.
+  The three application heads now contain Google's ownership meta tag, and `/ads.txt`
+  contains the authorized-seller record. Once HTTPS resolves, choose the meta-tag or
+  ads.txt verification method and request Google's review. Code deployment is not approval.
+- AdSense settings were saved with Auto ads enabled, only the regular bottom anchor
+  selected (desktop included), dynamic anchors disabled, and no in-page, vignette,
+  side-rail or intent formats. Automatic optimization is disabled. Do not enable
+  experiments that add placements the user did not request. These settings do not
+  grant site approval or bypass the app's consent and account checks.
+- Finish a suitable consent-manager integration before serving. AdSense's privacy
+  page had no configured consent messages at implementation time. For the EEA, UK
+  and Switzerland use Google's required certified CMP. Do not assume a custom toggle
+  is sufficient, or that a script load means consent, approval or an impression.
+
+## Official format, not a manually sticky unit
+
+`scripts/ad-provider.js` loads the supplied library asynchronously after eligibility
+and an idle opportunity, with `crossorigin="anonymous"` and the documented
+`data-overlays="collapsed-bottom"` parameter. This requests a non-expanding bottom
+Auto anchor; there is no invented ad-slot ID, publisher iframe, manual `.push()` or
+refresh loop. A manually fixed ad unit is not the approved mobile anchor format.
+
+Google owns the creative, dimensions and body inset. `styles/ad-banner.css` makes
+the dashboard use the remaining viewport rather than covering the Inbox, timer,
+calendar or mobile navigation. Quick-note panels use native modal dialogs above
+overlays. The integration never resizes, clips, moves or hides Google's ad DOM.
+No SDK/no fill means no publisher-created empty footer. Actual fill, mobile geometry,
+keyboard behavior, CSP compatibility and CLS still require a live check after approval;
+mocked layout tests cannot certify Google's production runtime.
 
 ## Free versus Pro / No Ads
 
-The controller reads the already-loaded `EstudiemosAccount.getUser()` only. It does not call Workers, Supabase, `plan-status` or a database on every view or impression.
-
-The future trusted subscription handler must maintain this **server-managed** Auth metadata, for example:
+The controller reads the existing `EstudiemosAccount.getUser()` only. It never makes
+an additional Workers/Supabase request or writes impression records. Trusted server
+subscription handling must maintain Auth `app_metadata`, for example:
 
 ```json
-{
-  "app_metadata": {
-    "estudiemos": {
-      "planId": "pro",
-      "status": "active",
-      "noAds": true,
-      "currentPeriodEnd": "2026-12-01T00:00:00Z"
-    }
-  }
-}
+{"estudiemos":{"planId":"pro","status":"active","noAds":true,"currentPeriodEnd":"2026-12-01T00:00:00Z"}}
 ```
 
-An active Pro plan OR an explicit active No Ads entitlement hides the entire band. Missing expiry means active until revoked; invalid/expired expiry is not active. `test`, `past_due` and `cancelled` do not grant No Ads. Free users require a confirmed signed-in account and advertising consent. Unknown auth state hides the band to prevent flashing an ad to Pro users.
+An active Pro plan OR active `noAds: true` prevents SDK loading. Missing expiry means
+until revoked; invalid/expired dates, trials, `past_due` and cancelled plans do not
+grant it. Never trust editable `user_metadata`, client `is_pro`, localStorage or URLs.
+**Payment-to-Auth-metadata wiring remains a future commercial task**, not an enabled
+payment flow; the old trial catalog does not automatically represent paid No Ads.
 
-Never trust `user_metadata`, localStorage, a client-provided `is_pro`, a URL parameter, or editable synced study state. No Ads is a presentation decision, not a server authorization mechanism. **The payment-to-metadata bridge is not implemented by this foundation**; the old `user_plans` trial catalog is not automatically treated as a paid subscription. Do not enable commercial display until the trusted source of entitlements is connected and tested.
+Normal Auth refresh emits `estudiemos:account-change`. Once Google's top-level SDK
+has loaded, Pro upgrades, signout, account switches and consent revocation use a clean
+same-origin reload: removing a script cannot unexecute it. Saved app data is preserved;
+unsaved form drafts should be saved before changing accounts or subscription state.
+No request already sent to Google can be retroactively cancelled.
 
-After the server changes entitlements, refresh the existing Auth session/user using the normal account flow and emit `estudiemos:account-change`; the band then disappears immediately and the adapter is destroyed. JWT/user metadata may otherwise remain stale until the normal Auth refresh. No polling is introduced. Hiding an ad cannot retroactively cancel requests a vendor already sent before the upgrade.
+## Consent and security boundary
 
-## Consent and privacy
-
-Connect a suitable consent manager through:
+The future verified CMP bridge must provide:
 
 ```js
 window.EstudiemosAdConsent = {
-  getStatus: () => 'unknown' // 'granted' only after the actual required consent
+  getStatus: () => 'unknown' // granted only after actual required authorization
 };
 window.dispatchEvent(new Event('estudiemos:ads-consent-change'));
 ```
 
-Without `granted`, no provider import, slot, CSS space or third-party script is created. Denial/revocation destroys the current placement. Do not hardcode `granted` in production or assume contextual ads always eliminate consent requirements. Choose an appropriate provider/CMP before activation; this is not a completed CMP or a legal compliance guarantee. Review suitability for school-age users before targeting schools.
+Without `granted`, there is no provider import, CSS reservation or third-party ad
+request. Never hardcode consent in production. The current release supplies no fake
+CMP or permissive default. Review school-age audiences before deployment to schools.
 
-The adapter receives only `{slot, signal}`. Do not send emails, IDs, Auth tokens, study history, task titles, files, course content or grades to advertisers. Passing only these arguments does **not** sandbox JavaScript: a vendor script injected in the main app could still read its DOM and Auth localStorage. The selected integration must keep the creative/vendor code in an approved cross-origin/sandboxed frame, without parent-document access. If the network only supports top-level scripts, stop and design an isolated ad origin before enabling it. No such third-party code is present in this foundation.
+Only `{slot, signal}` reaches the adapter; no account ID, email, credential, study
+history, task or course content is intentionally passed. **This is not a sandbox**:
+the official AdSense library executes in the top-level page and could access its DOM
+and browser storage. That vendor trust/privacy boundary requires review and consent;
+do not claim that private app data is technically inaccessible to the SDK.
+Android's native WebView is excluded until an approved native advertising integration.
 
-## Provider contract
+`vercel.json` remains the shared HTTP-header source for the Cloudflare static build.
+Only exact initial Google ad hosts are added, without `*`, `unsafe-eval` or new inline
+script permissions. Real Google dependencies may require a further narrow CSP review;
+do not relax the policy globally merely to obtain ad fill.
 
-1. Choose a network or direct sponsor that explicitly permits the intended bottom placement and app surface. No advertising spend is required by this code; no provider has been selected or contracted.
-2. Replace the stub with the provider's official integration. Set `configured=true` only once all required public publisher/slot identifiers are supplied. Publisher IDs are public identifiers, not private API keys. Keep private credentials off the client.
-3. Keep module import side-effect-free. Initialize the approved **isolated** creative inside `mount`, asynchronously, only after eligibility and consent. Do not inject vendor JavaScript in the main app or enable Auto Ads/a second anchor that bypasses this controller. Prefer a restrictive sandbox and no-referrer. Do not weaken isolation merely to make an unsupported tag run.
-4. Return `null` for no-fill, or `{destroy()}` for a rendered placement. Make cleanup idempotent. Listen for `signal.abort`; destroy slots, timers/listeners and vendor refresh when revoked, logging out or changing accounts. A result that finishes late must also be cleanable.
-5. Use the provider's supported responsive format. The available creative height is 50 px on mobile/short screens and 90 px on wider/taller desktop. Available width is at most 728 px and viewport minus 16 px; a 320 px viewport needs an approved smaller responsive size. Do not clip, scale, cover or stretch an ad to make it fit.
-6. Obtain real fill/no-fill from provider callbacks; no fake creative or fake impression counting in production. The local timeout is 12 seconds and there is no automatic retry/refresh loop. Do not count time in hidden tabs or modals as a new view. Provider billing defines valid impressions/viewability; a static DOM slot does not itself generate CPM revenue.
-7. Review the exact `frame-src` hosts in `vercel.json` (the shared header source for Workers) and the isolated creative's own CSP. Keep the main app's `script-src` restricted: no advertiser script hosts there. Add only documented hosts with focused tests; never `*`, broad unsafe-inline, or a proxy through Workers to bypass a blocked tag. Provider-specific isolation/handshake validation remains pending until selection.
-8. Android's native WebView is intentionally excluded until a compliant integration is implemented. PWA/browser support does not automatically authorize a WebView wrapper.
-9. Update privacy disclosures and test browser, PWA, low-end/mobile performance, ad-blocking, consent, Pro upgrades, account switches, no-fill and network failure. Then enable `ads: true` in a reviewed PR. No subscription prices, checkout or tool restrictions are enabled by that switch.
+## Files and checks
 
-## Costs and performance
-
-- Disabled: two small first-party static modules, no banner/style/provider/third-party requests.
-- Enabled: controller and styles are CDN assets, not Worker API executions. A free eligible account loads the adapter after an idle opportunity; Pro and unknown/denied consent never load it.
-- Provider requests go directly to the provider; there are no per-impression Supabase writes or Workers requests. Vendor CPU, bandwidth, cookies and SDK behavior still require real measurements after selection.
-- Reserved space prevents creative insertion from covering study controls. Initial activation or removal changes available workspace height; do not claim zero CLS without measuring the real provider and consent flow.
-- Scope is the three primary application surfaces; legacy resource-reading pages are not monetized by this change.
-- No database migration, additional Worker endpoint, Realtime subscription or new dependency is required. The disabled controller and policy modules total about 1.9 KB gzip before HTTP overhead; vendor weight is not yet measurable because no provider is installed.
-
-## Verification
-
-Application regression: 522 tests passed, none skipped. Chrome and WebKit banner fixtures passed at 1440, 1024, 768, 390 and 320 px, including Pro removal, consent, no-fill, errors and late completion. Drive and teacher surfaces and the Android exclusion were checked locally. Security/CSP checks and both Workers dry-run builds passed. These are simulated ads, not live provider certification or a physical-device performance measurement.
+- `shared/ads.js`, `shared/release.js`: eligibility and independent advertising switch.
+- `scripts/ad-banner.js`, `scripts/ad-provider.js`: conditional idle lifecycle, official
+  adapter, timeout/error cleanup, account/consent updates and clean navigation.
+- `styles/ad-banner.css`, `scripts/dashboard.js`, `styles/dashboard.css`: viewport
+  reservation and native quick-note/assistant modals.
+- `index.html`, `mi-espacio.html`, `materias.html`: ownership metadata and module entry.
+- `ads.txt`, `scripts/build-cloudflare.cjs`, `vercel.json`, `scripts/csp-check.js`:
+  public seller record, static packaging and reviewed HTTP policy.
+- `about.html`: conditional-advertising disclosure and Google privacy link.
+- `tests/ads.test.js`, `tests/ads-banner.smoke.cjs`, `tests/adsense-anchor.smoke.cjs`:
+  eligibility, generic controller and actual-adapter fixtures. All SDK/creative requests
+  are simulated locally: no real ads, clicks, impressions or tracking consent.
 
 ```powershell
 node --test tests/ads.test.js
 node tests/ads-banner.smoke.cjs
+node tests/adsense-anchor.smoke.cjs
 node scripts/csp-check.js
 node scripts/security-check.js
-npm run cloudflare:check
+node scripts/build-cloudflare.cjs
+npx --no-install wrangler deploy --config wrangler.frontdoor.jsonc
 ```
 
-Primary guidance:
-- https://developers.google.com/publisher-tag/guides/minimize-layout-shift
-- https://support.google.com/adsense/answer/15484692
-- https://support.google.com/admanager/answer/6310245
-- https://developers.google.com/admob/android/browser/webview/api-for-ads
+Primary references:
+- https://support.google.com/adsense/answer/7478225
+- https://support.google.com/adsense/answer/10734935
+- https://support.google.com/adsense/answer/9305577
+- https://support.google.com/adsense/answer/7584263
+- https://support.google.com/adsense/answer/3394713
+- https://support.google.com/adsense/answer/1346295

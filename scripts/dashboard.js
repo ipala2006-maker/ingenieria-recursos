@@ -79,13 +79,15 @@
     addCalendarReader();
     addCalendarTools();
     if (!document.querySelector('[data-quick-panel="note"]')) {
-      const shell = document.createElement("section");
+      const shell = document.createElement("dialog");
       shell.className = "quick-panel-shell";
       shell.dataset.quickPanel = "note";
+      shell.setAttribute("aria-labelledby", "quickNoteTitle");
+      shell.addEventListener('cancel',event=>{event.preventDefault();closeActivePanel();});
       shell.hidden = true;
       shell.setAttribute("aria-hidden", "true");
       shell.innerHTML = `
-        <div class="quick-panel" role="dialog" aria-modal="true" aria-labelledby="quickNoteTitle">
+        <div class="quick-panel">
           <header class="quick-panel__head">
             <div><p>Anotación rápida</p><h2 id="quickNoteTitle">Nueva tarea</h2></div>
             <button class="quick-panel__close" type="button" data-quick-panel-close aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
@@ -100,13 +102,15 @@
     }
 
     if (!document.querySelector('[data-quick-panel="assistant"]')) {
-      const shell = document.createElement("section");
+      const shell = document.createElement("dialog");
       shell.className = "quick-panel-shell";
       shell.dataset.quickPanel = "assistant";
+      shell.setAttribute("aria-labelledby", "generalAiTitle");
+      shell.addEventListener('cancel',event=>{event.preventDefault();closeActivePanel();});
       shell.hidden = true;
       shell.setAttribute("aria-hidden", "true");
       shell.innerHTML = `
-        <div class="quick-panel quick-panel--assistant" role="dialog" aria-modal="true" aria-labelledby="generalAiTitle">
+        <div class="quick-panel quick-panel--assistant">
           <header class="quick-panel__head">
             <div><p>Organizador inteligente</p><h2 id="generalAiTitle">Decilo como te salga.</h2></div>
             <button class="quick-panel__close" type="button" data-quick-panel-close aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
@@ -569,6 +573,7 @@
     hidePanels();
     panel.hidden = false;
     panel.setAttribute("aria-hidden", "false");
+    if(!panel.open)panel.showModal();
     document.body.classList.add("quick-panel-open");
     if (history.state?.estudiemosUi !== `quick-${name}`) {
       history[window.EstudiemosOnboarding?.isActive() ? 'replaceState' : 'pushState']({ ...(history.state || {}), estudiemosUi: `quick-${name}` }, "", location.href);
@@ -587,6 +592,7 @@
 
   function hidePanels() {
     document.querySelectorAll("[data-quick-panel]").forEach((panel) => {
+      if(panel.open)panel.close();
       panel.hidden = true;
       panel.setAttribute("aria-hidden", "true");
     });
@@ -602,6 +608,7 @@
     if (!panel) return;
     panel.hidden = false;
     panel.setAttribute("aria-hidden", "false");
+    if(!panel.open)panel.showModal();
     document.body.classList.add("quick-panel-open");
   }
 
