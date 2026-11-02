@@ -1,3 +1,7 @@
+/* Native modal focus does not prevent scroll chaining to the page behind it. */
+html:has(dialog:modal),body:has(dialog:modal){overflow:hidden!important;overscroll-behavior:none;}
+dialog:modal{overscroll-behavior:contain;}
+
 :root{
   --bg:#f8fafc;
   --panel:#ffffff;

@@ -42,6 +42,7 @@ const root=path.resolve(__dirname,'..');
     await dialog.locator('[data-alarm-consent]').check();
     await dialog.locator('[data-alarm-activate]').click();
     await page.waitForFunction(()=>document.querySelector('.account-shell')?.hidden===false);
+    await dialog.waitFor({state:'hidden'});
     assert.ok(await dialog.isHidden(),'sign-in is accessible to a new user');
     assert.deepEqual(errors,[]);
     console.log('PASS unified download, responsive layouts, first-run connection, consent and sign-in');

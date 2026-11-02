@@ -100,6 +100,12 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
     await tp.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-teacher-materials.png`)});
     lastPage=sp;await sp.goto(base+'/#materia='+code);const sd=sp.locator('.classroom-dialog');await sd.waitFor({state:'visible'});await sp.locator('.classroom-course-head h3').waitFor();await sp.locator('.classroom-row strong').filter({hasText:'Parcial de física'}).waitFor();
     assert.equal(await sp.locator('[data-class-code]').count(),0);assert.equal(await sp.locator('[data-class-event]').count(),0);assert.equal(await sp.locator('[data-class-tab=members]').count(),0);
+    assert.ok(await sp.locator('[data-class-share]').isEnabled(),'students can share without editing permissions');
+    await sp.locator('[data-class-share]').click();
+    assert.equal(await sp.locator('[data-class-link]').inputValue(),base+'/materia/'+code);
+    assert.ok(!(await sp.locator('[data-class-link]').inputValue()).includes('null'));
+    await sp.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-student-share.png`)});
+    await sp.locator('[data-class-back]').click();
     assert.equal(await sp.evaluate(()=>JSON.parse(localStorage.getItem('bandeja_agenda')||'[]').some(item=>item.title==='Parcial de física')),false,'Class dates never become editable personal copies');
     await sp.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-student-dates.png`)});
     for(const page of[tp,sp])assert.equal(await page.locator('.classroom-dialog').evaluate(el=>el.scrollWidth<=el.clientWidth+1),true,'No dialog overflow');
