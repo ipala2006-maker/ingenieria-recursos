@@ -13,9 +13,9 @@ No prices, checkout, tool restrictions or paid infrastructure are enabled.
 - Keep workers.dev enabled while DNS activates. Do not redirect existing sessions
   or rewrite `APP_ORIGIN`, Auth, Drive OAuth or native origins in this release.
   Binding the domain is not the same as completing that later canonical-origin migration.
-- At implementation time Cloudflare showed the zone pending. The authoritative .ar
-  delegation still listed alfa/beta, whereas this Cloudflare zone requires leif/luciane.
-  Check again after NIC publishes the change; do not disable certificate verification.
+- The authoritative .ar delegation now lists leif/luciane and the zone is active.
+  Universal SSL is active and Always Use HTTPS is enabled; see `custom-domain-https.md`.
+  Do not disable certificate verification or weaken CSP to fix an HTTP-only visit.
 - AdSense showed `Requiere revision` and unverified ownership.
   The three application heads now contain Google's ownership meta tag, and `/ads.txt`
   contains the authorized-seller record. Once HTTPS resolves, choose the meta-tag or

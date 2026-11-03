@@ -2,7 +2,16 @@ const dynamicPath = pathname => pathname.startsWith('/api/') || pathname.startsW
 
 export default {
   async fetch(request, env) {
-    const binding = dynamicPath(new URL(request.url).pathname) ? env.BACKEND : env.ASSETS;
+    const url = new URL(request.url);
+    // Static requests are upgraded by the zone's Always Use HTTPS setting.
+    if (url.protocol === 'http:' && url.hostname === 'estudiemos.ar') {
+      url.protocol = 'https:';
+      url.port = '';
+      return new Response(null, { status: 308, headers: {
+        Location: url.href, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff'
+      } });
+    }
+    const binding = dynamicPath(url.pathname) ? env.BACKEND : env.ASSETS;
     try {
       if (!binding || typeof binding.fetch !== 'function') throw new Error('UNAVAILABLE_BINDING');
       return await binding.fetch(request);
