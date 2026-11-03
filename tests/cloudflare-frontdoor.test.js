@@ -67,6 +67,22 @@ test('custom domain preserves its host and request identity across static and pr
   }
 });
 
+test('HTTP on the custom domain upgrades before bindings and preserves path, query and POST semantics',async()=>{
+  const {default:worker}=await load();
+  for(const [route,method] of [['/','GET'],['/styles/app.css?v=fixture','HEAD'],['/api/account-config?drive=status','POST'],['/materia/ABCDEFGHJK?unirme=1','GET'],['/ads.txt','GET']]){
+    const response=await worker.fetch(new Request('http://estudiemos.ar'+route,{method}),{
+      ASSETS:{fetch:()=>assert.fail('HTTP must never serve HTML/assets')},
+      BACKEND:{fetch:()=>assert.fail('HTTP must never reach private handlers')}
+    });
+    assert.equal(response.status,308);assert.equal(response.headers.get('location'),'https://estudiemos.ar'+route);
+    assert.equal(await response.text(),'');
+  }
+  for(const host of ['127.0.0.1:8190','example.org','estudiemos.ar.example.org']){
+    const response=await worker.fetch(new Request('http://'+host+'/'),{ASSETS:{fetch:async()=>new Response('local')}});
+    assert.equal(response.status,200,'no arbitrary-host redirects or broken local development');
+  }
+});
+
 test('one deployment command checks both workers and stops before frontend deployment when the backend fails', () => {
   const { commands, deploy } = require('../scripts/deploy-cloudflare.cjs');
   const dry = commands(true); assert.equal(dry.length, 2);
