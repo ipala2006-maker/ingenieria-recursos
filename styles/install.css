@@ -407,6 +407,9 @@ html.theme-light .install-brand .brand__mark,html.theme-light .install-closing__
 html.theme-light .install-nav .install-nav__primary{color:#254c7b;background:rgba(198,218,244,.65)}
 html.theme-light .install-hero::before{background:linear-gradient(180deg,rgba(238,244,249,.04),rgba(237,243,248,.2) 45%,#edf3f8)}
 html.theme-light .install-hero h1{color:#101d30;text-shadow:none}html.theme-light .install-hero__lead{color:#41536a}html.theme-light .install-hero__sync{color:#60728a}
+html.theme-light .install-kicker{color:#315d92}
+html.theme-light .install-action--quiet{color:#254c7b;background:#e2edf8;border-color:var(--install-line-strong)}
+html.theme-light .install-action--quiet:is(:hover,:focus-visible){background:#cfdfef}
 html.theme-light .install-manifest{background:linear-gradient(#edf3f8,#e9f0f6 45%,#edf3f8)}
 html.theme-light .install-widgets{background:linear-gradient(145deg,#e9f0f6,#f3f7fb 48%,#e8eff6)}
 html.theme-light .install-downloads{background:linear-gradient(#edf3f8,#e5edf5 55%,#edf3f8)}
