@@ -25,10 +25,9 @@ No prices, checkout, tool restrictions or paid infrastructure are enabled.
   side-rail or intent formats. Automatic optimization is disabled. Do not enable
   experiments that add placements the user did not request. These settings do not
   grant site approval or bypass the app's consent and account checks.
-- Finish a suitable consent-manager integration before serving. AdSense's privacy
-  page had no configured consent messages at implementation time. For the EEA, UK
-  and Switzerland use Google's required certified CMP. Do not assume a custom toggle
-  is sufficient, or that a script load means consent, approval or an impression.
+- Keep live delivery disabled until AdSense lists the site as ready and a certified
+  CMP has been verified on the production domain. Neither the verification meta
+  tag nor `ads.txt` loads an ad or a CMP.
 
 ## Official format, not a manually sticky unit
 
@@ -70,18 +69,31 @@ No request already sent to Google can be retroactively cancelled.
 
 ## Consent and security boundary
 
-The future verified CMP bridge must provide:
+`scripts/ad-consent.js` listens to a certified CMP's IAB TCF API v2. It requires a
+completed decision from Google Privacy & messaging (CMP ID 300) or InMobi Choice
+(CMP ID 10), TC data for Google (vendor 755) and the applicable purposes, respecting
+publisher restrictions. A missing API, missing decision or unsupported region stays
+ad-free; no decision is manufactured from localStorage. The ad SDK independently
+validates the TC string. The bridge itself is not a CMP.
 
-```js
-window.EstudiemosAdConsent = {
-  getStatus: () => 'unknown' // granted only after actual required authorization
-};
-window.dispatchEvent(new Event('estudiemos:ads-consent-change'));
-```
+### Before enabling live advertising
+
+1. Confirm that AdSense shows `estudiemos.ar` as ready and review age-related
+   publisher requirements before advertising to a student audience.
+2. Use a certified standalone CMP tag configured for the exact domain. InMobi
+   Choice documents a free web CMP and generates the tag in its portal. Set the
+   privacy policy to `https://estudiemos.ar/about.html#privacidad`, include Google
+   Advertising Products, and retain equally accessible reject and manage choices
+   and the CMP's persistent privacy settings control. Do not add consent-or-pay.
+3. Install the official CMP stub before the ad module and review only the required
+   CSP hosts. Do not use a dummy TCF string, an invented tag URL, or load the AdSense
+   SDK to bootstrap consent. Google's own European message is certified but normally
+   loads via the AdSense tag; it is not a standalone pre-consent loader here.
+4. Verify fresh, accept, reject, change, revoke, returning, Pro, anonymous and
+   mobile standalone flows with no real ad clicks.
 
 Without `granted`, there is no provider import, CSS reservation or third-party ad
-request. Never hardcode consent in production. The current release supplies no fake
-CMP or permissive default. Review school-age audiences before deployment to schools.
+request. No CMP vendor tag is shipped by this release.
 
 Only `{slot, signal}` reaches the adapter; no account ID, email, credential, study
 history, task or course content is intentionally passed. **This is not a sandbox**:
@@ -98,7 +110,7 @@ do not relax the policy globally merely to obtain ad fill.
 ## Files and checks
 
 - `shared/ads.js`, `shared/release.js`: eligibility and independent advertising switch.
-- `scripts/ad-banner.js`, `scripts/ad-provider.js`: conditional idle lifecycle, official
+- `scripts/ad-banner.js`, `scripts/ad-consent.js`, `scripts/ad-provider.js`: TCF listener, conditional idle lifecycle, official
   adapter, timeout/error cleanup, account/consent updates and clean navigation.
 - `styles/ad-banner.css`, `scripts/dashboard.js`, `styles/dashboard.css`: viewport
   reservation and native quick-note/assistant modals.
@@ -111,7 +123,7 @@ do not relax the policy globally merely to obtain ad fill.
   are simulated locally: no real ads, clicks, impressions or tracking consent.
 
 ```powershell
-node --test tests/ads.test.js
+node --test tests/ads.test.js tests/ad-consent.test.js
 node tests/ads-banner.smoke.cjs
 node tests/adsense-anchor.smoke.cjs
 node scripts/csp-check.js
@@ -121,6 +133,10 @@ npx --no-install wrangler deploy --config wrangler.frontdoor.jsonc
 ```
 
 Primary references:
+- https://support.google.com/adsense/answer/13554116
+- https://support.google.com/adsense/answer/9804260
+- https://support.google.com/adsense/answer/14660912
+- https://support.inmobi.com/choice/getting-started-cmp/implementing-cmp-via-code/web-sdk/basic-implementation
 - https://support.google.com/adsense/answer/7478225
 - https://support.google.com/adsense/answer/10734935
 - https://support.google.com/adsense/answer/9305577

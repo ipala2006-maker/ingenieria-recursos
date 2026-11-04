@@ -42,6 +42,24 @@ Para probar en el origen de produccion sin habilitar Drive al resto, configurar 
 
 Si faltan credenciales, el backend informa `enabled:false` sin revelar valores. No se activa silenciosamente el almacenamiento anterior ni se muestran conexiones simuladas a usuarios reales.
 
+## Dos dominios en Cloudflare
+
+- Conservar `APP_ORIGIN` y `GOOGLE_DRIVE_APP_ORIGIN` actuales. No rotar el secreto
+  OAuth ni el cifrado y no modificar las filas existentes de `drive_connections`.
+- En Google Auth Platform, cliente **Estudiemos - Mi espacio**, conservar los URI
+  autorizados y agregar exactamente
+  `https://estudiemos.ar/api/account-config?drive=callback`. La redireccion es de
+  servidor, no de Google Identity Services en JavaScript: no requiere CORS global
+  ni agregar origenes de JavaScript. Los retornos de Supabase Auth son separados.
+- Solo despues de verificar ese retorno en Google, configurar
+  `GOOGLE_DRIVE_SECONDARY_ORIGIN=https://estudiemos.ar` en `wrangler.jsonc` y
+  desplegar el backend. El API acepta POST solo del mismo origen exacto; el cookie
+  de OAuth, el intercambio y el retorno se vinculan al host que inicio el flujo.
+- Antes y despues del despliegue, confirmar que el Worker publica ambos dominios,
+  que los POST sin sesion devuelven `401 AUTH_REQUIRED` desde los dominios
+  habilitados y `403` desde origenes ajenos, y que ambos retornos funcionan con
+  una cuenta piloto autorizada. No ampliar el piloto como parte de este cambio.
+
 ## Estado De Activacion (19 Octubre 2026)
 
 - Tabla privada aplicada en Supabase y permisos comprobados: RLS habilitado/forzado, sin SELECT para anon/authenticated; acceso del servidor conservado.

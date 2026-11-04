@@ -33,7 +33,7 @@ function harness(options = {}) {
   vm.runInNewContext(source,sandbox);
   async function request(action,extra={}){
     const result={headers:{}};const res={setHeader(k,v){result.headers[k]=v;},status(code){result.status=code;return this;},json(value){result.body=JSON.parse(JSON.stringify(value));return this;},end(){return this;}};
-    await sandbox.module.exports({method:['config','status','callback'].includes(action)?'GET':'POST',query:{drive:action},headers:{host:'estudiemos-app.vercel.app',origin:app,authorization:'Bearer alice','content-type':'application/json'},body:{},...extra},res);
+    await sandbox.module.exports({method:['config','status','callback'].includes(action)?'GET':'POST',query:{drive:action},body:{},...extra,headers:{host:'estudiemos-app.vercel.app',origin:app,authorization:'Bearer alice','content-type':'application/json',...extra.headers}},res);
     return result;
   }
   return {request,rows,calls,grants,setTokens:value=>{tokens=value;}};
@@ -148,4 +148,42 @@ test('status, token refresh and disconnect stay bound to the authenticated accou
   const refreshed=await h.request('token',{body:{force:true}});assert.equal(refreshed.body.accessToken,'pilot-refreshed');assert.equal(h.calls.filter(call=>call[0]==='refresh').length,1);
   await h.request('disconnect',{headers:bobHeaders,body:{userId:'alice'}});assert.ok(h.rows.has('alice'));
   await h.request('disconnect');assert.equal(h.rows.size,0);assert.ok(h.calls.some(call=>call[0]==='revoke'));assert.ok(!h.calls.some(call=>typeof call[1]==='string' && call[1].includes('workspace_items')));
+});
+
+test('each approved origin starts and completes OAuth on that same host',async()=>{
+  const secondary='https://estudiemos.ar';
+  for(const base of [app,secondary]){
+    const h=harness({env:{GOOGLE_DRIVE_SECONDARY_ORIGIN:secondary}});
+    const headers={host:new URL(base).host,origin:base};
+    const start=await h.request('start',{headers});
+    assert.equal(start.status,200);
+    const cookie=start.headers['Set-Cookie'].split(';')[0];
+    const query={drive:'callback',state:h.grants[0].state,code:'test'};
+    const wrong=base===app?secondary:app;
+    const mismatch=await h.request('callback',{query,headers:{host:new URL(wrong).host,origin:undefined,cookie}});
+    assert.equal(mismatch.headers.Location,wrong+'/mi-espacio.html?drive=error');
+    assert.equal(h.rows.size,0);
+    const result=await h.request('callback',{query,headers:{...headers,origin:undefined,cookie}});
+    assert.equal(result.headers.Location,base+'/mi-espacio.html?drive=connected');
+    assert.deepEqual(h.calls.filter(([type])=>type==='client').map(([,config])=>config.redirectUri),Array(2).fill(base+'/api/account-config?drive=callback'));
+    assert.equal((await h.request('token',{headers:{host:new URL(wrong).host,origin:wrong},body:{force:true}})).body.accessToken,'pilot-refreshed');
+  }
+});
+
+test('Drive rejects unknown hosts, forwarded-host spoofing and cross-origin requests',async()=>{
+  const secondary='https://estudiemos.ar';
+  const h=harness({env:{GOOGLE_DRIVE_SECONDARY_ORIGIN:secondary}});
+  for(const headers of [
+    {host:'evil.test',origin:secondary,'x-forwarded-host':'estudiemos.ar'},
+    {host:'estudiemos.ar.evil.test',origin:secondary},
+    {host:'estudiemos.ar',origin:app},
+    {host:'estudiemos.ar',origin:'http://estudiemos.ar'},
+    {host:'estudiemos.ar',origin:undefined}
+  ]) assert.equal((await h.request('start',{headers})).status,403);
+  const callback=await h.request('callback',{headers:{host:'evil.test',origin:undefined,'x-forwarded-host':'estudiemos.ar'}});
+  assert.equal(callback.status,403);
+  assert.equal(callback.headers.Location,undefined);
+  assert.equal(callback.headers['Set-Cookie'],undefined);
+  assert.equal(h.calls.length,0);
+  assert.equal((await harness().request('start',{headers:{host:'estudiemos.ar',origin:secondary}})).status,403);
 });

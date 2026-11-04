@@ -3,7 +3,7 @@ const assets=[
   ['/',200,'text/html'],['/mi-espacio',200,'text/html'],['/materias',200,'text/html'],
   ['/styles/app.css?v=origin-check',200,'text/css'],['/styles/dashboard.css',200,'text/css'],
   ['/scripts/theme-init.js',200,'text/javascript'],['/scripts/dashboard.js',200,'text/javascript'],
-  ['/scripts/ad-banner.js',200,'text/javascript'],['/scripts/ad-provider.js',200,'text/javascript'],
+  ['/scripts/ad-banner.js',200,'text/javascript'],['/scripts/ad-consent.js',200,'text/javascript'],['/scripts/ad-provider.js',200,'text/javascript'],
   ['/shared/ads.js',200,'text/javascript'],['/assets/fonts/space-grotesk-latin.woff2',200,'font/woff2'],
   ['/assets/favicon.svg',200,'image/svg+xml'],['/service-worker.js',200,'text/javascript'],
   ['/site.webmanifest',200,'application/manifest+json'],['/ads.txt',200,'text/plain']
