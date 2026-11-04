@@ -1,5 +1,6 @@
 const {chromium,webkit}=require('../tmp/ui-check/node_modules/playwright');
 const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+const installMockTcf=require('./fixtures/ad-tcf.cjs');
 const root=path.resolve(__dirname,'..'),out=path.join(root,'tmp/ads-banner');
 (async()=>{
   let browser;const server=http.createServer((req,res)=>{
@@ -18,10 +19,10 @@ const root=path.resolve(__dirname,'..'),out=path.join(root,'tmp/ads-banner');
       const requests=[],errors=[];let unblock;
       const hold=delayProvider?new Promise(resolve=>unblock=resolve):Promise.resolve();
       page.on('pageerror',error=>errors.push(error.message));
+      await context.addInitScript(installMockTcf);
       await context.addInitScript(({consent,pro,teacher})=>{
         window.__adUser={id:'pilot',app_metadata:{estudiemos:pro?{status:'active',planId:'pro'}:{status:'active',planId:'initial'}}};
         window.__consent=consent;window.__mounts=0;window.__destroyed=0;
-        window.EstudiemosAdConsent={getStatus:()=>window.__consent};
         localStorage.setItem('estudiemos_onboarding_v1',JSON.stringify({status:'completed'}));
         localStorage.setItem('estudiemos_home_layout',JSON.stringify({version:5,preset:'custom',visible:{focus:true,progress:true,workspace:false,classes:false}}));
         localStorage.setItem('estudiemos_pomodoro_streak',JSON.stringify({days:{},goal:{minutes:25,updatedAt:1}}));
@@ -74,12 +75,12 @@ const root=path.resolve(__dirname,'..'),out=path.join(root,'tmp/ads-banner');
       assert.deepEqual(f.errors,[]);await f.context.close();
     }
     const native=await fixture({consent:'unknown'});
-    await native.page.evaluate(()=>{window.EstudiemosAndroid={};window.__consent='granted';window.dispatchEvent(new Event('estudiemos:ads-consent-change'));});
+    await native.page.evaluate(()=>{window.EstudiemosAndroid={};window.__emitTcf('granted');});
     assert.equal(await native.page.locator('.ad-banner').count(),0);assert.ok(!native.requests.includes('/scripts/ad-provider.js'));await native.context.close();
     const consent=await fixture({consent:'unknown'});
-    await consent.page.evaluate(()=>{window.__consent='granted';window.dispatchEvent(new Event('estudiemos:ads-consent-change'));});
+    await consent.page.evaluate(()=>window.__emitTcf('granted'));
     await consent.page.waitForFunction(()=>window.EstudiemosAdBanner?.status()==='visible');
-    await consent.page.evaluate(()=>{window.__consent='denied';window.dispatchEvent(new Event('estudiemos:ads-consent-change'));});
+    await consent.page.evaluate(()=>window.__emitTcf('denied'));
     assert.equal(await consent.page.locator('.ad-banner').count(),0);assert.equal(await consent.page.evaluate(()=>__destroyed),1);await consent.context.close();
     for(const mode of ['empty','error','late']){
       const f=await fixture({mode});await f.page.waitForFunction(()=>window.EstudiemosAdBanner?.status()==='empty');
@@ -89,7 +90,7 @@ const root=path.resolve(__dirname,'..'),out=path.join(root,'tmp/ads-banner');
     }
     const race=await fixture({delayProvider:true,consent:'unknown'});
     const providerRequest=race.page.waitForRequest('**/scripts/ad-provider.js');
-    await race.page.evaluate(()=>{window.__consent='granted';window.dispatchEvent(new Event('estudiemos:ads-consent-change'));});
+    await race.page.evaluate(()=>window.__emitTcf('granted'));
     await providerRequest;
     await race.page.evaluate(()=>{window.__adUser=null;window.dispatchEvent(new Event('estudiemos:account-change'));});race.unblock();
     await race.page.waitForLoadState('networkidle');assert.equal(await race.page.locator('.ad-banner').count(),0);assert.equal(await race.page.evaluate(()=>__mounts),0);await race.context.close();

@@ -1,10 +1,13 @@
 import '../shared/ads.js';
+import { observeAdConsent } from './ad-consent.js?v=20261104';
 
 (function(){
   if(window.EstudiemosAdBanner||window.EstudiemosRelease?.enabled('ads')!==true)return;
   const rules=window.EstudiemosAds,root=new URL('../',import.meta.url);
   let epoch=0,owner='',phase='idle',host=null,abort=null,handle=null,cancelIdle=()=>{},timer=0,disposed=false,stylePromise,needsCleanNavigation=false;
-  const consent=()=>{try{return window.EstudiemosAdConsent?.getStatus?.()||'unknown';}catch(_){return 'unknown';}};
+  const api=typeof window.__tcfapi==='function'?window.__tcfapi.bind(window):null;
+  const tcf=observeAdConsent(api,()=>window.dispatchEvent(new Event('estudiemos:ads-consent-change')));
+  const consent=()=>tcf.getStatus();
   const user=()=>window.EstudiemosAccount?.getUser?.();
   const eligible=()=>rules.eligible({enabled:window.EstudiemosRelease?.enabled('ads'),user:user(),consent:consent(),nativeWebView:Boolean(window.EstudiemosAndroid)});
   const current=(version,id)=>!disposed&&version===epoch&&id===user()?.id&&eligible();
@@ -64,7 +67,7 @@ import '../shared/ads.js';
   }
   const events=['estudiemos:account-ready','estudiemos:account-change','estudiemos:ads-consent-change'];
   events.forEach(name=>window.addEventListener(name,refresh));
-  function destroy(){disposed=true;clear();events.forEach(name=>window.removeEventListener(name,refresh));}
+  function destroy(){disposed=true;tcf.stop();clear();events.forEach(name=>window.removeEventListener(name,refresh));}
   window.EstudiemosAdBanner=Object.freeze({refresh,destroy,status:()=>phase});
   refresh();
 })();

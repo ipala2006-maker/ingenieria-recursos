@@ -1,5 +1,6 @@
 const {chromium,webkit}=require('../tmp/ui-check/node_modules/playwright');
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+const installMockTcf=require('./fixtures/ad-tcf.cjs');
 const root=path.resolve(__dirname,'..'),out=path.join(root,'tmp/adsense-anchor');
 const client='ca-pub-9605920128105982';
 const policy=JSON.parse(fs.readFileSync(path.join(root,'vercel.json'),'utf8')).headers.find(x=>x.source==='/(.*)').headers.find(x=>x.key==='Content-Security-Policy').value;
@@ -7,15 +8,15 @@ const policy=JSON.parse(fs.readFileSync(path.join(root,'vercel.json'),'utf8')).h
   fs.mkdirSync(out,{recursive:true});
   const browser=process.env.TEST_WEBKIT==='1'?await webkit.launch():await chromium.launch({channel:'chrome'});
   try{
-    async function fixture({width=1440,height=900,pro=false,consent='granted',origin='https://estudiemos.ar',mode='filled'}={}){
+    async function fixture({width=1440,height=900,pro=false,consent='granted',origin='https://estudiemos.ar',mode='filled',cmp=true}={}){
       const context=await browser.newContext({viewport:{width,height},hasTouch:width<900,isMobile:width<500,serviceWorkers:'block'}),page=await context.newPage();
       const errors=[],external=[];let loads=0;
       page.on('pageerror',error=>errors.push(error.message));
+      if(cmp)await context.addInitScript(installMockTcf);
       await context.addInitScript(({pro,consent})=>{
         if(!localStorage.getItem('fixture-ad-state'))localStorage.setItem('fixture-ad-state',JSON.stringify({pro,consent,signedIn:true}));
         window.__state=JSON.parse(localStorage.getItem('fixture-ad-state'));
         window.__adUser=window.__state.signedIn?{id:'pilot',app_metadata:{estudiemos:window.__state.pro?{status:'active',planId:'pro'}:{status:'active',planId:'initial'}}}:null;
-        window.EstudiemosAdConsent={getStatus:()=>window.__state.consent};
         localStorage.setItem('estudiemos_onboarding_v1','{"status":"completed"}');
         localStorage.setItem('estudiemos_home_layout','{"version":5,"preset":"custom","visible":{"focus":true,"progress":true,"workspace":false,"classes":false}}');
         localStorage.setItem('estudiemos_pomodoro_streak','{"days":{},"goal":{"minutes":25,"updatedAt":1}}');
@@ -68,13 +69,13 @@ const policy=JSON.parse(fs.readFileSync(path.join(root,'vercel.json'),'utf8')).h
       assert.equal(await page.evaluate(()=>localStorage.getItem('fixture-saved-agenda')),'keep-this-note');
       assert.deepEqual(f.errors,[]);await f.context.close();console.log('PASS official adapter, inset, native modal and clean Pro navigation: '+width);
     }
-    for(const options of [{pro:true},{consent:'unknown'},{consent:'denied'},{origin:'https://estudiemos.estudiemos-services.workers.dev'}]){
+    for(const options of [{pro:true},{cmp:false},{consent:'unknown'},{consent:'denied'},{origin:'https://estudiemos.estudiemos-services.workers.dev'}]){
       const f=await fixture(options);assert.equal(f.loads(),0);assert.equal(await f.page.locator('body.ad-banner-managed').count(),0);assert.deepEqual(f.errors,[]);await f.context.close();
     }
     for(const change of ['consent','signout']){
       const f=await fixture();await f.page.waitForFunction(()=>window.EstudiemosAdBanner?.status()==='ready');
       const next=f.page.waitForEvent('domcontentloaded');
-      await f.page.evaluate(change=>{if(change==='consent')window.__state.consent='denied';else{window.__state.signedIn=false;window.__adUser=null;}localStorage.setItem('fixture-ad-state',JSON.stringify(window.__state));window.dispatchEvent(new Event(change==='consent'?'estudiemos:ads-consent-change':'estudiemos:account-change'));},change);
+      await f.page.evaluate(change=>{if(change==='consent')window.__state.consent='denied';else{window.__state.signedIn=false;window.__adUser=null;}localStorage.setItem('fixture-ad-state',JSON.stringify(window.__state));if(change==='consent')window.__emitTcf('denied');else window.dispatchEvent(new Event('estudiemos:account-change'));},change);
       await next;await f.page.waitForLoadState('networkidle');assert.equal(f.loads(),1);assert.equal(await f.page.locator('#fake-google-anchor').count(),0);await f.context.close();
     }
     for(const mode of ['empty','error']){
