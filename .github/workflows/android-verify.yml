@@ -13,7 +13,7 @@ jobs:
         origin: ["https://estudiemos-app.vercel.app", "https://estudiemos-candidate.estudiemos-services.workers.dev", "https://estudiemos.estudiemos-services.workers.dev"]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "17"
