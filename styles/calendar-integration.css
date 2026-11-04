@@ -77,4 +77,10 @@
   .dashboard-calendar__legend .dashboard-calendar__month-total { grid-column:1/-1; width:auto; margin:2px 0 0; }
   .dashboard-calendar[data-view=week] .dashboard-calendar__month-total,.dashboard-calendar[data-view=schedule] .dashboard-calendar__month-total { display:none; }
 }
+@container month-calendar (max-width:260px) {
+  .dashboard-calendar__legend { grid-template-columns:repeat(2,minmax(0,1fr)) auto; }
+  .dashboard-calendar__legend select { grid-column:1/-1; }
+  .dashboard-calendar__legend button { min-width:0; }
+}
 @media(max-width:700px) { .dashboard-calendar__legend select,.dashboard-calendar__legend button { min-height:40px; } .dashboard-calendar__legend [data-calendar-settings] { width:40px; } .calendar-activity__edit { min-height:44px; } }
+@media(pointer:coarse) { .dashboard-calendar__legend select,.dashboard-calendar__legend button { min-height:44px; } .dashboard-calendar__legend [data-calendar-settings] { width:44px; } }

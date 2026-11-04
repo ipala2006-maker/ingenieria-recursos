@@ -24,6 +24,11 @@
 .workspace-home .dashboard-agenda__meta small { white-space:normal;overflow:visible;overflow-wrap:anywhere; }
 .dashboard-agenda__meta .dashboard-agenda__date { display:inline;white-space:nowrap; }
 .workspace-home .dashboard-agenda__actions { align-self:center;gap:2px; }
+.workspace-home .dashboard-agenda__list { container: inbox-list / inline-size; }
+@container inbox-list (max-width:250px) {
+  .workspace-home .dashboard-agenda__item:has(.dashboard-agenda__actions) { grid-template-columns:minmax(0,1fr);gap:2px; }
+  .workspace-home .dashboard-agenda__actions { justify-self:end; }
+}
 @media(pointer:coarse) { .workspace-home .dashboard-agenda__actions .inbox-alarm-button { width:44px;height:44px;flex-basis:44px; } }
 .dashboard-agenda__item.is-colored { border-left:3px solid var(--timetable-color); padding-left:8px; }
 .note-color-dialog { box-sizing:border-box; width:min(360px,calc(100% - 32px)); max-height:calc(100dvh - 32px); margin:auto; padding:20px; overflow:auto; border:1px solid var(--border); border-radius:8px; background:var(--panel); color:var(--text); box-shadow:0 20px 60px #0004; }
