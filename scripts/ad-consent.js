@@ -29,7 +29,7 @@ export function observeAdConsent(tcf, onChange) {
     if (Number.isInteger(data?.listenerId)) listenerId = data.listenerId;
     if (stopped) { remove(); return; }
     const next = adConsentStatus(data, success, status);
-    if (next !== status) { status = next; onChange(); }
+    if (next !== status) { status = next; onChange(next); }
   };
   function remove() {
     if (listenerId === undefined) return;
@@ -45,4 +45,10 @@ export function observeAdConsent(tcf, onChange) {
     getStatus: () => status,
     stop() { stopped = true; status = 'unknown'; remove(); }
   };
+}
+
+export function observeBrowserAdConsent(onChange, target = window) {
+  // InMobi installs a stub first and replaces it when the CMP is ready.
+  // Resolve the API for each command so cleanup reaches the live SDK.
+  return observeAdConsent((...args) => target.__tcfapi?.(...args), onChange);
 }

@@ -51,3 +51,29 @@ test('TCF updates are idempotent, revoke correctly and clean up the listener', a
   assert.equal(observer.getStatus(), 'unknown');
   assert.equal(changes, 2);
 });
+
+test('browser subscription survives the CMP stub handoff and cleans up through the live API', async () => {
+  const { observeBrowserAdConsent } = await import('../scripts/ad-consent.js');
+  const target = {};
+  let callback, removed;
+  const changes = [];
+  target.__tcfapi = (command, version, listener) => {
+    assert.equal(command, 'addEventListener');
+    assert.equal(version, 2);
+    callback = listener;
+  };
+  const observer = observeBrowserAdConsent(status => changes.push(status), target);
+  target.__tcfapi = (command, version, _callback, id) => {
+    assert.equal(command, 'removeEventListener');
+    assert.equal(version, 2);
+    removed = id;
+  };
+  callback({...granted(), cmpId: 10}, true);
+  callback({...granted(), cmpId: 10, eventStatus: 'useractioncomplete', vendor: {consents: {755: false}}}, true);
+  assert.equal(observer.getStatus(), 'denied');
+  assert.deepEqual(changes, ['granted', 'denied']);
+  observer.stop();
+  assert.equal(removed, 1);
+  callback(granted(), true);
+  assert.deepEqual(changes, ['granted', 'denied']);
+});
