@@ -93,7 +93,21 @@ validates the TC string. The bridge itself is not a CMP.
    mobile standalone flows with no real ad clicks.
 
 Without `granted`, there is no provider import, CSS reservation or third-party ad
-request. No CMP vendor tag is shipped by this release.
+request. The official InMobi v3 tag runs only at
+`https://estudiemos.ar/consentimiento` for production verification. The page does
+not load account or ad modules; its CSP permits the CMP but not AdSense, and
+does not change the main app's policy. InMobi's TCF 2.3 vendor list allows only
+Google Advertising Products (755); newly added vendors are blocked by default.
+No SSP, consent-or-pay or paid subscription was activated. Recheck vendor
+scoping after InMobi's automatic Premium trial reverts to Essentials before
+expanding the integration beyond this route.
+
+Run `node tests/inmobi-preview.smoke.cjs --live` to verify the real CMP in an
+isolated browser. The test refuses any ad request. Add `--require-revocation`
+for the release gate. In the current provider configuration, initial rejection
+and acceptance are recorded, but disabling preferences after accepting did
+not clear the effective TCF grant on reload. Do not put the tag on app screens
+or enable ads until a production test confirms persisted revocation.
 
 Only `{slot, signal}` reaches the adapter; no account ID, email, credential, study
 history, task or course content is intentionally passed. **This is not a sandbox**:
