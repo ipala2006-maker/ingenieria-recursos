@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://estudiemos.estudiemos-services.workers.dev/sitemap.xml
+Sitemap: https://estudiemos.ar/sitemap.xml

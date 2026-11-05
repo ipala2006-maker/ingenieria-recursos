@@ -5,28 +5,58 @@ Production code is enabled, but delivery is fail-closed until a confirmed Free a
 valid advertising consent and the exact origin `https://estudiemos.ar` are present.
 No prices, checkout, tool restrictions or paid infrastructure are enabled.
 
+## Current production status (5 November 2026)
+
+PR #128 enabled InMobi Choice globally on the advertising-capable PWA screens:
+Inicio (`/`), Mi espacio (`/mi-espacio`) and Materias (`/materias`), including
+their HTML aliases. The CMP is not limited to the standalone verification page.
+The exact-origin/top-window guard excludes workers.dev, frames and the native
+Android bridge. Invitations, installation pages and desktop widgets do not
+bootstrap advertising. `cloudflare/frontdoor.mjs` adds the required CMP hosts
+only to these application documents, preserving the baseline security policy.
+
+Cookie preferences are available from Cuenta -> Preferencias de cookies and
+the privacy/footer links. `scripts/cmp-preferences.js` reopens the official
+`displayConsentUi` API in place, or falls back to
+`https://estudiemos.ar/consentimiento?preferencias=1`. That standalone page
+remains noindex, with no account module or advertising hosts in its CSP.
+
+The official AdSense SDK is enabled conditionally, not unconditionally: it
+requires a confirmed Free account, valid TCF consent and the canonical origin.
+Rejecting, revoking, Pro/No Ads or signing out prevents a new ad load; revocation
+after the SDK has executed triggers clean navigation. Production browser tests
+on Chromium and WebKit verified persistent denial across all three screens.
+Google ad requests were intercepted, so these tests generated no real impressions.
+
+The owner reports the payment profile and ad setup complete, with the site
+`Preparando el sitio` and ads.txt `Autorizado`. This is not Google's approval.
+Once the site is Ready, check actual anchor geometry, keyboard interactions,
+CLS and the real SDK's CSP dependencies without clicking your own ads.
+Revalidate the published vendor restriction when InMobi's automatic Premium
+trial falls back to Essentials; do not subscribe or integrate SSP to preserve it.
+
 ## Deployment and external activation
 
 - `wrangler.frontdoor.jsonc` binds `estudiemos.ar` as a custom domain to the public
   Worker `estudiemos`. `estudiemos-services` is the account's workers.dev subdomain,
   not the Worker name. The private backend service binding is unchanged.
-- Keep workers.dev enabled while DNS activates. Do not redirect existing sessions
-  or rewrite `APP_ORIGIN`, Auth, Drive OAuth or native origins in this release.
-  Binding the domain is not the same as completing that later canonical-origin migration.
+- `estudiemos.ar` is the public canonical origin, including metadata and sitemap.
+  The workers.dev mirror stays enabled for existing sessions and integrations.
+  SEO metadata changes must not rewrite `APP_ORIGIN`, Auth, Drive OAuth or native
+  origins, or silently redirect existing sessions between browser origins.
 - The authoritative .ar delegation now lists leif/luciane and the zone is active.
   Universal SSL is active and Always Use HTTPS is enabled; see `custom-domain-https.md`.
   Do not disable certificate verification or weaken CSP to fix an HTTP-only visit.
-- AdSense showed `Requiere revision` and unverified ownership.
-  The three application heads now contain Google's ownership meta tag, and `/ads.txt`
-  contains the authorized-seller record. Once HTTPS resolves, choose the meta-tag or
-  ads.txt verification method and request Google's review. Code deployment is not approval.
+- The three application heads contain Google's ownership meta tag, and `/ads.txt`
+  contains the authorized-seller record. Ownership and review were requested;
+  do not remove and resubmit the site while Google is preparing it.
 - AdSense settings were saved with Auto ads enabled, only the regular bottom anchor
   selected (desktop included), dynamic anchors disabled, and no in-page, vignette,
   side-rail or intent formats. Automatic optimization is disabled. Do not enable
   experiments that add placements the user did not request. These settings do not
   grant site approval or bypass the app's consent and account checks.
-- Keep live delivery disabled until AdSense lists the site as ready and a certified
-  CMP has been verified on the production domain. Neither the verification meta
+- The CMP is verified and the conditional SDK is deployed. Google's readiness
+  and availability still govern real delivery. Neither the verification meta
   tag nor `ads.txt` loads an ad or a CMP.
 
 ## Official format, not a manually sticky unit
@@ -76,7 +106,7 @@ publisher restrictions. A missing API, missing decision or unsupported region st
 ad-free; no decision is manufactured from localStorage. The ad SDK independently
 validates the TC string. The bridge itself is not a CMP.
 
-### Before enabling live advertising
+### Operational checks
 
 1. Confirm that AdSense shows `estudiemos.ar` as ready and review age-related
    publisher requirements before advertising to a student audience.
@@ -93,14 +123,10 @@ validates the TC string. The bridge itself is not a CMP.
    mobile standalone flows with no real ad clicks.
 
 Without `granted`, there is no provider import, CSS reservation or third-party ad
-request. The official InMobi v3 tag runs only at
-`https://estudiemos.ar/consentimiento` for production verification. The page does
-not load account or ad modules; its CSP permits the CMP but not AdSense, and
-does not change the main app's policy. InMobi's TCF 2.3 vendor list allows only
-Google Advertising Products (755); newly added vendors are blocked by default.
-No SSP, consent-or-pay or paid subscription was activated. Recheck vendor
-scoping after InMobi's automatic Premium trial reverts to Essentials before
-expanding the integration beyond this route.
+request. The official InMobi v3 tag runs on the canonical application screens
+listed above as well as the standalone privacy settings page. InMobi's TCF 2.3
+vendor list allows only Google Advertising Products (755); newly added vendors
+are blocked by default. No SSP, consent-or-pay or paid subscription was activated.
 
 Run `node tests/inmobi-preview.smoke.cjs --live` to verify the real CMP in an
 isolated browser. Add `--partners` to exercise the individual vendor panel.
@@ -132,6 +158,9 @@ do not relax the policy globally merely to obtain ad fill.
 - `styles/ad-banner.css`, `scripts/dashboard.js`, `styles/dashboard.css`: viewport
   reservation and native quick-note/assistant modals.
 - `index.html`, `mi-espacio.html`, `materias.html`: ownership metadata and module entry.
+- `scripts/inmobi-choice-tag.js`, `scripts/cmp-preferences.js`, `scripts/account.js`,
+  `consentimiento.html`, `cloudflare/frontdoor.mjs`: global CMP bootstrap,
+  persistent preferences, standalone fallback and scoped response policy.
 - `ads.txt`, `scripts/build-cloudflare.cjs`, `vercel.json`, `scripts/csp-check.js`:
   public seller record, static packaging and reviewed HTTP policy.
 - `about.html`: conditional-advertising disclosure and Google privacy link.
@@ -141,6 +170,9 @@ do not relax the policy globally merely to obtain ad fill.
 
 ```powershell
 node --test tests/ads.test.js tests/ad-consent.test.js
+node tests/inmobi-pwa.smoke.cjs --live
+$env:TEST_WEBKIT='1'; node tests/inmobi-pwa.smoke.cjs --live
+Remove-Item Env:TEST_WEBKIT
 node tests/ads-banner.smoke.cjs
 node tests/adsense-anchor.smoke.cjs
 node scripts/csp-check.js
