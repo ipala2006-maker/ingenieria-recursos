@@ -398,7 +398,7 @@
     if (document.querySelector('script[src*="scripts/account.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/account.js?v=20261027-resume-check`;
+    script.src = `${rootPath}scripts/account.js?v=20261104-consent`;
     script.defer = true;
     document.head.appendChild(script);
   }

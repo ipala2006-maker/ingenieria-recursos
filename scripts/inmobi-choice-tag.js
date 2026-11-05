@@ -1,7 +1,7 @@
 /* InMobi Choice Consent Manager Tag v3.0 (TCF 2.3), generated for Estudiemos. */
 (function() {
 if (window.top !== window || window.location.origin !== 'https://estudiemos.ar') return;
-if (!['/consentimiento', '/consentimiento/', '/consentimiento.html'].includes(window.location.pathname)) return;
+if (window.EstudiemosAndroid || typeof window.__tcfapi === 'function') return;
 var host = window.location.hostname;
 var element = document.createElement('script');
 var firstScript = document.getElementsByTagName('script')[0];
