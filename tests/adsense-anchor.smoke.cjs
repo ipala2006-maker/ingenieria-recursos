@@ -34,6 +34,7 @@ const policy=JSON.parse(fs.readFileSync(path.join(root,'vercel.json'),'utf8')).h
           return route.abort();
         }
         if(url.pathname.startsWith('/api/'))return route.fulfill({contentType:'application/json',body:'{"enabled":false}'});
+        if(url.pathname==='/scripts/inmobi-choice-tag.js')return route.fulfill({contentType:'text/javascript',body:''});
         if(url.pathname==='/scripts/account.js')return route.fulfill({contentType:'text/javascript',body:`window.EstudiemosAccount={getUser:()=>window.__adUser,getSession:()=>window.__adUser?{access_token:'fixture',user:window.__adUser}:null,getClient:()=>null,whenReady:async()=>({}),isSynchronized:()=>true,sync(){},refresh:async()=>{},open(){}};window.dispatchEvent(new Event('estudiemos:account-ready'));`});
         const file=path.resolve(root,'.'+decodeURIComponent(url.pathname==='/'?'/index.html':url.pathname));
         if(!file.startsWith(root+path.sep))return route.abort();

@@ -7,13 +7,15 @@
   <title>Preferencias de privacidad | Estudiemos</title>
   <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/styles/consent-preview.css">
-  <script defer src="/scripts/inmobi-choice-tag.js"></script>
+  <script defer src="/scripts/inmobi-choice-tag.js?v=20261104-global"></script>
+  <script type="module" src="/scripts/cmp-preferences.js"></script>
 </head>
 <body>
-  <main>
+  <main data-cmp-settings-page>
     <a class="brand" href="/"><img src="/assets/favicon.svg" width="28" height="28" alt="">Estudiemos</a>
     <h1>Preferencias de privacidad</h1>
-    <p>Esta p&aacute;gina permite verificar el consentimiento sin cargar anuncios.</p>
+    <p>Pod&eacute;s cambiar o retirar tu consentimiento en cualquier momento.</p>
+    <p><a href="/consentimiento?preferencias=1" data-cmp-preferences>Preferencias de cookies</a></p>
     <a href="/about.html#privacidad">Pol&iacute;tica de privacidad</a>
   </main>
 </body>

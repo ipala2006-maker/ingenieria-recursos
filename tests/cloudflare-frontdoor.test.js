@@ -1,5 +1,6 @@
 const test = require('node:test'), assert = require('node:assert/strict'), fs = require('node:fs'), path = require('node:path');
 const load = () => import('../cloudflare/frontdoor.mjs');
+const appPaths = ['/', '/index.html', '/mi-espacio', '/mi-espacio/', '/mi-espacio.html', '/materias', '/materias/', '/materias.html'];
 
 test('stable frontdoor forwards the original API request only to its internal service binding', async () => {
   const { default: worker } = await load();
@@ -52,10 +53,10 @@ test('production configurations preserve the existing secret-bearing worker and 
   assert.equal(backend.vars.APP_ORIGIN, 'https://estudiemos.estudiemos-services.workers.dev');
   assert.equal(backend.vars.PUSH_DISPATCH_ENABLED, 'true', 'ordinary deployments preserve the already-authorized live transport');
   const consentPaths = ['/consentimiento', '/consentimiento/', '/consentimiento.html'];
-  assert.deepEqual(frontend.assets, {...backend.assets, run_worker_first: [...backend.assets.run_worker_first, ...consentPaths]});
+  assert.deepEqual(frontend.assets, {...backend.assets, run_worker_first: [...backend.assets.run_worker_first, ...consentPaths, ...appPaths]});
 });
 
-test('CMP policy is exclusive to the production verification page and excludes ad hosts', async () => {
+test('the standalone CMP settings page excludes ad hosts and cannot be indexed', async () => {
   const { default: worker } = await load();
   const env = { ASSETS: { fetch: async () => new Response('asset', {
     headers: {'Content-Type':'text/html', 'Content-Security-Policy':"default-src 'self'"}
@@ -72,7 +73,29 @@ test('CMP policy is exclusive to the production verification page and excludes a
     const mirror = await request('https://estudiemos.estudiemos-services.workers.dev' + pathname);
     assert.equal(mirror.status, 404);
   }
-  assert.equal((await request('https://estudiemos.ar/')).headers.get('content-security-policy'), "default-src 'self'");
+});
+
+test('app pages keep every baseline CSP source and enable CMP only on the canonical origin', async () => {
+  const { default: worker } = await load();
+  const baseline = require('../vercel.json').headers.find(rule => rule.source === '/(.*)').headers;
+  const policy = baseline.find(h => h.key === 'Content-Security-Policy').value;
+  const env = { ASSETS: { fetch: async () => new Response('asset', { headers: { 'Content-Type': 'text/html' } }) } };
+  for (const route of appPaths) {
+    const page = await worker.fetch(new Request('https://estudiemos.ar' + route), env);
+    const updated = page.headers.get('content-security-policy');
+    assert.match(updated, /script-src [^;]+https:\/\/cmp\.inmobi\.com/);
+    for (const directive of policy.split('; ')) assert.ok(updated.includes(directive), directive);
+    for (const {key, value} of baseline) if (key !== 'Content-Security-Policy') assert.equal(page.headers.get(key), value);
+    const mirror = await worker.fetch(new Request('https://estudiemos.estudiemos-services.workers.dev' + route), env);
+    assert.equal(mirror.headers.get('content-security-policy'), null);
+  }
+  for (const route of ['/instalar', '/widgets/inbox.html', '/scripts/inmobi-choice-tag.js']) {
+    const other = await worker.fetch(new Request('https://estudiemos.ar' + route), env);
+    assert.equal(other.headers.get('content-security-policy'), null);
+  }
+  const cached = await worker.fetch(new Request('https://estudiemos.ar/'), { ASSETS: { fetch: async () => new Response(null, {status:304}) } });
+  assert.equal(cached.status, 304);
+  assert.match(cached.headers.get('content-security-policy'), /https:\/\/cmp\.inmobi\.com/);
 });
 
 test('custom domain preserves its host and request identity across static and private service bindings',async()=>{

@@ -1,4 +1,5 @@
 import '../shared/ads.js';
+import './cmp-preferences.js';
 import { observeBrowserAdConsent } from './ad-consent.js?v=20261104b';
 
 (function(){

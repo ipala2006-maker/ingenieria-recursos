@@ -10,6 +10,7 @@ const live = process.argv.includes('--live');
 const files = {
   '/consentimiento': ['consentimiento.html', 'text/html'],
   '/scripts/ad-consent.js': ['scripts/ad-consent.js', 'text/javascript'],
+  '/scripts/cmp-preferences.js': ['scripts/cmp-preferences.js', 'text/javascript'],
   '/scripts/inmobi-choice-tag.js': ['scripts/inmobi-choice-tag.js', 'text/javascript'],
   '/styles/consent-preview.css': ['styles/consent-preview.css', 'text/css'],
   '/assets/favicon.svg': ['assets/favicon.svg', 'image/svg+xml']
