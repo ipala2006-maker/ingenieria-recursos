@@ -2,12 +2,14 @@ const { chromium, webkit } = require('../tmp/ui-check/node_modules/playwright');
 const { readFile } = require('node:fs/promises');
 const path = require('node:path');
 const assert = require('node:assert/strict');
+const { createHash } = require('node:crypto');
 
 const origin = 'https://estudiemos.ar';
 const url = origin + '/consentimiento';
 const live = process.argv.includes('--live');
 const files = {
   '/consentimiento': ['consentimiento.html', 'text/html'],
+  '/scripts/ad-consent.js': ['scripts/ad-consent.js', 'text/javascript'],
   '/scripts/inmobi-choice-tag.js': ['scripts/inmobi-choice-tag.js', 'text/javascript'],
   '/styles/consent-preview.css': ['styles/consent-preview.css', 'text/css'],
   '/assets/favicon.svg': ['assets/favicon.svg', 'image/svg+xml']
@@ -47,9 +49,10 @@ async function main() {
     const response = await page.goto(url);
     assert.equal(response.status(), 200);
     try {
-      const reject = page.getByRole('button', {name:/^(rechazar|reject|disagree)( todo| all)?$/i}).first();
+      const dialog = page.getByRole('dialog', {name:/privacy|privacidad/i});
+      const reject = dialog.getByRole('button', {name:/^(rechazar|reject|disagree)$/i}).filter({visible:true});
       await reject.waitFor({timeout:18000});
-      const accept = page.getByRole('button', {name:/^(aceptar|accept|agree)( todo| all)?$/i}).first();
+      const accept = dialog.getByRole('button', {name:/^(aceptar|accept|agree)( todo| all)?$/i}).filter({visible:true});
       await accept.waitFor({timeout:5000});
       const screenshot = path.join(__dirname, '../tmp/ui-check', `inmobi-banner-${live?'produccion':'ensayo'}-${engine.name()}.png`);
       await page.screenshot({path:screenshot});
@@ -66,7 +69,7 @@ async function main() {
       await reject.click();
       await reject.waitFor({state:'hidden'});
       assert.deepEqual(vendors(await consent()), []);
-      const reopen = page.getByText(/^(privacidad|privacy|privacy choices)$/i, {exact:true}).filter({visible:true}).first();
+      const reopen = page.getByRole('link', {name:/^(privacidad|privacy|privacy choices)$/i});
       await reopen.click({timeout:8000});
       await accept.waitFor({timeout:8000});
       await accept.click();
@@ -77,23 +80,45 @@ async function main() {
       assert.equal(adConsentStatus(accepted, true), 'granted');
       await page.reload();
       assert.equal(adConsentStatus(await consent(), true), 'granted');
+      const stored = async () => Object.fromEntries((await context.cookies(origin))
+        .filter(cookie => /gpp|consent/i.test(cookie.name))
+        .map(cookie => [cookie.name, createHash('sha256').update(cookie.value).digest('hex')]));
+      const before = await stored();
+      await page.evaluate(async () => {
+        const { observeBrowserAdConsent } = await import('/scripts/ad-consent.js?v=20261104b');
+        window.__testAdConsent = observeBrowserAdConsent(() => {});
+        window.__testTcfEvents = [];
+        window.__tcfapi('addEventListener', 2, (data, success) => {
+          if (success && data) window.__testTcfEvents.push(structuredClone(data));
+        });
+      });
+      await page.waitForFunction(() => window.__testAdConsent.getStatus() === 'granted');
       await reopen.click({timeout:8000});
-      const save = page.getByRole('button', {name:/save.*exit|guardar/i});
-      await save.waitFor({timeout:8000});
-      const switches = page.getByText(/^on$/i, {exact:true}).filter({visible:true});
-      const active = await switches.count();
-      assert.ok(active > 0, 'expected checked consent preferences');
-      for (let index = 0; index < active; index++) await switches.first().click();
-      await save.click();
-      await save.waitFor({state:'hidden'});
+      const partners = process.argv.includes('--partners');
+      if (partners) await dialog.getByRole('button', {name:/^partners$|^socios$/i}).click();
+      // The CMP also renders a separate Disagree control; use the visible
+      // Reject All command from the opened preference panel.
+      await dialog.getByRole('button', {name:/^reject all$|^rechazar todo$/i}).filter({visible:true}).click();
+      if (partners) await dialog.getByRole('button', {name:/save.*exit|guardar/i}).filter({visible:true}).click();
+      await page.waitForFunction(() => window.__testAdConsent.getStatus() === 'denied' &&
+        window.__testTcfEvents.some(data => data.eventStatus === 'useractioncomplete' &&
+          data.vendor?.consents?.[755] !== true), null, {timeout:8000});
+      const after = await stored();
+      const events = await page.evaluate(() => window.__testTcfEvents);
+      const withdrawal = events.find(data => data.eventStatus === 'useractioncomplete' && adConsentStatus(data, true) === 'denied');
+      assert.ok(withdrawal, 'expected a completed TCF denial, not just a closed modal');
+      assert.notEqual(withdrawal.tcString, accepted.tcString);
+      const changedCookies = Object.keys(after).filter(key => after[key] !== before[key]);
+      assert.ok(changedCookies.includes('euconsent-v2'), 'InMobi must persist a new TCF cookie');
+      if (before.IABGPP_HDR_GppString) assert.ok(changedCookies.includes('IABGPP_HDR_GppString'));
       await page.reload();
-      const revocation = adConsentStatus(await consent(), true);
+      const reloaded = await consent();
+      assert.equal(adConsentStatus(reloaded, true), 'denied');
+      assert.equal(reloaded.tcString, withdrawal.tcString);
       assert.deepEqual(adRequests, []);
-      console.log('PASS: real banner, initial reject, reopen and persistent accept; zero ad requests', screenshot);
-      if (revocation !== 'denied') {
-        console.warn('BLOCKED FOR ROLLOUT: provider did not persist revocation as denied:', revocation);
-        if (process.argv.includes('--require-revocation')) assert.equal(revocation, 'denied');
-      } else console.log('PASS: revocation persisted after reload');
+      console.log('PASS: initial reject, accept, useractioncomplete denied, changed TCString and persisted denial');
+      console.log('Consent cookies updated:', changedCookies.join(', '));
+      console.log('Zero ad requests; banner screenshot:', screenshot);
     } catch (error) {
       console.log((await page.locator('body').innerText()).slice(0,1800));
       console.log(errors);

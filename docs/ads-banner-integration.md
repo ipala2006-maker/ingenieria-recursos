@@ -103,11 +103,14 @@ scoping after InMobi's automatic Premium trial reverts to Essentials before
 expanding the integration beyond this route.
 
 Run `node tests/inmobi-preview.smoke.cjs --live` to verify the real CMP in an
-isolated browser. The test refuses any ad request. Add `--require-revocation`
-for the release gate. In the current provider configuration, initial rejection
-and acceptance are recorded, but disabling preferences after accepting did
-not clear the effective TCF grant on reload. Do not put the tag on app screens
-or enable ads until a production test confirms persisted revocation.
+isolated browser. Add `--partners` to exercise the individual vendor panel.
+The test requires a real `useractioncomplete` denial, a changed TC string and
+consent cookies, denial after reload, and zero ad requests. In the summary
+panel, use its visible **Reject All** control; in **Partners**, use **Reject All**
+and then **Save & Exit**. The CMP can also render a separate **Disagree**
+button. Clicking a generic rejection locator or merely closing the modal
+does not demonstrate revocation. The observer receives the CMP decision;
+it never writes or replaces a vendor cookie or TC string.
 
 Only `{slot, signal}` reaches the adapter; no account ID, email, credential, study
 history, task or course content is intentionally passed. **This is not a sandbox**:

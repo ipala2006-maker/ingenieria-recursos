@@ -1,12 +1,11 @@
 import '../shared/ads.js';
-import { observeAdConsent } from './ad-consent.js?v=20261104';
+import { observeBrowserAdConsent } from './ad-consent.js?v=20261104b';
 
 (function(){
   if(window.EstudiemosAdBanner||window.EstudiemosRelease?.enabled('ads')!==true)return;
   const rules=window.EstudiemosAds,root=new URL('../',import.meta.url);
   let epoch=0,owner='',phase='idle',host=null,abort=null,handle=null,cancelIdle=()=>{},timer=0,disposed=false,stylePromise,needsCleanNavigation=false;
-  const api=typeof window.__tcfapi==='function'?window.__tcfapi.bind(window):null;
-  const tcf=observeAdConsent(api,()=>window.dispatchEvent(new Event('estudiemos:ads-consent-change')));
+  const tcf=observeBrowserAdConsent(()=>window.dispatchEvent(new Event('estudiemos:ads-consent-change')));
   const consent=()=>tcf.getStatus();
   const user=()=>window.EstudiemosAccount?.getUser?.();
   const eligible=()=>rules.eligible({enabled:window.EstudiemosRelease?.enabled('ads'),user:user(),consent:consent(),nativeWebView:Boolean(window.EstudiemosAndroid)});
