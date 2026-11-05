@@ -51,7 +51,28 @@ test('production configurations preserve the existing secret-bearing worker and 
   assert.equal(frontend.vars, undefined); assert.equal(frontend.secrets, undefined);
   assert.equal(backend.vars.APP_ORIGIN, 'https://estudiemos.estudiemos-services.workers.dev');
   assert.equal(backend.vars.PUSH_DISPATCH_ENABLED, 'true', 'ordinary deployments preserve the already-authorized live transport');
-  assert.deepEqual(frontend.assets, backend.assets);
+  const consentPaths = ['/consentimiento', '/consentimiento/', '/consentimiento.html'];
+  assert.deepEqual(frontend.assets, {...backend.assets, run_worker_first: [...backend.assets.run_worker_first, ...consentPaths]});
+});
+
+test('CMP policy is exclusive to the production verification page and excludes ad hosts', async () => {
+  const { default: worker } = await load();
+  const env = { ASSETS: { fetch: async () => new Response('asset', {
+    headers: {'Content-Type':'text/html', 'Content-Security-Policy':"default-src 'self'"}
+  }) }, BACKEND: { fetch: async () => assert.fail('CMP must not use the backend') } };
+  const request = url => worker.fetch(new Request(url), env);
+  for (const pathname of ['/consentimiento','/consentimiento/','/consentimiento.html']) {
+    const preview = await request('https://estudiemos.ar' + pathname);
+    assert.equal(preview.status, 200);
+    assert.equal(preview.headers.get('x-robots-tag'), 'noindex, nofollow');
+    assert.equal(preview.headers.get('cache-control'), 'no-store');
+    const policy = preview.headers.get('content-security-policy');
+    assert.match(policy, /script-src 'self' https:\/\/cmp\.inmobi\.com/);
+    assert.doesNotMatch(policy, /googlesyndication|doubleclick|supabase|unsafe-eval/);
+    const mirror = await request('https://estudiemos.estudiemos-services.workers.dev' + pathname);
+    assert.equal(mirror.status, 404);
+  }
+  assert.equal((await request('https://estudiemos.ar/')).headers.get('content-security-policy'), "default-src 'self'");
 });
 
 test('custom domain preserves its host and request identity across static and private service bindings',async()=>{
