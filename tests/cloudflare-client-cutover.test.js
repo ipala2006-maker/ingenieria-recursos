@@ -61,11 +61,11 @@ test('Windows resolves setup recipients with a structured parser and an exact al
   assert.ok(connector.includes("$appOrigin + '/?windows-alarms-ready='"));
 });
 
-test('published canonical and install links no longer send new users back to Vercel', () => {
+test('public metadata uses the custom Cloudflare domain and never the retired Vercel site', () => {
   for (const name of ['index.html', 'instalar.html', 'amistad.html', 'sitemap.xml']) {
     const content = fs.readFileSync(path.join(root, name), 'utf8');
     assert.ok(!content.includes(legacy), name);
-    assert.ok(content.includes(origin), name);
+    assert.ok(content.includes('https://estudiemos.ar'), name);
   }
 });
 

@@ -1,5 +1,29 @@
 # Estudiemos: revision previa a AdSense
 
+## Actualizacion de estado: 5 de noviembre de 2026
+
+Este archivo conserva abajo la auditoria historica del 4 de noviembre; sus
+hallazgos de Drive y consentimiento no describen el estado actual.
+La guia operativa vigente es `ads-banner-integration.md`.
+
+- PR #125 corrigio Drive para ambos origenes. La comprobacion sin sesion desde
+  estudiemos.ar devuelve 401 de autenticacion, no el antiguo 403 de origen.
+  Esto no sustituye una prueba personal de autorizacion OAuth.
+- PR #128 activo InMobi Choice globalmente en Inicio, Mi espacio y Materias.
+  Cuenta -> Preferencias de cookies permite reabrir el CMP; la pagina
+  `/consentimiento?preferencias=1` conserva el acceso alternativo sin anuncios.
+- Chromium y WebKit verificaron aceptacion, rechazo y revocacion persistente
+  entre pantallas. AdSense permanece condicionado a una cuenta Free, origen
+  canonico y consentimiento valido; Pro, Sin anuncios y Android WebView quedan
+  excluidos. Los ensayos interceptan las peticiones publicitarias.
+- El propietario confirmo perfil de pagos y configuracion de anuncios completos,
+  sitio `Preparando el sitio` y ads.txt `Autorizado`. No equivale a `Listo`.
+- Siguen correspondiendo la validacion del ancla/SDK real tras la aprobacion,
+  las comprobaciones en dispositivos fisicos y la revalidacion del CMP cuando
+  termine su prueba Premium. No hay pagos ni un nuevo envio a revision.
+
+## Auditoria original (historica)
+
 Fecha: 4 de noviembre de 2026, Argentina.
 Produccion auditada: `estudiemos.ar`, codigo base `c31de83`.
 Esta revision no activa publicidad, no cambia cuentas ni credenciales y no
@@ -25,7 +49,7 @@ certifica todos los modelos de dispositivos.
   dos filas, Inbox angosto con acciones debajo del titulo y mejor contraste
   en la descarga en modo claro.
 
-## Hallazgos pendientes
+## Hallazgos al momento de la auditoria original
 
 1. **Drive en el dominio nuevo.** La solicitud POST sin sesion a
    `/api/account-config?drive=start` responde 403 "Origen no permitido" desde
