@@ -133,6 +133,7 @@ const ids=['00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-00000
     await bob.locator('[data-view="ranking"]').click();await bob.getByText('Todavía no hay rachas compartidas.',{exact:true}).waitFor();await bob.locator('[data-view="all"]').click();await bob.getByText('Racha privada',{exact:true}).waitFor();
     await bob.evaluate(()=>window.EstudiemosTheme.set('light'));
     await bob.waitForFunction(()=>{const style=getComputedStyle(document.querySelector('.friends-dialog'));return style.backgroundColor==='rgb(255, 255, 255)'||style.backgroundImage.includes('rgb(255, 255, 255)');});
+    await bob.waitForFunction(()=>getComputedStyle(document.querySelector('.friends-tabs')).backgroundColor==='rgb(244, 247, 251)'&&getComputedStyle(document.querySelector('.friends-tabs [aria-selected=true]')).backgroundColor==='rgb(255, 255, 255)');
     await bob.screenshot({path:path.join(output,'friends-mobile-light.png')});
     await bob.setViewportSize({width:320,height:640});assert.ok(await bob.locator('.friends-dialog').evaluate(el=>el.scrollWidth<=el.clientWidth+1));
     await bob.evaluate(()=>{window.EstudiemosAccount.getUser=()=>null;window.EstudiemosAccount.getSession=()=>null;window.dispatchEvent(new CustomEvent('estudiemos:account-change'));});
