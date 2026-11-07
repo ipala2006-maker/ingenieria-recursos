@@ -45,23 +45,25 @@ const ids=['00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-00000
       const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));await page.goto(base);await page.locator('[data-friends-open]').click();await page.locator('[data-content]').waitFor({state:'visible'});pages.push(page);
     }
     const [alice,bob]=pages;
-    await bob.getByRole('button',{name:'Mi nombre y privacidad',exact:true}).click();
+    await bob.getByRole('tab',{name:'Privacidad',exact:true}).click();
     const automaticUsername=await bob.locator('#friendName').inputValue();
+    await bob.locator('[data-friend-tab=settings]').press('ArrowLeft');assert.equal(await bob.locator('[data-friend-tab=invite]').getAttribute('aria-selected'),'true');
+    await bob.locator('#friendContact').fill('draft_friend');await bob.locator('[data-friend-tab=friends]').click();await bob.locator('[data-friend-tab=invite]').click();assert.equal(await bob.locator('#friendContact').inputValue(),'draft_friend');
     assert.match(automaticUsername,/^[a-z]+\d{2,3}$/,'unnamed students get a readable English username');
     await bob.reload();await bob.locator('[data-friends-open]').click();await bob.locator('[data-content]').waitFor({state:'visible'});
-    await bob.getByRole('button',{name:'Mi nombre y privacidad',exact:true}).click();
+    await bob.getByRole('tab',{name:'Privacidad',exact:true}).click();
     assert.equal(await bob.locator('#friendName').inputValue(),automaticUsername,'the generated username survives reload');
     await bob.locator('#friendName').fill('@BRUNO_ESTUDIA');
     await bob.getByRole('button',{name:'Guardar cambios'}).click();await bob.getByText('Nombre y privacidad guardados.').waitFor();
-    await bob.locator('[data-back]').click();
+    await bob.locator('[data-friend-tab=friends]').click();
     await bob.getByRole('button',{name:'Cerrar amigos',exact:true}).click();
-    await alice.getByRole('button',{name:'Agregar amigos',exact:true}).click();
+    await alice.getByRole('tab',{name:'Agregar',exact:true}).click();
     assert.equal(await alice.locator('[data-invite-form],#friendInvite,.friends-paste').count(),0,'links are handled automatically, with no paste form');
     await alice.locator('[data-copy]').click();await alice.getByText('Invitación copiada.',{exact:false}).waitFor();
     const copied=await alice.evaluate(()=>window.copiedInvitation);
     assert.match(copied,/¡Estudiemos juntos! Te invito a ser mi amigo en Estudiemos/);assert.match(copied,/\/amistad\/[a-f0-9]{32}$/);
     await alice.locator('[data-native-share]').click();
-    const shared=await alice.evaluate(()=>window.sharedInvitation);assert.equal(shared.title,'Solicitud de amistad en Estudiemos');assert.ok(copied.endsWith(shared.url));assert.ok(copied.startsWith(shared.text));
+    const shared=await alice.evaluate(()=>window.sharedInvitation);assert.equal(shared.title,'Solicitud de amistad en Estudiemos');assert.ok(copied.endsWith(shared.url));assert.ok(copied.startsWith(shared.text));assert.equal(new URL(shared.url).origin,'https://estudiemos.ar');
     await alice.evaluate(()=>{navigator.share=async()=>{throw new DOMException('Canceled','AbortError');};window.copiedInvitation=null;});
     await alice.locator('[data-native-share]').click();assert.equal(await alice.evaluate(()=>window.copiedInvitation),null,'canceling native share never copies or sends an invitation');
     await alice.evaluate(()=>{navigator.clipboard.writeText=async()=>{throw new Error('Denied');};});
@@ -77,7 +79,7 @@ const ids=['00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-00000
     assert.equal(await bob.locator('[data-incoming] .friends-request').count(),1,'email request arrives in the recipient app without a link or manual refresh');
     await bob.locator('[data-incoming]').getByRole('button',{name:'Aceptar',exact:true}).waitFor();
     await alice.getByRole('button',{name:'Cancelar',exact:true}).click();await alice.getByText('Solicitud cancelada.',{exact:true}).waitFor();
-    await alice.getByRole('button',{name:'Agregar amigos',exact:true}).click();
+    await alice.getByRole('tab',{name:'Agregar',exact:true}).click();
     await alice.locator('#friendContact').fill('@BRUNO_ESTUDIA');
     await alice.locator('[data-contact-form]').getByRole('button',{name:'Enviar solicitud',exact:true}).click();
     await alice.getByText('Si corresponde a una cuenta confirmada',{exact:false}).waitFor();
@@ -91,15 +93,16 @@ const ids=['00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-00000
     await bob.locator('[data-incoming]').getByRole('button',{name:'Aceptar',exact:true}).waitFor();
     await bob.screenshot({path:path.join(output,'friend-request-recipient.png')});
     await alice.getByRole('button',{name:'Cancelar',exact:true}).click();await alice.getByText('Solicitud cancelada.',{exact:true}).waitFor();
-    await bob.getByRole('button',{name:'Agregar amigos',exact:true}).click();
+    await bob.getByRole('tab',{name:'Agregar',exact:true}).click();
     await bob.screenshot({path:path.join(output,'friends-email-mobile.png')});
     assert.ok(await bob.locator('.friends-dialog').evaluate(el=>el.scrollWidth<=el.clientWidth+1));
-    await bob.locator('[data-back]').click();
-    await alice.getByRole('button',{name:'Mi nombre y privacidad',exact:true}).click();await alice.locator('#friendName').fill('alex');await alice.locator('[data-share]').check();await alice.getByRole('button',{name:'Guardar cambios'}).click();await alice.getByText('Nombre y privacidad guardados.').waitFor();await alice.locator('[data-back]').click();
-    const link=await alice.locator('[data-my-link]').inputValue();
+    await bob.locator('[data-friend-tab=friends]').click();
+    await alice.getByRole('tab',{name:'Privacidad',exact:true}).click();await alice.locator('#friendName').fill('alex');await alice.locator('[data-share]').check();await alice.getByRole('button',{name:'Guardar cambios'}).click();await alice.getByText('Nombre y privacidad guardados.').waitFor();await alice.locator('[data-friend-tab=friends]').click();
+    const publicLink=new URL(await alice.locator('[data-my-link]').inputValue());assert.equal(publicLink.origin,'https://estudiemos.ar');
+    const link=new URL(publicLink.pathname,base).href;
     const token=new URL(link).pathname.split('/').pop(),legacyLink=base+'#friend='+token;
     const preview=await (await fetch(link,{headers:{'User-Agent':'facebookexternalhit/1.1'}})).text();
-    assert.match(preview,/og:title" content="Solicitud de amistad en Estudiemos/);assert.ok(preview.includes('https://estudiemos-app.vercel.app/amistad/'+token));
+    assert.match(preview,/og:title" content="Solicitud de amistad en Estudiemos/);assert.ok(preview.includes('https://estudiemos.ar/amistad/'+token));
     const noJSContext=await browser.newContext({javaScriptEnabled:false,viewport:{width:390,height:844}}),noJS=await noJSContext.newPage();
     await noJS.goto(link);assert.equal(await noJS.title(),'Solicitud de amistad en Estudiemos');
     assert.equal(await noJS.locator('[data-invitation-open]').getAttribute('href'),'/#friend='+token);
@@ -125,18 +128,17 @@ const ids=['00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-00000
     await alice.screenshot({path:path.join(output,'friends-desktop-dark.png')});
     await bob.screenshot({path:path.join(output,'friends-mobile-dark.png')});
     for(const page of pages){assert.ok(await page.locator('.friends-dialog').evaluate(el=>el.scrollWidth<=el.clientWidth+1),'no horizontal overflow');}
-    await alice.getByRole('button',{name:'Mi nombre y privacidad',exact:true}).click();await alice.locator('[data-share]').uncheck();await alice.getByRole('button',{name:'Guardar cambios'}).click();await alice.getByText('Nombre y privacidad guardados.').waitFor();
+    await alice.getByRole('tab',{name:'Privacidad',exact:true}).click();await alice.locator('[data-share]').uncheck();await alice.getByRole('button',{name:'Guardar cambios'}).click();await alice.getByText('Nombre y privacidad guardados.').waitFor();
     await bob.locator('[data-refresh]').click();await bob.getByText('Racha privada',{exact:true}).waitFor();assert.equal(await bob.getByText('1 día de racha',{exact:true}).count(),0);
     await bob.locator('[data-view="ranking"]').click();await bob.getByText('Todavía no hay rachas compartidas.',{exact:true}).waitFor();await bob.locator('[data-view="all"]').click();await bob.getByText('Racha privada',{exact:true}).waitFor();
-    await bob.evaluate(()=>{document.documentElement.classList.remove('theme-dark');document.documentElement.classList.add('theme-light');});
-    await bob.waitForTimeout(500);
-    assert.equal(await bob.locator('.friends-dialog').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(255, 255, 255)','light theme has an opaque light surface');
+    await bob.evaluate(()=>window.EstudiemosTheme.set('light'));
+    await bob.waitForFunction(()=>{const style=getComputedStyle(document.querySelector('.friends-dialog'));return style.backgroundColor==='rgb(255, 255, 255)'||style.backgroundImage.includes('rgb(255, 255, 255)');});
     await bob.screenshot({path:path.join(output,'friends-mobile-light.png')});
     await bob.setViewportSize({width:320,height:640});assert.ok(await bob.locator('.friends-dialog').evaluate(el=>el.scrollWidth<=el.clientWidth+1));
     await bob.evaluate(()=>{window.EstudiemosAccount.getUser=()=>null;window.EstudiemosAccount.getSession=()=>null;window.dispatchEvent(new CustomEvent('estudiemos:account-change'));});
     await bob.getByRole('button',{name:'Iniciar sesión',exact:true}).waitFor();
     assert.equal(await bob.locator('[data-content]').isVisible(),false,'logout hides all prior-account data');
-    await bob.getByRole('button',{name:'Cerrar amigos',exact:true}).click();assert.equal(await bob.locator('.friends-dialog').isVisible(),false);
+    await bob.getByRole('button',{name:'Cerrar amigos',exact:true}).click();await bob.locator('.friends-dialog').waitFor({state:'hidden'});
     const guestContext=await browser.newContext({serviceWorkers:'block',viewport:{width:390,height:844},userAgent:'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140.0.0.0 Safari/537.36'});
     await guestContext.route('**/*',route=>new URL(route.request().url()).origin===new URL(base).origin?route.continue():route.abort());
     await guestContext.addInitScript(()=>{window.EstudiemosAccount={getUser:()=>null,getSession:()=>null,whenReady:async()=>({session:null}),getClient:()=>null,open:()=>{}};localStorage.setItem('estudiemos_pomodoro_streak',JSON.stringify({days:{},goal:{minutes:25,updatedAt:1}}));});
@@ -152,7 +154,7 @@ const ids=['00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-00000
     await guest.route('**/downloads/Estudiemos-Para-Windows.exe',route=>route.fulfill({contentType:'application/octet-stream',headers:{'Content-Disposition':'attachment; filename="Estudiemos-Para-Windows.exe"'},body:'Disposable installer fixture; never run.'}));
     const downloaded=guest.waitForEvent('download');downloaded.catch(()=>{});await guest.locator('[data-friend-install]').click();await downloaded;
     await guest.getByText('Incluye la app, los widgets y el soporte de alarmas.',{exact:false}).waitFor();
-    assert.equal(await guest.locator('.friends-dialog').isVisible(),false,'install guide is not hidden under the friends modal');
+    await guest.locator('.friends-dialog').waitFor({state:'hidden'});
     assert.equal((await db.query('select count(*)::int as n from friend_links where accepted')).rows[0].n,1,'the friendship stays saved after choosing installation');
     await guest.getByRole('button',{name:'Entendido',exact:true}).click();await guest.locator('[data-friends-open]').click();await guest.locator('.friends-row').waitFor();
     guest.once('dialog',dialog=>dialog.accept());await guest.locator('.friends-row-menu summary').click();await guest.getByRole('button',{name:'Quitar',exact:true}).click();await guest.getByText('Amigo eliminado.',{exact:true}).waitFor();
@@ -186,7 +188,7 @@ const ids=['00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-00000
       const profile=await sqlCall(id,'profile',{name:n===10?'María Victoria Fernández López':['Sofía','Lucas','Valentina','Tomás','Camila'][n-11],share:n%2===0,timezone:'UTC'});
       await sqlCall(ids[0],'accept_invite',{invite:profile.me.invite});
     }
-    await alice.locator('[data-back]').click();await alice.locator('[data-refresh]').click();await alice.locator('[data-search]').waitFor({state:'visible'});
+    await alice.locator('[data-friend-tab=friends]').click();await alice.locator('[data-refresh]').click();await alice.locator('[data-search]').waitFor({state:'visible'});
     await alice.screenshot({path:path.join(output,'friends-populated-desktop.png')});await alice.locator('#friendSearch').fill('Fernández');assert.equal(await alice.locator('.friends-row').count(),1);await alice.locator('#friendSearch').fill('');
     await alice.setViewportSize({width:320,height:640});await alice.screenshot({path:path.join(output,'friends-populated-mobile.png')});assert.ok(await alice.locator('.friends-dialog').evaluate(el=>el.scrollWidth<=el.clientWidth+1));
     for(const [n,platform,userAgent] of [
@@ -203,7 +205,7 @@ const ids=['00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-00000
       await page.screenshot({path:path.join(output,'friend-install-suggestion-'+platform+'.png')});
       if(platform==='iphone'){
         await page.locator('[data-friend-install]').click();await page.getByText('En iPhone no se descarga desde App Store.',{exact:false}).waitFor();
-        assert.equal(await page.locator('.friends-dialog').isVisible(),false);assert.equal(downloads,0,'iPhone shows the Safari guide, not a Windows/Android download');
+        await page.locator('.friends-dialog').waitFor({state:'hidden'});assert.equal(downloads,0,'iPhone shows the Safari guide, not a Windows/Android download');
         await page.screenshot({path:path.join(output,'friend-install-iphone-guide.png')});
       }
       await context.close();

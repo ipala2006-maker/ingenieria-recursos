@@ -24,7 +24,7 @@ test('preview has server-rendered identity, full invitation URL and no account l
   await handler({ method: 'GET', query: { friendInvitation: token }, headers: { host: 'malicious.example' } }, res);
   assert.equal(res.code, 200);
   assert.match(res.body, /og:title" content="Solicitud de amistad en Estudiemos/);
-  assert.match(res.body, new RegExp(`og:url" content="https://estudiemos-app.vercel.app/amistad/${token}"`));
+  assert.ok(res.body.includes(`og:url" content="https://estudiemos.ar/amistad/${token}"`));
   assert.match(res.body, /og:image:width" content="1200/);
   assert.match(res.body, /og:image:height" content="630/);
   assert.ok(!res.body.includes('__INVITATION_URL__') && !res.body.includes('malicious.example'));

@@ -1,10 +1,10 @@
 const documentTemplate = require('./document-template');
-const { appOrigin, LEGACY_ORIGIN } = require('./app-origin');
+const { LEGACY_ORIGIN } = require('./app-origin');
 const { enforceRateLimit } = require('./request-security');
 
 
 module.exports = async function friendInvitation(request, response) {
-  const origin = appOrigin();
+  const origin = 'https://estudiemos.ar';
   const template = documentTemplate(request, 'amistad.html').replaceAll(LEGACY_ORIGIN, origin);
   if (!['GET', 'HEAD'].includes(request.method)) {
     response.setHeader('Allow', 'GET, HEAD');
