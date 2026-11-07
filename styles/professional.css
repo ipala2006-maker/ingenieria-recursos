@@ -18,7 +18,6 @@ dialog:modal{overscroll-behavior:contain;}
   --radius:18px;
   --radius-sm:12px;
   --ring:0 0 0 4px rgba(26,115,232,.14);
-  --font:"Space Grotesk",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
 }
 
 html.theme-dark{

@@ -1058,6 +1058,8 @@
     doc.documentElement.lang = "es";
     doc.head.innerHTML = `<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">`;
     doc.title = "Temporizador Pomodoro - Estudiemos";
+    doc.documentElement.style.setProperty("--font", getComputedStyle(document.body).fontFamily);
+    loadFloatingFont(targetWindow);
     const style = doc.createElement("style");
     style.textContent = floatingTimerStyles();
     doc.head.appendChild(style);
@@ -1236,9 +1238,23 @@
     }
   }
 
+  async function loadFloatingFont(targetWindow) {
+    try {
+      // Fetch through the opener; the PiP document has its own FontFaceSet.
+      const response = await fetch(new URL("../assets/fonts/plus-jakarta-sans-latin.woff2", SCRIPT_URL));
+      if (!response.ok) return;
+      const bytes = await response.arrayBuffer();
+      if (targetWindow.closed) return;
+      const face = await new targetWindow.FontFace("Plus Jakarta Sans", bytes, { weight: "400 700", display: "swap" }).load();
+      if (!targetWindow.closed) targetWindow.document.fonts.add(face);
+    } catch (_) {
+      // Keep the system fallback available when the font cannot be loaded.
+    }
+  }
+
   function floatingTimerStyles() {
     return `
-      :root{color-scheme:dark;--bg:#0b1020;--panel:#111827;--border:#273248;--text:#f3f6fb;--muted:#9ba8bd;--accent:#8ab4f8;--phase:#8ab4f8;font-family:Inter,system-ui,sans-serif}
+      :root{color-scheme:dark;--bg:#0b1020;--panel:#111827;--border:#273248;--text:#f3f6fb;--muted:#9ba8bd;--accent:#8ab4f8;--phase:#8ab4f8;font-family:var(--font,sans-serif)}
       :root[data-theme="light"]{color-scheme:light;--bg:#edf1f5;--panel:#f7f9fb;--border:#d2dae5;--text:#263244;--muted:#657387;--accent:#1a73e8;--phase:#1a73e8}
       *{box-sizing:border-box;letter-spacing:0}[hidden]{display:none!important}
       body{margin:0;height:100dvh;overflow:hidden;background:var(--panel);color:var(--text)}
@@ -1261,7 +1277,7 @@
       .progress{stroke:var(--phase);stroke-linecap:round;stroke-dasharray:603.19;stroke-dashoffset:603.19;transition:stroke-dashoffset .2s linear,stroke .15s ease}
       .is-adjusting .progress{transition:none}
       .floating-clock__text{position:absolute;inset:15%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;pointer-events:none}
-      .floating-clock strong{font-size:min(54px,25cqw);font-weight:650;line-height:1.05;white-space:nowrap;font-variant-numeric:tabular-nums}
+      .floating-clock strong{font-size:min(54px,25cqw);font-weight:600;line-height:1.05;white-space:nowrap;font-variant-numeric:tabular-nums}
       .floating-clock span{font-size:min(12px,9cqw);line-height:1.2;white-space:nowrap;color:var(--muted)}
       .floating-clock__orbit{position:absolute;inset:6.36%;transform:rotate(var(--dial-angle));pointer-events:none}
       .floating-clock__orbit i{position:absolute;top:0;left:50%;width:11px;height:11px;border-radius:50%;background:var(--phase);transform:translate(-50%,-50%);box-shadow:0 0 0 3px var(--panel)}
@@ -1795,7 +1811,7 @@
     video.addEventListener("leavepictureinpicture", destroyVideoPipSession, { once: true });
     video.addEventListener("pause", handleVideoPipPause);
     document.body.append(canvas, video);
-    videoPip = { canvas, context, stream, video, controlsReady: false };
+    videoPip = { canvas, context, stream, video, font: getComputedStyle(document.body).fontFamily, controlsReady: false };
     return videoPip;
   }
 
@@ -1859,7 +1875,7 @@
 
   function drawVideoPipFrame() {
     if (!videoPip?.context) return;
-    const { canvas, context: ctx } = videoPip;
+    const { canvas, context: ctx, font } = videoPip;
     const width = 1280;
     const height = 720;
     const renderScale = canvas.width / width;
@@ -1889,34 +1905,34 @@
     roundedRect(ctx, 58, 54, 74, 74, 20);
     ctx.fill();
     ctx.fillStyle = phaseColor;
-    ctx.font = '700 48px "Space Grotesk", system-ui, sans-serif';
+    ctx.font = `700 48px ${font}`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText("Σ", 95, 92);
 
     ctx.fillStyle = text;
-    ctx.font = '700 30px "Space Grotesk", system-ui, sans-serif';
+    ctx.font = `700 30px ${font}`;
     ctx.textAlign = "left";
     ctx.fillText("Estudiemos", 154, 78);
     ctx.fillStyle = muted;
-    ctx.font = '600 20px "Space Grotesk", system-ui, sans-serif';
+    ctx.font = `600 20px ${font}`;
     ctx.fillText("Temporizador Pomodoro", 154, 111);
 
     ctx.fillStyle = dark ? "#1d2a42" : "#e8f0fe";
     roundedRect(ctx, width - 262, 63, 190, 52, 26);
     ctx.fill();
     ctx.fillStyle = phaseColor;
-    ctx.font = '700 20px "Space Grotesk", system-ui, sans-serif';
+    ctx.font = `700 20px ${font}`;
     ctx.textAlign = "center";
     ctx.fillText(state.phase === "study" ? "ESTUDIO" : "DESCANSO", width - 167, 90);
 
     const centerX = width / 2;
     ctx.fillStyle = text;
-    ctx.font = `700 ${timeText.length > 6 ? 144 : 174}px "Space Grotesk", system-ui, sans-serif`;
+    ctx.font = `600 ${timeText.length > 6 ? 144 : 174}px ${font}`;
     ctx.textAlign = "center";
     ctx.fillText(timeText, centerX, 326);
     ctx.fillStyle = muted;
-    ctx.font = '700 31px "Space Grotesk", system-ui, sans-serif';
+    ctx.font = `700 31px ${font}`;
     ctx.fillText(state.phase === "study" ? `Bloque ${state.currentBlock} de ${state.config.blocks}` : "Descanso", centerX, 426);
 
     const progressX = 92;
@@ -1933,11 +1949,11 @@
     }
 
     ctx.fillStyle = state.running ? phaseColor : muted;
-    ctx.font = '700 22px "Space Grotesk", system-ui, sans-serif';
+    ctx.font = `700 22px ${font}`;
     ctx.textAlign = "left";
     ctx.fillText(state.running ? "EN CURSO" : alarmActive ? "ALARMA" : "PAUSADO", progressX, 568);
     ctx.fillStyle = muted;
-    ctx.font = '600 20px "Space Grotesk", system-ui, sans-serif';
+    ctx.font = `600 20px ${font}`;
     ctx.textAlign = "right";
     ctx.fillText("Tocá para pausar, reiniciar o avanzar", width - progressX, 568);
 

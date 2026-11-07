@@ -57,7 +57,7 @@ html .workspace-home .dashboard-calendar[data-view="month"] .dashboard-calendar_
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
-html .workspace-home .dashboard-calendar[data-view="month"] .is-today .dashboard-calendar__number { background: var(--accent); color: #08101f; font-weight: 750; }
+html .workspace-home .dashboard-calendar[data-view="month"] .is-today .dashboard-calendar__number { background: var(--accent); color: #08101f; }
 .dashboard-calendar__month-events { display: grid; gap: 3px; min-width: 0; }
 .dashboard-calendar__month-event {
   --event-color: var(--accent);
@@ -77,7 +77,7 @@ html .workspace-home .dashboard-calendar[data-view="month"] .is-today .dashboard
 .dashboard-calendar__month-event.is-exam, .dashboard-calendar__references .is-exam { --event-color: #e6ad54; }
 .dashboard-calendar__month-event.is-task, .dashboard-calendar__references .is-task { --event-color: #b0a2e8; }
 .dashboard-calendar__month-event.is-class, .dashboard-calendar__references .is-class { --event-color: var(--accent); }
-.dashboard-calendar__month-event time { font-size: 10px; line-height: 1.2; color: var(--muted); font-variant-numeric: tabular-nums; }
+.dashboard-calendar__month-event time { font-size: 10px; line-height: 1.2; color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }
 .dashboard-calendar__month-event time:empty { display: none; }
 .dashboard-calendar__month-event > span { white-space: normal; overflow-wrap: anywhere; line-height: 1.25; }
 .dashboard-calendar__month-event.is-done > span { text-decoration: line-through; opacity: .65; }
@@ -175,7 +175,7 @@ html.theme-light .calendar-reader { background: #f8fafc; }
 .calendar-reader[open] { display: flex; flex-direction: column; }
 .calendar-reader::backdrop { background: rgb(0 0 0 / 55%); backdrop-filter: blur(4px); }
 .calendar-reader__head { display: flex; align-items: center; justify-content: space-between; flex: 0 0 auto; padding: 16px 20px; border-bottom: 1px solid var(--border); }
-.calendar-reader__head h2 { margin: 0; font-size: 18px; font-weight: 650; }
+.calendar-reader__head h2 { margin: 0; font-size: 18px; font-weight: 600; }
 .calendar-reader__body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); flex: 1; min-height: 0; }
 html .workspace-home .calendar-reader__overview { display: flex; flex-direction: column; grid-area: auto; min-width: 0; min-height: 0; margin: 0; padding: 20px; border: 0; border-right: 1px solid var(--border); border-radius: 0; background: transparent; box-shadow: none; }
 html .workspace-home .calendar-reader__overview .dashboard-widget__head { display: grid; gap: 14px; padding-bottom: 14px; }
@@ -194,7 +194,7 @@ html .workspace-home .calendar-reader__overview .dashboard-calendar__controls { 
 .calendar-activity.is-exam { --event-color: #e6ad54; }
 .calendar-activity.is-task { --event-color: #b0a2e8; }
 .calendar-activity__time { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; font-size: 13px; }
-.calendar-activity__time time { color: var(--event-color); font-weight: 650; font-variant-numeric: tabular-nums; }
+.calendar-activity__time time { color: var(--event-color); font-weight: 600; font-variant-numeric: tabular-nums; }
 .calendar-activity__time > span { color: var(--muted); }
 .calendar-activity__content { min-width: 0; border-left: 2px solid var(--event-color); padding-left: 12px; }
 .calendar-activity h4 { margin: 0; font-size: 16px; line-height: 1.45; font-weight: 600; overflow-wrap: anywhere; }

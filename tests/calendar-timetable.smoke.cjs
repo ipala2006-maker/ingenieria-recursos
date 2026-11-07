@@ -47,7 +47,9 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
       const program=async()=>{await reader.getByRole('tab',{name:'Programar',exact:true}).click();await editor.waitFor({state:'visible'});};
       const pick=async date=>{
         await reader.locator('[data-dashboard-calendar-view=month]').click();
-        await reader.locator('[data-dashboard-date="'+date+'"]').click();
+        const day=reader.locator('[data-dashboard-date="'+date+'"]');
+        assert.equal(await day.locator('.dashboard-calendar__number').evaluate(el=>getComputedStyle(el).fontWeight),'600');
+        await day.click();
       };
       assert.equal(await page.locator('dialog.timetable,[data-timetable-open],[data-calendar-manage-weekly]').count(),0);
       await calendar.getByRole('button',{name:'Programar',exact:true}).click();await editor.waitFor({state:'visible'});
@@ -58,6 +60,8 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
       const onceId=await page.evaluate(()=>JSON.parse(localStorage.bandeja_agenda).find(i=>i.title==='Consulta de Física').id);
       assert.equal(await page.evaluate(id=>JSON.parse(localStorage.bandeja_agenda).find(i=>i.id===id).alarm,onceId),null);
       assert.match(await reader.locator('.calendar-activity.is-colored.timetable-color--rose').textContent(),/14:00-15:00.*Consulta de Física/s);
+      const eventTime=reader.locator('.calendar-activity.is-colored.timetable-color--rose time');
+      assert.equal(await eventTime.evaluate(el=>getComputedStyle(el).fontWeight),'600');
       await page.waitForFunction(()=>getComputedStyle(document.querySelector('[data-calendar-reader] .calendar-activity.is-colored')).getPropertyValue('--event-color').trim()==='#e6a2b3');
       await program();await form.locator('[name=repeat]').selectOption('weekly');await form.locator('[name=title]').fill('Análisis matemático');
       for(const day of [0,1,2,3,4,5,6])await form.locator('[name=day][value="'+day+'"]').setChecked([1,3,5].includes(day));

@@ -14,6 +14,7 @@ const consentPolicy = [
   "default-src 'none'",
   "script-src 'self' https://cmp.inmobi.com",
   "style-src 'self' 'unsafe-inline'",
+  "font-src 'self'",
   "img-src 'self' data: https://cmp.inmobi.com https://supply.inmobicdn.net",
   "connect-src https://cmp.inmobi.com https://api.cmp.inmobi.com https://visit-server.inmobi-choice.io",
   "frame-src 'self' https://cmp.inmobi.com",

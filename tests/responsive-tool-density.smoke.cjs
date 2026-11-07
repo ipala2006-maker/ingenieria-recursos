@@ -1,6 +1,7 @@
 const {chromium,webkit}=require('../tmp/ui-check/node_modules/playwright');
 const assert=require('node:assert/strict'),http=require('node:http'),fs=require('node:fs'),path=require('node:path');
-const root=path.resolve(__dirname,'..'),out=path.join(root,'tmp/responsive-tools');
+const live=process.argv.includes('--live');
+const root=path.resolve(__dirname,'..'),out=path.join(root,live?'tmp/responsive-tools-live':'tmp/responsive-tools');
 const owner='11111111-1111-4111-8111-111111111111',folder='pilot-root',mime='application/vnd.google-apps.folder';
 const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)').headers;
 (async()=>{
@@ -11,7 +12,8 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
     try{for(const {key,value}of headers)res.setHeader(key,key==='Content-Security-Policy'?value.replace(/;\s*upgrade-insecure-requests/,''):value);res.setHeader('Content-Type',({'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.png':'image/png','.woff2':'font/woff2'})[path.extname(file)]||'application/octet-stream');res.end(fs.readFileSync(file));}catch(_){res.writeHead(404).end();}
   });
   try{
-    await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const base='http://127.0.0.1:'+server.address().port;
+    if(!live)await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+    const base=live?'https://estudiemos.ar':'http://127.0.0.1:'+server.address().port;
     const engine=process.env.TEST_WEBKIT==='1'?'webkit':'chrome';browser=engine==='webkit'?await webkit.launch():await chromium.launch({channel:'chrome'});
     for(const [width,height]of[[1440,900],[1024,900],[768,1024],[390,844],[320,568]]){
       const mobile=width<701,context=await browser.newContext({viewport:{width,height},isMobile:mobile,hasTouch:width<900,serviceWorkers:'block',reducedMotion:'reduce'});
@@ -35,6 +37,13 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
       });
       const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
       await page.goto(base);await page.waitForFunction(()=>window.EstudiemosHomeLayout&&document.body.classList.contains('home-resizable'));
+      const weights = await page.evaluate(async () => {
+        const family = '"Plus Jakarta Sans"';
+        const loaded = await Promise.all([400,500,600,700].map(weight => document.fonts.load(weight + ' 16px ' + family, 'Calendario, F\u00edsica, ma\u00f1ana, 08:00')));
+        return { family:getComputedStyle(document.body).fontFamily, ready:loaded.every(faces => faces.some(face => face.status === 'loaded')) };
+      });
+      assert.match(weights.family,/Plus Jakarta Sans/);
+      assert.equal(weights.ready,true,'all four weights load from the local font assets');
       await page.evaluate(({mobile,width})=>{
         const board=EstudiemosHomeBoard,host=document.querySelector('.workspace-page'),tree=board.defaults(),w=host.clientWidth,h=host.clientHeight-64;
         const placement=board.remember({...board.layout(tree,w,h),width:w,height:h},null,tree),fw=width>1200?330:270;
@@ -48,6 +57,13 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
         if(mobile)await page.locator('[data-home-view=inbox]').click();
         const title=inbox.locator('.dashboard-agenda__copy strong');await title.waitFor();
         assert.equal(await title.innerText(),'whatsapp estudiemos y repaso de integrales');
+        assert.equal(await title.evaluate(el=>getComputedStyle(el).fontWeight),'500');
+        assert.equal(await inbox.locator('.dashboard-agenda__copy small').evaluate(el=>getComputedStyle(el).fontWeight),'400');
+        assert.equal(await inbox.locator('.dashboard-agenda__date').evaluate(el=>getComputedStyle(el).fontWeight),'600');
+        const eyebrow = await inbox.locator('.dashboard-widget__eyebrow').evaluate(el=>{
+          const style=getComputedStyle(el);return [style.fontWeight,style.textTransform];
+        });
+        assert.deepEqual(eyebrow,['600','uppercase']);
         assert.equal(await title.evaluate(el=>getComputedStyle(el).whiteSpace),'normal');
         assert.equal(await title.evaluate(el=>el.scrollWidth<=el.clientWidth+1&&el.scrollHeight<=el.clientHeight+1),true,'Inbox shows the full title instead of an ellipsis');
         assert.equal(await inbox.locator('.dashboard-agenda__date').isVisible(),true,'Compact tools keep date information visible');

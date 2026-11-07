@@ -9,6 +9,7 @@
 .home-dashboard__heading h1{
   margin:0;
   font-size:clamp(27px,3vw,35px);
+  font-weight:700;
   line-height:1.1;
 }
 
@@ -40,14 +41,15 @@
 .dashboard-widget__head h2{
   margin:2px 0 0;
   font-size:17px;
+  font-weight:600;
   line-height:1.2;
 }
 
 .dashboard-widget__eyebrow{
   color:var(--muted-2);
   font-size:10px;
-  font-weight:800;
-  letter-spacing:.06em;
+  font-weight:600;
+  letter-spacing:0;
   text-transform:uppercase;
 }
 
@@ -152,7 +154,7 @@
   padding:3px 0 5px;
   color:var(--muted-2);
   font-size:9.5px;
-  font-weight:800;
+  font-weight:600;
   text-align:center;
 }
 
@@ -184,7 +186,11 @@
 .dashboard-calendar__day.is-today{
   background:var(--accent);
   color:#08101f;
-  font-weight:850;
+}
+
+.dashboard-calendar__number{
+  font-weight:600;
+  font-variant-numeric:tabular-nums;
 }
 
 .dashboard-calendar__day.has-items::after{
@@ -295,13 +301,15 @@
 .dashboard-calendar__date small{
   color:var(--muted-2);
   font-size:8px;
-  font-weight:850;
+  font-weight:600;
   text-transform:uppercase;
 }
 
 .dashboard-calendar__date strong{
   color:var(--text);
   font-size:10px;
+  font-weight:600;
+  font-variant-numeric:tabular-nums;
 }
 
 .dashboard-calendar__events{
@@ -330,7 +338,7 @@
 .dashboard-calendar__event time{
   color:var(--accent);
   font-size:8px;
-  font-weight:850;
+  font-weight:600;
   font-variant-numeric:tabular-nums;
 }
 
@@ -447,6 +455,7 @@
 
 .dashboard-agenda__copy strong{
   font-size:12.5px;
+  font-weight:500;
 }
 
 .dashboard-agenda__copy small,
@@ -454,6 +463,9 @@
   color:var(--muted);
   font-size:10.5px;
 }
+
+.dashboard-agenda__copy small{font-weight:400;}
+.dashboard-agenda__date{font-weight:600;font-variant-numeric:tabular-nums;}
 
 .dashboard-agenda__empty{
   margin:auto;
@@ -542,8 +554,8 @@ dialog.quick-panel-shell::backdrop{background:transparent}
   margin:0 0 4px;
   color:var(--muted-2);
   font-size:10px;
-  font-weight:800;
-  letter-spacing:.06em;
+  font-weight:600;
+  letter-spacing:0;
   text-transform:uppercase;
 }
 

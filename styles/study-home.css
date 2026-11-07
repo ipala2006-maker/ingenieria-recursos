@@ -1,7 +1,7 @@
 /* A working study surface, sharing the app's blue palette and real data. */
 .workspace-home .workspace-page { flex-direction:column; overflow:auto; gap:18px; }
 .workspace-home .home-layout { flex:1 0 390px; min-height:390px; }
-.workspace-home .workspace-section__head h2 { margin:0; font-size:22px; line-height:1.2; font-weight:650; }
+.workspace-home .workspace-section__head h2 { margin:0; font-size:22px; line-height:1.2; font-weight:600; }
 .study-home { flex:0 0 auto; min-width:0; }
 .study-home[hidden], .workspace-home .home-layout[hidden] { display:none!important; }
 .study-home__head { display:flex; align-items:center; justify-content:space-between; gap:16px; margin:0 0 8px; }
@@ -23,7 +23,7 @@
 .study-focus__stage { height:170px; min-width:0; position:relative; isolation:isolate; }
 .study-focus__stage canvas { width:100%; height:100%; display:block; position:absolute; inset:0; z-index:-1; }
 .study-focus__clock { pointer-events:none; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:3px; }
-.study-focus__clock strong { font-size:34px; font-weight:650; line-height:1.15; letter-spacing:0; font-variant-numeric:tabular-nums; }
+.study-focus__clock strong { font-size:34px; font-weight:600; line-height:1.15; letter-spacing:0; font-variant-numeric:tabular-nums; }
 .study-focus__clock span, .study-focus__clock small { font-size:10px; color:var(--muted); }
 .study-focus__fallback { position:absolute; width:140px; height:140px; left:50%; top:50%; transform:translate(-50%,-50%); border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; }
 .study-focus__stage.has-scene .study-focus__fallback { visibility:hidden; }
