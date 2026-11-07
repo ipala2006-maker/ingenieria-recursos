@@ -24,6 +24,11 @@
 .home-suggestions { flex:none;display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;padding:12px 0;border-top:1px solid var(--border); }
 .home-suggestions>span { font-size:12px;color:var(--muted); }
 .home-suggestions>div { display:flex;flex-wrap:wrap;gap:8px; }
+.home-suggestions [data-home-add-tool],.dashboard-agenda .home-tools-open {
+  padding:var(--home-control-padding);border-radius:var(--home-control-radius);font-weight:600;
+}
+.home-suggestions button img,.home-tools-open img { width:16px;height:16px;flex:none; }
+.home-suggestions [data-home-add-tool]:hover,.dashboard-agenda .home-tools-open:hover { background:var(--panel-2); }
 .home-tools-open { flex:none;align-self:flex-start;margin-top:4px; }
 .home-empty[hidden],.home-suggestions[hidden],.home-reflow-add[hidden],[data-home-add-tool][hidden],.dashboard-agenda [data-dashboard-agenda][hidden] { display:none!important; }
 .home-reflow-add { margin-bottom:12px; }
