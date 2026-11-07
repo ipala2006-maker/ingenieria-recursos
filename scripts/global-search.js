@@ -352,7 +352,7 @@
     if (document.querySelector('script[src*="scripts/pomodoro.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/pomodoro.js?v=20261024-roles`;
+    script.src = `${rootPath}scripts/pomodoro.js?v=20261107-jakarta`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -421,7 +421,7 @@
     if (document.querySelector('script[src*="scripts/desktop-widgets.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/desktop-widgets.js?v=20261024-classes`;
+    script.src = `${rootPath}scripts/desktop-widgets.js?v=20261107-jakarta`;
     script.async = false;
     document.head.appendChild(script);
   }

@@ -43,6 +43,8 @@ const headers = require('../vercel.json').headers.find(rule => rule.source === '
     const pip = context.pages().find(candidate => candidate !== page && candidate.url()==='about:blank');
     assert.ok(pip,'Chrome must open a real Document Picture-in-Picture page');
     pip.on('pageerror',error=>errors.push(error.message));
+    await pip.waitForFunction(()=>[...document.fonts].some(face=>face.family.includes('Plus Jakarta Sans')&&face.status==='loaded'));
+    assert.equal(await pip.locator('[data-pip-time]').evaluate(el=>getComputedStyle(el).fontWeight),'600');
     for (const [width,height] of [[360,450],[320,360],[240,300],[180,180],[160,140],[460,220],[700,200],[360,640]]) {
       await pip.setViewportSize({width,height});
       await pip.waitForTimeout(120);

@@ -1,12 +1,14 @@
+@import url("./typography.css?v=20261107-jakarta");
+
 :root {
   color-scheme: dark;
-  font: 16px/1.5 system-ui, sans-serif;
+  font: 400 16px/1.5 var(--font);
   background: #101521;
   color: #eef3fc;
 }
 body { margin: 0; }
 main { max-width: 42rem; margin: 0 auto; padding: 2.25rem 1.25rem 5rem; }
-.brand { display: inline-flex; gap: .65rem; align-items: center; color: inherit; font-weight: 650; }
+.brand { display: inline-flex; gap: .65rem; align-items: center; color: inherit; font-weight: 600; }
 h1 { margin: 1.5rem 0 .5rem; font-size: 1.65rem; line-height: 1.2; }
 p { margin: 0 0 1rem; color: #c0cce0; }
 a { color: #a5c7ff; text-underline-offset: .2em; }

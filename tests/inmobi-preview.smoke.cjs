@@ -13,6 +13,8 @@ const files = {
   '/scripts/cmp-preferences.js': ['scripts/cmp-preferences.js', 'text/javascript'],
   '/scripts/inmobi-choice-tag.js': ['scripts/inmobi-choice-tag.js', 'text/javascript'],
   '/styles/consent-preview.css': ['styles/consent-preview.css', 'text/css'],
+  '/styles/typography.css': ['styles/typography.css', 'text/css'],
+  '/assets/fonts/plus-jakarta-sans-latin.woff2': ['assets/fonts/plus-jakarta-sans-latin.woff2', 'font/woff2'],
   '/assets/favicon.svg': ['assets/favicon.svg', 'image/svg+xml']
 };
 const advertising = /(?:^|\.)(?:googlesyndication\.com|doubleclick\.net|googleadservices\.com)$/i;
