@@ -5,7 +5,7 @@
   const BASE = 'https://www.googleapis.com/drive/v3/';
   const UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files';
   const FOLDER = 'application/vnd.google-apps.folder';
-  const FIELDS = 'id,name,mimeType,size,modifiedTime,parents,webViewLink,appProperties,trashed';
+  const FIELDS = 'id,name,mimeType,size,modifiedTime,parents,webViewLink,appProperties,trashed,capabilities(canEdit)';
   const MAX_FILE = 50 * 1024 * 1024;
   const extensions = new Set('pdf doc docx xls xlsx csv txt md rtf ppt pptx jpg jpeg png gif webp heic zip rar 7z json xml mp3 m4a wav mp4 mov webm'.split(' '));
   const quote = value => String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'");

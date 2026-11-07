@@ -14,17 +14,21 @@
   let account, owner = '', epoch = 0, enabled = false, configReady = false, initializing = false, browseEnabled = false, connected = false, connectionKnown = false, busy = false, fs, token = '', expiresAt = 0, items = [], current = '', crumbs = [], dialog, returnFocus, query = '', searchTimer, lastLoad = 0, connectAfterLogin = false;
   const body = $('[data-workspace-items]'), state = $('[data-workspace-state]'), status = $('[data-workspace-status]');
   const full = document.body.classList.contains('drive-library-page');
-  if (!full && !document.querySelector('[data-drive-library-link]')) {
+  const canManage=item=>item&&item.id!==fs.rootId&&fs.owned(item)&&item.capabilities?.canEdit!==false;
+  if (!document.querySelector('[data-drive-library-link]')) {
     const link=document.createElement('a');link.href=new URL('../mi-espacio.html',document.currentScript.src).href;link.className='topbar__link topbar-icon-btn';link.dataset.driveLibraryLink='';link.title='Mi espacio';link.setAttribute('aria-label','Abrir Mi espacio');link.innerHTML=icon('folder');document.querySelector('.topbar__nav')?.appendChild(link);
   }
+  if(full)document.querySelector('[data-drive-library-link]')?.setAttribute('aria-current','page');
   const signal = new URL(location.href).searchParams.get('drive');
   if (signal) { const url = new URL(location.href); url.searchParams.delete('drive'); history.replaceState(history.state,'',url.pathname+url.search+url.hash); }
   const band = document.createElement('div'); band.className = 'drive-connection'; band.dataset.driveConnection = '';
   band.innerHTML = `<span class="drive-connection__icon">${icon('cloud')}</span><div><strong>Google Drive</strong><small data-drive-account>Sin conectar</small></div><button type="button" class="workspace-btn drive-browse" data-drive-browse hidden>Mostrar Mi unidad</button><button type="button" class="workspace-tool-icon" data-drive-refresh aria-label="Actualizar archivos de Drive" title="Actualizar archivos">${icon('refresh')}</button><button type="button" class="workspace-tool-icon" data-drive-settings aria-label="Configurar conexi\u00f3n de Drive" title="Conexi\u00f3n de Drive">${icon('more')}</button>`;
   section.querySelector('.workspace-browser').prepend(band); band.hidden = true;
+  const usageBar=document.createElement('progress');usageBar.className='drive-quota';usageBar.max=100;usageBar.hidden=true;usageBar.setAttribute('aria-label','Almacenamiento de Google utilizado');
+  band.querySelector('strong').after(usageBar);
   const toolbar = section.querySelector('.workspace-toolbar');
   const locations=document.createElement('div');locations.className='drive-locations';locations.hidden=true;locations.setAttribute('role','group');locations.setAttribute('aria-label','Ubicaci\u00f3n de Drive');
-  locations.innerHTML='<button type="button" data-drive-location="unit">Mi unidad</button><button type="button" data-drive-location="space">Estudiemos</button><span data-drive-readonly hidden>Solo lectura</span>';
+  locations.innerHTML='<button type="button" data-drive-location="unit">Mi unidad</button><button type="button" data-drive-location="space">Estudiemos</button><span data-drive-readonly hidden>Edici\u00f3n en Drive</span>';
   band.after(locations);
   document.addEventListener('click', event => {
     if (event.target.closest('[data-drive-connect]')) connect(browseEnabled);
@@ -170,12 +174,15 @@
     locations.querySelectorAll('button').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.driveLocation===(crumbs.some(part=>part.id===fs.rootId)?'space':'unit'))));
     band.querySelector('[data-drive-browse]').hidden=!browseEnabled||fs.browse;
     band.querySelector('[data-drive-account]').textContent=fs.about?.user?.emailAddress||'Conectado';
-    const quota=fs.about?.storageQuota, free=quota?.limit?Math.max(0,Number(quota.limit)-Number(quota.usage||0)):null;
+    const quota=fs.about?.storageQuota,limit=Number(quota?.limit),used=Number(quota?.usage??NaN);
+    const free=Number.isFinite(limit)&&limit>0&&Number.isFinite(used)&&used>=0?Math.max(0,limit-used):null;
+    usageBar.hidden=free===null;
+    if(free!==null){usageBar.value=100*(1-free/limit);usageBar.title=Math.round(usageBar.value)+' % utilizado';}
     band.querySelector('strong').textContent=free===null?'Google Drive':'Google Drive \u00b7 '+size(free)+' disponibles';
     $('[data-workspace-breadcrumbs]').innerHTML=crumbs.map((part,index)=>`${index?'<span aria-hidden="true">/</span>':''}<button type="button" data-workspace-folder="${escape(part.id)}">${escape(part.name)}</button>`).join('');
     const sort=$('[data-workspace-sort]')?.value||'updated';
     const visible=[...items].sort((a,b)=>Number(b.mimeType===rules.FOLDER)-Number(a.mimeType===rules.FOLDER)||(sort==='name'?a.name.localeCompare(b.name,'es'):sort==='type'?a.mimeType.localeCompare(b.mimeType):new Date(b.modifiedTime)-new Date(a.modifiedTime)));
-    body.innerHTML=visible.map(item=>`<article class="workspace-item"><button class="workspace-item__open" type="button" data-workspace-open="${escape(item.id)}" aria-label="Abrir ${escape(item.name)}"><span class="workspace-item__icon">${icon(item.mimeType===rules.FOLDER?'folder':'file')}</span><span class="workspace-item__copy"><span class="workspace-item__name" title="${escape(item.name)}">${escape(item.name)}</span><span class="workspace-item__meta">${item.mimeType===rules.FOLDER?'Carpeta':size(item.size)}${!fs.owned(item)?' · Solo lectura':''}</span></span></button>${fs.owned(item)&&item.id!==fs.rootId?`<button class="workspace-item__menu" data-workspace-menu="${escape(item.id)}" type="button" aria-label="Opciones de ${escape(item.name)}" title="Opciones">${icon('more')}</button>`:''}</article>`).join('')+(writable?`<button class="workspace-add-tile" data-workspace-add type="button">${icon('plus')}<span>${query?'Agregar archivo':'Agregar'}<small>Carpeta o archivo</small></span></button>`:'');
+    body.innerHTML=visible.map(item=>`<article class="workspace-item"><button class="workspace-item__open" type="button" data-workspace-open="${escape(item.id)}" aria-label="Abrir ${escape(item.name)}"><span class="workspace-item__icon">${icon(item.mimeType===rules.FOLDER?'folder':'file')}</span><span class="workspace-item__copy"><span class="workspace-item__name" title="${escape(item.name)}">${escape(item.name)}</span><span class="workspace-item__meta">${item.mimeType===rules.FOLDER?'Carpeta':size(item.size)}${item.capabilities?.canEdit===false?' · Solo lectura':''}</span></span></button>${canManage(item)?`<button class="workspace-item__menu" data-workspace-menu="${escape(item.id)}" type="button" aria-label="Opciones de ${escape(item.name)}" title="Opciones">${icon('more')}</button>`:''}</article>`).join('')+(writable?`<button class="workspace-add-tile" data-workspace-add type="button">${icon('plus')}<span>${query?'Agregar archivo':'Agregar'}<small>Carpeta o archivo</small></span></button>`:'');
     if(!visible.length&&!writable)body.innerHTML='<p class="drive-empty">'+(query?'No encontramos archivos con ese nombre.':'Esta carpeta est\u00e1 vac\u00eda.')+'</p>';
     if(query&&!visible.length)message('No encontramos archivos con ese nombre.');
     publishNativeWidget();
@@ -201,7 +208,7 @@
   }
   function folderForm() {formDialog('Nueva carpeta','Nombre','',value=>fs.createFolder(value,current));}
   function itemMenu(item) {
-    if(!item || !fs.owned(item) || item.id===fs.rootId)return;const d=modal(item.name,`<div class="drive-actions"><button type="button" data-drive-rename>Cambiar nombre</button><button type="button" data-drive-move>Mover a otra carpeta</button><button type="button" data-drive-trash>Enviar a la papelera de Drive</button></div>`);
+    if(!canManage(item))return;const d=modal(item.name,`<div class="drive-actions"><button type="button" data-drive-rename>Cambiar nombre</button><button type="button" data-drive-move>Mover a otra carpeta</button><button type="button" data-drive-trash>Enviar a la papelera de Drive</button></div>`);
     d.querySelector('[data-drive-rename]').onclick=()=>formDialog('Cambiar nombre','Nombre',item.name,value=>fs.rename(item.id,value));
     d.querySelector('[data-drive-move]').onclick=()=>moveForm(item);
     d.querySelector('[data-drive-trash]').onclick=()=>{const confirmation=modal('Enviar a la papelera',`<p>${escape(item.name)} quedar\u00e1 en la papelera de Google Drive, donde pod\u00e9s recuperarlo.</p><footer><button type="button" data-drive-close>Cancelar</button><button type="button" data-drive-trash-confirm>Enviar a la papelera</button></footer>`);confirmation.querySelector('[data-drive-trash-confirm]').onclick=()=>mutate(()=>fs.trash(item.id));};

@@ -45,7 +45,7 @@
   }
   if (!document.querySelector('script[data-classrooms]')) {
     const classes = document.createElement('script'); classes.dataset.classrooms = '';
-    classes.src = rootPath + 'scripts/classroom-sync.js?v=20261030-retry-recovery';
+    classes.src = rootPath + 'scripts/classroom-sync.js?v=20261107-panel-ux';
     document.head.appendChild(classes);
   }
   if (!document.querySelector('script[data-course-drive]')) {
@@ -83,7 +83,7 @@
   }
   if (!document.querySelector('script[data-friends]')) {
     const friends = document.createElement('script'); friends.dataset.friends = '';
-    friends.src = rootPath + 'scripts/friends.js?v=20261014-random-usernames';
+    friends.src = rootPath + 'scripts/friends.js?v=20261107-panel-ux';
     document.head.appendChild(friends);
   }
   loadPomodoroScript();

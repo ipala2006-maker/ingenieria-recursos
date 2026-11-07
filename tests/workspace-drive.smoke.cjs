@@ -16,7 +16,7 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
     for(const width of process.env.TEST_WIDTH ? [Number(process.env.TEST_WIDTH)] : [1440,390,320]){
       const context=await browser.newContext({viewport:{width,height:900},isMobile:width<500,hasTouch:width<500,serviceWorkers:'block'});
       let connected=false,enabled=true,next=0,uploaded='',files=[{id:'root-folder-file',name:'An\u00e1lisis matem\u00e1tico',mimeType:mime,parents:[folder],modifiedTime:'2026-10-19',appProperties:{estudiemosSpace:folder,estudiemosOwner:owner}},{id:'root-pdf-file',name:'Gu\u00eda de ejercicios.pdf',mimeType:'application/pdf',size:'1000000',parents:[folder],modifiedTime:'2026-10-19',appProperties:{estudiemosSpace:folder,estudiemosOwner:owner}}];
-      let browse=false,browseEnabled=false,failInitialization=0,failConfig=0;
+      let browse=false,browseEnabled=false,failInitialization=0,failConfig=0,quota={limit:'15000000000',usage:'2000000000'};
       const requests=[];
       await context.addInitScript(({owner})=>{
         const originalFetch=window.fetch.bind(window);window.fetch=async(url,options)=>{if(String(url).startsWith('https://www.googleapis.com/upload/')&&options?.method==='PUT'&&options.body instanceof Blob)window.__uploadedBlob=await options.body.text();return originalFetch(url,options);};
@@ -42,7 +42,7 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
         if(url.origin!=='https://www.googleapis.com')return route.abort();
         if(request.method()==='OPTIONS')return route.fulfill({status:204,headers:{'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET,POST,PUT,PATCH,OPTIONS','Access-Control-Allow-Headers':'*','Access-Control-Max-Age':'600'}});
         assert.equal(request.headers().authorization,'Bearer pilot-google-access');
-        if(url.pathname.endsWith('/about'))return route.fulfill({json:{user:{emailAddress:'estudiante@example.test'},storageQuota:{limit:'15000000000',usage:'2000000000'}}});
+        if(url.pathname.endsWith('/about'))return route.fulfill({json:{user:{emailAddress:'estudiante@example.test'},storageQuota:quota}});
         if(url.pathname.startsWith('/upload/')){
           if(request.method()==='POST')return route.fulfill({status:200,headers:{Location:'https://www.googleapis.com/upload/drive/v3/files?upload_id=pilot','Access-Control-Expose-Headers':'Location,Range','Access-Control-Allow-Origin':'*'}});
           uploaded=request.postDataBuffer()?.toString()||'';const item={id:'uploaded-file',name:'Mi apunte.pdf',mimeType:'application/pdf',size:'20',parents:[folder],appProperties:{estudiemosOwner:owner,estudiemosSpace:folder}};files.push(item);return route.fulfill({json:item});
@@ -73,6 +73,9 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
       connected=true;await page.goto(base+'/mi-espacio.html?drive=connected');
       failConfig=1;await page.reload();await page.locator('[data-drive-retry]').waitFor();assert.equal(await page.getByText('Conexión en preparación',{exact:true}).count(),0);await page.locator('[data-drive-retry]').click();
       const body=page.locator('[data-workspace-items]');await body.getByText('Gu\u00eda de ejercicios.pdf',{exact:true}).waitFor();
+      assert.equal(await page.locator('[data-drive-library-link]').getAttribute('aria-current'),'page');
+      assert.ok(await page.locator('.drive-quota').isVisible());assert.equal(Math.round(await page.locator('.drive-quota').evaluate(el=>el.value)),13);
+      assert.ok(requests.some(request=>new URL(request.url).searchParams.get('fields')?.includes('capabilities(canEdit)')));
       const beforePick=requests.filter(request=>['POST','PATCH','DELETE','PUT'].includes(request.method)&&request.url.startsWith('https://www.googleapis.com')).length;
       await page.evaluate(()=>{window.__picked=null;window.EstudiemosDriveLibrary.pick().then(value=>window.__picked=value);});
       await page.locator('[data-pick-items]').getByRole('button',{name:'Gu\u00eda de ejercicios.pdf',exact:true}).click();
@@ -94,10 +97,13 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
       await page.locator(`[data-workspace-folder="${folder}"]`).click();await body.getByText('Gu\u00eda de ejercicios.pdf',{exact:true}).waitFor();
       await page.locator('[data-workspace-search]').fill('Qu\u00edmica');await page.waitForFunction(()=>document.querySelectorAll('.workspace-item').length===1);await page.locator('[data-workspace-search]').fill('');await page.waitForFunction(()=>document.querySelectorAll('.workspace-item').length===3);
       for(const theme of ['dark','light']){await page.evaluate(theme=>window.EstudiemosTheme.set(theme),theme);await page.waitForTimeout(300);await page.screenshot({path:path.join(out,`${engine}-${width}-files-${theme}.png`)});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));}
-      browseEnabled=true;browse=true;failInitialization=3;
-      files.push({id:'moved-folder',name:'Carpeta movida desde Drive',mimeType:mime,parents:[folder]}, {id:'existing-file',name:'Apunte previo.pdf',mimeType:'application/pdf',parents:['moved-folder'],size:'3000'}, {id:'outside-folder',name:'Otra carpeta de Mi unidad',mimeType:mime,parents:['root']});
+      browseEnabled=true;browse=true;failInitialization=3;quota={usage:'2000000000'};
+      files.push({id:'moved-folder',name:'Carpeta movida desde Drive',mimeType:mime,parents:[folder]}, {id:'existing-file',name:'Apunte previo.pdf',mimeType:'application/pdf',parents:['moved-folder'],size:'3000'}, {id:'outside-folder',name:'Otra carpeta de Mi unidad',mimeType:mime,parents:['root'],capabilities:{canEdit:true}}, {id:'readonly-folder',name:'Carpeta compartida',mimeType:mime,parents:['root'],capabilities:{canEdit:false}});
       await page.reload();await page.locator('[data-drive-retry]').waitFor();await page.locator('[data-drive-retry]').click();
       await body.getByText('Otra carpeta de Mi unidad',{exact:true}).waitFor();
+      assert.equal(await page.locator('.drive-quota').isVisible(),false,'Unlimited storage has no percentage');
+      assert.doesNotMatch(await body.locator('[data-workspace-open=outside-folder]').innerText(),/Solo lectura/);
+      assert.match(await body.locator('[data-workspace-open=readonly-folder]').innerText(),/Solo lectura/);
       assert.ok(await page.locator('[data-workspace-add]').first().isDisabled());assert.equal(await page.locator('[data-workspace-menu="outside-folder"]').count(),0);
       await page.locator('[data-drive-location="space"]').click();await body.getByText('Carpeta movida desde Drive',{exact:true}).waitFor();
       await page.locator('[data-workspace-open="moved-folder"]').click();await body.getByText('Apunte previo.pdf',{exact:true}).waitFor();

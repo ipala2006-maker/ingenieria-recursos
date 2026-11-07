@@ -2,7 +2,8 @@
   if (window.EstudiemosFriends || location.pathname.endsWith('/widget.html')) return;
   const root = new URL('../', document.currentScript.src);
   const endpoint = new URL('api/account-config?friends=1', root);
-  const css = document.createElement('link'); css.rel='stylesheet'; css.href=new URL('styles/friends.css?v=20261010-install-suggestion',root); document.head.append(css);
+  const inviteOrigin = 'https://estudiemos.ar/';
+  const css = document.createElement('link'); css.rel='stylesheet'; css.href=new URL('styles/friends.css?v=20261107-panel-ux',root); document.head.append(css);
   const pendingKey='estudiemos_friend_invite_v2';
   let model=null,busy=false,epoch=0,owner='',lastFocus=null,panel='friends',view='all',resumeLogin=false,notice='';
   let memoryPending=null;
@@ -33,26 +34,28 @@
   const icon=name=>`<img src="${new URL(`assets/icons/${name}.svg`,root)}" alt="" width="20" height="20">`;
   const dialog=document.createElement('dialog');dialog.className='friends-dialog';dialog.setAttribute('aria-labelledby','friendsTitle');
   dialog.innerHTML=`<header class="friends-head"><div><h2 id="friendsTitle">Amigos</h2><span data-count>Tu círculo de estudio</span></div><div class="friends-actions">
-    <button type="button" class="friends-icon" data-invite-toggle aria-label="Agregar amigos" title="Agregar amigos" aria-expanded="false">${icon('plus')}</button>
-    <button type="button" class="friends-icon" data-settings-toggle aria-label="Mi nombre y privacidad" title="Mi nombre y privacidad" aria-expanded="false">${icon('settings-2')}</button>
     <button type="button" class="friends-icon" data-close aria-label="Cerrar amigos" title="Cerrar">${icon('x')}</button></div></header>
     <p data-status role="status" aria-live="polite" hidden></p><button type="button" data-retry hidden>Volver a intentar</button>
     <section data-signed-out hidden><h3>Conectá con tu grupo</h3><p>Iniciá sesión para conectar con tu amigo y ver tu grupo de estudio.</p><button type="button" class="friends-primary" data-login>Iniciar sesión</button></section>
     <div data-content hidden>
-      <button type="button" class="friends-back" data-back hidden>${icon('arrow-left')} Mis amigos</button>
-      <section data-panel="invite" hidden><h3>Agregar amigos</h3>
+      <div class="friends-tabs" role="tablist" aria-label="Secciones de Amigos">
+        <button type="button" role="tab" id="friendTabList" aria-controls="friendPanelList" aria-selected="true" data-friend-tab="friends">Lista</button>
+        <button type="button" role="tab" id="friendTabInvite" aria-controls="friendPanelInvite" aria-selected="false" tabindex="-1" data-friend-tab="invite">Agregar</button>
+        <button type="button" role="tab" id="friendTabSettings" aria-controls="friendPanelSettings" aria-selected="false" tabindex="-1" data-friend-tab="settings">Privacidad</button>
+      </div>
+      <section data-panel="invite" role="tabpanel" id="friendPanelInvite" aria-labelledby="friendTabInvite" hidden><h3>Agregar amigos</h3>
         <form data-contact-form><label for="friendContact">Usuario o correo de tu amigo</label><div class="friends-inline"><input id="friendContact" type="text" maxlength="254" placeholder="@usuario o nombre@correo.com" autocomplete="off" autocapitalize="none" spellcheck="false" required><button type="submit">Enviar solicitud</button></div></form>
         <p class="friends-caption">La solicitud aparece en Amigos de su cuenta de Estudiemos.</p>
         <div class="friends-invite-divider"><span>O compartí tu enlace</span></div><p class="friends-caption">Tu amigo abre el enlace e inicia sesión. Ya quedan conectados, sin otra solicitud.</p>
         <div class="friends-share-actions"><button type="button" class="friends-primary friends-copy" data-native-share hidden>${icon('users-round')} Compartir invitación</button><button type="button" class="friends-copy" data-copy>${icon('link')} Copiar mi invitación</button></div><input data-my-link readonly aria-label="Tu enlace de invitación"><textarea data-invitation-fallback readonly aria-label="Mensaje de invitación para copiar" hidden></textarea>
       </section>
-      <section data-panel="settings" hidden><h3>Mi nombre y privacidad</h3><form data-profile>
+      <section data-panel="settings" role="tabpanel" id="friendPanelSettings" aria-labelledby="friendTabSettings" hidden><h3>Mi nombre y privacidad</h3><form data-profile>
         <label for="friendName">Nombre de usuario</label><input id="friendName" minlength="3" maxlength="25" pattern="@?[A-Za-z0-9_]{3,24}" required autocomplete="nickname" autocapitalize="none" spellcheck="false" aria-describedby="friendUsernameHint" placeholder="@tu_usuario">
         <small id="friendUsernameHint" class="friends-caption">Podés cambiar el usuario sugerido. Usá 3–24 letras sin tildes, números o guion bajo.</small>
         <label class="friends-toggle"><span>Compartir mi racha<small>Solo con amigos aceptados. Podés ocultarla cuando quieras.</small></span><input type="checkbox" role="switch" data-share></label>
         <button type="submit">Guardar cambios</button><button type="button" data-rotate>Cambiar enlace de invitación</button>
       </form><div data-blocked></div></section>
-      <section data-panel="friends">
+      <section data-panel="friends" role="tabpanel" id="friendPanelList" aria-labelledby="friendTabList">
         <section class="friends-install-suggestion" data-install-suggestion hidden aria-labelledby="friendInstallTitle">
           <img src="${new URL('assets/icon-192.png',root)}" alt="" width="40" height="40">
           <div><h3 id="friendInstallTitle">Llevá Estudiemos con vos</h3><p>Tu grupo de estudio, también en tu pantalla de inicio.</p><div class="friends-install-actions"><button type="button" class="friends-primary" data-friend-install>Instalar Estudiemos</button><button type="button" data-friend-install-later>Ahora no</button></div></div>
@@ -81,7 +84,13 @@
   const text=(tag,value,className)=>{const node=document.createElement(tag);node.textContent=value;if(className)node.className=className;return node;};
   const button=(label,callback)=>{const b=text('button',label);b.type='button';b.disabled=busy;b.addEventListener('click',callback);return b;};
   function lock(value){busy=value;dialog.querySelectorAll('button:not([data-close]),input').forEach(n=>n.disabled=value);}
-  function showPanel(value){panel=value;dialog.querySelectorAll('[data-panel]').forEach(n=>n.hidden=n.dataset.panel!==value);q('[data-back]').hidden=value==='friends';q('[data-invite-toggle]').setAttribute('aria-expanded',String(value==='invite'));q('[data-settings-toggle]').setAttribute('aria-expanded',String(value==='settings'));}
+  const panelTabs=[...dialog.querySelectorAll('[data-friend-tab]')];
+  function showPanel(value){
+    if(panel!==value)dialog.scrollTop=0;
+    panel=value;
+    dialog.querySelectorAll('[data-panel]').forEach(n=>n.hidden=n.dataset.panel!==value);
+    panelTabs.forEach(n=>{const active=n.dataset.friendTab===value;n.setAttribute('aria-selected',String(active));n.tabIndex=active?0:-1;});
+  }
   async function call(action,data={}) {
     const session=account()?.getSession();if(!session?.access_token)throw new Error('Iniciá sesión para continuar.');
     const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),12000);
@@ -154,7 +163,8 @@
   function draw(){
     q('[data-signed-out]').hidden=true;q('[data-content]').hidden=false;
     updateInstallSuggestion();
-    q('#friendName').value=model.me.username||normalizeHandle(model.me.name);q('[data-share]').checked=model.me.share;q('[data-my-link]').value=new URL(`amistad/${model.me.invite}`,root).href;
+    q('#friendName').value=model.me.username||normalizeHandle(model.me.name);q('[data-share]').checked=model.me.share;
+    q('[data-my-link]').value=/^[a-f0-9]{32}$/.test(model.me.invite)?new URL(`amistad/${model.me.invite}`,inviteOrigin).href:'';
     q('[data-invitation-fallback]').hidden=true;
     q('[data-count]').textContent=`${model.friends.length} ${model.friends.length===1?'amigo':'amigos'}`;q('[data-search]').hidden=model.friends.length<6;
     drawList();
@@ -183,14 +193,22 @@
   };
   window.addEventListener('appinstalled',dismissInstallSuggestion);
   ['standalone','window-controls-overlay','fullscreen'].forEach(mode=>matchMedia(`(display-mode: ${mode})`).addEventListener?.('change',updateInstallSuggestion));
-  q('[data-invite-toggle]').onclick=()=>showPanel(panel==='invite'?'friends':'invite');q('[data-settings-toggle]').onclick=()=>showPanel(panel==='settings'?'friends':'settings');q('[data-back]').onclick=()=>{notice='';status('');showPanel('friends');};
+  function selectPanel(tab){notice='';status('');showPanel(tab.dataset.friendTab);tab.focus({preventScroll:true});}
+  panelTabs.forEach(tab=>tab.onclick=()=>selectPanel(tab));
+  q('.friends-tabs').addEventListener('keydown',event=>{
+    const index=panelTabs.indexOf(event.target);
+    if(index===-1||!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
+    event.preventDefault();const last=panelTabs.length-1;
+    selectPanel(panelTabs[event.key==='Home'?0:event.key==='End'?last:(index+(event.key==='ArrowRight'?1:-1)+last+1)%(last+1)]);
+  });
   dialog.querySelectorAll('[data-view]').forEach(n=>n.onclick=()=>{view=n.dataset.view;drawList();});q('#friendSearch').oninput=drawList;
   q('[data-refresh]').onclick=()=>{notice='';refresh();};q('[data-retry]').onclick=()=>refresh();
   q('[data-profile]').onsubmit=e=>{e.preventDefault();const username=normalizeHandle(q('#friendName').value);refresh('profile',{name:username,username,share:q('[data-share]').checked,timezone:Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC'},'Nombre y privacidad guardados.');};
   q('[data-contact-form]').onsubmit=e=>{e.preventDefault();const value=q('#friendContact').value.trim();if(value.indexOf('@')>0)refresh('request_email',{email:value});else refresh('request_username',{username:value});};
   const invitationMessage='¡Estudiemos juntos! Te invito a ser mi amigo en Estudiemos.\nAbrí este enlace e iniciá sesión para aceptar mi invitación:';
   async function copyInvitation(){
-    const message=invitationMessage+'\n'+q('[data-my-link]').value;
+    const url=q('[data-my-link]').value;if(!url)return status('No pudimos preparar tu enlace. Volvé a intentar.',true);
+    const message=invitationMessage+'\n'+url;
     try{await navigator.clipboard.writeText(message);status('Invitación copiada. Ya podés enviársela a tu amigo.');}
     catch(_){const fallback=q('[data-invitation-fallback]');fallback.value=message;fallback.hidden=false;fallback.focus();fallback.select();status('Tu invitación está lista. Copiá este mensaje para enviarlo.');}
   }
@@ -198,7 +216,8 @@
   q('[data-native-share]').hidden=typeof navigator.share!=='function';
   q('[data-copy]').classList.toggle('friends-primary',typeof navigator.share!=='function');
   q('[data-native-share]').onclick=async()=>{
-    try{await navigator.share({title:'Solicitud de amistad en Estudiemos',text:invitationMessage,url:q('[data-my-link]').value});}
+    const url=q('[data-my-link]').value;if(!url)return status('No pudimos preparar tu enlace. Volvé a intentar.',true);
+    try{await navigator.share({title:'Solicitud de amistad en Estudiemos',text:invitationMessage,url});}
     catch(error){if(error.name!=='AbortError')await copyInvitation();}
   };
   q('[data-rotate]').onclick=()=>{if(confirm('¿Cambiar tu enlace? Los anteriores dejarán de permitir nuevas amistades. Tus amigos actuales no cambian.'))refresh('rotate',{},'Enlace de invitación actualizado.');};

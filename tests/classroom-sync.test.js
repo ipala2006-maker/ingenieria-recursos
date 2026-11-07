@@ -64,10 +64,10 @@ test('failed course retries stop while hidden or logged out and resume without b
   h.switchUser('');h.setHidden(false);await tick();assert.equal(h.calls.length,2);assert.equal(h.timers.size,0);
 });
 
-test('all course entrypoints load the versioned retry fix',()=>{
+test('all course entrypoints load the current versioned course client',()=>{
   const root=require('node:path').join(__dirname,'..');
   for(const file of ['scripts/global-search.js','materias.html','widget.html']){
-    assert.match(fs.readFileSync(require('node:path').join(root,file),'utf8'),/scripts\/classroom-sync\.js\?v=20261030-retry-recovery/);
+    assert.match(fs.readFileSync(require('node:path').join(root,file),'utf8'),/scripts\/classroom-sync\.js\?v=20261107-panel-ux/);
   }
 });
 test('writes beat stale background reads and remain bound to the original account',async()=>{
