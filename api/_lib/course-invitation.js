@@ -1,19 +1,18 @@
 const documentTemplate=require('./document-template');
-const {appOrigin,LEGACY_ORIGIN}=require('./app-origin');
 const {enforceRateLimit}=require('./request-security');
 const preview=require('./course-preview');
 const view=require('../../shared/course-invite-view');
 const appLinks=require('../../shared/course-app-links');
 const documentPolicy=require('../../vercel.json').headers.find(rule=>rule.source==='/(.*)').headers.find(header=>header.key==='Content-Security-Policy').value;
 module.exports=async function courseInvitation(req,res){
-  const origin=appOrigin(),template=documentTemplate(req,'instalar.html').replaceAll(LEGACY_ORIGIN,origin);
+  const origin=appLinks.publicOrigin(process.env.PUBLIC_APP_ORIGIN),template=documentTemplate(req,'instalar.html');
   if(!['GET','HEAD'].includes(req.method)){res.setHeader('Allow','GET, HEAD');return res.status(405).json({message:'Método no permitido.'});}
   const rawCode=req.query?.courseInvitation,code=typeof rawCode==='string'?rawCode.toUpperCase():'';
   const valid=/^[A-HJ-NP-Z2-9]{10}$/.test(code);
   if(valid&&!await enforceRateLimit(req,res,{route:'course-invitation',limit:600,windowSeconds:60}))return;
   let model=null,status=valid?'':'El enlace está incompleto o no es válido. Pedí una nueva invitación.',http=valid?200:404,unavailable=!valid;
   if(valid)try{model=await preview(code);}catch(error){unavailable=error.message==='INVALID_CODE';http=unavailable?404:503;status=unavailable?'La cátedra ya no está disponible o cambió su enlace.':'No pudimos cargar la invitación. Podés continuar en la app o volver a intentar.';}
-  const url=valid?origin+'/materia/'+code:origin+'/instalar.html',title=model?model.title+' · Invitación en Estudiemos':'Invitación a una cátedra · Estudiemos';
+  const url=appLinks.canonicalUrl(code,origin)?.href||origin+'/instalar',title=model?model.title+' · Invitación en Estudiemos':'Invitación a una cátedra · Estudiemos';
   const description=model?'Sumate a '+model.title+'. '+(model.teacherName?'Compartida por '+model.teacherName+'. ':'')+'Fechas y materiales de tu cursada, en Estudiemos.':'Tu comisión, sus fechas y sus materiales. Sumate en Estudiemos.';
   const image=origin+'/assets/course-invite-preview.png',joinUrl=unavailable?origin+'/':origin+'/?unirme=1#materia='+code;
   const platform=appLinks.platform(req.headers?.['user-agent']),nativeUrl=appLinks.nativeUrl(code,platform,origin+'/');
@@ -27,7 +26,7 @@ module.exports=async function courseInvitation(req,res){
   for(const key of ['description','og:description'])meta(key,description);
   meta('og:title',title);meta('og:url',url);meta('og:image',image);meta('og:image:alt','Invitación a una cátedra en Estudiemos');
   const extraMeta=`<meta name="robots" content="noindex, nofollow"><meta property="og:locale" content="es_AR"><meta property="og:image:type" content="image/png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:title" content="${view.esc(title)}"><meta name="twitter:description" content="${view.esc(description)}"><meta name="twitter:image" content="${image}"><meta name="twitter:image:alt" content="Invitación a una cátedra en Estudiemos">${valid&&!unavailable?`<meta property="al:android:url" content="estudiemos://open?materia=${code}"><meta property="al:android:package" content="com.estudiemos.app"><meta property="al:android:app_name" content="Estudiemos"><meta property="al:web:url" content="${url}"><meta property="al:web:should_fallback" content="true">`:''}`;
-  html=html.replace('href="'+origin+'/instalar.html"','href="'+url+'"').replace('<main>',`<main><section class="course-install-invitation" aria-labelledby="courseInviteTitle">${view.content(model,{code,joinUrl,status,unavailable,nativeUrl,platform,preferNative:req.query?.abrir!=='web'})}</section><template data-course-preview="${view.esc(JSON.stringify({code:valid?code:'',preview:model,status,unavailable}))}"></template>`)
+  html=html.replace(/(<link rel="canonical" href=")[^"]+/,(_match,start)=>start+view.esc(url)).replace('<main>',`<main><section class="course-install-invitation" aria-labelledby="courseInviteTitle">${view.content(model,{code,joinUrl,status,unavailable,nativeUrl,platform,preferNative:req.query?.abrir!=='web'})}</section><template data-course-preview="${view.esc(JSON.stringify({code:valid?code:'',preview:model,status,unavailable}))}"></template>`)
     .replace('</head>',extraMeta+'</head>');
   if(http===503)res.setHeader('Retry-After','30');
   res.setHeader('Content-Type','text/html; charset=utf-8');res.setHeader('Content-Security-Policy',documentPolicy);res.setHeader('Cache-Control','private, no-store');res.setHeader('Referrer-Policy','no-referrer');res.setHeader('X-Robots-Tag','noindex, nofollow');

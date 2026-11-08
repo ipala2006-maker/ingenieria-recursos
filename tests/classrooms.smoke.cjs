@@ -4,6 +4,8 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
 const root=path.resolve(__dirname,'..'),out=path.join(root,'tmp/classrooms');
 const teacher='00000000-0000-4000-8000-000000000001',student='00000000-0000-4000-8000-000000000002',moderator='00000000-0000-4000-8000-000000000003';
 const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)').headers;
+const links=require('../shared/course-app-links'),official=links.publicOrigin();
+const workerOrigin='https://estudiemos.estudiemos-services.workers.dev';
 (async()=>{
   let browser,server,lastPage,directReads=0,legacyReads=0;const db=new PGlite();
   try{
@@ -17,7 +19,7 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
       if(name==='./supabase-admin')return {authenticateBearer:async auth=>[teacher,student,moderator].includes(auth?.replace('Bearer ',''))?{id:auth.replace('Bearer ','')}:null,adminRequest:async(url,options={})=>{if(!url.startsWith('/rest/v1/rpc/'))throw new Error('Direct table requests are not permitted');const v=JSON.parse(options.body);return db.transaction(async tx=>{await tx.exec('set local role service_role');const query=url.endsWith('/classroom_invitation')?['select classroom_invitation($1) as data',[v.p_code]]:url.endsWith('/classroom_delete')?['select classroom_delete($1,$2) as data',[v.p_user,v.p_id]]:['select classroom_action($1,$2,$3) as data',[v.p_user,v.p_action,v.p_data]];return(await tx.query(...query)).rows[0].data;});}};
       if(name==='./request-security')return {...localRequire(name),enforceRateLimit:async()=>true};return localRequire(name);
     }};vm.runInNewContext(fs.readFileSync(file,'utf8'),sandbox);
-    const inviteFile=path.join(root,'api/_lib/course-invitation.js'),inviteRequire=createRequire(inviteFile),inviteSandbox={module:{exports:{}},__dirname:path.dirname(inviteFile),require(name){
+    const inviteFile=path.join(root,'api/_lib/course-invitation.js'),inviteRequire=createRequire(inviteFile),inviteSandbox={module:{exports:{}},__dirname:path.dirname(inviteFile),process:{env:{PUBLIC_APP_ORIGIN:official}},require(name){
       if(name==='./request-security')return {enforceRateLimit:async()=>true};
       if(name==='./course-preview')return code=>inviteRequire(name)(code,sandbox.require('./supabase-admin').adminRequest);
       return inviteRequire(name);
@@ -82,11 +84,12 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
           if(item){if(method==='PATCH')Object.assign(item,request.postDataJSON());return send(item);}
           return route.fulfill({status:404,json:{error:{message:'Fixture file missing'}}});
         }
-        if(url.origin!==base)return route.abort();
+        if(![base,official,workerOrigin].includes(url.origin))return route.abort();
         if(url.searchParams.get('drive')==='status')return route.fulfill({json:{connected:driveFixture}});
         if(url.searchParams.get('drive')==='token')return route.fulfill({json:{accessToken:'fixture-only',expiresAt:Date.now()+3600000}});
-        if(actualAccount&&url.pathname==='/api/account-config'&&!url.search)return route.fulfill({json:{enabled:true,url:'https://fixture.supabase.co',publishableKey:'test-only',captchaSiteKey:''}});
-        if(url.pathname==='/scripts/account.js'&&!actualAccount)return route.fulfill({contentType:'text/javascript',body:`window.EstudiemosAccount={getUser:()=>window.__classUser?{id:window.__classUser}:null,getSession:()=>window.__classUser?{access_token:window.__classUser}:null,whenReady:()=>Promise.resolve({session:window.__classUser?{access_token:window.__classUser}:null}),isSynchronized:()=>true,getClient:()=>({rpc:async(name,args)=>(await fetch('/rest/v1/rpc/'+name,{method:'POST',headers:{Authorization:'Bearer '+window.__classUser},body:JSON.stringify(args)})).json()}),open:()=>{window.__loginOpened=true},refresh:async()=>{}};window.dispatchEvent(new CustomEvent('estudiemos:account-ready'));`});
+        if(actualAccount&&url.pathname==='/api/account-config'&&!url.search)return route.fulfill({json:{enabled:true,url:'https://fixture.supabase.co',publishableKey:'test-only',captchaSiteKey:'',publicAppOrigin:official}});
+        if(url.pathname==='/scripts/account.js'&&!actualAccount)return route.fulfill({contentType:'text/javascript',body:`window.EstudiemosAccount={getUser:()=>window.__classUser?{id:window.__classUser}:null,getSession:()=>window.__classUser?{access_token:window.__classUser}:null,whenReady:()=>Promise.resolve({session:window.__classUser?{access_token:window.__classUser}:null}),isSynchronized:()=>true,getPublicAppOrigin:()=>${JSON.stringify(official)},getClient:()=>({rpc:async(name,args)=>(await fetch('/rest/v1/rpc/'+name,{method:'POST',headers:{Authorization:'Bearer '+window.__classUser},body:JSON.stringify(args)})).json()}),open:()=>{window.__loginOpened=true},refresh:async()=>{}};window.dispatchEvent(new CustomEvent('estudiemos:account-ready'));`});
+        if(url.origin!==base)return route.fetch({url:base+url.pathname+url.search,maxRedirects:0,headers:{...request.headers(),origin:base}}).then(response=>route.fulfill({response}));
         return route.continue();
       });return ctx;
     }
@@ -106,11 +109,11 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
     assert.equal(await sp.locator('[data-class-tab=members]').innerText(),'Equipo');
     await sp.evaluate(()=>Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async value=>{window.__classCopied=value;}}}));
     await sp.locator('[data-class-copy-link]').click();await sp.waitForFunction(()=>window.__classCopied);
-    assert.equal(await sp.evaluate(()=>window.__classCopied),base+'/materia/'+code);
+    assert.equal(await sp.evaluate(()=>window.__classCopied),official+'/materia/'+code);
     assert.equal(await sp.locator('[data-class-link]').count(),0,'Quick copy keeps the current tab open');
     assert.ok(await sp.locator('[data-class-share]').isEnabled(),'students can share without editing permissions');
     await sp.locator('[data-class-share]').click();
-    assert.equal(await sp.locator('[data-class-link]').inputValue(),base+'/materia/'+code);
+    assert.equal(await sp.locator('[data-class-link]').inputValue(),official+'/materia/'+code);
     assert.ok(!(await sp.locator('[data-class-link]').inputValue()).includes('null'));
     await sp.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-student-share.png`)});
     await sp.locator('[data-class-back]').click();
@@ -210,6 +213,9 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
     await rp.locator('[data-class-form=member_permissions]').evaluate(el=>Promise.all(el.getAnimations({subtree:true}).map(animation=>animation.finished.catch(()=>{}))));await rp.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-collaborator-permissions-mobile.png`)});assert.equal(await rp.locator('.classroom-main').evaluate(el=>el.scrollWidth<=el.clientWidth+1),true);
     await rp.setViewportSize({width:1440,height:900});await rp.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-collaborator-permissions-desktop.png`)});
     lastPage=mp;await mp.locator('[data-class-refresh]').click();await mp.locator('[data-class-tab=members]').click();await mp.locator('.classroom-rank').filter({hasText:'Delegado'}).waitFor();assert.equal(await mp.locator('[data-class-settings]').count(),0);assert.equal(await mp.locator('[data-class-material]').count(),0);
+    await mp.evaluate(()=>Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async value=>{window.__classCopied=value;}}}));
+    await mp.locator('[data-class-copy-link]').click();await mp.waitForFunction(()=>window.__classCopied);
+    assert.equal(await mp.evaluate(()=>window.__classCopied),official+'/materia/'+shared.code);
     await mp.locator('.classroom-team summary').click();await mp.getByText('StudyMate42',{exact:true}).waitFor();assert.match(await mp.locator('.classroom-team-delegates').innerText(),/Agregar fechas/);assert.match(await mp.locator('.classroom-team-delegates').innerText(),/Quitar archivos/);assert.doesNotMatch(await mp.locator('.classroom-team-delegates').innerText(),/Editar fechas/);await mp.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-course-team.png`)});
     await mp.locator('[data-class-tab=events]').click();
     await mp.locator('[data-class-event]').click();const modEvent=mp.locator('[data-class-form=event_save]');await modEvent.locator('[name=title]').fill('Práctica colaborativa');await modEvent.locator('[type=submit]').click();await mp.locator('.classroom-row strong').filter({hasText:'Práctica colaborativa'}).waitFor();assert.equal(await mp.locator('.classroom-row [data-class-event]').count(),0,'Add-only moderator cannot edit an existing date');
@@ -230,9 +236,20 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
     const landing=await context('',390),lp=await landing.newPage();lastPage=lp;let extraPreviewReads=0;lp.on('request',request=>{if(request.url().includes('classes=1&invite='))extraPreviewReads++;});
     await lp.goto(base+'/materia/'+code+'?local=1');await lp.locator('[data-course-invite-dates]').getByText(/Parcial actualizado/).waitFor();assert.equal(extraPreviewReads,0,'Server-rendered invitation avoids a second preview lookup');assert.equal(await lp.locator('#courseInviteTitle').innerText(),'Física · 1.º año');assert.equal(await lp.locator('body').evaluate(el=>el.scrollWidth<=innerWidth),true);await lp.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-friendly-invitation-390.png`)});
     await lp.getByRole('link',{name:'Instalar Estudiemos',exact:true}).click();assert.equal(new URL(lp.url()).hash,'#instalar');assert.equal(new URL(lp.url()).pathname,'/materia/'+code);await lp.setViewportSize({width:1440,height:900});await lp.goto(base+'/materia/'+code+'?local=1');await lp.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-friendly-invitation-1440.png`)});await landing.close();
-    const guest=await context('',320),gp=await guest.newPage();lastPage=gp;await gp.goto(base+'/#materia='+code);await gp.locator('[data-course-join]').waitFor();assert.equal(new URL(gp.url()).pathname,'/materia/'+code);await gp.locator('[data-course-invite-dates]').getByText(/Parcial actualizado/).waitFor();await gp.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-invitation-install.png`)});await gp.locator('[data-course-join]').click();await gp.waitForFunction(()=>window.__loginOpened);assert.equal(new URL(gp.url()).pathname,'/materia/'+code,'Guest signs in without losing the invitation landing');assert.equal(await gp.locator('.classroom-dialog[open]').count(),0,'Account sign-in is not hidden behind a native modal');assert.equal(await gp.locator('[data-study-goal-dialog][open]').count(),0);
+    const guest=await context('',320),gp=await guest.newPage();lastPage=gp;await gp.goto(base+'/#materia='+code);await gp.locator('[data-course-join]').waitFor();assert.equal(gp.url(),official+'/materia/'+code);await gp.locator('[data-course-invite-dates]').getByText(/Parcial actualizado/).waitFor();await gp.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-invitation-install.png`)});await gp.locator('[data-course-join]').click();await gp.waitForFunction(()=>window.__loginOpened);assert.equal(gp.url(),official+'/materia/'+code,'Guest signs in without losing the invitation landing');assert.equal(await gp.locator('.classroom-dialog[open]').count(),0,'Account sign-in is not hidden behind a native modal');assert.equal(await gp.locator('[data-study-goal-dialog][open]').count(),0);
     await gp.evaluate(id=>{window.__classUser=id;window.dispatchEvent(new CustomEvent('estudiemos:account-change'));},student);await gp.locator('.classroom-course-head h3').waitFor();assert.equal(await gp.evaluate(()=>localStorage.getItem('estudiemos_class_invite_v1')),null,'Successful enrollment consumes the durable invitation');await guest.close();
     const signed=await context(student,390),signedPage=await signed.newPage();lastPage=signedPage;await signedPage.goto(base+'/materia/'+code);await signedPage.locator('.classroom-course-head h3').waitFor();assert.equal(await signedPage.locator('.classroom-course-head h3').innerText(),'Física · 1.º año');assert.equal(await signedPage.evaluate(()=>Boolean(window.__loginOpened)),false,'Active session opens the exact existing course without another login');await signed.close();
+    const mirror=await context(student,390),mirrorPage=await mirror.newPage();lastPage=mirrorPage;
+    await mirrorPage.goto(workerOrigin+'/#materia='+code);
+    await mirrorPage.locator('[data-class-copy-link]').waitFor();
+    await mirrorPage.evaluate(()=>Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async value=>{window.__classCopied=value;}}}));
+    await mirrorPage.locator('[data-class-copy-link]').click();
+    await mirrorPage.waitForFunction(()=>window.__classCopied);
+    assert.equal(await mirrorPage.evaluate(()=>window.__classCopied),official+'/materia/'+code,'Even a member using the old worker copies the official URL');
+    await mirrorPage.goto(workerOrigin+'/instalar.html?materia='+code.toLowerCase()+'&abrir=web&extra=discard');
+    await mirrorPage.locator('.classroom-course-head h3').waitFor();
+    assert.equal(new URL(mirrorPage.url()).origin,official);
+    await mirror.close();
     for(const platform of ['android','windows']){
       const native=await context(student,390,'student',false,false,platform),nativePage=await native.newPage();lastPage=nativePage;
       await nativePage.goto(base+'/materia/'+code);await nativePage.locator('[data-course-routing=ready]').waitFor();assert.equal(await nativePage.evaluate(()=>Boolean(window.EstudiemosAccount)),false,'App-first landing does not load the browser Auth SDK');

@@ -94,6 +94,7 @@
     isSynchronized: () => Boolean(session?.user?.id && (AUTH_ONLY || synchronizedUserId === session.user.id)),
     getSession: () => session,
     getClient: () => client,
+    getPublicAppOrigin: () => accountConfig?.publicAppOrigin,
     whenReady: () => readyPromise,
     open: () => openDialog(),
     updateApp: () => updateApplication()
@@ -400,6 +401,7 @@
       accountConfig = {
         url: config.url,
         publishableKey: config.publishableKey,
+        publicAppOrigin: config.publicAppOrigin || "",
         captchaSiteKey: config.captchaSiteKey || "",
         firebase: config.firebase || null
       };

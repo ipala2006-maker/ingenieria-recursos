@@ -1,5 +1,6 @@
 const { enforceRateLimit, setSecurityHeaders } = require("./_lib/request-security");
 const { isPublicSupabaseKey } = require("./_lib/public-config");
+const { publicOrigin } = require("../shared/course-app-links");
 
 module.exports = async function handler(request, response) {
   setSecurityHeaders(response);
@@ -35,6 +36,7 @@ module.exports = async function handler(request, response) {
     enabled: true,
     url,
     publishableKey,
+    publicAppOrigin: publicOrigin(process.env.PUBLIC_APP_ORIGIN),
     captchaSiteKey: process.env.TURNSTILE_SITE_KEY || "",
     firebase: firebaseEnabled ? firebase : null
   });

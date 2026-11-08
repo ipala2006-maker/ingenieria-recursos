@@ -7,7 +7,7 @@
   function pending(owner=''){for(const name of['sessionStorage','localStorage','memory'])try{const value=name==='memory'?memory:JSON.parse(window[name].getItem(key)||'null');if(value?.expires>Date.now()&&CODE.test(value.code)&&(!value.owner||value.owner===owner))return value;}catch(_){}return null;}
   function clear(){memory=null;for(const name of['sessionStorage','localStorage'])try{window[name].removeItem(key);}catch(_){}}
   function appUrl(code){const url=new URL('./',root);if(CODE.test(code)){url.searchParams.set('unirme','1');url.hash='materia='+code;}return url;}
-  function canonicalUrl(code){return CODE.test(code)?new URL('materia/'+code,root):new URL('./',root);}
+  function canonicalUrl(code){return window.EstudiemosCourseAppLinks.canonicalUrl(code,window.EstudiemosAccount?.getPublicAppOrigin?.());}
   function confirmationUrl(base){
     const url=new URL(base,root);
     if(url.origin!==root.origin)return new URL('./',root);
@@ -18,8 +18,13 @@
   window.EstudiemosCourseInvitation=Object.freeze({save,pending,clear,appUrl,canonicalUrl,confirmationUrl});
   async function install(){
     const url=new URL(location.href),path=/^\/materia\/([A-HJ-NP-Z2-9]{10})\/?$/i.exec(url.pathname);
-    if(!url.pathname.endsWith('/instalar.html')&&!path)return;
+    if(!/^\/instalar(?:\.html|\/)?$/.test(url.pathname)&&!path)return;
     const code=parse(path?.[1]||new URLSearchParams(url.hash.slice(1)).get('materia')||url.searchParams.get('materia'));if(!CODE.test(code))return;
+    if(!path){
+      const destination=canonicalUrl(code);
+      if(url.searchParams.get('abrir')==='web')destination.searchParams.set('abrir','web');
+      return location.replace(destination);
+    }
     const view=window.EstudiemosCourseInviteView;if(!view)return;
     const existing=pending();save(code,existing?.owner||'');
     document.body.classList.add('course-invitation-page');
@@ -32,7 +37,7 @@
     const inApp=Boolean(window.EstudiemosAndroid)||matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: window-controls-overlay)').matches||navigator.standalone===true;
     const appLinks=window.EstudiemosCourseAppLinks;
     const nativePlatform=appLinks?.platform(navigator.userAgent,inApp,navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1)||'';
-    const nativeDestination=appLinks?.nativeUrl(code,nativePlatform,root)||'';
+    const nativeDestination=appLinks?.nativeUrl(code,nativePlatform)||'';
     let webChosen=url.searchParams.get('abrir')==='web'||!nativeDestination;
     const destination=appUrl(code);let unavailable=false,seed=null,currentPreview=null,navigating=false;
     try{const data=JSON.parse(document.querySelector('[data-course-preview]')?.dataset.coursePreview||'null');if(data?.code===code)seed=data;}catch(_){}
@@ -41,7 +46,7 @@
       section.innerHTML=view.content(preview,{code,joinUrl:gone?new URL('./',root).href:destination.href,status,unavailable:gone,loading,nativeUrl:nativeDestination,platform:nativePlatform,preferNative:!webChosen});
     }
     if(seed)paint(seed.preview,seed.status,seed.unavailable);else paint(null,'Preparando tu invitación…',false,true);
-    document.querySelectorAll('[data-open-estudiemos],a[href="https://estudiemos-app.vercel.app/"],a[href="https://estudiemos.estudiemos-services.workers.dev/"]').forEach(link=>link.href=nativeDestination&&!webChosen?nativeDestination:destination);
+    document.querySelectorAll('[data-open-estudiemos]').forEach(link=>link.href=nativeDestination&&!webChosen?nativeDestination:destination);
     const android=document.querySelector('[data-install-android]');if(android)android.href='intent://open?materia='+code+'#Intent;scheme=estudiemos;package=com.estudiemos.app;S.browser_fallback_url=https%3A%2F%2Fgithub.com%2Fipala2006-maker%2Fingenieria-recursos%2Freleases%2Fdownload%2Fandroid-latest%2FEstudiemos-Android.apk;end';
     const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15000);
     try{
@@ -67,7 +72,7 @@
     let ready;
     const loadAccount=()=>ready||(ready=new Promise(resolve=>{
       if(window.EstudiemosAccount)return resolve(window.EstudiemosAccount);
-      const script=document.createElement('script');script.src=new URL('scripts/account.js?v=20261108-password-recovery',root);
+      const script=document.createElement('script');script.src=new URL('scripts/account.js?v=20261108-official-course-links',root);
       script.onload=()=>resolve(window.EstudiemosAccount||null);script.onerror=()=>resolve(null);document.head.append(script);
     }));
     section.addEventListener('click',async event=>{
