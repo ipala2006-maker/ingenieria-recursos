@@ -75,7 +75,8 @@ for (const mode of modes) {
 
   test(`Inbox saves ${mode.name} and shows new undated tasks in pending`, () => {
     let saved, resets = 0, rendered = 0;
-    const title = { value: '  Repasar  ' }, form = { reset() { resets++; } };
+    const title = { value: '  Repasar  ' }, status = { textContent: '' };
+    const form = { querySelector: () => status, reset() { resets++; } };
     const context = {
       document: { getElementById: id => ({ agendaTitle: title, agendaForm: form }[id] || null) },
       window: { EstudiemosInboxAlarms: { readDate: () => mode.date, readForm: () => mode.alarm } },

@@ -211,6 +211,7 @@
                   Nueva tarea
                   <input id="agendaTitle" type="text" maxlength="90" placeholder="Ej: Entrega de ejercicios" required />
                 </label>
+                <p class="agenda-assistant__status is-error" data-agenda-note-status role="status"></p>
                 <button class="agenda-save-btn" type="submit" disabled>${icon("plus")}<span>Agregar</span></button>
               </form>
               <button class="agenda-program-action" type="button" data-agenda-program disabled>${icon("calendar")}<span>Programar actividad</span></button>
@@ -481,7 +482,10 @@
       previewAgendaAssistant();
     });
 
-    document.getElementById("agendaTitle")?.addEventListener("input", updateAgendaSubmitState);
+    document.getElementById("agendaTitle")?.addEventListener("input", () => {
+      document.querySelector('[data-agenda-note-status]').textContent = '';
+      updateAgendaSubmitState();
+    });
 
     document.getElementById("agendaDate")?.addEventListener("change", (event) => {
       selectAgendaDate(event.target.value, false);
@@ -817,8 +821,19 @@
       createdAt: Date.now()
     });
 
-    writeList(STORAGE_KEYS.agenda, items.slice(0, MAX_AGENDA_ITEMS));
     const form = document.getElementById('agendaForm');
+    const status = form.querySelector('[data-agenda-note-status]');
+    try {
+      if (window.EstudiemosAccount?.canSaveLocalNotes?.() === false) {
+        status.textContent = 'Tu agenda todavía no se sincronizó. El borrador queda en este formulario.';
+        return;
+      }
+      writeList(STORAGE_KEYS.agenda, items.slice(0, MAX_AGENDA_ITEMS));
+    } catch (_) {
+      status.textContent = 'No pudimos guardar la tarea en este dispositivo. Tu borrador sigue acá.';
+      return;
+    }
+    status.textContent = '';
     const continuing = window.EstudiemosNoteEntry?.continuing(form);
     titleInput.value = "";
     if (dateInput) dateInput.value = selectedAgendaDate;

@@ -62,6 +62,7 @@
   let cloudPollTimer = 0;
   let remoteRefreshTimer = 0;
   let recovery = null;
+  let authActionInFlight = false;
   let recoveryTimer = 0;
   const recoveryCooldowns = new Map();
   let whatsappStatusLoaded = false;
@@ -91,6 +92,7 @@
     refresh: (options = {}) => synchronize(options.force ? "verify" : "widget"),
     getSyncUsage: () => getSyncUsage(),
     getUser: () => session?.user || null,
+    canSaveLocalNotes: () => (localStorage.getItem(LINKED_USER_KEY) || "") === (session?.user?.id || ""),
     isSynchronized: () => Boolean(session?.user?.id && (AUTH_ONLY || synchronizedUserId === session.user.id)),
     getSession: () => session,
     getClient: () => client,
@@ -443,11 +445,16 @@
       stage = "session";
       if (pendingNativeSession?.accessToken && pendingNativeSession?.refreshToken) {
         applyingNativeSession = true;
-        await client.auth.setSession({
-          access_token: pendingNativeSession.accessToken,
-          refresh_token: pendingNativeSession.refreshToken
-        });
-        applyingNativeSession = false;
+        try {
+          await client.auth.setSession({
+            access_token: pendingNativeSession.accessToken,
+            refresh_token: pendingNativeSession.refreshToken
+          });
+        } catch (_) {
+          // A failed native handoff must not prevent loading the browser session.
+        } finally {
+          applyingNativeSession = false;
+        }
       }
       const result = await client.auth.getSession();
       if (result.error) throw result.error;
@@ -467,7 +474,7 @@
     } catch (error) {
       configAvailable = false;
       const message = stage === "config"
-        ? "La sincronización de cuentas está casi lista, pero falta conectar el almacenamiento seguro."
+        ? "No pudimos conectar con el servicio de cuentas. Revisá tu conexión y recargá la página."
         : stage === "library"
           ? "No pudimos cargar el servicio de cuentas. Revisá tu conexión y recargá la página."
           : "No pudimos iniciar tu cuenta en este momento. Recargá la página para volver a intentar.";
@@ -514,27 +521,21 @@
   }
 
   async function signIn() {
-    if (!client) return;
+    if (!client || authActionInFlight) return;
     const credentials = getCredentials();
     if (!credentials) return;
     const captcha = getCaptchaOptions();
     if (captcha === null) return;
-    setBusy(true, "Ingresando...");
-    const result = await client.auth.signInWithPassword({ ...credentials, options: captcha });
-    setBusy(false);
-    resetCaptcha();
-    if (result.error) return setStatus(authErrorMessage(result.error), "error");
-    session = result.data.session;
-    prepareLocalAccountSwitch(session.user.id);
-    connectRealtime(session.user.id);
-    startCloudPolling();
-    renderAccountState();
-    await synchronize("signin");
-    setStatus("Cuenta conectada y datos sincronizados.", "success");
+    await runAuthAction("Ingresando...", "No pudimos ingresar. Revisá tu conexión y volvé a intentar.", async () => {
+      const result = await client.auth.signInWithPassword({ ...credentials, options: captcha });
+      if (result.error) return setStatus(authErrorMessage(result.error), "error");
+      if (!result.data?.session?.user?.id) throw new Error("missing-session");
+      await finishFormSignIn(result.data.session, "Cuenta conectada.");
+    }, true);
   }
 
   async function signUp() {
-    if (!client) return;
+    if (!client || authActionInFlight) return;
     const credentials = getCredentials();
     if (!credentials) return;
     const captcha = getCaptchaOptions();
@@ -543,26 +544,47 @@
     const emailRedirect = window.EstudiemosCourseInvitation?.confirmationUrl?.(baseRedirect) || baseRedirect;
     const pendingReferral = COMMERCIAL_LAUNCH_ENABLED ? normalizeReferralCode(localStorage.getItem(PENDING_REFERRAL_KEY)) : "";
     if (pendingReferral) emailRedirect.searchParams.set("ref", pendingReferral);
-    setBusy(true, "Creando tu cuenta...");
-    const result = await client.auth.signUp({
-      ...credentials,
-      options: { emailRedirectTo: emailRedirect.href, ...captcha }
-    });
-    setBusy(false);
-    resetCaptcha();
-    if (result.error) return setStatus(authErrorMessage(result.error), "error");
-    if (result.data.session) {
-      session = result.data.session;
-      prepareLocalAccountSwitch(session.user.id);
-      connectRealtime(session.user.id);
-      startCloudPolling();
-      renderAccountState();
-      await synchronize("signin");
-      setStatus("Cuenta creada y datos sincronizados.", "success");
-      if (COMMERCIAL_LAUNCH_ENABLED) window.setTimeout(() => refreshReferralStatus(true), 300);
-      return;
+    await runAuthAction("Creando tu cuenta...", "No pudimos crear la cuenta. Revisá tu conexión y volvé a intentar.", async () => {
+      const result = await client.auth.signUp({
+        ...credentials,
+        options: { emailRedirectTo: emailRedirect.href, ...captcha }
+      });
+      if (result.error) return setStatus(authErrorMessage(result.error), "error");
+      if (result.data?.session) {
+        await finishFormSignIn(result.data.session, "Cuenta creada.");
+        if (COMMERCIAL_LAUNCH_ENABLED) window.setTimeout(() => refreshReferralStatus(true), 300);
+        return;
+      }
+      setStatus("Te enviamos un correo. Abrilo para confirmar tu cuenta y después ingresá.", "success");
+    }, true);
+  }
+
+  async function runAuthAction(progress, failure, action, refreshCaptcha = false) {
+    if (authActionInFlight) return;
+    authActionInFlight = true;
+    setBusy(true, progress);
+    try {
+      await action();
+    } catch (_) {
+      setStatus(failure, "error");
+    } finally {
+      authActionInFlight = false;
+      setBusy(false);
+      if (refreshCaptcha) resetCaptcha();
     }
-    setStatus("Te enviamos un correo. Abrilo para confirmar tu cuenta y después ingresá.", "success");
+  }
+
+  async function finishFormSignIn(nextSession, message) {
+    session = nextSession;
+    const userId = session.user.id;
+    prepareLocalAccountSwitch(userId);
+    connectRealtime(userId);
+    startCloudPolling();
+    renderAccountState();
+    const synced = await synchronize("signin");
+    if (session?.user?.id !== userId) return;
+    if (AUTH_ONLY) return setStatus(message, "success");
+    setStatus(message + (synced ? " Datos sincronizados." : " La sincronización está pendiente."), synced ? "success" : "info");
   }
 
   function captureReferralFromUrl() {
@@ -1081,17 +1103,25 @@
 
   async function signOut() {
     if (!client) return;
-    setBusy(true, "Cerrando sesión...");
-    if (session) await synchronize("signout");
-    const result = await client.auth.signOut();
-    setBusy(false);
-    if (result.error) return setStatus("No se pudo cerrar la sesión. Probá nuevamente.", "error");
-    session = null;
-    referralStatusLoaded = false;
-    disconnectRealtime();
-    clearLocalAccountData();
-    renderAccountState();
-    setStatus("Sesión cerrada. Los datos de la cuenta se retiraron de este dispositivo.", "info");
+    const errorMessage = "No se pudo cerrar la sesión. Revisá tu conexión y volvé a intentar.";
+    await runAuthAction("Cerrando sesión...", errorMessage, async () => {
+      const userId = session?.user?.id;
+      if (userId) {
+        await synchronize("signout");
+        if (session?.user?.id !== userId) return;
+        if (!AUTH_ONLY && localStorage.getItem(DIRTY_KEY) === "true") {
+          return setStatus("Hay cambios pendientes en este dispositivo. Volvé a intentar con conexión para cerrar sesión sin perderlos.", "error");
+        }
+      }
+      const result = await client.auth.signOut();
+      if (result.error) return setStatus(errorMessage, "error");
+      session = null;
+      referralStatusLoaded = false;
+      disconnectRealtime();
+      clearLocalAccountData();
+      renderAccountState();
+      setStatus("Sesión cerrada. Los datos de la cuenta se retiraron de este dispositivo.", "info");
+    });
   }
 
   async function synchronize(reason) {
@@ -1102,7 +1132,10 @@
       if (!background) { syncRequested = true; queuedSyncReason = reason; }
       return false;
     }
-    if (navigator.onLine === false) return false;
+    if (navigator.onLine === false) {
+      if (reason === "manual") setStatus("Estás sin conexión. Tus datos siguen guardados en este dispositivo.", "error");
+      return false;
+    }
     const userId = session.user.id;
     const generation = accountGeneration;
     const dirty = localStorage.getItem(DIRTY_KEY) === "true";
@@ -1659,6 +1692,9 @@
   }
 
   function authErrorMessage(error) {
+    if (error?.name === "AuthRetryableFetchError" || error?.status === 0 || error?.status >= 500) {
+      return "No pudimos conectar con el servicio de cuentas. Volvé a intentar.";
+    }
     const message = String(error?.message || "").toLowerCase();
     if (message.includes("invalid login")) return "El correo o la contraseña no son correctos.";
     if (message.includes("already registered")) return "Ese correo ya tiene una cuenta. Probá ingresar.";
@@ -1824,10 +1860,10 @@
     if (!detail.accessToken || !detail.refreshToken) return;
     pendingNativeSession = detail;
     if (!client || applyingNativeSession) return;
-    const current = (await client.auth.getSession()).data.session;
-    if (current?.access_token === detail.accessToken) return;
     applyingNativeSession = true;
     try {
+      const current = (await client.auth.getSession()).data?.session;
+      if (current?.access_token === detail.accessToken || pendingNativeSession !== detail) return;
       await client.auth.setSession({
         access_token: detail.accessToken,
         refresh_token: detail.refreshToken

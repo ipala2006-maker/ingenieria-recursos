@@ -44,7 +44,7 @@
       const link = document.createElement('link'); link.rel = 'stylesheet'; link.href = new URL(path + '?v=20261027-polished-tour', root);
       link.onload = resolve; link.onerror = reject; document.head.append(link);
     })));
-    driverModule = await import(new URL('scripts/vendor/driver/driver.js.mjs', root));
+    driverModule = await import(new URL('scripts/vendor/driver/driver.js.mjs?v=20261108-pwa-health', root));
     return driverModule;
   }
   function buildSteps() {

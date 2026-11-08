@@ -8,7 +8,7 @@ function harness({open=false,stored=new Map()}={}){
   let user=alice,now=Date.now();const listeners=new Map(),documentListeners=new Map(),values=stored,calls=[],timers=new Map();let writes=0,timerId=0;
   const window={EstudiemosClassroomRules:rules,EstudiemosClassroomUI:{isOpen:()=>open},EstudiemosAccount:{getUser:()=>user?{id:user}:null,getSession:()=>user?{access_token:user}:null,whenReady:()=>Promise.resolve()},addEventListener(name,fn){if(!listeners.has(name))listeners.set(name,[]);listeners.get(name).push(fn);},dispatchEvent(event){for(const fn of listeners.get(event.type)||[])fn(event);}};
   const document={currentScript:{src:'https://app.test/scripts/classroom-sync.js'},hidden:false,addEventListener(name,fn){if(!documentListeners.has(name))documentListeners.set(name,[]);documentListeners.get(name).push(fn);}};
-  vm.runInNewContext(source,{window,URL,URLSearchParams,AbortController,Date:class extends Date{static now(){return now;}},location:new URL('https://app.test/widget.html'),history:{replaceState(){}},CustomEvent:class{constructor(type,options={}){this.type=type;this.detail=options.detail;}},document,localStorage:{getItem:key=>values.get(key)||null,setItem(key,value){writes++;values.set(key,value);},removeItem:key=>values.delete(key)},sessionStorage:{getItem:()=>null,removeItem(){}},setTimeout(fn,delay){const id=++timerId;timers.set(id,{fn,delay});return id;},clearTimeout:id=>timers.delete(id),fetch:(url,options)=>new Promise(resolve=>calls.push({url:String(url),options,resolve:(body,status=200)=>resolve({ok:status<400,json:async()=>body})}))});
+  vm.runInNewContext(source,{window,URL,URLSearchParams,AbortController,Date:class extends Date{static now(){return now;}},location:new URL('https://app.test/widget.html'),history:{replaceState(){}},CustomEvent:class{constructor(type,options={}){this.type=type;this.detail=options.detail;}},document,localStorage:{getItem:key=>values.get(key)||null,setItem(key,value){writes++;values.set(key,value);},removeItem:key=>values.delete(key)},sessionStorage:{getItem:()=>null,removeItem(){}},setTimeout(fn,delay){const id=++timerId;timers.set(id,{fn,delay});return id;},clearTimeout:id=>timers.delete(id),fetch:(url,options)=>new Promise(resolve=>calls.push({url:String(url),options,resolve:(body,status=200)=>resolve({status,ok:status<400,json:async()=>body})}))});
   return {api:window.EstudiemosClasses,calls,values,timers,storage(key){window.dispatchEvent({type:'storage',key});},setClient(client){window.EstudiemosAccount.getClient=()=>client;},get writes(){return writes;},runPoll(){assert.equal(timers.size,1);const [id,timer]=timers.entries().next().value;timers.delete(id);now+=timer.delay;timer.fn();return timer.delay;},setHidden(value){document.hidden=value;for(const fn of documentListeners.get('visibilitychange')||[])fn();},switchUser(id){user=id;window.dispatchEvent({type:'estudiemos:account-change'});}};
 }
 test('class state uses conditional refresh, memoized projections, cooldown and visibility-sized polling',async()=>{
@@ -55,7 +55,7 @@ test('calendar visibility is saved for the account, keeps cached dates and rejec
   reopened.calls[0].resolve(fixture);await tick();
 });
 test('an explicit refresh surfaces a failed background load and failure backoff avoids repeated traffic',async()=>{
-  const h=harness();await tick();const waiting=h.api.refresh(true);h.calls[0].resolve({message:'Unavailable'},503);await assert.rejects(waiting,/Unavailable/);
+  const h=harness();await tick();const waiting=h.api.refresh(true);h.calls[0].resolve({message:'Unavailable'},503);await assert.rejects(waiting,/No pudimos conectar con Cátedras/);
   await h.api.refresh();assert.equal(h.calls.length,1);
   const retry=h.api.refresh(true);await tick();h.calls[1].resolve(state);await retry;assert.equal(h.api.snapshot().classes.length,1);
 });
@@ -63,7 +63,7 @@ test('an explicit refresh surfaces a failed background load and failure backoff 
 for(const open of [true,false])test(`course polling survives consecutive failures with the module ${open?'open':'closed'}`,async()=>{
   const h=harness({open});await tick();h.calls[0].resolve(state);await tick();
   const failureCount=open?3:5;
-  const first=h.api.refresh(true);await tick();h.calls[1].resolve({message:'Temporary failure'},503);await assert.rejects(first,/Temporary failure/);
+  const first=h.api.refresh(true);await tick();h.calls[1].resolve({message:'Temporary failure'},503);await assert.rejects(first,/No pudimos conectar con Cátedras/);
   for(let failure=2;failure<=failureCount;failure++){
     h.runPoll();await tick();assert.equal(h.calls.length,failure+1,'Automatic retries continue without focus or manual refresh');
     h.calls[failure].resolve({message:'Temporary failure'},503);await tick();
@@ -98,7 +98,7 @@ test('failed course retries stop while hidden or logged out and resume without b
 test('all course entrypoints load the current versioned course client',()=>{
   const root=require('node:path').join(__dirname,'..');
   for(const file of ['scripts/global-search.js','materias.html','widget.html']){
-    assert.match(fs.readFileSync(require('node:path').join(root,file),'utf8'),/scripts\/classroom-sync\.js\?v=20261108-official-course-links/);
+    assert.match(fs.readFileSync(require('node:path').join(root,file),'utf8'),/scripts\/classroom-sync\.js\?v=20261108-pwa-health/);
   }
 });
 test('writes beat stale background reads and remain bound to the original account',async()=>{

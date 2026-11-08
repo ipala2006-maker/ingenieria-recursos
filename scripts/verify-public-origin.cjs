@@ -3,6 +3,7 @@ const assets=[
   ['/',200,'text/html'],['/mi-espacio',200,'text/html'],['/materias',200,'text/html'],
   ['/styles/app.css?v=origin-check',200,'text/css'],['/styles/dashboard.css',200,'text/css'],
   ['/scripts/theme-init.js',200,'text/javascript'],['/scripts/dashboard.js',200,'text/javascript'],
+  ['/scripts/vendor/driver/driver.js.mjs',200,'text/javascript'],
   ['/scripts/ad-banner.js',200,'text/javascript'],['/scripts/ad-consent.js',200,'text/javascript'],['/scripts/ad-provider.js',200,'text/javascript'],
   ['/shared/ads.js',200,'text/javascript'],['/styles/typography.css',200,'text/css'],
   ['/assets/fonts/plus-jakarta-sans-latin.woff2',200,'font/woff2'],
@@ -21,6 +22,8 @@ async function verify({request=fetch,report=()=>{}}={}){
     const response=await request(ORIGIN+pathname,{redirect:'manual',signal:AbortSignal.timeout(12000)});
     const actualType=(response.headers.get('content-type')||'').split(';')[0].trim();
     if(response.status!==status||actualType!==type)throw new Error('ASSET_STATUS_OR_TYPE: '+pathname);
+    if((type==='text/html'||['/service-worker.js','/site.webmanifest'].includes(pathname)) &&
+      !/(?:^|,\s*)(?:no-cache|no-store|max-age=0)(?:\s*,|$)/i.test(response.headers.get('cache-control')||''))throw new Error('CACHE_REVALIDATION_MISSING: '+pathname);
     const body=new Uint8Array(await response.arrayBuffer());
     if(!body.length)throw new Error('EMPTY_ASSET: '+pathname);
     if(pathname==='/'){
