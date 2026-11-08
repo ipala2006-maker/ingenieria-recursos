@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 
 const source = fs.readFileSync(require.resolve('../scripts/account.js'), 'utf8');
-const functions = source.slice(source.indexOf('  function setupCaptcha()'), source.indexOf('  async function updatePassword()'));
+const functions = source.slice(source.indexOf('  function canShowCaptcha()'), source.indexOf('  function validateRecoveryPasswords('));
 const flush = () => new Promise(resolve => setImmediate(resolve));
 
 function harness() {
@@ -20,8 +20,9 @@ function harness() {
   let nextTimer = 0;
   const context = {
     captchaToken: '', captchaWidgetId: null, captchaLoading: false, captchaIssue: '',
-    session: null, accountConfig: { captchaSiteKey: 'fixture-sitekey' }, TURNSTILE_SCRIPT: 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit',
+    session: null, recovery: null, accountConfig: { captchaSiteKey: 'fixture-sitekey' }, TURNSTILE_SCRIPT: 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit',
     setStatus: (message, type) => messages.push({ message, type }),
+    setRecoveryStatus: (message, type) => messages.push({ message, type, recovery: true }),
     document: {
       documentElement: { classList: { contains: () => false } },
       querySelector: selector => selector.startsWith('script[') ? scripts.find(script => !script.removed) : nodes.get(selector),
@@ -95,6 +96,20 @@ test('the compact provider layout fits narrow phone forms without clipping the c
   const h = harness(); h.nodes.get('[data-account-captcha]').clientWidth = 240;
   await h.load();
   assert.equal(h.renders[0].options.size, 'compact');
+});
+
+test('recovery can show its own challenge when the regular login is hidden', async () => {
+  const h = harness();
+  h.nodes.get('[data-account-auth]').hidden = true;
+  h.nodes.set('[data-account-recovery-challenge]:not([hidden])', {});
+  h.context.recovery = {};
+  await h.load();
+  assert.equal(h.renders.length, 1);
+  assert.equal(h.context.getCaptchaOptions(), null);
+  assert.equal(h.messages.at(-1).recovery, true);
+  h.renders[0].options.callback('recovery-token');
+  assert.equal(h.context.getCaptchaOptions().captchaToken, 'recovery-token');
+  assert.equal(h.messages.at(-1).message, '');
 });
 
 test('only a provider success token allows submission; errors, expiration and timeouts invalidate it', async () => {
