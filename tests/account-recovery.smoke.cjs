@@ -13,7 +13,7 @@ async function fixture(context, state) {
     localStorage.setItem('estudiemos_onboarding_v1', '{"status":"completed"}');
     localStorage.setItem('estudiemos_pomodoro_streak', '{"days":{},"goal":{"minutes":25,"updatedAt":1}}');
     window.trace = { requests:[], options:[], verifies:[], updates:[], signouts:[] };
-    window.testAuth = { updateFails:!initial.link, validCode:'048251' };
+    window.testAuth = { updateFails:!initial.link, validCode:initial.mobile ? '04825193' : '048251' };
     const user = { id:'11111111-1111-4111-8111-111111111111', email:'prueba@example.test' };
     const recoverySession = { user, access_token:'fake-recovery-token', refresh_token:'fake-recovery-refresh' };
     const request = async (email, options) => {
@@ -80,7 +80,7 @@ async function run(engine, width, height) {
   const mobile = width < 600;
   const browser = await engine.launch(engine === chromium ? {channel:'chrome'} : {});
   const context = await browser.newContext({viewport:{width,height},hasTouch:mobile,reducedMotion:'reduce',serviceWorkers:'block'});
-  await fixture(context, {link:false});
+  await fixture(context, {link:false,mobile});
   try {
     const page = await context.newPage();
     page.setDefaultTimeout(10000);
@@ -118,7 +118,7 @@ async function run(engine, width, height) {
     assert.deepEqual(await page.evaluate(() => trace.requests[0]), {
       email:'prueba@example.test', options:{redirectTo:origin+'/', captchaToken:'captcha-fixture'}
     });
-    const otp = dialog.getByLabel('Código de 6 dígitos');
+    const otp = dialog.getByLabel('Código de verificación');
     assert.equal(await otp.getAttribute('inputmode'), 'numeric');
     assert.equal(await otp.getAttribute('autocomplete'), 'one-time-code');
     await otp.fill('111 111');
@@ -139,7 +139,7 @@ async function run(engine, width, height) {
     const fits = await dialog.locator('.account-panel').evaluate(panel =>
       panel.scrollWidth <= panel.clientWidth && panel.getBoundingClientRect().width <= innerWidth);
     assert.equal(fits,true);
-    await otp.fill('048 251');
+    await otp.fill(mobile ? '0482 5193' : '048 251');
     await save.click();
     await dialog.getByText('Elegí una contraseña más segura.').waitFor();
     assert.equal(await otp.isVisible(), false, 'do not ask to re-enter an already consumed code');
@@ -152,7 +152,7 @@ async function run(engine, width, height) {
     assert.equal(await dialog.getByLabel('Contraseña',{exact:true}).inputValue(), '');
     const trace = await page.evaluate(() => window.trace);
     assert.deepEqual(trace.verifies.map(call => call.type), ['recovery','recovery']);
-    assert.equal(trace.verifies[1].token,'048251');
+    assert.equal(trace.verifies[1].token,mobile ? '04825193' : '048251');
     assert.equal(trace.updates.length,2);
     assert.deepEqual(trace.signouts,[{scope:'local'}]);
     assert.ok(trace.options.every(opt => opt.storageKey === 'estudiemos-password-recovery' &&
@@ -192,7 +192,7 @@ async function run(engine, width, height) {
       await link.goto(origin+'/materias.html');
       const panel = link.getByRole('dialog');
       await panel.getByRole('heading',{name:'Nueva contraseña'}).waitFor();
-      assert.equal(await panel.getByLabel('Código de 6 dígitos').isVisible(), false);
+      assert.equal(await panel.getByLabel('Código de verificación').isVisible(), false);
       await panel.getByLabel('Nueva contraseña',{exact:true}).fill('fixture-link-new');
       await panel.getByLabel('Confirmar contraseña').fill('fixture-link-new');
       await panel.getByRole('button',{name:'Guardar contraseña'}).click();

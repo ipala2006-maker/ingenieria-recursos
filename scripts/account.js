@@ -184,8 +184,8 @@
               <input type="email" name="email" autocomplete="email" autocapitalize="off" spellcheck="false" />
             </label>
             <label class="account-otp" data-recovery-code hidden>
-              <span>Código de 6 dígitos</span>
-              <input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" placeholder="000000" />
+              <span>Código de verificación</span>
+              <input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}|[0-9]{8}" />
             </label>
             <fieldset class="account-recovery-passwords" data-recovery-passwords hidden>
               <legend class="sr-only">Elegí una contraseña nueva</legend>
@@ -352,7 +352,7 @@
     document.querySelector("[data-recovery-form]")?.addEventListener("input", (event) => {
       event.target.removeAttribute("aria-invalid");
       if (event.target.name === "code") {
-        event.target.value = event.target.value.replace(/[^0-9]/g, "").slice(0, 6);
+        event.target.value = event.target.value.replace(/[^0-9]/g, "");
       }
       validateRecoveryPasswords();
     });
@@ -1001,10 +1001,10 @@
     const fields = recoveryForm().elements;
     const { code, newPassword, confirmPassword } = fields;
     const token = code.value;
-    if (!fromLink && !flow.verifiedAuth && !/^[0-9]{6}$/.test(token)) {
+    if (!fromLink && !flow.verifiedAuth && (!token || !code.validity.valid)) {
       code.setAttribute("aria-invalid", "true");
       code.focus();
-      return setRecoveryStatus("Ingresá los seis dígitos del código.", "error");
+      return setRecoveryStatus("Ingresá el código completo del correo.", "error");
     }
     if (!validateRecoveryPasswords(true)) {
       (newPassword.value.length < MIN_PASSWORD_LENGTH ? newPassword : confirmPassword).focus();

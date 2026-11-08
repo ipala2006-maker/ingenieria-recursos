@@ -16,7 +16,9 @@ politica de sesiones de Supabase; puede ser necesario volver a ingresar.
 3. Poner como asunto `Tu codigo de recuperacion de Estudiemos` y como cuerpo
    el contenido de `supabase/auth/password-recovery.html`. La variable
    `{{ .Token }}` debe quedar literal en la plantilla. No cambiar el SMTP,
-   Turnstile, las URL permitidas ni las plantillas de registro.
+   Turnstile, las URL permitidas ni las plantillas de registro. Estudiemos
+   produccion usa OTP de 8 digitos; la PWA tambien admite 6. No cambiar la
+   longitud global de Auth para esta activacion.
 4. Probar con una cuenta de prueba: pedir el correo, probar un codigo
    incorrecto, pegar el correcto y guardar la contrasena. Comprobar que la
    anterior no ingresa, la nueva si, y que el codigo usado no sirve otra vez.
