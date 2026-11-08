@@ -44,6 +44,10 @@
     const delay=Math.max(interval,retryAt-Date.now());
     timer=setTimeout(()=>refresh(),delay+Math.floor(Math.random()*interval*.1));
   }
+  function networkError(action){
+    const message=action?'No pudimos confirmar el cambio. Revisá la cátedra antes de volver a intentar.':'No pudimos conectar con Cátedras. Volvé a intentar.';
+    return Object.assign(new Error(message),{code:'CLASS_NETWORK'});
+  }
   async function request(action='',data={},detailId='',full=false,history=false){
     const current=owner,version=epoch,session=account()?.getSession();
     if(!current||current!==identity()||!session?.access_token)throw new Error('Iniciá sesión para abrir tus clases.');
@@ -64,10 +68,14 @@
         else throw new Error(error.message==='CLASS_UNAVAILABLE'?'La clase no está disponible o no tenés acceso.':error.message==='AUTH_REQUIRED'?'Iniciá sesión para abrir tus clases.':'No pudimos consultar tus materias. Volvé a intentar.');
       }
       const response=await fetch(url,{method:action?'POST':'GET',headers:{Authorization:'Bearer '+session.access_token,...(action?{'Content-Type':'application/json'}:{})},...(action?{body:JSON.stringify({action,...data,stateProtocol:2,calendarVersions})}:{}),signal:controller.signal,cache:'no-store',credentials:'same-origin'});
+      if(response.status>=500)throw networkError(action);
       const result=await response.json();
       if(current!==identity()||version!==epoch)throw new Error('La cuenta cambió. Volvé a abrir Clases.');
       if(!response.ok){const error=new Error(result.message||'No pudimos cargar Clases.');error.code=result.code;throw error;}
       return result;
+    }catch(error){
+      if(['AbortError','TypeError','SyntaxError'].includes(error?.name))throw networkError(action);
+      throw error;
     }finally{clearTimeout(timeout);}
   }
   async function refresh(force=false){
@@ -109,7 +117,7 @@
   async function open(options={}){
     if(location.pathname.endsWith('/widget.html')){const url=new URL('./',root);url.searchParams.set('clase',options.id||'');return window.open(url,'_blank','noopener,noreferrer');}
     launching=true;
-    if(!uiPromise)uiPromise=Promise.all([new Promise((resolve,reject)=>{if(document.querySelector('link[href*="styles/classrooms.css"]'))return resolve();const css=document.createElement('link');css.rel='stylesheet';css.href=new URL('styles/classrooms.css?v=20261107-calendar-account',root);css.onload=resolve;css.onerror=reject;document.head.append(css);}),new Promise((resolve,reject)=>{const script=document.createElement('script');script.src=new URL('scripts/classrooms.js?v=20261108-official-course-links',root);script.onload=resolve;script.onerror=reject;document.head.append(script);})]).catch(error=>{uiPromise=null;throw error;});
+    if(!uiPromise)uiPromise=Promise.all([new Promise((resolve,reject)=>{if(document.querySelector('link[href*="styles/classrooms.css"]'))return resolve();const css=document.createElement('link');css.rel='stylesheet';css.href=new URL('styles/classrooms.css?v=20261107-calendar-account',root);css.onload=resolve;css.onerror=reject;document.head.append(css);}),new Promise((resolve,reject)=>{const script=document.createElement('script');script.src=new URL('scripts/classrooms.js?v=20261108-pwa-health',root);script.onload=resolve;script.onerror=reject;document.head.append(script);})]).catch(error=>{uiPromise=null;throw error;});
     try{await uiPromise;window.EstudiemosClassroomUI.open(options);}catch(_){window.EstudiemosAccount?.open();}finally{launching=false;}
   }
   window.EstudiemosClasses=Object.freeze({snapshot,status:()=>({loading:Boolean(loading),failed:Boolean(lastError)}),events,calendarVisible,setCalendarVisible,refresh,act,detail:id=>request('',{},id),history:id=>request('',{},id,false,true),open,pendingLaunch:()=>launching});

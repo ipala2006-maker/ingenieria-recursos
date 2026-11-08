@@ -2628,6 +2628,7 @@
   }
 
   function prepareAudio(primeOutput = false) {
+    if (navigator.userActivation?.hasBeenActive === false && audioContext?.state !== "running") return Promise.resolve(null);
     const context = getAudioContext();
     if (!context) return Promise.resolve(null);
     if (audioUnlockPromise) return audioUnlockPromise;
@@ -2639,10 +2640,8 @@
         return context;
       } catch (error) {
         return context;
-      } finally {
-        audioUnlockPromise = null;
       }
-    })();
+    })().finally(() => { audioUnlockPromise = null; });
     return audioUnlockPromise;
   }
 
@@ -2650,7 +2649,7 @@
     if (audioContext) return audioContext;
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     if (!AudioContext) return null;
-    audioContext = new AudioContext();
+    try { audioContext = new AudioContext(); } catch (_) { return null; }
     return audioContext;
   }
 

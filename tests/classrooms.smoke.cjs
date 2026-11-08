@@ -85,6 +85,10 @@ const workerOrigin='https://estudiemos.estudiemos-services.workers.dev';
           return route.fulfill({status:404,json:{error:{message:'Fixture file missing'}}});
         }
         if(![base,official,workerOrigin].includes(url.origin))return route.abort();
+        if(url.searchParams.get('classes')==='1'&&method==='POST'&&ctx.failNextCourseWrite){
+          ctx.failNextCourseWrite=false;
+          return route.abort('internetdisconnected');
+        }
         if(url.searchParams.get('drive')==='status')return route.fulfill({json:{connected:driveFixture}});
         if(url.searchParams.get('drive')==='token')return route.fulfill({json:{accessToken:'fixture-only',expiresAt:Date.now()+3600000}});
         if(actualAccount&&url.pathname==='/api/account-config'&&!url.search)return route.fulfill({json:{enabled:true,url:'https://fixture.supabase.co',publishableKey:'test-only',captchaSiteKey:'',publicAppOrigin:official}});
@@ -171,7 +175,15 @@ const workerOrigin='https://estudiemos.estudiemos-services.workers.dev';
     sc.denyCourseSource=true;await sp.locator('[data-class-save-drive]').first().click();await sp.waitForFunction(()=>document.querySelector('[data-class-form=drive_save]')?.dataset.destinations==='ready');
     await saveForm.locator('[data-class-save-submit]').click();await sp.locator('.classroom-status.is-error').waitFor();assert.equal(await saveForm.locator('.classroom-drive-help').getAttribute('open')!==null,true);assert.equal(await saveForm.getByRole('link',{name:'Abrir en mi Drive'}).count(),0);
     await sp.locator('[data-class-back]').click();sc.denyCourseSource=false;
-    lastPage=tp;await tp.locator('[data-class-tab=events]').click();await tp.locator('[data-class-event]').filter({hasText:'Editar'}).click();await tp.locator('[data-class-form=event_save] [name=title]').fill('Parcial actualizado');await tp.locator('[data-class-form=event_save] [type=submit]').click();await tp.locator('.classroom-row strong').filter({hasText:'Parcial actualizado'}).waitFor();
+    lastPage=tp;await tp.locator('[data-class-tab=events]').click();await tp.locator('[data-class-event]').filter({hasText:'Editar'}).click();
+    const eventDraft=tp.locator('[data-class-form=event_save]');
+    await eventDraft.locator('[name=title]').fill('Parcial actualizado');
+    tc.failNextCourseWrite=true;
+    await eventDraft.locator('[type=submit]').click();
+    await tp.locator('.classroom-status.is-error').filter({hasText:'No pudimos confirmar el cambio'}).waitFor();
+    assert.equal(await eventDraft.locator('[name=title]').inputValue(),'Parcial actualizado','A network failure leaves the course draft intact');
+    await eventDraft.locator('[type=submit]').click();
+    await tp.locator('.classroom-row strong').filter({hasText:'Parcial actualizado'}).waitFor();
     lastPage=sp;await sp.locator('[data-class-tab=events]').click();await sp.locator('[data-class-refresh]').click();await sp.locator('.classroom-row strong').filter({hasText:'Parcial actualizado'}).waitFor();
     const dc=await context(teacher,1440,'teacher',true),dp=await dc.newPage();lastPage=dp;dp.on('pageerror',error=>errors.push(error.message));
     await dp.goto(base);await dp.waitForURL('**/materias.html');await dp.locator('[data-class-select="'+id+'"]').click();await dp.locator('.classroom-course-head h3').waitFor();

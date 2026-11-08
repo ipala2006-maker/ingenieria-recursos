@@ -641,7 +641,16 @@
       ...(window.EstudiemosTimetableRules?.COLORS.includes(form.elements?.noteColor?.value) ? { color: form.elements.noteColor.value } : {}),
       createdAt: Date.now()
     });
-    writeAgenda(items.slice(0, MAX_AGENDA_ITEMS));
+    try {
+      if (window.EstudiemosAccount?.canSaveLocalNotes?.() === false) {
+        form.querySelector('[data-quick-note-status]').textContent = 'Tu agenda todavía no se sincronizó. El borrador queda en este formulario.';
+        return;
+      }
+      writeAgenda(items.slice(0, MAX_AGENDA_ITEMS));
+    } catch (_) {
+      form.querySelector('[data-quick-note-status]').textContent = 'No pudimos guardar la tarea en este dispositivo. Tu borrador sigue acá.';
+      return;
+    }
     if (window.EstudiemosNoteEntry?.continuing(form)) {
       form.elements.title.value = '';
       const alarm = form.elements.inboxAlarmEnabled;

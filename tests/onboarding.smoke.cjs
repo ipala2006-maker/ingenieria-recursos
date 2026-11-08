@@ -1,13 +1,14 @@
 const {chromium,webkit}=require('../tmp/ui-check/node_modules/playwright');
 const assert=require('node:assert/strict'),http=require('node:http'),fs=require('node:fs'),path=require('node:path');
 const root=path.resolve(__dirname,'..'),out=path.join(root,'tmp/onboarding');
+const assets=process.argv.includes('--built')?path.join(root,'dist-cloudflare'):root;
 const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)').headers;
 (async()=>{
   let browser,lastPage;
   const server=http.createServer((req,res)=>{
     const url=new URL(req.url,'http://localhost');
-    const file=path.resolve(root,'.'+decodeURIComponent(url.pathname==='/'?'/index.html':url.pathname));
-    if(!file.startsWith(root+path.sep))return res.writeHead(403).end();
+    const file=path.resolve(assets,'.'+decodeURIComponent(url.pathname==='/'?'/index.html':url.pathname));
+    if(!file.startsWith(assets+path.sep))return res.writeHead(403).end();
     try{
       for(const {key,value} of headers)res.setHeader(key,key==='Content-Security-Policy'?value.replace(/;\s*upgrade-insecure-requests/,''):value);
       res.setHeader('Content-Type',({'.html':'text/html','.js':'text/javascript','.mjs':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.png':'image/png','.woff2':'font/woff2'})[path.extname(file)]||'application/octet-stream');res.end(fs.readFileSync(file));

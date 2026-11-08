@@ -72,7 +72,7 @@
     let ready;
     const loadAccount=()=>ready||(ready=new Promise(resolve=>{
       if(window.EstudiemosAccount)return resolve(window.EstudiemosAccount);
-      const script=document.createElement('script');script.src=new URL('scripts/account.js?v=20261108-official-course-links',root);
+      const script=document.createElement('script');script.src=new URL('scripts/account.js?v=20261108-pwa-health',root);
       script.onload=()=>resolve(window.EstudiemosAccount||null);script.onerror=()=>resolve(null);document.head.append(script);
     }));
     section.addEventListener('click',async event=>{

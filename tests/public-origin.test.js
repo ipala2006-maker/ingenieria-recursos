@@ -11,7 +11,7 @@ function fixture(patch=()=>null){
     const descriptor=assets.find(([pathname])=>pathname===url.pathname+url.search);
     assert.ok(descriptor,input);
     const body=url.pathname==='/ads.txt'?'google.com, pub-9605920128105982, DIRECT, f08c47fec0942fa0':url.pathname==='/'?'<meta name="google-adsense-account" content="ca-pub-9605920128105982" />':'fixture';
-    return new Response(body,{headers:{'Content-Type':descriptor[2]+'; charset=utf-8','Strict-Transport-Security':'max-age=63072000'}});
+    return new Response(body,{headers:{'Content-Type':descriptor[2]+'; charset=utf-8','Strict-Transport-Security':'max-age=63072000','Cache-Control':'public, max-age=0, must-revalidate'}});
   };
 }
 test('public-origin check verifies HTTPS upgrade, MIME types, nonempty assets, HSTS and publisher identity',async()=>{
@@ -23,6 +23,13 @@ test('plain HTTP, wrong-domain redirects and missing files cannot pass the origi
     await assert.rejects(verify({request:fixture(url=>url.startsWith('http:')?response:null)}),/HTTPS_REDIRECT_FAILED/);
   }
   await assert.rejects(verify({request:fixture(url=>url.endsWith('/scripts/dashboard.js')?new Response('not found',{status:404}):null)}),/ASSET_STATUS_OR_TYPE/);
+  await assert.rejects(verify({request:fixture(url=>url.endsWith('/scripts/vendor/driver/driver.js.mjs')?new Response('not found',{status:404}):null)}),/ASSET_STATUS_OR_TYPE/);
+});
+
+test('the production check catches a service worker with a stale browser cache policy',async()=>{
+  await assert.rejects(verify({request:fixture(url=>url.endsWith('/service-worker.js')?new Response('fixture',{headers:{
+    'Content-Type':'text/javascript','Cache-Control':'public, max-age=31536000, immutable'
+  }}):null)}),/CACHE_REVALIDATION_MISSING/);
 });
 test('HTML fallback for CSS, empty assets and invalid ads.txt fail explicitly',async()=>{
   for(const [route,response,reason] of [

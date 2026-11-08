@@ -185,6 +185,7 @@
     }
     try{const result=await api.act(action,{id:selected,...data});if(version!==sequence||!isOpen())return;selected=['leave','delete'].includes(action)?'':result.selected;detail=result.detail||null;view=selected?'class':'list';if(['member_permissions','member_remove','member_unblock'].includes(action)){tab='members';if(action==='member_remove')managingMember='';}else if(['join','create'].includes(action))tab='events';if(action.startsWith('material_'))tab='materials';editing='';uploaded=null;if(action==='join'){joinCode='';autoJoin=false;window.EstudiemosCourseInvitation?.clear();try{sessionStorage.removeItem(rules.PENDING_KEY);}catch(_){}}draw();status(message||'Cambios guardados.');}
     catch(error){if(version===sequence){
+      if(error.code==='CLASS_NETWORK'){status(error.message,true);return;}
       if(error.code==='VERSION_CONFLICT'){
         status(error.message,true);
         if(!q('[data-class-conflict-reload]'))main.insertAdjacentHTML('afterbegin','<button type="button" data-class-conflict-reload>Revisar la versión actual</button>');
