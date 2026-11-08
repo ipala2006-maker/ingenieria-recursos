@@ -99,6 +99,37 @@ test('calendar deltas retain other courses; membership/material changes send no 
  }finally{await db.close();}
 });
 
+test('calendar visibility is private, defaults on, and changes only the member revision without resending dates',async()=>{
+ const db=await setup();try{
+  await db.exec("create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;");
+  await db.exec(fs.readFileSync(require.resolve('../supabase/classroom-resilience.sql'),'utf8'));
+  const {selected:id}=await create(db);
+  for(const user of ids.slice(1,3))await call(db,user,'join',{code:'ABCDEFGHJK'});
+  await call(db,ids[0],'event_save',{id,itemId:item,event});
+  const migration=fs.readFileSync(require.resolve('../supabase/classroom-calendar-visibility.sql'),'utf8');
+  await db.exec(migration);await db.exec(migration);
+  const uid=user=>db.query("select set_config('request.jwt.claim.sub',$1,false)",[user]);
+  const update=async visible=>(await db.query('select classroom_set_calendar_visibility($1,$2) as saved',[id,visible])).rows[0].saved;
+  const read=async data=>(await db.query("select classroom_read('state',$1) as data",[data||{}])).rows[0].data;
+  await db.exec('set role anon');await assert.rejects(update(false),/permission denied/);await db.exec('reset role');
+  await db.exec('set role authenticated');await uid(ids[4]);await assert.rejects(update(false),/CLASS_UNAVAILABLE/);
+  await assert.rejects(db.query('select * from classroom_calendar_hidden'),/permission denied/);
+  await uid(ids[2]);const peer=await read();assert.deepEqual(peer.calendarHidden,[]);
+  await uid(ids[1]);const initial=await read();assert.deepEqual(initial.calendarHidden,[]);
+  assert.equal(initial.calendarPatch.events.length,1);
+  assert.equal(await update(false),false);
+  const saved=await read({revision:initial.revision,calendarVersions:initial.calendarPatch.versions});
+  assert.notEqual(saved.revision,initial.revision);
+  assert.deepEqual(saved.calendarHidden,[id]);assert.deepEqual(saved.calendarPatch.events,[]);
+  await uid(ids[2]);assert.equal((await read({revision:peer.revision,calendarVersions:peer.calendarPatch.versions})).unchanged,true);
+  await uid(ids[1]);assert.equal(await update(true),true);
+  const restored=await read({revision:saved.revision,calendarVersions:saved.calendarPatch.versions});
+  assert.deepEqual(restored.calendarHidden,[]);assert.deepEqual(restored.calendarPatch.events,[]);
+  const detail=(await db.query("select classroom_read('detail',$1) as data",[{id}])).rows[0].data;
+  assert.equal(detail.events.length,1);
+ }finally{await db.close();}
+});
+
 test('direct reads bind identity to Auth, expose no tables and reject writes, anonymous callers and other courses',async()=>{
  const db=await setup();try{
   await db.exec("create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;");
