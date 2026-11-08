@@ -63,6 +63,8 @@ test('signing out while the status loads cannot apply the pending invitation', a
 });
 
 test('signup keeps email confirmation without phone verification', () => {
-  assert.doesNotMatch(source, /getSignupPhone|verifyOtp|sendReferralPhoneCode/);
-  assert.match(source, /emailRedirectTo: emailRedirect.href/);
+  const signup = source.slice(source.indexOf('  async function signUp()'), source.indexOf('  function recoveryForm()'));
+  assert.doesNotMatch(source, /getSignupPhone|sendReferralPhoneCode/);
+  assert.doesNotMatch(signup, /verifyOtp/);
+  assert.match(signup, /emailRedirectTo: emailRedirect.href/);
 });

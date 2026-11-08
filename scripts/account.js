@@ -33,6 +33,7 @@
   const COMMERCIAL_LAUNCH_ENABLED = false;
   const WHATSAPP_BOT_ENABLED = false;
   const MIN_PASSWORD_LENGTH = 8;
+  const RECOVERY_RESEND_MS = 60000;
   const INSTANCE_ID = window.crypto?.randomUUID?.() || Math.random().toString(36).slice(2);
 
   let client = null;
@@ -60,7 +61,9 @@
   let realtimeUserId = "";
   let cloudPollTimer = 0;
   let remoteRefreshTimer = 0;
-  let recoveryMode = false;
+  let recovery = null;
+  let recoveryTimer = 0;
+  const recoveryCooldowns = new Map();
   let whatsappStatusLoaded = false;
   let whatsappBusy = false;
   let referralStatusLoaded = false;
@@ -158,11 +161,13 @@
               <input type="password" name="password" minlength="${MIN_PASSWORD_LENGTH}" autocomplete="current-password" required placeholder="Mínimo ${MIN_PASSWORD_LENGTH} caracteres" />
             </label>
             <p class="account-referral-invite" data-account-signup-invite hidden>Invitación detectada. El descuento se aplicará al verificar tu cuenta.</p>
-            <div class="account-security" data-account-security hidden>
-              <div class="account-captcha" data-account-captcha aria-label="Comprobación de seguridad"></div>
-              <div class="account-captcha-feedback">
-                <p data-account-captcha-status role="status" aria-live="polite"></p>
-                <button class="account-link" type="button" data-account-captcha-retry hidden>Reintentar comprobación</button>
+            <div data-account-signin-challenge>
+              <div class="account-security" data-account-security hidden>
+                <div class="account-captcha" data-account-captcha aria-label="Comprobación de seguridad"></div>
+                <div class="account-captcha-feedback">
+                  <p data-account-captcha-status role="status" aria-live="polite"></p>
+                  <button class="account-link" type="button" data-account-captcha-retry hidden>Reintentar comprobación</button>
+                </div>
               </div>
             </div>
             <button class="account-primary" type="submit" data-account-signin>Ingresar</button>
@@ -170,6 +175,40 @@
             <button class="account-link" type="button" data-account-reset>Olvidé mi contraseña</button>
           </form>
         </div>
+
+        <section data-account-recovery hidden>
+          <p class="account-intro account-recovery-intro" data-recovery-intro></p>
+          <form class="account-form account-recovery-form" data-recovery-form novalidate>
+            <label data-recovery-email>
+              <span>Correo electrónico</span>
+              <input type="email" name="email" autocomplete="email" autocapitalize="off" spellcheck="false" />
+            </label>
+            <label class="account-otp" data-recovery-code hidden>
+              <span>Código de verificación</span>
+              <input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}|[0-9]{8}" />
+            </label>
+            <fieldset class="account-recovery-passwords" data-recovery-passwords hidden>
+              <legend class="sr-only">Elegí una contraseña nueva</legend>
+              <label>
+                <span>Nueva contraseña</span>
+                <input type="password" name="newPassword" autocomplete="new-password" aria-describedby="recoveryLength" />
+              </label>
+              <small id="recoveryLength" class="account-recovery-rule">Al menos ${MIN_PASSWORD_LENGTH} caracteres</small>
+              <label>
+                <span>Confirmar contraseña</span>
+                <input type="password" name="confirmPassword" autocomplete="new-password" aria-describedby="recoveryMatch" />
+              </label>
+              <small id="recoveryMatch" class="account-recovery-rule" hidden></small>
+            </fieldset>
+            <div data-account-recovery-challenge hidden></div>
+            <p class="account-status account-recovery-status" data-recovery-status role="status" aria-live="polite"></p>
+            <button class="account-primary" type="submit" data-recovery-submit>Enviar código</button>
+            <div class="account-recovery-actions">
+              <button class="account-link" type="button" data-recovery-back>Volver a ingresar</button>
+              <button class="account-link" type="button" data-recovery-resend hidden>Reenviar código</button>
+            </div>
+          </form>
+        </section>
 
         <section class="account-profile account-group" data-account-profile aria-labelledby="accountSyncHeading" hidden>
           <h3 id="accountSyncHeading">Cuenta y sincronización</h3>
@@ -212,13 +251,6 @@
             <button class="account-secondary" type="button" data-account-whatsapp-connect>Vincular</button>
             <button class="account-link" type="button" data-account-whatsapp-unlink hidden>Desvincular</button>
           </section>
-          <form class="account-password-form" data-account-password-form hidden>
-            <label>
-              <span>Nueva contraseña</span>
-              <input type="password" name="newPassword" minlength="${MIN_PASSWORD_LENGTH}" autocomplete="new-password" required placeholder="Mínimo ${MIN_PASSWORD_LENGTH} caracteres" />
-            </label>
-            <button class="account-primary" type="submit">Guardar nueva contraseña</button>
-          </form>
         </section>
 
         <div class="account-unavailable" data-account-unavailable hidden>
@@ -289,7 +321,9 @@
       if (event.target.closest("[data-account-open]")) openDialog();
       if (event.target.closest("[data-account-close]") || event.target === document.querySelector(".account-shell")) closeDialog();
       if (event.target.closest("[data-account-signup]")) signUp();
-      if (event.target.closest("[data-account-reset]")) resetPassword();
+      if (event.target.closest("[data-account-reset]")) openRecovery();
+      if (event.target.closest("[data-recovery-resend]")) resetPassword(true);
+      if (event.target.closest("[data-recovery-back]")) backFromRecovery();
       if (event.target.closest("[data-account-captcha-retry]")) resetCaptcha();
       if (event.target.closest("[data-account-signout]")) signOut();
       if (event.target.closest("[data-account-sync]")) synchronize("manual");
@@ -310,9 +344,17 @@
       event.preventDefault();
       signIn();
     });
-    document.querySelector("[data-account-password-form]")?.addEventListener("submit", (event) => {
+    document.querySelector("[data-recovery-form]")?.addEventListener("submit", (event) => {
       event.preventDefault();
-      updatePassword();
+      if (recovery?.step === "request") resetPassword();
+      else updatePassword();
+    });
+    document.querySelector("[data-recovery-form]")?.addEventListener("input", (event) => {
+      event.target.removeAttribute("aria-invalid");
+      if (event.target.name === "code") {
+        event.target.value = event.target.value.replace(/[^0-9]/g, "");
+      }
+      validateRecoveryPasswords();
     });
 
     document.querySelector(".account-shell")?.addEventListener("cancel", (event) => {
@@ -367,6 +409,34 @@
         auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
       });
       configAvailable = true;
+      client.auth.onAuthStateChange((event, nextSession) => {
+        window.setTimeout(async () => {
+          const previousUser = session?.user?.id || "";
+          session = nextSession;
+          if (event === "PASSWORD_RECOVERY" && session?.user?.id) {
+            startRecovery("link", session.user.email || "", session.user.id);
+            openDialog();
+          } else if (recovery && (
+            recovery.step === "link" ? session?.user?.id !== recovery.userId : Boolean(session)
+          )) {
+            clearRecovery();
+          }
+          if (session) {
+            prepareLocalAccountSwitch(session.user.id);
+            connectRealtime(session.user.id);
+            startCloudPolling();
+          } else {
+            disconnectRealtime();
+          }
+          renderAccountState();
+          if (session && session.user.id !== previousUser) {
+            await synchronize("signin");
+            if (COMMERCIAL_LAUNCH_ENABLED) window.setTimeout(() => refreshReferralStatus(true), 500);
+          } else if (!session && previousUser) {
+            clearLocalAccountData();
+          }
+        }, 0);
+      });
 
       stage = "session";
       if (pendingNativeSession?.accessToken && pendingNativeSession?.refreshToken) {
@@ -392,31 +462,6 @@
         if (COMMERCIAL_LAUNCH_ENABLED) window.setTimeout(() => refreshReferralStatus(true), 500);
       }
 
-      client.auth.onAuthStateChange((event, nextSession) => {
-        window.setTimeout(async () => {
-          const previousUser = session?.user?.id || "";
-          session = nextSession;
-          if (event === "PASSWORD_RECOVERY") {
-            recoveryMode = true;
-            openDialog();
-            setStatus("Escribí una contraseña nueva para recuperar tu cuenta.", "info");
-          }
-          if (session) prepareLocalAccountSwitch(session.user.id);
-          if (session) {
-            connectRealtime(session.user.id);
-            startCloudPolling();
-          } else {
-            disconnectRealtime();
-          }
-          renderAccountState();
-          if (session && session.user.id !== previousUser) {
-            await synchronize("signin");
-            if (COMMERCIAL_LAUNCH_ENABLED) window.setTimeout(() => refreshReferralStatus(true), 500);
-          } else if (!session && previousUser) {
-            clearLocalAccountData();
-          }
-        }, 0);
-      });
     } catch (error) {
       configAvailable = false;
       const message = stage === "config"
@@ -644,33 +689,204 @@
     document.querySelectorAll("[data-account-referrals] button").forEach((button) => { button.disabled = busy; });
   }
 
-  async function resetPassword() {
-    if (!client) return;
-    const email = document.querySelector('[data-account-form] input[name="email"]')?.value.trim() || "";
-    if (!isValidEmail(email)) return setStatus("Escribí primero tu correo electrónico.", "error");
+  function recoveryForm() {
+    return document.querySelector("[data-recovery-form]");
+  }
+
+  function startRecovery(step, email, userId = "") {
+    clearRecovery();
+    recovery = { step, email, userId, busy: false, challenge: step === "request", verifiedAuth: null };
+    recoveryForm().elements.email.value = email;
+    renderRecovery();
+  }
+
+  function openRecovery() {
+    if (!client || session) return;
+    const email = document.querySelector("[data-account-form]").elements.email.value.trim();
+    setStatus("", "info");
+    startRecovery("request", email);
+    recoveryForm().elements.email.focus();
+  }
+
+  function clearRecovery() {
+    if (!recovery) return;
+    discardRecoverySession(recovery.verifiedAuth);
+    recovery = null;
+    window.clearTimeout(recoveryTimer);
+    recoveryForm().reset();
+    recoveryForm().querySelectorAll("[aria-invalid]").forEach((field) => field.removeAttribute("aria-invalid"));
+    setRecoveryStatus("");
+  }
+
+  function backFromRecovery() {
+    if (!recovery || recovery.busy) return;
+    if (recovery.step === "code" && !recovery.verifiedAuth) {
+      startRecovery("request", recovery.email);
+      recoveryForm().elements.email.focus();
+    } else {
+      clearRecovery();
+      renderRecovery();
+      document.querySelector(session ? "[data-account-sync]" : "[data-account-reset]")?.focus();
+    }
+  }
+
+  function discardRecoverySession(auth) {
+    if (!auth) return;
+    // Only revoke the temporary recovery session; never sign out the main client.
+    auth.signOut({ scope: "local" }).catch(() => {});
+  }
+
+  function setRecoveryStatus(message, type = "info") {
+    const status = document.querySelector("[data-recovery-status]");
+    status.textContent = message;
+    status.dataset.type = type;
+  }
+
+  function refreshRecoveryCountdown() {
+    window.clearTimeout(recoveryTimer);
+    if (!recovery) return;
+    const seconds = Math.max(0, Math.ceil(((recoveryCooldowns.get(recovery.email) || 0) - Date.now()) / 1000));
+    const button = document.querySelector("[data-recovery-resend]");
+    button.disabled = recovery.busy || seconds > 0;
+    button.textContent = recovery.challenge ? "Confirmar reenvío" : seconds ? `Reenviar código (${seconds} s)` : "Reenviar código";
+    if (seconds && !button.hidden) recoveryTimer = window.setTimeout(refreshRecoveryCountdown, 1000);
+  }
+
+  function renderRecovery() {
+    const section = document.querySelector("[data-account-recovery]");
+    const panel = section.closest(".account-panel");
+    const auth = document.querySelector("[data-account-auth]");
+    const form = recoveryForm();
+    const request = recovery?.step === "request";
+    const code = recovery?.step === "code" && !recovery.verifiedAuth;
+    section.hidden = !recovery;
+    panel.classList.toggle("is-recovering", Boolean(recovery));
+    auth.hidden = !configAvailable || Boolean(session || recovery);
+    const title = panel.querySelector("#accountTitle");
+    const invitation = !session && window.EstudiemosCourseInvitation?.pending();
+    title.textContent = request ? "Recuperar contraseña" : recovery ? "Nueva contraseña" : invitation ? "Unirte a la cátedra" : "Tu cuenta";
+    section.querySelector("[data-recovery-intro]").textContent = request
+      ? "Ingresá el correo de tu cuenta."
+      : code ? `Si hay una cuenta para ${recovery.email}, vas a recibir un correo. Revisá también Spam.`
+        : recovery?.verifiedAuth ? "Código verificado. Elegí tu nueva contraseña." : "Elegí una contraseña nueva para tu cuenta.";
+    form.querySelector("[data-recovery-email]").hidden = !request;
+    form.querySelector("[data-recovery-code]").hidden = !code;
+    form.querySelector("[data-recovery-passwords]").hidden = request;
+    form.querySelector("[data-recovery-resend]").hidden = !code;
+    const submit = form.querySelector("[data-recovery-submit]");
+    submit.textContent = request ? "Enviar código" : "Guardar contraseña";
+    submit.disabled = Boolean(recovery?.busy);
+    const back = form.querySelector("[data-recovery-back]");
+    back.textContent = code ? "Cambiar correo" : session ? "Volver a mi cuenta" : "Volver a ingresar";
+    back.disabled = Boolean(recovery?.busy);
+    form.elements.email.readOnly = Boolean(recovery?.busy);
+    form.elements.code.readOnly = Boolean(recovery?.busy);
+    form.elements.newPassword.readOnly = Boolean(recovery?.busy);
+    form.elements.confirmPassword.readOnly = Boolean(recovery?.busy);
+
+    const challenge = form.querySelector("[data-account-recovery-challenge]");
+    challenge.hidden = !recovery?.challenge;
+    const security = document.querySelector("[data-account-security]");
+    const destination = recovery ? challenge : document.querySelector("[data-account-signin-challenge]");
+    if (security.parentElement !== destination) {
+      if (captchaWidgetId !== null) window.turnstile?.remove?.(captchaWidgetId);
+      captchaWidgetId = null;
+      captchaToken = "";
+      captchaIssue = "";
+      security.hidden = true;
+      destination.append(security);
+    }
+    if (recovery) validateRecoveryPasswords();
+    refreshRecoveryCountdown();
+    setupCaptcha();
+  }
+
+  async function resetPassword(resend = false) {
+    const flow = recovery;
+    if (!client || session || !flow || flow.busy || (resend ? flow.step !== "code" || flow.verifiedAuth : flow.step !== "request")) return;
+    const form = recoveryForm();
+    const email = resend ? flow.email : form.elements.email.value.trim().toLowerCase();
+    if (!isValidEmail(email)) {
+      form.elements.email.setAttribute("aria-invalid", "true");
+      form.elements.email.focus();
+      return setRecoveryStatus("Escribí un correo electrónico válido.", "error");
+    }
+    if ((recoveryCooldowns.get(email) || 0) > Date.now()) {
+      if (!resend) {
+        flow.email = email;
+        flow.step = "code";
+        flow.challenge = false;
+        setRecoveryStatus("");
+        renderRecovery();
+        form.elements.code.focus();
+      }
+      return;
+    }
+    if (resend && accountConfig.captchaSiteKey && !flow.challenge) {
+      flow.challenge = true;
+      renderRecovery();
+    }
     const captcha = getCaptchaOptions();
     if (captcha === null) return;
-    setBusy(true, "Enviando correo...");
-    const result = await client.auth.resetPasswordForEmail(email, {
-      redirectTo: `${location.origin}${getRootPath()}`,
-      ...captcha
-    });
-    setBusy(false);
-    resetCaptcha();
-    if (result.error) return setStatus(authErrorMessage(result.error), "error");
-    setStatus("Te enviamos un enlace para recuperar tu contraseña.", "success");
+    flow.busy = true;
+    renderRecovery();
+    setRecoveryStatus("Enviando correo...");
+    try {
+      const result = await client.auth.resetPasswordForEmail(email, {
+        redirectTo: new URL(getRootPath(), location.href).href,
+        ...captcha
+      });
+      const error = result.error;
+      const rateLimited = isRecoveryRateLimit(error);
+      if (!error || rateLimited || error.code === "user_not_found") {
+        for (const [address, until] of recoveryCooldowns) if (until <= Date.now()) recoveryCooldowns.delete(address);
+        recoveryCooldowns.set(email, Date.now() + RECOVERY_RESEND_MS);
+      }
+      if (recovery !== flow) return;
+      if (error && !rateLimited && error.code !== "user_not_found") {
+        return setRecoveryStatus(error.code === "captcha_failed"
+          ? "No pudimos verificar la comprobación. Volvé a completarla."
+          : "No pudimos solicitar el correo. Revisá tu conexión e intentá de nuevo.", "error");
+      }
+      flow.email = email;
+      flow.step = "code";
+      flow.challenge = false;
+      form.elements.code.value = "";
+      form.elements.code.removeAttribute("aria-invalid");
+      setRecoveryStatus(resend ? "Si la cuenta existe y el envío está disponible, vas a recibir un código nuevo." : "");
+    } catch (_) {
+      if (recovery === flow) setRecoveryStatus("No pudimos solicitar el correo. Revisá tu conexión e intentá de nuevo.", "error");
+    } finally {
+      if (recovery === flow) {
+        flow.busy = false;
+        resetCaptcha();
+        renderRecovery();
+        if (flow.step === "code" && !flow.challenge) form.elements.code.focus();
+      }
+    }
+  }
+
+  function isRecoveryRateLimit(error) {
+    return error?.status === 429 || ["over_email_send_rate_limit", "over_request_rate_limit"].includes(error?.code);
+  }
+
+  function canShowCaptcha() {
+    return !session && !document.querySelector(".account-shell")?.hidden && (
+      !document.querySelector("[data-account-auth]")?.hidden ||
+      Boolean(document.querySelector("[data-account-recovery-challenge]:not([hidden])"))
+    );
   }
 
   function setupCaptcha() {
     const container = document.querySelector("[data-account-captcha]");
     const sitekey = accountConfig?.captchaSiteKey || "";
-    if (!container || !sitekey || session || document.querySelector(".account-shell")?.hidden || document.querySelector("[data-account-auth]")?.hidden) return;
+    if (!container || !sitekey || !canShowCaptcha()) return;
     if (captchaLoading || captchaWidgetId !== null) return;
     document.querySelector("[data-account-security]").hidden = false;
     captchaLoading = true;
     setCaptchaState("Comprobando seguridad...");
     return loadExternalScript(TURNSTILE_SCRIPT).then(() => {
-      if (session || document.querySelector(".account-shell")?.hidden || document.querySelector("[data-account-auth]")?.hidden) return;
+      if (!canShowCaptcha()) return;
       if (!window.turnstile) throw new Error("captcha-unavailable");
       captchaWidgetId = window.turnstile.render(container, {
         sitekey,
@@ -683,7 +899,13 @@
         language: "es",
         callback: (token) => {
           captchaToken = String(token || "");
-          if (captchaToken) setCaptchaState("Comprobación completada.");
+          if (captchaToken) {
+            setCaptchaState("Comprobación completada.");
+            if (recovery?.captchaPrompt) {
+              recovery.captchaPrompt = false;
+              setRecoveryStatus("");
+            }
+          }
         },
         "expired-callback": () => setCaptchaState("La comprobación venció. Volvé a intentarlo.", true),
         "timeout-callback": () => setCaptchaState("La comprobación tardó demasiado. Volvé a intentarlo.", true),
@@ -735,7 +957,11 @@
     if (!accountConfig?.captchaSiteKey) return {};
     if (captchaToken) return { captchaToken };
     setupCaptcha();
-    setStatus(captchaIssue || "Completá la comprobación de seguridad que aparece junto al formulario.", "error");
+    const message = captchaIssue || "Completá la comprobación de seguridad que aparece junto al formulario.";
+    if (document.querySelector("[data-account-recovery-challenge]:not([hidden])")) {
+      recovery.captchaPrompt = true;
+      setRecoveryStatus(message, "error");
+    } else setStatus(message, "error");
     document.querySelector("[data-account-security]")?.scrollIntoView({ block: "nearest", behavior: "smooth" });
     return null;
   }
@@ -749,21 +975,106 @@
     } else setupCaptcha();
   }
 
+  function validateRecoveryPasswords(showErrors = false) {
+    const { newPassword, confirmPassword } = recoveryForm().elements;
+    const longEnough = newPassword.value.length >= MIN_PASSWORD_LENGTH;
+    const matches = Boolean(confirmPassword.value) && confirmPassword.value === newPassword.value;
+    const lengthRule = document.querySelector("#recoveryLength");
+    const matchRule = document.querySelector("#recoveryMatch");
+    const badLength = !longEnough && (showErrors || Boolean(newPassword.value));
+    const badMatch = !matches && (showErrors || Boolean(confirmPassword.value));
+    lengthRule.dataset.result = longEnough ? "pass" : badLength ? "fail" : "";
+    lengthRule.textContent = longEnough ? "Longitud correcta" : `Al menos ${MIN_PASSWORD_LENGTH} caracteres`;
+    matchRule.hidden = !matches && !badMatch;
+    matchRule.dataset.result = matches ? "pass" : badMatch ? "fail" : "";
+    matchRule.textContent = matches ? "Las contraseñas coinciden" : confirmPassword.value ? "Las contraseñas no coinciden" : "Confirmá tu nueva contraseña";
+    newPassword.setAttribute("aria-invalid", String(badLength));
+    confirmPassword.setAttribute("aria-invalid", String(badMatch));
+    return longEnough && matches;
+  }
+
   async function updatePassword() {
-    if (!client || !session) return;
-    const input = document.querySelector('[data-account-password-form] input[name="newPassword"]');
-    const password = input?.value || "";
-    if (password.length < MIN_PASSWORD_LENGTH) {
-      return setStatus(`La contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres.`, "error");
+    const flow = recovery;
+    if (!client || !flow || flow.busy || flow.step === "request") return;
+    const fromLink = flow.step === "link";
+    if (fromLink ? session?.user?.id !== flow.userId : Boolean(session)) return;
+    const fields = recoveryForm().elements;
+    const { code, newPassword, confirmPassword } = fields;
+    const token = code.value;
+    if (!fromLink && !flow.verifiedAuth && (!token || !code.validity.valid)) {
+      code.setAttribute("aria-invalid", "true");
+      code.focus();
+      return setRecoveryStatus("Ingresá el código completo del correo.", "error");
     }
-    setBusy(true, "Guardando la contraseña...");
-    const result = await client.auth.updateUser({ password });
-    setBusy(false);
-    if (result.error) return setStatus(authErrorMessage(result.error), "error");
-    recoveryMode = false;
-    if (input) input.value = "";
-    renderAccountState();
-    setStatus("Contraseña actualizada correctamente.", "success");
+    if (!validateRecoveryPasswords(true)) {
+      (newPassword.value.length < MIN_PASSWORD_LENGTH ? newPassword : confirmPassword).focus();
+      return setRecoveryStatus("Revisá los requisitos de la contraseña.", "error");
+    }
+    const password = newPassword.value;
+    flow.busy = true;
+    flow.challenge = false;
+    renderRecovery();
+    setRecoveryStatus("Guardando la contraseña...");
+    try {
+      let auth = fromLink ? client.auth : flow.verifiedAuth;
+      if (!auth) {
+        // Never publish the OTP session to the app, other tabs or the Android bridge.
+        auth = window.supabase.createClient(accountConfig.url, accountConfig.publishableKey, {
+          auth: { storageKey: "estudiemos-password-recovery", persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+        }).auth;
+        const verified = await auth.verifyOtp({ type: "recovery", email: flow.email, token });
+        if (recovery !== flow) {
+          if (verified.data?.session) discardRecoverySession(auth);
+          return;
+        }
+        if (verified.error || !verified.data?.session) {
+          if (isRecoveryRateLimit(verified.error)) return setRecoveryStatus("Demasiados intentos. Esperá un momento y volvé a probar.", "error");
+          if (!verified.error || ["otp_expired", "validation_failed", "user_not_found", "user_banned"].includes(verified.error.code)) {
+            code.setAttribute("aria-invalid", "true");
+            return setRecoveryStatus("El código no es válido o venció. Revisalo o pedí uno nuevo.", "error");
+          }
+          return setRecoveryStatus("No pudimos verificar el código. Revisá tu conexión e intentá de nuevo.", "error");
+        }
+        flow.verifiedAuth = auth;
+        code.value = "";
+      }
+      const { error } = await auth.updateUser({ password });
+      if (recovery !== flow) return;
+      if (error) {
+        if (error.status === 401 || ["session_not_found", "session_expired", "refresh_token_not_found", "reauthentication_needed"].includes(error.code)) {
+          if (fromLink) {
+            clearRecovery();
+            renderRecovery();
+            return setStatus("El enlace venció. Volvé a pedir un código desde la pantalla de ingreso.", "error");
+          }
+          discardRecoverySession(flow.verifiedAuth);
+          flow.verifiedAuth = null;
+          return setRecoveryStatus("La verificación venció. Pedí un código nuevo para continuar.", "error");
+        }
+        if (error.code === "same_password") return setRecoveryStatus("Elegí una contraseña distinta de la anterior.", "error");
+        if (error.code === "weak_password") return setRecoveryStatus("Elegí una contraseña más segura.", "error");
+        if (isRecoveryRateLimit(error)) return setRecoveryStatus("Demasiados intentos. Esperá un momento y volvé a probar.", "error");
+        return setRecoveryStatus("No pudimos guardar la contraseña. Intentá nuevamente.", "error");
+      }
+      const email = flow.email;
+      clearRecovery();
+      renderRecovery();
+      if (!fromLink) {
+        const login = document.querySelector("[data-account-form]").elements;
+        login.email.value = email;
+        login.password.value = "";
+        login.password.focus();
+      }
+      setStatus(fromLink ? "Contraseña actualizada." : "Contraseña actualizada. Ya podés ingresar.", "success");
+    } catch (_) {
+      if (recovery === flow) setRecoveryStatus("No pudimos completar el cambio. Revisá tu conexión e intentá de nuevo.", "error");
+    } finally {
+      if (recovery === flow) {
+        flow.busy = false;
+        renderRecovery();
+        if (code.getAttribute("aria-invalid") === "true") code.focus();
+      }
+    }
   }
 
   async function signOut() {
@@ -1356,16 +1667,12 @@
 
   function renderAccountState() {
     const loading = document.querySelector("[data-account-loading]");
-    const auth = document.querySelector("[data-account-auth]");
     const profile = document.querySelector("[data-account-profile]");
     const unavailable = document.querySelector("[data-account-unavailable]");
-    const passwordForm = document.querySelector("[data-account-password-form]");
     if (loading) loading.hidden = true;
     if (unavailable) unavailable.hidden = configAvailable;
-    if (auth) auth.hidden = !configAvailable || Boolean(session);
     if (profile) profile.hidden = !configAvailable || !session;
-    if (!session && configAvailable) setupCaptcha();
-    if (passwordForm) passwordForm.hidden = !recoveryMode || !session;
+    renderRecovery();
     const email = document.querySelector("[data-account-email]");
     if (email) email.textContent = session?.user?.email || "";
     renderSyncUsage();
@@ -1896,8 +2203,7 @@
     if (!shell.open) shell.showModal();
     document.body.classList.add("account-open");
     const invitation = !session && window.EstudiemosCourseInvitation?.pending();
-    const accountTitle = shell.querySelector('#accountTitle'), accountIntro = shell.querySelector('.account-intro');
-    if (accountTitle) accountTitle.textContent = invitation ? 'Unirte a la cátedra' : 'Tu cuenta';
+    const accountIntro = shell.querySelector('.account-intro');
     if (accountIntro) accountIntro.textContent = invitation
       ? (invitation.preview?.title ? 'Vas a unirte a ' + invitation.preview.title + '. Ingresá o creá tu cuenta para continuar.' : 'Ingresá o creá tu cuenta. Tu invitación está guardada para continuar en la cátedra.')
       : 'Usá la misma cuenta en tu computadora, tablet y celular para mantener tus datos sincronizados.';
@@ -1909,8 +2215,14 @@
     } else {
       setStatus("", "info");
     }
-    setupCaptcha();
-    window.setTimeout(() => { if (shell.open) shell.querySelector("input, button")?.focus({ preventScroll: true }); }, 0);
+    renderRecovery();
+    window.setTimeout(() => {
+      if (!shell.open) return;
+      const target = recovery
+        ? recoveryForm().elements[recovery.step === "request" ? "email" : recovery.step === "code" && !recovery.verifiedAuth ? "code" : "newPassword"]
+        : shell.querySelector("input, button");
+      target?.focus({ preventScroll: true });
+    }, 0);
   }
 
   function closeDialog() {
@@ -1920,6 +2232,8 @@
     shell.hidden = true;
     shell.setAttribute("aria-hidden", "true");
     document.body.classList.remove("account-open");
+    clearRecovery();
+    renderRecovery();
     const target = accountReturnFocus?.isConnected && accountReturnFocus.getClientRects().length
       ? accountReturnFocus : document.querySelector("[data-account-open]");
     accountReturnFocus = null;

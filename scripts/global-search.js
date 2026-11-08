@@ -398,7 +398,7 @@
     if (document.querySelector('script[src*="scripts/account.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/account.js?v=20261107-compact-panels`;
+    script.src = `${rootPath}scripts/account.js?v=20261108-password-recovery`;
     script.defer = true;
     document.head.appendChild(script);
   }

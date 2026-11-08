@@ -24,7 +24,7 @@
     const existing=pending();save(code,existing?.owner||'');
     document.body.classList.add('course-invitation-page');
     if(!document.querySelector('link[href*="styles/app.css"]')){
-      const style=document.createElement('link');style.rel='stylesheet';style.href=new URL('styles/app.css?v=20261023-sync',root);
+      const style=document.createElement('link');style.rel='stylesheet';style.href=new URL('styles/app.css?v=20261108-password-recovery',root);
       document.head.insertBefore(style,document.querySelector('link[rel="stylesheet"]'));
     }
     let section=document.querySelector('.course-install-invitation');
@@ -67,7 +67,7 @@
     let ready;
     const loadAccount=()=>ready||(ready=new Promise(resolve=>{
       if(window.EstudiemosAccount)return resolve(window.EstudiemosAccount);
-      const script=document.createElement('script');script.src=new URL('scripts/account.js?v=20261027-resume-check',root);
+      const script=document.createElement('script');script.src=new URL('scripts/account.js?v=20261108-password-recovery',root);
       script.onload=()=>resolve(window.EstudiemosAccount||null);script.onerror=()=>resolve(null);document.head.append(script);
     }));
     section.addEventListener('click',async event=>{

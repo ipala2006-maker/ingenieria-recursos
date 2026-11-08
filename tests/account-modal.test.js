@@ -22,7 +22,7 @@ function harness() {
     document: { activeElement: origin, querySelector: selector => selector === '.account-shell' ? shell : fallback,
       body: { classList: { add: key => classes.add(key), remove: key => classes.delete(key) } } },
     window: { setTimeout: fn => tasks.push(fn) }, sessionStorage: { getItem: () => null },
-    renderSyncUsage() {}, setStatus() {}, setupCaptcha() {}
+    renderSyncUsage() {}, setStatus() {}, renderRecovery() {}, clearRecovery() {}, recovery: null
   };
   vm.runInNewContext(lifecycle, context);
   return { context, shell, origin, focused, tasks, classes };
