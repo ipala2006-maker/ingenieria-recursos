@@ -24,10 +24,13 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
     }};vm.runInNewContext(fs.readFileSync(inviteFile,'utf8'),inviteSandbox);
     server=http.createServer(async(req,res)=>{
       const url=new URL(req.url,'http://localhost');
-      if(url.pathname==='/rest/v1/rpc/classroom_read'){
+      if(['/rest/v1/rpc/classroom_read','/rest/v1/rpc/classroom_set_calendar_visibility'].includes(url.pathname)){
         const user=req.headers.authorization?.replace('Bearer ','');if(![teacher,student,moderator].includes(user))return res.writeHead(401).end();
-        let raw='';for await(const chunk of req)raw+=chunk;const args=JSON.parse(raw);directReads++;
-        try{const value=await db.transaction(async tx=>{await tx.exec('set local role authenticated');await tx.query("select set_config('request.jwt.claim.sub',$1,true)",[user]);return(await tx.query('select classroom_read($1,$2) data',[args.p_action,args.p_data])).rows[0].data;});res.setHeader('Content-Type','application/json');return res.end(JSON.stringify({data:value,error:null}));}catch(error){res.setHeader('Content-Type','application/json');return res.end(JSON.stringify({data:null,error:{code:'P0001',message:error.message}}));}
+        let raw='';for await(const chunk of req)raw+=chunk;const args=JSON.parse(raw);
+        const setting=url.pathname.endsWith('/classroom_set_calendar_visibility');
+        if(!setting)directReads++;
+        const query=setting?['select classroom_set_calendar_visibility($1,$2) data',[args.p_class,args.p_visible]]:['select classroom_read($1,$2) data',[args.p_action,args.p_data]];
+        try{const value=await db.transaction(async tx=>{await tx.exec('set local role authenticated');await tx.query("select set_config('request.jwt.claim.sub',$1,true)",[user]);return(await tx.query(...query)).rows[0].data;});res.setHeader('Content-Type','application/json');return res.end(JSON.stringify({data:value,error:null}));}catch(error){res.setHeader('Content-Type','application/json');return res.end(JSON.stringify({data:null,error:{code:'P0001',message:error.message}}));}
       }
       const friendly=/^\/materia\/([A-HJ-NP-Z2-9]{10})$/.exec(url.pathname);
       if(friendly){for(const{key,value}of headers)res.setHeader(key,key==='Content-Security-Policy'?value.replace(/;\s*upgrade-insecure-requests/,''):value);const setHeader=res.setHeader.bind(res);res.setHeader=(name,value)=>setHeader(name,name==='Content-Security-Policy'?value.replace(/;\s*upgrade-insecure-requests/,''):value);req.query={...Object.fromEntries(url.searchParams),courseInvitation:friendly[1]};res.status=code=>{res.statusCode=code;return res;};res.json=value=>res.end(JSON.stringify(value));res.send=value=>res.end(value);return inviteSandbox.module.exports(req,res);}
@@ -123,9 +126,19 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
     await sp.evaluate(date=>dispatchEvent(new CustomEvent('estudiemos:class-calendar',{detail:{date}})),today);
     await sp.locator('[data-calendar-reader]').waitFor({state:'visible'});
     assert.equal(await sp.locator('[data-calendar-reader] [data-calendar-class]').count(),0,'Hidden courses do not appear in the personal calendar');
+    const secondDevice=await context(student,1024),secondPage=await secondDevice.newPage();
+    await secondPage.goto(base+'/?clase='+id);
+    const secondToggle=secondPage.getByRole('switch',{name:/Mostrar en mi calendario/});
+    await secondToggle.waitFor();
+    assert.equal(await secondToggle.isChecked(),false,'A fresh device gets the saved choice with no shared browser storage');
+    assert.equal(await secondPage.evaluate(date=>EstudiemosClasses.events(date).length,today),0);
     await sp.goto(base+'/?clase='+id);
     await visibility.waitFor();assert.equal(await visibility.isChecked(),false,'The preference survives reopening the app');
     await visibility.check();await sp.locator('[data-class-calendar]').waitFor({state:'visible'});
+    await secondPage.locator('[data-class-refresh]').click();
+    await secondPage.waitForFunction(()=>document.querySelector('[data-class-calendar-visible]')?.checked);
+    assert.ok(await secondPage.evaluate(date=>EstudiemosClasses.events(date).length>0,today),'Re-enabling is reflected on the second device');
+    await secondDevice.close();
     await sp.waitForFunction(on=>{const el=document.querySelector('[data-class-calendar-visible]');return getComputedStyle(el).backgroundColor===on&&getComputedStyle(el,'::before').transform==='matrix(1, 0, 0, 1, 16, 0)';},onColor);
     await sp.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-student-dates.png`)});
     for(const page of[tp,sp])assert.equal(await page.locator('.classroom-dialog').evaluate(el=>el.scrollWidth<=el.clientWidth+1),true,'No dialog overflow');

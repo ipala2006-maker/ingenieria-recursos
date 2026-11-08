@@ -23,26 +23,34 @@ test('account switches invalidate both outstanding reads and locally cached clas
   h.calls[1].resolve({...state,revision:'b'.repeat(32),classes:[{id:bob,title:'New account'}]});await tick();assert.equal(h.api.snapshot().classes[0].id,bob);assert.ok(!h.values.get(rules.CACHE_KEY).includes(alice));
   h.switchUser('');assert.equal(h.api.snapshot(),null);assert.equal(h.values.has(rules.CACHE_KEY),false);assert.equal(h.timers.size,0);
 });
-test('class calendar visibility defaults to on, is scoped to the account and only changes the local projection',async()=>{
+test('calendar visibility is saved for the account, keeps cached dates and rejects stale or failed writes',async()=>{
   const h=harness();await tick();
   const day='2026-10-24',fixture={...state,classes:[...state.classes,{id:bob,title:'Physics'}],
     calendar:[alice,bob].map((classId,index)=>({id:classId,classId,data:{title:'Class '+index,date:day,allDay:true}}))};
   h.calls[0].resolve(fixture);await tick();
   const ids=api=>Array.from(api.events(day),item=>item.classId);
+  const changes=[];
+  h.setClient({rpc:async(name,args)=>{changes.push({name,...args});return {data:args.p_visible};}});
   assert.deepEqual(ids(h.api),[alice,bob]);
-  assert.equal(h.api.setCalendarVisible(alice,false),true);
+  assert.equal(await h.api.setCalendarVisible(alice,false),true);
+  assert.deepEqual(changes,[{name:'classroom_set_calendar_visibility',p_class:alice,p_visible:false}],'Exactly one write, without a caller-supplied user ID');
   assert.deepEqual(ids(h.api),[bob]);
-  assert.equal(h.calls.length,1,'No fetch or mutation is added for the preference');
-  assert.equal(h.api.snapshot().calendar.length,2,'The course and cached dates are untouched');
+  assert.equal(h.api.snapshot().calendar.length,2,'Cached dates are preserved');
   const reopened=harness({stored:h.values});await tick();
-  assert.deepEqual(ids(reopened.api),[bob],'The preference applies to cached dates before the next network response');
-  assert.equal(h.api.setCalendarVisible(alice,true),true);
-  reopened.storage('estudiemos_class_calendar_hidden_v1:'+alice);
-  assert.deepEqual(ids(reopened.api),[alice,bob],'The other tab updates without fetching');
-  assert.equal(h.api.setCalendarVisible(alice,false),true);
-  h.switchUser(bob);await tick();h.calls[1].resolve(fixture);await tick();
-  assert.deepEqual(ids(h.api),[alice,bob],'Another account has its own default');
-  assert.equal(h.api.setCalendarVisible('00000000-0000-4000-8000-000000000003',false),false,'Unknown courses cannot be added to the preference');
+  assert.deepEqual(ids(reopened.api),[bob],'The saved choice survives reload before the next network response');
+  const fresh=harness();await tick();fresh.calls[0].resolve({...fixture,calendarHidden:[alice]});await tick();
+  assert.deepEqual(ids(fresh.api),[bob],'A fresh device gets the choice from the server');
+  h.setClient({rpc:async()=>({error:{code:'fixture'}})});
+  assert.equal(await h.api.setCalendarVisible(alice,true),false);
+  assert.deepEqual(ids(h.api),[bob],'A failed write does not change the calendar');
+  h.setClient({rpc:async()=>({data:true})});
+  assert.equal(await h.api.setCalendarVisible(alice,true),true);assert.deepEqual(ids(h.api),[alice,bob]);
+  let resolve;
+  h.setClient({rpc:()=>new Promise(done=>{resolve=done;})});
+  const pending=h.api.setCalendarVisible(alice,false);
+  h.setClient(undefined);h.switchUser(bob);await tick();h.calls[1].resolve(fixture);await tick();
+  resolve({data:false});assert.equal(await pending,false);assert.deepEqual(ids(h.api),[alice,bob]);
+  assert.equal(await h.api.setCalendarVisible('00000000-0000-4000-8000-000000000003',false),false);
   h.switchUser('');assert.equal(h.api.events(day).length,0);
   reopened.calls[0].resolve(fixture);await tick();
 });
@@ -90,7 +98,7 @@ test('failed course retries stop while hidden or logged out and resume without b
 test('all course entrypoints load the current versioned course client',()=>{
   const root=require('node:path').join(__dirname,'..');
   for(const file of ['scripts/global-search.js','materias.html','widget.html']){
-    assert.match(fs.readFileSync(require('node:path').join(root,file),'utf8'),/scripts\/classroom-sync\.js\?v=20261107-course-calendar/);
+    assert.match(fs.readFileSync(require('node:path').join(root,file),'utf8'),/scripts\/classroom-sync\.js\?v=20261107-calendar-account/);
   }
 });
 test('writes beat stale background reads and remain bound to the original account',async()=>{
