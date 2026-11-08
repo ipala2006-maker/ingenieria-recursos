@@ -24,7 +24,7 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
     await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const base='http://127.0.0.1:'+server.address().port;
     browser=process.env.TEST_WEBKIT==='1'?await webkit.launch():await chromium.launch({channel:'chrome'});
     for(const width of [1440,412]){
-      const context=await browser.newContext({viewport:{width,height:1000},isMobile:width<500,hasTouch:width<500,serviceWorkers:'block'});
+      const context=await browser.newContext({viewport:{width,height:1000},isMobile:width<500,hasTouch:width<500,serviceWorkers:'block',userAgent:width<500?'Mozilla/5.0 (iPhone; CPU iPhone OS 17_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.6 Mobile/15E148 Safari/604.1':undefined});
       await context.addInitScript(({owner})=>{
         window.__user={id:owner,email:'fixture@example.test'};
         localStorage.setItem('estudiemos_cloud_user',owner);
@@ -75,9 +75,19 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
     }
     const [pc,phone]=pages;
     for(const [i,page] of pages.entries()){
-      await page.locator('[data-account-open]').click();await page.locator('[data-account-usage] summary').click();
+      await page.locator('[data-account-open]').click();
+      const account=page.locator('.account-panel');
+      await account.getByRole('region',{name:'Cuenta y sincronización'}).waitFor();
+      assert.equal(await account.getByRole('region',{name:'Preferencias generales'}).count(),1);
+      assert.equal(await account.locator('[data-account-email]').innerText(),'fixture@example.test');
+      assert.ok(await account.locator('[data-account-sync]').evaluate(el=>el.classList.contains('account-primary')));
+      assert.equal(await account.getByRole('region',{name:'Widgets de escritorio'}).isVisible(),i===0);
+      await account.locator('[data-account-sync]').click();
+      await account.locator('[data-account-status]').filter({hasText:'Tus dispositivos ya tienen la misma información.'}).waitFor();
+      await page.locator('[data-account-usage] summary').click();
       const usage=page.locator('[data-account-usage-values]');assert.match(await usage.textContent(),/Perfil sincronizado.*Recibido hoy/s);
       assert.equal(await usage.evaluate(el=>el.scrollWidth<=el.clientWidth+1),true);
+      assert.equal(await account.evaluate(el=>el.scrollWidth<=el.clientWidth+1),true);
       fs.mkdirSync(path.join(root,'tmp/sync-efficiency'),{recursive:true});
       await page.locator('.account-panel').screenshot({path:path.join(root,'tmp/sync-efficiency/account-'+(i?'phone':'pc')+'.png')});
       await page.locator('[data-account-close]').click();

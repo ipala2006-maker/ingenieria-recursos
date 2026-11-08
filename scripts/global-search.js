@@ -249,7 +249,7 @@
     if (document.querySelector('link[href*="styles/interaction.css"]')) return;
     const interaction = document.createElement('link');
     interaction.rel = 'stylesheet';
-    interaction.href = `${rootPath}styles/interaction.css?v=20260913-phase`;
+    interaction.href = `${rootPath}styles/interaction.css?v=20261107-compact-panels`;
     document.head.appendChild(interaction);
   }
 
@@ -276,7 +276,7 @@
     if (document.querySelector('link[href*="styles/dashboard.css"]')) return;
     const link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = `${rootPath}styles/dashboard.css?v=20260831-ai-chat`;
+    link.href = `${rootPath}styles/dashboard.css?v=20261107-compact-panels`;
     document.head.appendChild(link);
   }
 
@@ -342,7 +342,7 @@
     rules.src = `${rootPath}shared/inbox-alarms.js?v=20260930-lead30`;
     rules.onload = () => {
       const ui = document.createElement('script');
-      ui.src = `${rootPath}scripts/inbox-alarms.js?v=20261026-local`;
+      ui.src = `${rootPath}scripts/inbox-alarms.js?v=20261107-compact-panels`;
       document.head.appendChild(ui);
     };
     document.head.appendChild(rules);
@@ -352,7 +352,7 @@
     if (document.querySelector('script[src*="scripts/pomodoro.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/pomodoro.js?v=20261107-jakarta`;
+    script.src = `${rootPath}scripts/pomodoro.js?v=20261107-compact-panels`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -360,7 +360,7 @@
   function loadDashboardScript() {
     if (document.querySelector('script[src*="scripts/dashboard.js"]')) return;
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/dashboard.js?v=20261024-polish`;
+    script.src = `${rootPath}scripts/dashboard.js?v=20261107-compact-panels`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -398,7 +398,7 @@
     if (document.querySelector('script[src*="scripts/account.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/account.js?v=20261104-consent`;
+    script.src = `${rootPath}scripts/account.js?v=20261107-compact-panels`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -406,7 +406,7 @@
   function loadTimetableScript() {
     if (document.querySelector('script[data-timetable-ui]')) return;
     const ui = document.createElement('script'); ui.dataset.timetableUi = '';
-    ui.src = rootPath + 'scripts/timetable.js?v=20261024-tour';
+    ui.src = rootPath + 'scripts/timetable.js?v=20261107-compact-panels';
     document.head.appendChild(ui);
   }
 

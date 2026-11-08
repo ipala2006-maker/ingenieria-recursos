@@ -405,6 +405,8 @@
           ${icon("settings")}<span>Configuración del temporizador</span>${icon("chevronDown")}
         </button>
         <section class="pomodoro-settings-panel" data-pomodoro-config-panel hidden>
+          <section class="pomodoro-session-group" aria-labelledby="pomodoroSessionHeading">
+          <h3 id="pomodoroSessionHeading">Bloques de estudio</h3>
           <div class="pomodoro-config" aria-label="Configurar sesión">
             ${numberControl("blocks", "Bloques", "")}
             ${numberControl("study", "Estudio", "min")}
@@ -426,11 +428,13 @@
               <button type="button" data-pomodoro-device-alerts>Activar</button>
             </div>
           </div>
+          </section>
 
-          <section class="pomodoro-alarm-panel">
+          <section class="pomodoro-alarm-panel" aria-labelledby="pomodoroAlarmHeading">
+            <h3 id="pomodoroAlarmHeading">Alarma</h3>
             <div class="pomodoro-sound-row">
               <label>
-                Alarma
+                Sonido
                 <select data-pomodoro-alarm-mode>
                   <option value="digital">Digital</option>
                   <option value="bell">Campana</option>
@@ -1024,6 +1028,11 @@
       return;
     }
     if (!("documentPictureInPicture" in window)) return;
+    // The browser takes the floating window's origin from its opener.
+    if (["https://estudiemos.estudiemos-services.workers.dev", "https://estudiemos-app.vercel.app"].includes(window.location.origin)) {
+      window.open("https://estudiemos.ar/?pomodoro=1", "_blank", "noopener,noreferrer");
+      return;
+    }
     if (pipWindow && !pipWindow.closed) {
       pipWindow.focus();
       return;
@@ -1097,6 +1106,8 @@
           </div>
         </section>
         <section class="floating-settings" id="floating-settings" data-pip-settings-panel aria-label="Configuración de la sesión" hidden>
+          <section class="floating-session" aria-labelledby="floating-session-heading">
+          <h2 id="floating-session-heading">Bloques de estudio</h2>
           <div class="floating-config">
             ${floatingNumberControl("blocks", "Bloques", "")}
             ${floatingNumberControl("study", "Estudio", "min")}
@@ -1104,8 +1115,10 @@
           </div>
           <div class="floating-summary"><span>Bloques completados hoy</span><strong data-pip-count>0</strong></div>
           <label class="floating-auto"><input type="checkbox" data-pip-auto><span>Continuar automáticamente</span></label>
-          <section class="floating-sounds">
-            <label>Alarma
+          </section>
+          <section class="floating-sounds" aria-labelledby="floating-alarm-heading">
+            <h2 id="floating-alarm-heading">Alarma</h2>
+            <label>Sonido
               <select data-pip-alarm-mode>
                 <option value="digital">Digital</option><option value="bell">Campana</option>
                 <option value="chime">Carrillón</option><option value="pulse">Pulso</option>
@@ -1293,23 +1306,33 @@
       .floating-adjust button{height:32px;padding:0;border:0;border-radius:6px;background:transparent;color:var(--muted);display:grid;place-items:center}
       .floating-adjust span{text-align:center;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
       .floating-settings{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:2px 3px 6px;scrollbar-width:thin}
-      .floating-config{display:grid;gap:12px}
+      .floating-settings h2{font-size:12px;font-weight:650;margin:0 0 7px}
+      .floating-session,.floating-sounds{min-width:0;padding:8px;border:1px solid var(--border);border-radius:7px;background:color-mix(in srgb,var(--bg) 55%,var(--panel))}
+      .floating-config{display:grid;gap:5px}
       .floating-number{display:grid;grid-template-columns:minmax(0,1fr) 138px 24px;align-items:center;gap:6px}
-      .floating-number>span{font-size:12px;color:var(--muted)}.floating-number>small{font-size:10px;color:var(--muted)}
+      .floating-number>span{font-size:12px;color:var(--muted);overflow-wrap:anywhere}.floating-number>small{font-size:10px;color:var(--muted)}
       .floating-number>div{display:grid;grid-template-columns:36px minmax(0,1fr) 36px;min-width:0;border:1px solid var(--border);border-radius:6px;overflow:hidden}
       .floating-number button{height:40px;padding:0;border:0;background:transparent;color:var(--muted);display:grid;place-items:center}
       .floating-number input{width:100%;min-width:0;height:40px;border:0;background:transparent;color:var(--text);text-align:center;appearance:textfield;font-size:18px;font-variant-numeric:tabular-nums}
       .floating-number input::-webkit-inner-spin-button{appearance:none}
-      .floating-summary{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border);color:var(--muted);font-size:11px}
+      .floating-summary{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:8px;padding-top:7px;border-top:1px solid var(--border);color:var(--muted);font-size:11px}
       .floating-summary strong{color:var(--text);font-size:12px}
-      .floating-auto{display:flex;align-items:center;gap:8px;min-height:40px;margin:8px 0;color:var(--text);font-size:12px}
+      .floating-auto{display:flex;align-items:center;gap:8px;min-height:36px;margin-top:2px;color:var(--text);font-size:12px}
       input[type="checkbox"]{width:16px;height:16px;accent-color:var(--accent);flex:none}
-      .floating-sounds{display:grid;gap:12px;padding-top:12px;border-top:1px solid var(--border)}
+      .floating-sounds{display:grid;gap:7px;margin-top:8px}
+      .floating-sounds h2{margin-bottom:0}
       .floating-sounds>label{display:grid;grid-template-columns:60px minmax(0,1fr);align-items:center;gap:10px;font-size:12px;color:var(--muted)}
       .floating-sounds select{min-width:0;height:40px;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:12px}
       .floating-sounds .floating-volume{display:grid;grid-template-columns:1fr;gap:8px}
       .floating-volume input{width:100%;accent-color:var(--accent)}
       .floating-play{min-height:40px;display:flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text);font-size:12px}
+      @media(min-width:300px){
+        .floating-config{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+        .floating-number{grid-template-columns:minmax(0,1fr) auto;gap:4px}
+        .floating-number>small{grid-column:2;grid-row:1}
+        .floating-number>div{grid-column:1/-1;grid-row:2;grid-template-columns:24px minmax(0,1fr) 24px}
+        .floating-number>span{font-size:11px}
+      }
       @container clock (max-width:85px){.floating-clock span{display:none}.floating-clock__text{inset:12%;gap:2px}}
       @media(max-width:260px){.floating-timer{padding:8px;gap:6px}.floating-controls .primary span{display:none}.floating-controls{grid-template-columns:36px minmax(36px,1fr) 36px;gap:6px}.floating-number{grid-template-columns:minmax(0,1fr) 100px}.floating-number>small{display:none}.floating-number>div{grid-template-columns:28px minmax(0,1fr) 28px}.floating-number>span{font-size:11px}}
       @media(max-height:260px) and (min-width:280px){.floating-core{grid-template-columns:minmax(0,1fr) minmax(128px,1fr);grid-template-rows:minmax(0,1fr);gap:12px}.floating-actions{align-content:center}.floating-controls .primary span{display:none}}

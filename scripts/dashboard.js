@@ -94,8 +94,11 @@
           </header>
           <form class="quick-panel__form quick-panel__form--note" data-quick-note-form>
             <label class="quick-panel__field">¿Qué tenés que hacer?<input name="title" maxlength="90" required autocomplete="off" placeholder="Ej: Resolver la guía 2" /></label>
-            <p class="quick-panel__status" data-quick-note-status role="status" aria-live="polite"></p>
-            <button class="quick-panel__submit" type="submit" disabled><svg viewBox="0 0 24 24"><path d="M5 12.5 9.2 17 19 7"/></svg><span>Guardar tarea</span></button>
+            <div data-alarm-slot></div>
+            <footer class="quick-panel__note-footer">
+              <p class="quick-panel__status" data-quick-note-status role="status" aria-live="polite"></p>
+              <button class="quick-panel__submit" type="submit" disabled><svg viewBox="0 0 24 24"><path d="M5 12.5 9.2 17 19 7"/></svg><span>Guardar tarea</span></button>
+            </footer>
           </form>
         </div>`;
       document.body.appendChild(shell);

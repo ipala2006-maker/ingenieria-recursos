@@ -98,6 +98,11 @@
 .study-session-dialog .study-icon { min-width:44px;min-height:44px; }
 .study-session-dialog .study-icon svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.8; }
 .study-session-dialog .study-session { margin-top:12px; }
+.study-session-dialog .study-session__fields { padding:0 10px;border:1px solid var(--border);border-radius:7px; }
+.study-session-dialog .study-session__field { min-height:53px;grid-template-columns:minmax(0,1fr) minmax(116px,148px); }
+.study-session-dialog .study-session__field:last-child { border-bottom:0; }
+.study-session-dialog .study-session__sound { margin-top:6px;padding:0 10px;border:1px solid var(--border);border-radius:7px; }
+.study-session-dialog .study-session__sound[open] { padding-bottom:8px; }
 @media(min-width:701px) and (max-width:900px) and (min-height:900px) {
   .workspace-home .workspace-page { grid-template-columns:repeat(2,minmax(0,1fr)); grid-template-rows:40px repeat(3,minmax(0,1fr)); }
   .workspace-home .study-assistant { grid-column:1; grid-row:3; }

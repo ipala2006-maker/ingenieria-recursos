@@ -87,5 +87,23 @@
 .theme-light .inbox-alarm-fields input:not([type=checkbox]),.theme-light .inbox-alarm-fields select { background:#f5f7fb; color:#243047; }
 .theme-light .inbox-alarm-button.is-set { color:#365fa4; }
 @media(max-width:400px) { .inbox-alarm-dialog { padding:16px; }.inbox-alarm-date { grid-template-columns:minmax(0,1fr); } }
+.quick-panel__form--note .inbox-alarm-fields { margin:0; }
+.quick-panel__form--note .inbox-alarm-switch { min-height:46px;gap:8px; }
+.quick-panel__form--note .inbox-alarm-switch small { margin-top:1px; }
+.quick-panel__form--note .inbox-note-date { padding:2px 0 8px; }
+.quick-panel__form--note [data-alarm-options] { gap:7px;padding:4px 0 2px; }
+.quick-panel__form--note .inbox-alarm-date { grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:8px; }
+.quick-panel__form--note .inbox-alarm-fields label:not(.inbox-alarm-switch) { gap:4px; }
+.quick-panel__form--note .inbox-alarm-delivery summary { min-height:44px;align-content:center; }
+.quick-panel__form--note .inbox-alarm-delivery[open] { padding-bottom:6px; }
+.quick-panel__form--note [data-alarm-native-connect] { min-height:44px; }
+@container quick-note (min-width:395px) {
+  .quick-panel__form--note [data-alarm-options] { grid-template-columns:minmax(0,1.2fr) minmax(0,.9fr) minmax(0,1fr); }
+  .quick-panel__form--note .inbox-alarm-date { display:contents; }
+  .quick-panel__form--note [data-alarm-options] > :not(.inbox-alarm-date):not(label) { grid-column:1/-1; }
+}
+@media(pointer:coarse) {
+  .quick-panel__form--note .inbox-alarm-fields input:not([type=checkbox]),.quick-panel__form--note .inbox-alarm-fields select { font-size:16px;padding-inline:6px; }
+}
 @media(max-width:520px) { .inbox-alarm-notice__actions,.inbox-alarm-notice button { width:100%; }.inbox-alarm-notice__actions { margin-top:30px; }.inbox-alarm-notice__icon { width:68px;height:68px; }.inbox-alarm-notice time { font-size:20px; }.inbox-alarm-notice h2 { font-size:44px; }.inbox-alarm-notice p { font-size:24px; } }
 @media(prefers-reduced-motion:reduce) { .inbox-alarm-switch input::after { transition:none; }.inbox-alarm-notice__icon { animation:none; } }

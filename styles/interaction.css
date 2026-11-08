@@ -20,12 +20,16 @@ html [data-timer-phase="break"] .pomodoro-ring__progress { stroke:#fbbc04; }
 .pomodoro-menu__panel .pomodoro-wheel-control input { min-width:0; width:100%; height:44px; font-size:20px; font-weight:550; border:0; background:transparent; color:var(--text); font-variant-numeric:tabular-nums; }
 .pomodoro-menu__panel .pomodoro-wheel-control input:focus-visible { outline:2px solid var(--accent); border-radius:4px; }
 .pomodoro-menu__panel .pomodoro-wheel-control svg { fill:none; stroke:currentColor; width:15px; height:15px; }
-.pomodoro-menu__panel .pomodoro-options { padding:10px 0; border:0; }
-.pomodoro-alarm-panel { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px 12px; border-top:1px solid var(--border); padding-top:12px; }
+.pomodoro-menu__panel .pomodoro-options { padding:4px 0 0; border:0; }
+.pomodoro-session-group,.pomodoro-alarm-panel { min-width:0;padding:9px;border:1px solid var(--border);border-radius:7px; }
+.pomodoro-session-group h3,.pomodoro-alarm-panel h3 { margin:0 0 8px;font-size:12px;font-weight:650; }
+.pomodoro-alarm-panel { display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 8px;margin-top:8px; }
+.pomodoro-alarm-panel h3 { grid-column:1/-1;margin:0; }
 .pomodoro-alarm-panel .pomodoro-sound-row { grid-column:1; display:block; }
 .pomodoro-alarm-panel label { font-size:12px; color:var(--muted); }
 .pomodoro-alarm-panel select { display:block; width:100%; margin-top:6px; min-height:40px; border:1px solid var(--border); border-radius:6px; background:var(--panel-2); color:var(--text); font:inherit; padding:8px; }
-.pomodoro-alarm-panel .pomodoro-volume { grid-column:1/-1; grid-row:2; margin:0; }
+.pomodoro-alarm-panel .pomodoro-volume { grid-column:1/-1; grid-row:3; margin:0; }
+.pomodoro-alarm-panel .pomodoro-alarm-preview { grid-column:2;grid-row:2; }
 .pomodoro-alarm-preview { align-self:end; display:flex; align-items:center; gap:6px; min-height:40px; border:0; border-radius:6px; background:var(--panel-2); color:var(--accent); padding:8px; font:inherit; font-size:12px; cursor:pointer; }
 .pomodoro-alarm-preview svg { width:17px; height:17px; fill:currentColor; }
 .pomodoro-menu__panel .pomodoro-start-btn { border-radius:8px; box-shadow:inset 0 1px 0 #ffffff30,0 3px 10px #0001; }

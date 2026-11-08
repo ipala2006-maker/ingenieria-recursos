@@ -22,7 +22,7 @@
   let setupStage = sessionStorage.getItem('estudiemos_alarm_setup_stage')==='connect'?'connect':'install';
   let audio, soundTimer, currentId, returnFocus, checking = false, lastNative = '', accountReady = false, waitingForAccount = false;
   const style = document.createElement('link');
-  style.rel = 'stylesheet'; style.href = new URL('styles/inbox-alarms.css?v=20261102-simple-setup', root); document.head.appendChild(style);
+  style.rel = 'stylesheet'; style.href = new URL('styles/inbox-alarms.css?v=20261107-compact-panels', root); document.head.appendChild(style);
   const escape = value => String(value || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   // Reuse the existing icon set's bell geometry (also used by Pomodoro).
   const bell = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>';
@@ -68,7 +68,7 @@
   };
   document.addEventListener('keydown', event => { if (event.key === 'Escape' && !notice.hidden) stopAlert(); });
   function items() { try { const v = JSON.parse(localStorage.getItem(KEY) || '[]'); return Array.isArray(v) ? v : []; } catch (_) { return []; } }
-  function controls(withDate = false) {
+  function controls(withDate = false, compact = false) {
     const windows = /Windows/i.test(navigator.userAgent);
     return `<fieldset class="inbox-alarm-fields">
       ${withDate ? `<label class="inbox-alarm-switch"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 11h18"/></svg><span>Agregar fecha<small data-note-date-summary>Sin fecha</small></span><input type="checkbox" role="switch" name="inboxDateEnabled" aria-label="Agregar fecha"></label>
@@ -77,10 +77,10 @@
       <div data-alarm-options hidden>
         <div class="inbox-alarm-date"><label>Día de la alarma<input type="date" name="inboxAlarmDate" min="2020-01-01" max="2100-12-31"></label><label>Hora<input type="time" name="inboxAlarmTime"></label></div>
         <label>Repetir<select name="inboxAlarmRepeat" aria-label="Repetir">${rules.repeats.map(r => `<option value="${r}">${rules.labels[r]}</option>`).join('')}</select></label>
-        <small>Se sincroniza con tu cuenta y avisa en cada dispositivo activado. Hora local de cada dispositivo. Al completar la tarea, deja de sonar.</small>
+        <small>Se sincroniza con tu cuenta. Avisa en la hora local de cada dispositivo activado, hasta completar la tarea.</small>
         <small data-alarm-permission-status role="status" ${windows?'hidden':''}></small>
         <button type="button" data-alarm-permission ${windows?'hidden':''}>Permitir notificaciones</button>
-        <details class="inbox-alarm-delivery" ${windows ? 'open' : 'hidden'}><summary>Pantalla completa en Windows</summary>
+        <details class="inbox-alarm-delivery" ${windows ? compact ? '' : 'open' : 'hidden'}><summary>Pantalla completa en Windows</summary>
           <input type="checkbox" data-alarm-native hidden ${nativeReady() ? 'checked' : ''}>
           <small>El nombre de tu tarea ocupa toda la pantalla y suena hasta que cierres el aviso.</small>
           <small data-alarm-native-status role="status"></small>
@@ -231,7 +231,7 @@
     document.querySelectorAll('[data-quick-note-form],#agendaForm,[data-alarm-editor]').forEach(form => {
       if (form.querySelector('.inbox-alarm-fields')) return;
       const slot = form.querySelector('[data-alarm-slot]') || form.querySelector('[type="submit"]');
-      const wrapper = document.createElement('div'); wrapper.className = 'inbox-alarm-form'; wrapper.innerHTML = controls(form.matches('[data-quick-note-form],#agendaForm'));
+      const wrapper = document.createElement('div'); wrapper.className = 'inbox-alarm-form'; wrapper.innerHTML = controls(form.matches('[data-quick-note-form],#agendaForm'), form.matches('[data-quick-note-form]'));
       if (slot.hasAttribute('data-alarm-slot')) slot.appendChild(wrapper); else slot.before(wrapper);
       fill(form, null);
       form.addEventListener('reset', () => queueMicrotask(() => fill(form, null)));

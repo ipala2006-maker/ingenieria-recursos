@@ -32,7 +32,7 @@ const readItems = page => page.evaluate(() => JSON.parse(localStorage.getItem('b
     const engine = process.env.TEST_WEBKIT === '1' ? 'webkit' : 'chrome';
     browser = engine === 'webkit' ? await webkit.launch() : await chromium.launch({ channel: 'chrome' });
     for (const width of [1440, 390, 320]) {
-      const context = await browser.newContext({ viewport: { width, height: width < 500 ? 844 : 900 }, isMobile: width < 500, hasTouch: width < 500, timezoneId: 'America/Argentina/Buenos_Aires', serviceWorkers: 'block' });
+      const context = await browser.newContext({ viewport: { width, height: width === 320 ? 568 : width < 500 ? 844 : 900 }, isMobile: width < 500, hasTouch: width < 500, timezoneId: 'America/Argentina/Buenos_Aires', serviceWorkers: 'block' });
       await context.route('**/*', route => {
         const url = new URL(route.request().url());
         if (url.origin !== base) return route.abort();
@@ -97,6 +97,7 @@ const readItems = page => page.evaluate(() => JSON.parse(localStorage.getItem('b
         await create(quick, `Home mode ${mode}`, mode);
       }
       await page.locator('[data-quick-note-open]').first().click();
+      assert.ok(await quick.locator('..').evaluate(el=>el.scrollHeight<=el.clientHeight+1),'Default quick note fits without scrolling');
       await defaults(quick);
       await quick.locator('[name=title]').fill('Toggle options off');
       await quick.locator('[name=inboxDateEnabled]').check();
@@ -124,7 +125,13 @@ const readItems = page => page.evaluate(() => JSON.parse(localStorage.getItem('b
       await quick.locator('[name=inboxNoteDate]').fill(date);
       await quick.locator('[name=inboxAlarmEnabled]').check();
       await quick.locator('[name=inboxAlarmTime]').fill('18:30');
+      await quick.locator('..').evaluate(el=>{el.scrollTop=0;});
       await page.waitForTimeout(250);
+      assert.ok(await quick.locator('[type=submit]').evaluate(el=>el.getBoundingClientRect().bottom<=innerHeight+1),'Save stays reachable even at the top of a scrollable note');
+      assert.ok(await quick.locator('[name=inboxAlarmDate]').evaluate(el=>{
+        const date=el.getBoundingClientRect(),time=el.form.elements.inboxAlarmTime.getBoundingClientRect();
+        return date.right<=time.left && Math.abs(date.top-time.top)<2;
+      }),'Alarm date and time share one row');
       await page.screenshot({ path: path.join(output, `${engine}-${width}-expanded.png`) });
       assert.ok(await quick.evaluate(form => [...form.querySelectorAll('input,select,button')].every(el => { const r = el.getBoundingClientRect(); return r.width === 0 || r.left >= 0 && r.right <= innerWidth; })));
       await page.locator('[data-quick-panel=note] [data-quick-panel-close]').click();
