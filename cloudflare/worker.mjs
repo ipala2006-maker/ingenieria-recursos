@@ -17,6 +17,7 @@ import whatsappWebhook from '../api/whatsapp-webhook.js';
 import widgetLink from '../api/widget-link.js';
 import widgetPush from '../api/widget-push.js';
 import workspaceAi from '../api/workspace-ai.js';
+import courseLinks from '../shared/course-app-links.js';
 
 const handlers = Object.freeze({
   'account-config': accountConfig, 'admin-monitoring': adminMonitoring,
@@ -40,7 +41,11 @@ export default {
       return secured(Response.redirect(url.origin + '/.well-known/windows-alarms-retired.json', 307));
     }
     if (url.pathname === '/api/widget-push' && url.searchParams.get('mobilePush') === 'dispatch') return secured(await dispatch(request, env));
-    const invitation = /^\/(materia|amistad)\/([^/]+)$/.exec(url.pathname);
+    const invitation = /^\/(materia)\/([^/]+)\/?$/.exec(url.pathname) || /^\/(amistad)\/([^/]+)$/.exec(url.pathname);
+    if (invitation?.[1] === 'materia' && ['GET', 'HEAD'].includes(request.method)) {
+      const destination = courseLinks.canonicalRedirect(url, env.PUBLIC_APP_ORIGIN);
+      if (destination) return secured(new Response(null, {status:308,headers:{Location:destination.href,'Cache-Control':'no-store','Referrer-Policy':'no-referrer'}}));
+    }
     const api = /^\/api\/([a-z-]+)(?:\.js)?$/.exec(url.pathname);
     const handler = invitation ? accountConfig : api && handlers[api[1]];
     if (!handler) {

@@ -41,10 +41,12 @@ test("only publishable or legacy anon Supabase keys can be disclosed", () => {
 test("public config fails closed when a private key is accidentally configured", async () => {
   for (const key of [publicKey, legacyKey("anon"), "sb_secret_" + "example".repeat(5), legacyKey("service_role")]) {
     const sandbox = { module: { exports: {} }, process: { env: {
-      SUPABASE_URL: "https://example.supabase.co", SUPABASE_PUBLISHABLE_KEY: key
+      SUPABASE_URL: "https://example.supabase.co", SUPABASE_PUBLISHABLE_KEY: key,
+      PUBLIC_APP_ORIGIN: "https://preview.workers.dev"
     } }, require(name) {
       if (name === "./_lib/public-config") return { isPublicSupabaseKey };
       if (name === "./_lib/request-security") return { setSecurityHeaders() {}, enforceRateLimit: async () => true };
+      if (name === "../shared/course-app-links") return require(name);
       throw new Error("Unexpected dependency");
     } };
     vm.runInNewContext(source("api/account-config.js"), sandbox);
@@ -56,6 +58,8 @@ test("public config fails closed when a private key is accidentally configured",
     if (!isPublicSupabaseKey(key)) {
       assert.equal(JSON.stringify(body).includes(key), false);
       assert.equal("publishableKey" in body, false);
+    } else {
+      assert.equal(body.publicAppOrigin, "https://estudiemos.ar");
     }
   }
 });

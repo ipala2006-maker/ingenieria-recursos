@@ -16,6 +16,7 @@
   "rules": [{ "type": "Text", "globs": ["**/*.html"], "fallthrough": true }],
   "vars": {
     "APP_ORIGIN": "https://estudiemos.estudiemos-services.workers.dev",
+    "PUBLIC_APP_ORIGIN": "https://estudiemos.ar",
     "GOOGLE_DRIVE_SECONDARY_ORIGIN": "https://estudiemos.ar",
     "PUSH_DISPATCH_ENABLED": "true"
   },

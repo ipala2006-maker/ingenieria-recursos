@@ -36,16 +36,23 @@
     document.head.appendChild(rules);
     return;
   }
+  if (!window.EstudiemosCourseAppLinks) {
+    const links = document.createElement('script');
+    links.src = rootPath + 'shared/course-app-links.js?v=20261108-official-course-links';
+    links.onload = initialize;
+    document.head.appendChild(links);
+    return;
+  }
   if (!window.EstudiemosClassroomRules) {
     const classes = document.createElement('script');
-    classes.src = rootPath + 'shared/classrooms.js?v=20261026-course-links';
+    classes.src = rootPath + 'shared/classrooms.js?v=20261108-official-course-links';
     classes.onload = initialize;
     document.head.appendChild(classes);
     return;
   }
   if (!document.querySelector('script[data-classrooms]')) {
     const classes = document.createElement('script'); classes.dataset.classrooms = '';
-    classes.src = rootPath + 'scripts/classroom-sync.js?v=20261107-calendar-account';
+    classes.src = rootPath + 'scripts/classroom-sync.js?v=20261108-official-course-links';
     document.head.appendChild(classes);
   }
   if (!document.querySelector('script[data-course-drive]')) {
@@ -398,7 +405,7 @@
     if (document.querySelector('script[src*="scripts/account.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/account.js?v=20261108-password-recovery`;
+    script.src = `${rootPath}scripts/account.js?v=20261108-official-course-links`;
     script.defer = true;
     document.head.appendChild(script);
   }

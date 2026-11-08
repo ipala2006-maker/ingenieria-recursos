@@ -5,11 +5,26 @@ const links=require('../shared/course-app-links'),view=require('../shared/course
 test('installed-app routes carry only a validated course, with a web landing fallback and no automatic download',()=>{
   const android=links.nativeUrl(code,'android');assert.match(android,/^intent:\/\/open\?materia=ABCDEFGHJK#Intent;scheme=estudiemos;package=com.estudiemos.app;/);
   const fallback=new URL(decodeURIComponent(android.match(/S.browser_fallback_url=([^;]+)/)[1]));
-  assert.equal(fallback.pathname,'/materia/'+code);assert.equal(fallback.searchParams.get('abrir'),'web');
+  assert.equal(fallback.href,'https://estudiemos.ar/materia/'+code+'?abrir=web');
   assert.doesNotMatch(android,/\.apk|access_token|refresh_token/);
   assert.equal(links.nativeUrl(code,'windows'),'estudiemos-app://open?materia='+code);
   for(const value of ['BAD',code+'&command=cmd.exe',code+'\r\n'])assert.equal(links.nativeUrl(value,'windows'),'');
-  assert.equal(links.nativeUrl(code,'android','javascript:alert(1)'), '');
+  assert.equal(links.nativeUrl(code,'android','javascript:alert(1)'),android);
+});
+
+test('the only share origin is production; redirects keep only the explicit browser mode',()=>{
+  const official='https://estudiemos.ar/materia/'+code;
+  for(const configured of [undefined,'https://estudiemos.ar/','https://candidate.workers.dev','https://estudiemos.ar@evil.test','https://estudiemos.ar/private']){
+    assert.equal(links.canonicalUrl(code,configured).href,official);
+  }
+  assert.equal(links.canonicalUrl(code+'?key=private'),null);
+  assert.equal(links.canonicalRedirect(new URL(official)),null);
+  assert.equal(links.canonicalRedirect(new URL('https://preview.workers.dev/materia/abcdefghjk/?abrir=web&secret=private')).href,official+'?abrir=web');
+  assert.equal(links.canonicalRedirect(new URL('https://estudiemos.ar/materia/abcdefghjk/')).href,official);
+  for(const path of ['/api/account-config','/amistad/'+code,'/materia/bad','/materia/'+code+'/extra']){
+    assert.equal(links.canonicalRedirect(new URL(path,'https://preview.workers.dev')),null);
+  }
+  assert.equal(links.canonicalRedirect(new URL('http://127.0.0.1:8190/materia/'+code)),null);
 });
 
 test('the installed app is never launched recursively; web and unsupported platforms remain explicit',()=>{
