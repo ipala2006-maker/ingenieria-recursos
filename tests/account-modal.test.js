@@ -60,10 +60,8 @@ test('account dismissal can recover when its original permission button was remo
   assert.equal(h.focused.at(-1)[0], 'fallback');
 });
 
-test('the note-specific style preserves vertical scrolling and contains scroll chaining', () => {
+test('the quick-note fields scroll independently of the save actions without chaining', () => {
   const css = fs.readFileSync(require.resolve('../styles/dashboard.css'), 'utf8');
-  const rule = css.match(/\.quick-panel:not\(\.quick-panel--assistant\)\{([^}]+)\}/)[1];
-  assert.match(rule, /overflow-y:auto/);
-  assert.doesNotMatch(rule, /overflow:hidden/);
-  assert.match(css, /\.quick-panel\{[^}]*overscroll-behavior:contain/s);
+  assert.match(css, /\.quick-panel__note-fields\{[^}]*overflow:auto;overscroll-behavior:contain/);
+  assert.match(css, /\.quick-panel__note-footer\{flex:none/);
 });

@@ -93,8 +93,10 @@
             <button class="quick-panel__close" type="button" data-quick-panel-close aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
           </header>
           <form class="quick-panel__form quick-panel__form--note" data-quick-note-form>
-            <label class="quick-panel__field">¿Qué tenés que hacer?<input name="title" maxlength="90" required autocomplete="off" placeholder="Ej: Resolver la guía 2" /></label>
-            <div data-alarm-slot></div>
+            <div class="quick-panel__note-fields">
+              <label class="quick-panel__field">¿Qué tenés que hacer?<input name="title" maxlength="90" required autocomplete="off" placeholder="Ej: Resolver la guía 2" /></label>
+              <div data-alarm-slot></div>
+            </div>
             <footer class="quick-panel__note-footer">
               <p class="quick-panel__status" data-quick-note-status role="status" aria-live="polite"></p>
               <button class="quick-panel__submit" type="submit" disabled><svg viewBox="0 0 24 24"><path d="M5 12.5 9.2 17 19 7"/></svg><span>Guardar tarea</span></button>
