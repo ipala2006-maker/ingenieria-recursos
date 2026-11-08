@@ -2,10 +2,32 @@
   if(window.EstudiemosClasses||!window.EstudiemosClassroomRules)return;
   const rules=window.EstudiemosClassroomRules,root=new URL('../',document.currentScript.src),endpoint=new URL('api/account-config?classes=1',root);
   let owner='',model=null,epoch=0,serial=0,loading=null,writing=false,launching=false,lastRead=0,retryAt=0,failures=0,lastError=null,timer=0,uiPromise,directRead=true,projection=new Map();
+  let hiddenCalendar=new Set();
   const account=()=>window.EstudiemosAccount;
   const identity=()=>account()?.getUser()?.id||'';
-  const emit=()=>{projection.clear();window.dispatchEvent(new CustomEvent('estudiemos:classes-updated'));};
+  const emit=detail=>{projection.clear();window.dispatchEvent(new CustomEvent('estudiemos:classes-updated',{detail}));};
+  const calendarKey=id=>'estudiemos_class_calendar_hidden_v1:'+id;
   function snapshot(){return owner&&owner===identity()?model:null;}
+  function readHiddenCalendar(id){
+    if(!id)return new Set();
+    try{
+      const saved=JSON.parse(localStorage.getItem(calendarKey(id))||'[]');
+      return new Set(Array.isArray(saved)?saved.filter(value=>typeof value==='string'&&rules.UUID.test(value)):[]);
+    }catch(_){return new Set();}
+  }
+  function calendarVisible(id){return owner!==identity()||!hiddenCalendar.has(id);}
+  function setCalendarVisible(id,visible){
+    if(typeof visible!=='boolean'||typeof id!=='string'||!rules.UUID.test(id)||!snapshot()?.classes.some(course=>course.id===id&&!course.archived))return false;
+    const next=readHiddenCalendar(owner),key=calendarKey(owner);
+    if(visible)next.delete(id);else next.add(id);
+    try{
+      if(next.size)localStorage.setItem(key,JSON.stringify([...next]));
+      else localStorage.removeItem(key);
+    }catch(_){return false;}
+    hiddenCalendar=next;
+    emit({calendarVisibility:true});
+    return true;
+  }
   function persist(value){
     if(!value||!/^[a-f0-9]{32}$/.test(value.revision)||!Array.isArray(value.classes))throw new Error('No pudimos validar los datos de Clases.');
     const calendar=rules.mergeCalendar(model,value);
@@ -68,20 +90,27 @@
   async function changed(){
     const current=identity();window.EstudiemosCourseRole?.bind(account()?.getUser());if(current===owner){if(!model)refresh();return;}
     owner=current;epoch++;serial++;loading=null;writing=false;model=null;lastRead=0;retryAt=0;failures=0;lastError=null;clearTimeout(timer);
+    hiddenCalendar=readHiddenCalendar(owner);
     try{const saved=JSON.parse(localStorage.getItem(rules.CACHE_KEY)||'null');if(current&&saved?.owner===current&&Array.isArray(saved.model?.classes)&&Array.isArray(saved.model?.calendar))model=saved.model;else localStorage.removeItem(rules.CACHE_KEY);}catch(_){}
     emit();if(owner)refresh();
   }
   function events(from,until=from){
     const value=snapshot()||window.EstudiemosCourseInvitation?.pending(identity())?.preview;if(!value)return [];
-    const key=from+':'+until;if(!projection.has(key)){if(projection.size>=4)projection.clear();projection.set(key,rules.occurrences(value,from,until));}return projection.get(key);
+    const key=from+':'+until;
+    if(!projection.has(key)){
+      if(projection.size>=4)projection.clear();
+      const visible=hiddenCalendar.size?{calendar:value.calendar?.filter(item=>calendarVisible(item.classId))}:value;
+      projection.set(key,rules.occurrences(visible,from,until));
+    }
+    return projection.get(key);
   }
   async function open(options={}){
     if(location.pathname.endsWith('/widget.html')){const url=new URL('./',root);url.searchParams.set('clase',options.id||'');return window.open(url,'_blank','noopener,noreferrer');}
     launching=true;
-    if(!uiPromise)uiPromise=Promise.all([new Promise((resolve,reject)=>{if(document.querySelector('link[href*="styles/classrooms.css"]'))return resolve();const css=document.createElement('link');css.rel='stylesheet';css.href=new URL('styles/classrooms.css?v=20261107-panel-ux',root);css.onload=resolve;css.onerror=reject;document.head.append(css);}),new Promise((resolve,reject)=>{const script=document.createElement('script');script.src=new URL('scripts/classrooms.js?v=20261107-panel-ux',root);script.onload=resolve;script.onerror=reject;document.head.append(script);})]).catch(error=>{uiPromise=null;throw error;});
+    if(!uiPromise)uiPromise=Promise.all([new Promise((resolve,reject)=>{if(document.querySelector('link[href*="styles/classrooms.css"]'))return resolve();const css=document.createElement('link');css.rel='stylesheet';css.href=new URL('styles/classrooms.css?v=20261107-course-calendar',root);css.onload=resolve;css.onerror=reject;document.head.append(css);}),new Promise((resolve,reject)=>{const script=document.createElement('script');script.src=new URL('scripts/classrooms.js?v=20261107-course-calendar',root);script.onload=resolve;script.onerror=reject;document.head.append(script);})]).catch(error=>{uiPromise=null;throw error;});
     try{await uiPromise;window.EstudiemosClassroomUI.open(options);}catch(_){window.EstudiemosAccount?.open();}finally{launching=false;}
   }
-  window.EstudiemosClasses=Object.freeze({snapshot,status:()=>({loading:Boolean(loading),failed:Boolean(lastError)}),events,refresh,act,detail:id=>request('',{},id),history:id=>request('',{},id,false,true),open,pendingLaunch:()=>launching});
+  window.EstudiemosClasses=Object.freeze({snapshot,status:()=>({loading:Boolean(loading),failed:Boolean(lastError)}),events,calendarVisible,setCalendarVisible,refresh,act,detail:id=>request('',{},id),history:id=>request('',{},id,false,true),open,pendingLaunch:()=>launching});
   if(!location.pathname.endsWith('/widget.html')&&!document.body.classList.contains('teacher-workspace')){
     const button=document.createElement('button');button.type='button';button.className='topbar__link topbar-icon-btn';button.dataset.classesOpen='';button.title='Materias y cátedras';button.setAttribute('aria-label','Abrir materias y cátedras');button.innerHTML=`<img src="${new URL('assets/icons/graduation-cap.svg',root)}" width="20" height="20" alt="">`;
     document.querySelector('.topbar__nav')?.append(button);button.addEventListener('click',()=>open());
@@ -89,6 +118,9 @@
   for(const name of ['estudiemos:account-change','estudiemos:account-ready'])window.addEventListener(name,changed);
   window.addEventListener('focus',()=>refresh());document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh();schedule();});
   window.addEventListener('storage',event=>{
+    if(owner&&owner===identity()&&(event.key===calendarKey(owner)||event.key===null)){
+      hiddenCalendar=readHiddenCalendar(owner);emit({calendarVisibility:true});
+    }
     if(event.key===rules.CACHE_KEY&&owner===identity())try{const cached=JSON.parse(event.newValue||'null');if(cached?.owner===owner&&cached.model){model=cached.model;lastRead=Date.now();emit();schedule();}}catch(_){}
   });
   (async()=>{if(!account())await new Promise(resolve=>window.addEventListener('estudiemos:account-ready',resolve,{once:true}));await account()?.whenReady();await changed();
