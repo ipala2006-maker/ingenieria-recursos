@@ -26,7 +26,7 @@ test('bundle marker skips only installation, never account consent or verificati
 test('Windows download includes app shortcuts, widgets and the hidden alarm service',()=>{
   const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
   const landing=read('instalar.html'),installer=read('windows-installer/Estudiemos-Windows.iss');
-  assert.match(landing,/data-install-pc href="https:\/\/estudiemos.estudiemos-services.workers.dev\/downloads\/Estudiemos-Para-Windows.exe" download/);
+  assert.match(landing,/data-install-pc href="https:\/\/estudiemos\.ar\/downloads\/Estudiemos-Para-Windows\.exe" download/);
   assert.match(read('scripts/install-app.js'),/rootUrl\('downloads\/Estudiemos-Para-Windows.exe'\)/);
   assert.doesNotMatch(read('scripts/install-page.js'),/prompt\.prompt\(/,'PC download must not fall back to PWA-only installation');
   assert.match(installer,/Name: "\{userdesktop\}\\Estudiemos"/);
@@ -110,7 +110,7 @@ test('widget selection stays in the app and installer downloads remain explicit'
   assert.match(install,/showWidgetSetup/);assert.match(install,/data-widget-installed/);
   const landing=fs.readFileSync(path.join(__dirname,'../instalar.html'),'utf8');
   assert.doesNotMatch(landing,/install-widget-choices|pcAlarmsTitle|pcWidgetsTitle/);
-  assert.match(landing,/data-install-pc href="https:\/\/estudiemos.estudiemos-services.workers.dev\/downloads\/Estudiemos-Para-Windows.exe"/);
+  assert.match(landing,/data-install-pc href="https:\/\/estudiemos\.ar\/downloads\/Estudiemos-Para-Windows\.exe"/);
   assert.match(landing,/id="pc-widgets"/,'old widget links still have a download destination');
 });
 test('alarm setup requires consent and authenticated receipt, not a download or test click',()=>{
