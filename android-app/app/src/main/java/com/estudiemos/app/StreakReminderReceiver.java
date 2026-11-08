@@ -131,9 +131,11 @@ public class StreakReminderReceiver extends BroadcastReceiver {
         ) return;
 
         StreakWidgetProvider.StreakSummary summary = StreakWidgetProvider.readSummary(context);
-        if (summary.activeToday) { clearWhenComplete(context); return; }
         SharedPreferences prefs = context.getSharedPreferences(StreakWidgetProvider.PREFS, Context.MODE_PRIVATE);
-        if (!prefs.getBoolean(StreakWidgetProvider.KEY_GOAL_CONFIGURED, false)) return;
+        if (summary.activeToday || !prefs.getBoolean(StreakWidgetProvider.KEY_GOAL_CONFIGURED, false)) {
+            clearIfInactive(context);
+            return;
+        }
         String today = LocalDate.now().toString();
         String noticeKey = today + "|" + (slotId == null ? "" : slotId);
         if (noticeKey.equals(prefs.getString(KEY_LAST_NOTICE, ""))) return;
@@ -178,8 +180,10 @@ public class StreakReminderReceiver extends BroadcastReceiver {
         prefs.edit().putString(KEY_LAST_NOTICE, noticeKey).apply();
     }
 
-    static void clearWhenComplete(Context context) {
-        if (!StreakWidgetProvider.readSummary(context).activeToday) return;
+    static void clearIfInactive(Context context) {
+        SharedPreferences prefs = context.getSharedPreferences(StreakWidgetProvider.PREFS, Context.MODE_PRIVATE);
+        if (prefs.getBoolean(StreakWidgetProvider.KEY_GOAL_CONFIGURED, false)
+                && !StreakWidgetProvider.readSummary(context).activeToday) return;
         NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         if (manager != null) manager.cancel(NOTIFICATION_ID);
     }

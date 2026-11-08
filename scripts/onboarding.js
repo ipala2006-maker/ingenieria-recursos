@@ -61,7 +61,7 @@
       {id:'pomodoro', title:'Tu tiempo de foco', text:'Ajustá el aro para elegir los minutos. Podés pausar o saltar al siguiente bloque o descanso.', target:'[data-home-space=focus] .study-focus__body', view:'overview'},
       {id:'session', title:'Una sesión a tu ritmo', text:'Elegí tiempos de estudio, pausas y cantidad de bloques. La alarma marca el cambio de etapa.', target:'.study-session-dialog .study-session__fields', view:'overview', preview:'session'}
     );
-    if (available('progress')) result.push({id:'progress', title:'Cada día cuenta', text:'Tu tiempo de estudio, día por día. La racha suma un día cuando alcanzás tu objetivo diario.', target:'[data-home-space=progress] .study-progress__numbers', view:'overview'});
+    if (available('progress')) result.push({id:'progress', title:'Cada día cuenta', text:'Tu tiempo de estudio, día por día. Podés sumar a tu racha sin fijar un objetivo diario.', target:'[data-home-space=progress] .study-progress__numbers', view:'overview'});
     result.push({id:'friends', title:'Estudiar, acompañados', text:'Invitá por usuario, correo o enlace. Tu racha es privada hasta que elijas compartirla.', target:'[data-friends-open]', view:'overview'});
     if (q('[data-classes-open]')) result.push({id:'classes',title:'Tu comisión, conectada',text:'Sumate con un enlace o código. Fechas y materiales compartidos, junto a tu agenda personal.',target:'[data-classes-open]',view:'overview'});
     if (window.EstudiemosRelease?.enabled('driveWorkspace') && available('workspace')) result.push({id:'drive', title:'Tus apuntes, en tu Drive', text:'Conectá Google Drive para tener tus carpetas a mano. La conexión y sus permisos los elegís vos.', target:'[data-home-space=workspace] .workspace-section__head', view:'space'});

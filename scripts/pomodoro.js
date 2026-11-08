@@ -65,9 +65,7 @@
   let streakReminderBusy = false;
   let streakReminderCleanupKey = '';
   const streakReminderNotices = new Set();
-  let goalPromptedFor = '';
   let goalReturnFocus = null;
-  let goalAutomatic = false;
   let goalUserId = window.EstudiemosAccount?.getUser()?.id || 'guest';
   let androidNotificationPermission = "unknown";
   let androidAlertPermission = "unknown";
@@ -103,7 +101,6 @@
   startStreakReminderChecks();
   openPomodoroFromUrl();
   if (state.running) requestWakeLock();
-  window.EstudiemosAccount?.whenReady().then(result => { if (!result.session || window.EstudiemosAccount.isSynchronized()) maybeAskStudyGoal(); });
 
   // All home controls share the existing timer, persistence and native sync.
   window.EstudiemosStudy = Object.freeze({ snapshot: homeSnapshot, history: studyHistory, toggle: toggleTimer, skip: skipPhase, configure: applyConfigValue, seek: setRemaining, alarm: configureAlarm, previewAlarm });
@@ -250,14 +247,14 @@
             <small>Racha actual</small>
             <strong data-streak-current>0 días</strong>
           </span>
-          <span class="streak-menu__progress" data-streak-progress>0/25 min hoy</span>
+          <span class="streak-menu__progress" data-streak-progress>0 min hoy</span>
         </div>
         <div class="streak-time-summary" aria-label="Tiempo de estudio acumulado">
           <span><small>Hoy</small><strong data-streak-time-today>0 min</strong></span>
           <span><small>Semana</small><strong data-streak-time-week>0 min</strong></span>
         </div>
-        <p class="streak-menu__message" data-streak-detail>Completá 25 min para iniciar tu racha.</p>
-        <button type="button" class="streak-goal-edit" data-streak-goal-open title="Cambiar objetivo diario">${icon('settings')}<span data-streak-goal-label>Objetivo diario: 25 min</span></button>
+        <p class="streak-menu__message" data-streak-detail>Tu primera sesión suma a tu racha.</p>
+        <button type="button" class="streak-goal-edit" data-streak-goal-open title="Configurar objetivo diario">${icon('settings')}<span data-streak-goal-label>Objetivo diario: desactivado</span></button>
 
         <section class="streak-chart" aria-label="Tiempo de estudio">
           <header class="streak-chart__head">
@@ -295,57 +292,56 @@
 
   function addGoalDialog() {
     const style = document.createElement('link');
-    style.rel = 'stylesheet'; style.href = new URL('../styles/study-goal.css?v=20261010', SCRIPT_URL);
+    style.rel = 'stylesheet'; style.href = new URL('../styles/study-goal.css?v=optional-goal', SCRIPT_URL);
     document.head.appendChild(style);
     const dialog = document.createElement('dialog');
     dialog.className = 'study-goal-dialog'; dialog.dataset.studyGoalDialog = '';
     dialog.setAttribute('aria-labelledby', 'studyGoalTitle');
     dialog.innerHTML = `<form data-study-goal-form>
       <header><h2 id="studyGoalTitle">Tu objetivo diario</h2><button type="button" data-study-goal-close aria-label="Cerrar objetivo diario">${icon('close')}</button></header>
-      <label for="studyGoalMinutes">¿Cuántos minutos querés estudiar por día?</label>
-      <div class="study-goal-value"><input id="studyGoalMinutes" name="minutes" type="number" min="1" max="720" step="1" required inputmode="numeric"><span>min</span></div>
-      <div class="study-goal-presets" role="group" aria-label="Objetivos diarios"><button type="button" data-study-goal-preset="15">15 min</button><button type="button" data-study-goal-preset="25">25 min</button><button type="button" data-study-goal-preset="45">45 min</button><button type="button" data-study-goal-preset="60">1 h</button></div>
-      <p>Tu día de racha se suma al completar este tiempo.</p>
-      <button type="submit" class="study-goal-save">Guardar objetivo</button>
+      <label class="study-goal-toggle">Activar objetivo diario<input type="checkbox" role="switch" name="enabled" aria-controls="studyGoalSettings"></label>
+      <fieldset id="studyGoalSettings" class="study-goal-settings" aria-label="Tiempo de estudio diario" hidden disabled>
+        <label for="studyGoalMinutes">Minutos de estudio por día</label>
+        <div class="study-goal-value"><input id="studyGoalMinutes" name="minutes" type="number" min="1" max="720" step="1" required inputmode="numeric"><span>min</span></div>
+        <div class="study-goal-presets" role="group" aria-label="Objetivos diarios"><button type="button" data-study-goal-preset="15">15 min</button><button type="button" data-study-goal-preset="25">25 min</button><button type="button" data-study-goal-preset="45">45 min</button><button type="button" data-study-goal-preset="60">1 h</button></div>
+        <p>Tu día de racha se suma al completar este tiempo.</p>
+      </fieldset>
+      <button type="submit" class="study-goal-save">Guardar</button>
     </form>`;
     document.body.appendChild(dialog);
     dialog.querySelector('form').addEventListener('submit', event => {
       event.preventDefault();
-      const input = event.currentTarget.elements.minutes;
-      const minutes = Number(input.value);
-      if (!goals.validMinutes(minutes)) { input.reportValidity(); return; }
       streakState = loadStreakState();
-      goals.set(streakState, minutes, dateKey(0));
-      saveStreakState(); renderStreak(); renderTimerOnly(); dialog.close();
+      const { enabled, minutes } = event.currentTarget.elements;
+      const current = goals.read(streakState);
+      const value = enabled.checked ? Number(minutes.value) : current.minutes;
+      if (enabled.checked && !goals.validMinutes(value)) { minutes.reportValidity(); return; }
+      if (enabled.checked !== current.configured || value !== current.minutes) {
+        goals.set(streakState, value, dateKey(0), Date.now(), enabled.checked);
+        saveStreakState(); renderStreak(); renderTimerOnly();
+      }
+      dialog.close();
     });
     dialog.addEventListener('close', () => goalReturnFocus?.isConnected && goalReturnFocus.focus({preventScroll:true}));
     dialog.addEventListener('input', () => {
-      const value = dialog.querySelector('input').value;
+      const { enabled, minutes } = dialog.querySelector('form').elements;
+      const settings = dialog.querySelector('fieldset');
+      settings.hidden = settings.disabled = !enabled.checked;
+      const value = minutes.value;
       dialog.querySelectorAll('[data-study-goal-preset]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.studyGoalPreset === value)));
     });
   }
 
-  function openStudyGoal(automatic = false) {
+  function openStudyGoal() {
     const dialog = document.querySelector('[data-study-goal-dialog]');
     if (!dialog || dialog.open) return;
     goalReturnFocus = document.activeElement;
-    goalAutomatic = automatic;
-    dialog.querySelector('input').value = goals.read(streakState).minutes;
+    const goal = goals.read(loadStreakState());
+    const { enabled, minutes } = dialog.querySelector('form').elements;
+    enabled.checked = goal.configured;
+    minutes.value = goal.minutes;
     dialog.dispatchEvent(new Event('input'));
     dialog.showModal();
-  }
-
-  function maybeAskStudyGoal() {
-    if (window.EstudiemosOnboarding?.pending()) return;
-    if (window.EstudiemosClasses?.pendingLaunch?.()) return;
-    if (document.querySelector('dialog[open]') || ['clase','materia'].some(key=>new URLSearchParams(location.hash.slice(1)).has(key)) || ['clase','materia','materias','uploadClass'].some(key=>new URLSearchParams(location.search || '').has(key))) return;
-    try { if (JSON.parse(sessionStorage.getItem('estudiemos_class_invite_v1') || 'null')?.expires > Date.now()) return; } catch (_) {}
-    if (!document.body.classList.contains('workspace-home') || document.body.classList.contains('drive-library-page') || document.documentElement.classList.contains('rainmeter-widget')) return;
-    streakState = loadStreakState();
-    const identity = window.EstudiemosAccount?.getUser()?.id || 'guest';
-    if (goals.read(streakState).configured || goalPromptedFor === identity) return;
-    goalPromptedFor = identity;
-    openStudyGoal(true);
   }
 
   function addMenu() {
@@ -396,9 +392,9 @@
           <span class="pomodoro-streak__icon" aria-hidden="true">${icon("streak")}</span>
           <span class="pomodoro-streak__copy">
             <strong data-pomodoro-streak>Racha: 0 días</strong>
-            <small data-pomodoro-streak-message>Completá 25 min para iniciar tu racha.</small>
+            <small data-pomodoro-streak-message>Tu primera sesión suma a tu racha.</small>
           </span>
-          <span class="pomodoro-streak__today" data-pomodoro-streak-today>0/25 min</span>
+          <span class="pomodoro-streak__today" data-pomodoro-streak-today>0 min</span>
         </div>
 
         <button class="pomodoro-settings-toggle" type="button" data-pomodoro-config-toggle aria-expanded="false">
@@ -494,6 +490,7 @@
       selectStreakChartPoint(event.key === "Home" ? 0 : event.key === "End" ? streakChartValues.length - 1 : streakChartSelected + movement);
     });
     document.addEventListener("keydown", (event) => {
+      if (document.querySelector('[data-study-goal-dialog][open]')) return;
       if (event.key === "Escape" && isOpen()) closeMenu();
       if (event.key === "Escape" && isStreakOpen()) closeStreakMenu();
     });
@@ -520,8 +517,11 @@
         } else adoptTimerState();
         return;
       }
-      if (event.key === STREAK_STORAGE_KEY) streakState = loadStreakState();
-      clearCompletedStreakReminders();
+      if (event.key === STREAK_STORAGE_KEY) {
+        streakState = loadStreakState();
+        syncStreakWithAndroid();
+      }
+      clearInactiveStreakReminders();
       reconcileTimer(false);
       render();
       startTickerIfNeeded();
@@ -558,15 +558,11 @@
     window.addEventListener("estudiemos:cloud-restored", () => {
       streakState = loadStreakState();
       receiveSharedTimer();
-      clearCompletedStreakReminders();
-      if (goalAutomatic && goals.read(streakState).configured) document.querySelector('[data-study-goal-dialog]')?.close();
+      clearInactiveStreakReminders();
       render();
       syncStreakWithAndroid();
     });
-    window.addEventListener('estudiemos:account-ready', event => { if (!event.detail?.user) maybeAskStudyGoal(); });
-    window.addEventListener('estudiemos:onboarding-finished', event => { if (event.detail?.status !== 'interrupted') maybeAskStudyGoal(); });
-    window.addEventListener('estudiemos:classes-closed', maybeAskStudyGoal);
-    window.addEventListener('estudiemos:account-synced', () => {receiveSharedTimer();publishSharedTimer();maybeAskStudyGoal();});
+    window.addEventListener('estudiemos:account-synced', () => {receiveSharedTimer();publishSharedTimer();});
     window.addEventListener('estudiemos:account-change', event => {
       const identity = event.detail?.user?.id || 'guest';
       if (identity === goalUserId) return;
@@ -574,7 +570,6 @@
       streakReminderCleanupKey = '';
       clearStreakReminders();
       document.querySelector('[data-study-goal-dialog]')?.close();
-      goalPromptedFor = '';
     });
     document.addEventListener("visibilitychange", () => {
       if (videoPip) syncVideoPipPlayback();
@@ -627,6 +622,7 @@
       const input = document.getElementById('studyGoalMinutes'); input.value = preset.dataset.studyGoalPreset;
       input.dispatchEvent(new Event('input', {bubbles:true})); return;
     }
+    if (event.target.closest('[data-study-goal-dialog]')) return;
     const openButton = event.target.closest("[data-pomodoro-open]");
     const streakOpenButton = event.target.closest("[data-streak-open]");
     const notificationAlertButton = event.target.closest("[data-streak-notification-enable]");
@@ -2213,7 +2209,7 @@
       }));
     } catch (error) {}
     syncStreakWithAndroid();
-    clearCompletedStreakReminders();
+    clearInactiveStreakReminders();
   }
 
   function recordStudyPresence(minutes) {
@@ -2267,12 +2263,14 @@
     const panel = document.querySelector("[data-pomodoro-streak-panel]");
     const dayLabel = summary.currentStreak === 1 ? "día" : "días";
     if (streak) streak.textContent = `Racha: ${summary.currentStreak} ${dayLabel}`;
-    if (today) today.textContent = summary.todayActive
-      ? "Presencia registrada"
-      : `${Math.min(summary.goalMinutes, summary.todayMinutes)}/${summary.goalMinutes} min`;
+    if (today) today.textContent = summary.todayActive ? "Presencia registrada" : summary.goalConfigured
+      ? `${summary.todayMinutes}/${summary.goalMinutes} min`
+      : formatStudyDuration(summary.todayMinutes);
     if (message) {
       if (summary.todayActive) {
         message.textContent = `Últimos 7 días: ${summary.activeLast7} activos.`;
+      } else if (!summary.goalConfigured) {
+        message.textContent = "Tu primera sesión de hoy suma a tu racha.";
       } else if (summary.currentStreak > 0) {
         message.textContent = `Te faltan ${Math.max(0, summary.goalMinutes - summary.todayMinutes)} min para tu objetivo · Últimos 7 días: ${summary.activeLast7} activos.`;
       } else if (summary.activeLast7 > 0) {
@@ -2307,11 +2305,11 @@
     const grid = document.querySelector("[data-streak-calendar]");
     const dayLabel = summary.currentStreak === 1 ? "día" : "días";
     if (current) current.textContent = `${summary.currentStreak} ${dayLabel}`;
-    if (progress) progress.textContent = summary.todayActive
-      ? "Presencia registrada"
-      : `${Math.min(summary.goalMinutes, summary.todayMinutes)}/${summary.goalMinutes} min hoy`;
+    if (progress) progress.textContent = summary.todayActive ? "Presencia registrada" : summary.goalConfigured
+      ? `${summary.todayMinutes}/${summary.goalMinutes} min hoy`
+      : `${formatStudyDuration(summary.todayMinutes)} hoy`;
     const goalLabel = document.querySelector('[data-streak-goal-label]');
-    if (goalLabel) goalLabel.textContent = `Objetivo diario: ${summary.goalMinutes} min`;
+    if (goalLabel) goalLabel.textContent = summary.goalConfigured ? `Objetivo diario: ${summary.goalMinutes} min` : "Objetivo diario: desactivado";
     if (week) week.textContent = `${summary.activeLast7} activos`;
     const weekMinutes = Array.from({ length: 7 }, (_, offset) => {
       const date = new Date();
@@ -2324,7 +2322,9 @@
     if (detail) {
       detail.textContent = summary.todayActive
         ? "La presencia de hoy ya está completa."
-        : summary.currentStreak > 0
+        : !summary.goalConfigured
+          ? "Tu primera sesión de hoy suma a tu racha."
+          : summary.currentStreak > 0
           ? `Te faltan ${Math.max(0, summary.goalMinutes - summary.todayMinutes)} min para completar tu objetivo.`
           : summary.activeLast7 > 0
             ? "Perdiste la racha, pero podés recuperar el ritmo con una sesión hoy."
@@ -2504,10 +2504,10 @@
     } catch (_) {}
   }
 
-  function clearCompletedStreakReminders() {
+  function clearInactiveStreakReminders() {
     const summary = streakSummary();
     const key = `${goalUserId}:${summary.today}`;
-    if (!summary.todayActive) { streakReminderCleanupKey = ''; return; }
+    if (summary.goalConfigured && !summary.todayActive) { streakReminderCleanupKey = ''; return; }
     if (streakReminderCleanupKey === key) return;
     streakReminderCleanupKey = key;
     clearStreakReminders();
@@ -2527,7 +2527,7 @@
 
   async function checkStreakReminder() {
     if (window.EstudiemosAndroid || streakReminderBusy) return;
-    if (streakSummary().todayActive) { await clearStreakReminders(); return; }
+    if (!goals.read(streakState).configured || streakSummary().todayActive) { clearInactiveStreakReminders(); return; }
     if (!("Notification" in window) || Notification.permission !== "granted") return;
     const account = window.EstudiemosAccount;
     if (!account) return;

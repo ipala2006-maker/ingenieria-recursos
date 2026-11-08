@@ -18,7 +18,7 @@ const types={'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg
   let browser;
   try{
     const live=process.env.TEST_BASE_URL;
-    if(live)assert.equal(new URL(live).origin,'https://estudiemos-app.vercel.app');
+    if(live)assert.equal(new URL(live).origin,'https://estudiemos.ar');
     else await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
     const base=live||'http://127.0.0.1:'+server.address().port;
     const engine=process.env.TEST_WEBKIT==='1'?'webkit':'chrome';
@@ -33,6 +33,7 @@ const types={'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg
         return route.continue();
       });
       await context.addInitScript(()=>{
+        localStorage.setItem('estudiemos_onboarding_v1',JSON.stringify({version:1,status:'completed'}));
         window.studyNotices=[];window.closedStudyNotices=[];
         const registration={scope:location.origin+'/',getNotifications:async()=>window.studyNotices.filter(n=>!n.closed),showNotification:async(title,options)=>{
           window.studyNotices.push({title,...options,close(){this.closed=true;window.closedStudyNotices.push(this.tag);}});
@@ -45,9 +46,18 @@ const types={'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg
       await page.clock.install({time:new Date('2026-10-14T22:29:45Z')});
       await page.goto(base+'/?version='+(process.env.RELEASE_VERSION||'daily-goal'));
       const dialog=page.locator('[data-study-goal-dialog]');
+      await page.locator('[data-streak-open]').waitFor({state:'attached'});
+      assert.equal(await dialog.isVisible(),false,'no daily goal is required on first use');
+      await page.locator('[data-streak-open]').click();
+      await page.locator('[data-streak-goal-open]').click();
       await dialog.waitFor({state:'visible'});
+      const toggle=dialog.getByRole('switch',{name:'Activar objetivo diario'});
+      const minutes=dialog.getByRole('spinbutton');
+      assert.equal(await toggle.isChecked(),false);
+      assert.equal(await minutes.isVisible(),false);
+      await toggle.check();
       await dialog.locator('[data-study-goal-preset="15"]').click();
-      assert.equal(await dialog.locator('input').inputValue(),'15');
+      assert.equal(await minutes.inputValue(),'15');
       assert.equal(await dialog.locator('[data-study-goal-preset="15"]').getAttribute('aria-pressed'),'true');
       await page.screenshot({path:path.join(output,`${engine}-${width}-goal.png`)});
       await dialog.locator('[type=submit]').click();
@@ -57,6 +67,15 @@ const types={'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg
       assert.match(await page.evaluate(()=>window.studyNotices[0].body),/15 min/,'pending goals still get reminders');
       assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('estudiemos_pomodoro_streak')).goal.minutes),15);
       assert.match(await page.locator('[data-home-presence]').innerText(),/15 min/);
+      await page.locator('[data-streak-goal-open]').click();
+      await toggle.uncheck();
+      await dialog.locator('[type=submit]').click();
+      await page.waitForFunction(()=>window.closedStudyNotices.length===1);
+      assert.equal(await page.evaluate(()=>window.EstudiemosStudy.snapshot().todayActive),false,'turning the goal off does not grant a day without study');
+      await page.locator('[data-streak-goal-open]').click();
+      await toggle.check();
+      assert.equal(await minutes.inputValue(),'15');
+      await dialog.locator('[type=submit]').click();
       await page.reload();await page.waitForFunction(()=>Boolean(window.EstudiemosStudy&&window.EstudiemosAccount));
       await page.locator('[data-home-presence]').filter({hasText:'15 min'}).waitFor({state:'attached'});
       assert.equal(await dialog.isVisible(),false,'saved objective is not asked again');
@@ -64,7 +83,7 @@ const types={'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg
       await page.locator('[data-streak-goal-open]').click();
       await page.evaluate(()=>window.dispatchEvent(new CustomEvent('estudiemos:cloud-restored')));
       assert.equal(await dialog.isVisible(),true,'background progress sync does not interrupt manual edits');
-      await dialog.locator('input').fill('45');await dialog.locator('[type=submit]').click();
+      await minutes.fill('45');await dialog.locator('[type=submit]').click();
       assert.match(await page.locator('[data-streak-goal-label]').textContent(),/45/);
       await page.evaluate(()=>{
         for(const tag of ['estudiemos-streak-2026-10-14-19:30','estudiemos-pomodoro','estudiemos-inbox-pilot'])window.studyNotices.push({tag,close(){this.closed=true;window.closedStudyNotices.push(this.tag);}});
@@ -81,12 +100,26 @@ const types={'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg
       assert.equal(await page.evaluate(()=>window.studyNotices.filter(n=>!n.closed).length),2,'only Inbox and Pomodoro notifications remain');
       await page.clock.fastForward(150*60000);
       assert.equal(await page.evaluate(()=>window.studyNotices.length),3,'the 22:00 reminder is suppressed after reaching the goal');
+      await page.locator('[data-streak-goal-open]').click();
+      await minutes.fill('');
+      await toggle.uncheck();
+      await dialog.locator('[type=submit]').click();
+      await dialog.waitFor({state:'hidden'});
+      assert.match(await page.locator('[data-streak-goal-label]').textContent(),/desactivado/);
+      assert.equal(await page.evaluate(()=>window.EstudiemosStudy.snapshot().currentStreak),1);
+      await page.reload();
+      await page.locator('[data-streak-open]').click();
+      await page.locator('[data-streak-goal-open]').click();
+      assert.equal(await toggle.isChecked(),false,'opt-out survives reload');
+      await toggle.check();
+      assert.equal(await minutes.inputValue(),'45','previous setting is remembered');
+      await dialog.locator('[data-study-goal-close]').click();
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'no horizontal overflow');
       await page.goto(base+'/widget.html?view=streak');
       await page.locator('.widget-streak').waitFor({state:'visible'});
       assert.match(await page.locator('.widget-streak').innerText(),/45 min/);
       assert.deepEqual(errors,[],`${engine} ${width}: no page errors`);
-      console.log(`PASS ${engine} ${width}: onboarding, persistence, edit, completion, reminder suppression/cleanup, widget`);
+      console.log(`PASS ${engine} ${width}: optional goal, persistence, edit, completion, reminder suppression, widget`);
       await context.close();
     }
   }finally{if(browser)await browser.close();await new Promise(resolve=>server.close(resolve));}

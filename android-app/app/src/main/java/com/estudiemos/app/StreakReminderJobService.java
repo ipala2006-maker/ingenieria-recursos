@@ -13,7 +13,7 @@ public class StreakReminderJobService extends JobService {
         String day = params.getExtras().getString("day", "");
         if (!StreakReminderReceiver.currentSlot(slot, day) || !StreakReminderReceiver.isEnabled(this)) return false;
         if (StreakWidgetProvider.readSummary(this).activeToday) {
-            StreakReminderReceiver.clearWhenComplete(this);
+            StreakReminderReceiver.clearIfInactive(this);
             return false;
         }
         WidgetSyncManager.refreshStudyGoal(this, () -> {

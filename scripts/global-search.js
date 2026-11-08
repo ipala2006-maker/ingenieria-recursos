@@ -24,7 +24,7 @@
   }
   if (!window.EstudiemosStudyGoal) {
     const goals = document.createElement('script');
-    goals.src = rootPath + 'shared/study-goal.js?v=20261010-daily-goal';
+    goals.src = rootPath + 'shared/study-goal.js?v=optional-goal';
     goals.onload = initialize;
     document.head.appendChild(goals);
     return;
@@ -359,7 +359,7 @@
     if (document.querySelector('script[src*="scripts/pomodoro.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/pomodoro.js?v=20261108-pwa-health`;
+    script.src = `${rootPath}scripts/pomodoro.js?v=optional-goal`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -428,7 +428,7 @@
     if (document.querySelector('script[src*="scripts/desktop-widgets.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/desktop-widgets.js?v=20261107-jakarta`;
+    script.src = `${rootPath}scripts/desktop-widgets.js?v=optional-goal`;
     script.async = false;
     document.head.appendChild(script);
   }
