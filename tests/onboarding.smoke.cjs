@@ -68,13 +68,12 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
       }
       assert.ok(visited.includes('done'),visited.join(','));
       for(const step of ['note','alarms','calendar','program','friends','layout','account',...(width===1440?['pomodoro','session','progress','drive']:[])])assert.ok(visited.includes(step),step+': '+visited.join(','));
-      await layer.waitFor({state:'hidden'});await page.locator('[data-study-goal-dialog]').waitFor({state:'visible'});
+      await layer.waitFor({state:'hidden'});await page.locator('[data-study-goal-dialog]').waitFor({state:'hidden'});
       const after=await page.evaluate(()=>({history:history.length,agenda:localStorage.getItem('bandeja_agenda'),schedules:localStorage.getItem('bandeja_horarios'),layout:localStorage.getItem('estudiemos_home_layout_local'),config:EstudiemosStudy.snapshot().config}));
       assert.deepEqual(after,before,'The tour must not change tasks, schedules, configuration, layout or history length');
       assert.equal(await page.evaluate(()=>EstudiemosStudy.snapshot().running),false);assert.equal(await page.evaluate(()=>window.__permissionRequests),0);assert.equal(await page.evaluate(()=>window.__tourInputFocus),0,'Do not summon a phone keyboard during previews');assert.deepEqual(dialogs,[]);
       assert.equal(await page.evaluate(()=>window.__uncoveredTourFrames),0,'Native preview changes must not flash an uncovered app frame');
       assert.equal(await page.evaluate(()=>JSON.parse(localStorage.estudiemos_onboarding_v1).status),'completed');
-      await page.locator('[data-study-goal-close]').click();
       await page.reload();await page.waitForFunction(()=>window.EstudiemosOnboarding&&window.EstudiemosStudy);
       assert.equal(await layer.count(),0,'No repeat on next launch');
       if(await page.locator('[data-study-goal-dialog]').isVisible())await page.locator('[data-study-goal-close]').click();
@@ -110,7 +109,7 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
     await extra.close();
     const failed=await browser.newContext({serviceWorkers:'block'});await failed.route('**/*',route=>{const url=new URL(route.request().url());if(url.origin!==base||url.pathname.includes('/vendor/driver/'))return route.abort();if(url.pathname.startsWith('/api/'))return route.fulfill({json:{enabled:false}});return route.continue();});
     const failedPage=await failed.newPage();lastPage=failedPage;await failedPage.goto(base);await failedPage.waitForFunction(()=>window.EstudiemosStudy&&window.EstudiemosOnboarding&&!EstudiemosOnboarding.pending());
-    assert.equal(await failedPage.locator('.onboarding-layer').count(),0);await failedPage.locator('[data-study-goal-dialog]').waitFor({state:'visible'});await failed.close();
+    assert.equal(await failedPage.locator('.onboarding-layer').count(),0);await failedPage.locator('[data-study-goal-dialog]').waitFor({state:'hidden'});await failed.close();
     const interrupted=await browser.newContext({serviceWorkers:'block'});await interrupted.route('**/*',route=>{const url=new URL(route.request().url());if(url.origin!==base)return route.abort();if(url.pathname.startsWith('/api/'))return route.fulfill({json:{enabled:false}});return route.continue();});
     const alarmPage=await interrupted.newPage();lastPage=alarmPage;await alarmPage.goto(base);await alarmPage.locator('.onboarding-layer').waitFor({state:'visible'});await alarmPage.waitForTimeout(450);
     await alarmPage.evaluate(()=>{const dialog=document.createElement('dialog');dialog.className='inbox-alarm-notice';document.body.append(dialog);dialog.showModal();});

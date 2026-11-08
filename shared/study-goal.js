@@ -4,13 +4,14 @@
   else root.EstudiemosStudyGoal = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   const DEFAULT_MINUTES = 25, MAX_MINUTES = 720;
+  const NO_GOAL_THRESHOLD = 1;
   const validMinutes = value => Number.isSafeInteger(value) && value >= 1 && value <= MAX_MINUTES;
   const dateKey = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   const validDate = value => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(new Date(value + 'T12:00:00').getTime()) && dateKey(new Date(value + 'T12:00:00')) === value;
   function read(state) {
     const goal = state?.goal;
     return validMinutes(goal?.minutes) && Number.isSafeInteger(goal.updatedAt) && goal.updatedAt > 0
-      ? { minutes: goal.minutes, updatedAt: goal.updatedAt, configured: true }
+      ? { minutes: goal.minutes, updatedAt: goal.updatedAt, configured: goal.enabled !== false, ...(goal.enabled === false ? { enabled: false } : {}) }
       : { minutes: DEFAULT_MINUTES, updatedAt: 0, configured: false };
   }
   function history(state) {
@@ -21,18 +22,21 @@
     return result;
   }
   function forDay(state, date, today = dateKey(new Date())) {
-    if (date === today) return read(state).minutes;
+    if (date === today) {
+      const goal = read(state);
+      return goal.configured ? goal.minutes : NO_GOAL_THRESHOLD;
+    }
     return validMinutes(state?.dailyGoals?.[date]?.minutes) ? state.dailyGoals[date].minutes : DEFAULT_MINUTES;
   }
   function recordDay(state, date) {
     if (!validDate(date)) return;
     const goal = read(state);
     state.dailyGoals ||= {};
-    state.dailyGoals[date] = { minutes: goal.minutes, updatedAt: goal.updatedAt };
+    state.dailyGoals[date] = { minutes: goal.configured ? goal.minutes : NO_GOAL_THRESHOLD, updatedAt: goal.updatedAt };
   }
-  function set(state, minutes, today = dateKey(new Date()), now = Date.now()) {
+  function set(state, minutes, today = dateKey(new Date()), now = Date.now(), enabled = true) {
     if (!validMinutes(minutes) || !validDate(today) || !Number.isSafeInteger(now) || now <= 0 || read(state).updatedAt === Number.MAX_SAFE_INTEGER) throw new Error('Invalid study goal');
-    state.goal = { minutes, updatedAt: Math.max(Math.trunc(now), read(state).updatedAt + 1) };
+    state.goal = { minutes, updatedAt: Math.max(now, read(state).updatedAt + 1), ...(!enabled ? { enabled: false } : {}) };
     recordDay(state, today);
     return state.goal;
   }
@@ -49,7 +53,8 @@
       const date = new Date(today + 'T12:00:00'); date.setDate(date.getDate() - offset);
       if (active(state, dateKey(date), today)) activeLast7++;
     }
-    return { today, todayMinutes, todayActive, currentStreak, activeLast7, goalMinutes: read(state).minutes };
+    const goal = read(state);
+    return { today, todayMinutes, todayActive, currentStreak, activeLast7, goalMinutes: goal.minutes, goalConfigured: goal.configured };
   }
   function merge(left, right) {
     const a = read(left), b = read(right), winner = a.updatedAt > b.updatedAt ? a : b;
@@ -57,7 +62,8 @@
     for (const [date, value] of Object.entries(history(left))) {
       if (!dailyGoals[date] || value.updatedAt > dailyGoals[date].updatedAt) dailyGoals[date] = value;
     }
-    return { goal: { minutes: winner.minutes, updatedAt: winner.updatedAt }, dailyGoals };
+    const { configured, ...goal } = winner;
+    return { goal, dailyGoals };
   }
   return Object.freeze({ DEFAULT_MINUTES, MAX_MINUTES, validMinutes, dateKey, validDate, read, history, forDay, recordDay, set, active, summary, merge });
 });

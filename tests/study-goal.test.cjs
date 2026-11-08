@@ -7,6 +7,7 @@ const {spawnSync}=require('node:child_process');
 const vm=require('node:vm');
 const {PGlite}=require('@electric-sql/pglite');
 const goals=require('../shared/study-goal');
+const windowsSnapshot=require('../shared/windows-alarm-snapshot');
 const root=path.resolve(__dirname,'..');
 const today='2026-10-10';
 
@@ -31,6 +32,28 @@ test('changing goals retains earned history and merges independently from progre
   assert.equal(goals.merge(state,{}).goal.minutes,45);
 });
 
+test('without a goal, only recorded study counts and opting out wins over stale devices',()=>{
+  const state={days:{}}, clock=new Date(today+'T12:00:00');
+  assert.equal(goals.summary(state,clock).todayActive,false);
+  state.days[today]=1; goals.recordDay(state,today);
+  assert.equal(goals.summary(state,clock).currentStreak,1);
+  assert.equal(goals.active(state,today,'2026-10-11'),true);
+  goals.set(state,45,today,10);
+  const old=structuredClone(state);
+  assert.equal(goals.summary(state,clock).todayActive,false);
+  goals.set(state,45,today,10,false);
+  for(const merged of [goals.merge(state,old),goals.merge(old,state)]) {
+    assert.equal(goals.read(merged).configured,false);
+    assert.equal(goals.read(merged).minutes,45);
+    assert.equal(goals.active({...merged,days:state.days},today,'2026-10-11'),true);
+  }
+  assert.equal(goals.summary(state,clock).todayActive,true);
+  const snapshot=windowsSnapshot.create('00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000002',[],state,clock);
+  assert.equal(snapshot.study.configured,false);
+  goals.set(state,45,today,11);
+  assert.equal(goals.read(state).configured,true);
+});
+
 test('service-worker widget uses the same personal goal, not a fixed 25-minute rule',()=>{
   const context={URL,importScripts(){},EstudiemosStudyGoal:goals,self:{registration:{scope:'https://estudiemos-app.vercel.app/'},addEventListener(){}}};
   vm.runInNewContext(fs.readFileSync(path.join(root,'service-worker.js'),'utf8'),context);
@@ -38,6 +61,9 @@ test('service-worker widget uses the same personal goal, not a fixed 25-minute r
   assert.match(context.buildStreakWidgetData(state).todayProgress,/14\/15/);
   state.days[date]=15;
   assert.match(context.buildStreakWidgetData(state).todayProgress,/Completaste/);
+  assert.match(context.buildStreakWidgetData(state).streakDays,/^1 /);
+  state.goal.enabled=false;state.days[date]=1;
+  assert.match(context.buildStreakWidgetData(state).todayProgress,/1 min de estudio/);
   assert.match(context.buildStreakWidgetData(state).streakDays,/^1 /);
 });
 
@@ -47,6 +73,8 @@ test('SQL projection is owner-filtered, server-only, bounded and matches custom 
     await db.exec('create role anon;create role authenticated;create role service_role;create table user_states(user_id uuid primary key,state jsonb);');
     const sql=fs.readFileSync(path.join(root,'supabase/study-goals.sql'),'utf8');
     await db.exec(sql);await db.exec(sql);
+    const optional=fs.readFileSync(path.join(root,'supabase/study-goal-optional.sql'),'utf8');
+    await db.exec(optional);await db.exec(optional);
     const date=(await db.query("select (now() at time zone 'UTC')::date::text as day")).rows[0].day;
     const id='00000000-0000-4000-8000-000000000001',other='00000000-0000-4000-8000-000000000002';
     const state={days:{[date]:14},goal:{minutes:15,updatedAt:100}};
@@ -59,6 +87,7 @@ test('SQL projection is owner-filtered, server-only, bounded and matches custom 
     await assert.rejects(db.query('select * from user_states'),/permission denied/);
     await db.exec('reset role;set role authenticated');
     await assert.rejects(db.query('select get_windows_study_goal($1,$2)',[id,date]),/permission denied/);
+    await assert.rejects(db.query('select study_goal_for_day(null,$1,$1)',[date]),/permission denied/);
     await db.exec('reset role');
     state.days[date]=15;
     await db.query('update user_states set state=$2 where user_id=$1',[id,{values:{estudiemos_pomodoro_streak:state}}]);
@@ -66,6 +95,12 @@ test('SQL projection is owner-filtered, server-only, bounded and matches custom 
     state.goal.minutes='bad';
     await db.query('update user_states set state=$2 where user_id=$1',[id,{values:{estudiemos_pomodoro_streak:state}}]);
     assert.equal((await db.query('select get_windows_study_goal($1,$2) as data',[id,date])).rows[0].data.configured,false);
+    for(const goal of [undefined,{minutes:45,updatedAt:100,enabled:false},{minutes:45,updatedAt:100}]) {
+      const progress={days:{[date]:1},goal};
+      await db.query('update user_states set state=$2 where user_id=$1',[id,{values:{estudiemos_pomodoro_streak:progress}}]);
+      const ranking=(await db.query('select friend_streak($1,$2) as count',[id,'UTC'])).rows[0].count;
+      assert.equal(ranking,goals.summary(progress,new Date(date+'T12:00:00')).currentStreak);
+    }
   } finally {await db.close();}
 });
 

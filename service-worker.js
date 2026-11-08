@@ -1,4 +1,4 @@
-importScripts('./shared/study-goal.js?v=20261010-daily-goal');
+importScripts('./shared/study-goal.js?v=optional-goal');
 const WINDOWS_WIDGET_TAGS = ["estudiemos-inbox", "estudiemos-calendar", "estudiemos-streak"];
 const WINDOWS_WIDGET_STATE_URL = new URL("./widgets/runtime-state.json", self.registration.scope).href;
 const WINDOWS_WIDGET_CACHE = "estudiemos-windows-widget-data-v1";
@@ -199,7 +199,9 @@ function buildStreakWidgetData(streak) {
   const weekChart = weekMinutes.map((value) => bars[Math.min(bars.length - 1, Math.round((value / maximum) * (bars.length - 1)))]).join("  ");
   return {
     streakDays: `${current} ${current === 1 ? "día" : "días"}`,
-    todayProgress: summary.todayActive ? "Completaste tu objetivo de hoy." : `Hoy llevás ${todayMinutes}/${summary.goalMinutes} minutos.`,
+    todayProgress: summary.goalConfigured
+      ? (summary.todayActive ? "Completaste tu objetivo de hoy." : `Hoy llevás ${todayMinutes}/${summary.goalMinutes} minutos.`)
+      : `Hoy llevás ${todayMinutes} min de estudio.`,
     weekSummary: `Últimos 7 días: ${activeDays} ${activeDays === 1 ? "activo" : "activos"}.`,
     weekChart,
     weekHours: `${formatStudyTime(totalMinutes)} esta semana`

@@ -102,8 +102,9 @@ public class StreakWidgetProvider extends AppWidgetProvider {
         } catch (Exception ignored) {}
         JSONObject goal = history.optJSONObject("goal");
         int minutes = goal == null ? DEFAULT_THRESHOLD : goal.optInt("minutes", DEFAULT_THRESHOLD);
-        boolean configured = goal != null && goal.optLong("updatedAt", 0) > 0 && minutes >= 1 && minutes <= 720;
-        long goalUpdatedAt = configured ? goal.optLong("updatedAt", 0) : 0;
+        boolean hasPreference = goal != null && goal.optLong("updatedAt", 0) > 0 && minutes >= 1 && minutes <= 720;
+        long goalUpdatedAt = hasPreference ? goal.optLong("updatedAt", 0) : 0;
+        boolean configured = hasPreference && !Boolean.FALSE.equals(goal.opt("enabled"));
         if (prefs.getLong(KEY_GOAL_UPDATED_AT, 0) > goalUpdatedAt) {
             minutes = prefs.getInt(KEY_THRESHOLD, DEFAULT_THRESHOLD);
             configured = prefs.getBoolean(KEY_GOAL_CONFIGURED, false);
@@ -117,7 +118,7 @@ public class StreakWidgetProvider extends AppWidgetProvider {
                 .putLong(KEY_GOAL_UPDATED_AT, goalUpdatedAt)
                 .putString(KEY_DAILY_GOALS, dailyGoals == null ? "{}" : dailyGoals.toString()).apply();
         updateAll(context);
-        StreakReminderReceiver.clearWhenComplete(context);
+        StreakReminderReceiver.clearIfInactive(context);
     }
 
     private static int thresholdForDate(JSONObject goals, LocalDate date, LocalDate today, int current) {
@@ -129,7 +130,8 @@ public class StreakWidgetProvider extends AppWidgetProvider {
 
     static StreakSummary readSummary(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-        int threshold = Math.max(1, prefs.getInt(KEY_THRESHOLD, DEFAULT_THRESHOLD));
+        int threshold = prefs.getBoolean(KEY_GOAL_CONFIGURED, false)
+                ? Math.max(1, prefs.getInt(KEY_THRESHOLD, DEFAULT_THRESHOLD)) : 1;
         JSONObject days;
         JSONObject goals;
         try {

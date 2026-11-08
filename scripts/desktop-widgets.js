@@ -536,12 +536,12 @@
             <span><small>Semana</small><strong>${formatStudyTime(totalMinutes)}</strong></span>
           </div>
         </header>
-        <p>${todayMinutes >= streak.goalMinutes ? "Completaste tu objetivo de hoy." : `Hoy llevás ${todayMinutes}/${streak.goalMinutes} minutos.`}</p>
+        <p>${streak.goalConfigured ? (streak.todayActive ? "Completaste tu objetivo de hoy." : `Hoy llevás ${todayMinutes}/${streak.goalMinutes} minutos.`) : `Hoy · ${formatStudyTime(todayMinutes)}`}</p>
         <div class="streak-widget-chart" data-widget-progress="${escapeHtml(JSON.stringify(days))}" role="group" aria-label="Tiempo de estudio de los últimos siete días">
           ${days.map((day,index)=>`<button type="button" data-widget-study-day="${index}" aria-pressed="${index===6}" style="--bar:${Math.max(2,day.minutes/ceiling*100)}%" title="${formatShortDate(day.date)} · ${formatStudyTime(day.minutes)}" aria-label="${formatLongDate(day.date)}: ${formatStudyTime(day.minutes)}"><span>${day.label}</span></button>`).join('')}
         </div>
         <div class="widget-study-detail" data-widget-study-detail role="status">Hoy · ${formatStudyTime(todayMinutes)}</div>
-        <button class="streak-action" data-widget-open-pomodoro>${todayMinutes >= streak.goalMinutes ? "Abrir Pomodoro" : "Seguir estudiando"}</button>
+        <button class="streak-action" data-widget-open-pomodoro>${streak.goalConfigured && !streak.todayActive ? "Seguir estudiando" : "Abrir Pomodoro"}</button>
       </section>`;
   }
 
@@ -566,9 +566,9 @@
       const value = JSON.parse(localStorage.getItem(STREAK_KEY) || "{}");
       const days = value.days && typeof value.days === "object" ? value.days : {};
       const summary = window.EstudiemosStudyGoal.summary({ ...value, days });
-      return { ...value, current: summary.currentStreak, goalMinutes: summary.goalMinutes, days };
+      return { ...value, ...summary, current: summary.currentStreak, days };
     } catch (_) {
-      return { current: 0, days: {}, goalMinutes: 25 };
+      return { current: 0, days: {}, goalConfigured: false };
     }
   }
 
