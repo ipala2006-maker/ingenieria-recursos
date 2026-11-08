@@ -40,15 +40,26 @@ test('closed floating windows do not render or touch detached controls',()=>{
   t.context.renderPipTimer('55:00');assert.equal(t.updates(),0);assert.equal(t.writes(),0);
 });
 
-function floatingOpening(requestWindow) {
+function floatingOpening(requestWindow, origin='https://estudiemos.ar') {
   let built=0;
+  const opened=[];
   const context={pipWindow:null,pipOpening:false,pipDial:null,pipDialPreview:null,
-    supportsMobileFloating:()=>false,window:{documentPictureInPicture:{requestWindow}},
+    supportsMobileFloating:()=>false,window:{location:{origin},open:(...args)=>opened.push(args),documentPictureInPicture:{requestWindow}},
     prepareAudio:()=>{},buildFloatingTimer:()=>built++,closeMenu:()=>{},render:()=>{}};
   vm.createContext(context);
   vm.runInContext(source.slice(source.indexOf('  async function openFloatingTimer()'),source.indexOf('  function buildFloatingTimer(')),context);
-  return {context,built:()=>built};
+  return {context,built:()=>built,opened};
 }
+
+test('old production origins open the official timer without navigating or using their PiP window',async()=>{
+  for(const origin of ['https://estudiemos.estudiemos-services.workers.dev','https://estudiemos-app.vercel.app']){
+    let requested=false;
+    const t=floatingOpening(()=>{requested=true;},origin);
+    await t.context.openFloatingTimer();
+    assert.deepEqual(t.opened,[['https://estudiemos.ar/?pomodoro=1','_blank','noopener,noreferrer']]);
+    assert.equal(requested,false);
+  }
+});
 
 test('double-clicking popout opens one window and delayed pagehide cannot erase a new one',async()=>{
   let resolve,requests=0,callback;

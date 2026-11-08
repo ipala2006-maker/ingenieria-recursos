@@ -2,7 +2,7 @@
   if (window.EstudiemosTimetable || !window.EstudiemosTimetableRules) return;
   const rules = window.EstudiemosTimetableRules, AGENDA_KEY = 'bandeja_agenda';
   const style = document.createElement('link');
-  style.rel = 'stylesheet'; style.href = new URL('../styles/timetable.css?v=20261023-repeat', document.currentScript.src); document.head.appendChild(style);
+  style.rel = 'stylesheet'; style.href = new URL('../styles/timetable.css?v=20261107-compact-panels', document.currentScript.src); document.head.appendChild(style);
   const days = [[1,'Lun','Lunes'],[2,'Mar','Martes'],[3,'Mié','Miércoles'],[4,'Jue','Jueves'],[5,'Vie','Viernes'],[6,'Sáb','Sábado'],[0,'Dom','Domingo']];
   const colors = ['Azul','Turquesa','Violeta','Rosa','Amarillo'];
   let panel, form, status, owner = identity(), editingId = '', agendaId = '', active = false, draft = false;
@@ -26,10 +26,12 @@
       <p class="calendar-planner__status" data-timetable-repeat-summary aria-live="polite" hidden></p>
       <fieldset data-timetable-days hidden><legend>Días de la semana</legend><div class="timetable__days">${days.map(([day,label,name])=>`<label title="${name}"><input type="checkbox" name="day" value="${day}" aria-label="${name}"><span>${label}</span></label>`).join('')}</div></fieldset>
       <div data-timetable-period hidden><label class="calendar-planner__toggle"><input type="checkbox" name="limited">Hasta una fecha</label><label data-timetable-until hidden>Último día<input name="until" type="date"></label></div>
-      <label class="calendar-planner__toggle" data-timetable-all-day><input type="checkbox" name="allDay">Todo el día</label>
+      <div class="calendar-planner__row calendar-planner__basics">
+        <label data-timetable-type>Tipo<select name="type"><option value="Tarea">Actividad</option><option value="Clase">Clase</option><option value="Parcial">Examen</option><option value="Final">Final</option><option value="Entrega">Entrega</option><option value="Estudio">Estudio</option></select></label>
+        <label class="calendar-planner__toggle" data-timetable-all-day><input type="checkbox" name="allDay">Todo el día</label>
+      </div>
       <div class="calendar-planner__row" data-timetable-times><label>Hora de inicio<input name="start" type="time" required></label><label>Hora de fin<input name="end" type="time" required></label></div>
       <fieldset><legend>Color</legend><input type="hidden" name="color" value="blue"><div class="timetable__colors">${rules.COLORS.map((color,index)=>`<button type="button" data-timetable-color="${color}" class="timetable-color--${color}" aria-label="${colors[index]}" title="${colors[index]}" aria-pressed="${index===0}"><span></span></button>`).join('')}</div></fieldset>
-      <div class="calendar-planner__row" data-timetable-type><label>Tipo<select name="type"><option value="Tarea">Actividad</option><option value="Clase">Clase</option><option value="Parcial">Examen</option><option value="Final">Final</option><option value="Entrega">Entrega</option><option value="Estudio">Estudio</option></select></label></div>
       <details data-timetable-details><summary data-timetable-place-label>Detalle (opcional)</summary><label class="sr-only" for="calendarActivityDetail">Lugar o detalle</label><textarea id="calendarActivityDetail" name="place" maxlength="1200" rows="2" placeholder="Aula, lugar o un detalle"></textarea></details>
       <div class="sr-only" data-timetable-preview><strong></strong><span></span></div>
       <p class="calendar-planner__status" data-timetable-conflict></p>

@@ -4504,15 +4504,15 @@ html.theme-light .app-install-sheet__close{
 .account-shell::backdrop{background:transparent}
 body.account-open{overflow:hidden}
 .account-panel{
-  width:min(100%,430px);
+  width:min(100%,510px);
   min-height:0;
   max-height:min(680px,100%);
   overflow:auto;
   overscroll-behavior:contain;
   -webkit-overflow-scrolling:touch;
-  padding:22px;
+  padding:26px;
   border:1px solid rgba(255,255,255,.12);
-  border-radius:16px;
+  border-radius:8px;
   background:var(--panel);
   color:var(--text);
   box-shadow:0 26px 80px rgba(0,0,0,.42);
@@ -4608,8 +4608,24 @@ body.account-open{overflow:hidden}
   animation:account-spin .8s linear infinite;
 }
 @keyframes account-spin{to{transform:rotate(360deg)}}
-.account-profile{display:grid;gap:13px}
-.account-sync-usage{border-block:1px solid var(--border);padding-block:8px;min-width:0}
+.account-group{
+  display:grid;
+  gap:10px;
+  min-width:0;
+  padding:14px;
+  border:1px solid var(--border);
+  border-radius:8px;
+}
+.account-group h3{margin:0;font-size:14px;font-weight:650;line-height:1.35}
+.account-sync-actions,.account-preference-links{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px}
+.account-sync-actions .account-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;flex:1 1 auto;border-radius:7px;font-size:13px;font-weight:650}
+.account-sync-actions svg{width:17px;height:17px;fill:currentColor;flex:none}
+.account-sync-actions .account-link,.account-preference-links .account-link,.account-drive-link{
+  display:inline-flex;align-items:center;min-height:44px;padding:5px 7px;color:var(--muted);font-size:12px;font-weight:600;text-decoration:none;
+}
+.account-sync-actions .account-link:hover,.account-preference-links .account-link:hover,.account-drive-link:hover{color:var(--accent);background:var(--panel-2)}
+.account-drive-link{justify-self:start}
+.account-sync-usage{border-block:1px solid var(--border);min-width:0}
 .account-sync-usage summary{min-height:44px;align-content:center;cursor:pointer;font-size:13px;font-weight:650}
 .account-sync-usage dl{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 12px;margin:8px 0 14px;font-size:12px}
 .account-sync-usage dt{color:var(--muted);overflow-wrap:anywhere}
@@ -4620,13 +4636,10 @@ body.account-open{overflow:hidden}
   display:flex;
   align-items:center;
   gap:12px;
-  padding:13px;
-  border:1px solid rgba(255,255,255,.10);
-  border-radius:12px;
-  background:rgba(255,255,255,.035);
+  padding:2px 0 6px;
 }
 .account-identity>div{min-width:0;display:grid;gap:3px}
-.account-identity strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.account-identity strong{overflow-wrap:anywhere;font-size:14px}
 .account-identity span:not(.account-avatar){color:var(--muted);font-size:12px}
 .account-avatar{
   width:40px;
@@ -4639,16 +4652,6 @@ body.account-open{overflow:hidden}
   color:var(--accent);
 }
 .account-avatar svg{width:20px;height:20px;fill:currentColor}
-.account-benefits{display:grid;gap:7px;padding:2px 4px 6px}
-.account-benefits p{
-  margin:0;
-  display:flex;
-  align-items:center;
-  gap:8px;
-  color:var(--muted);
-  font-size:13px;
-}
-.account-benefits svg{width:16px;height:16px;flex:0 0 auto;fill:#34d399}
 .account-referrals{
   display:grid;
   gap:10px;
@@ -4700,9 +4703,7 @@ body.account-open{overflow:hidden}
 .account-whatsapp .account-secondary{min-height:34px;padding:6px 10px;font-size:12px}
 .account-whatsapp .account-link{grid-column:3;min-height:28px;padding:3px 6px;font-size:11px}
 .account-app-actions{
-  margin-top:16px;
-  padding-top:14px;
-  border-top:1px solid rgba(255,255,255,.08);
+  margin-top:12px;
 }
 .account-update{
   width:100%;
@@ -4712,7 +4713,7 @@ body.account-open{overflow:hidden}
   gap:12px;
   padding:10px 12px;
   border:1px solid rgba(255,255,255,.12);
-  border-radius:12px;
+  border-radius:7px;
   background:rgba(255,255,255,.035);
   color:var(--text);
   font:inherit;
@@ -4742,15 +4743,13 @@ body.account-open{overflow:hidden}
   gap:6px;
 }
 .account-android-widgets[hidden]{display:none}
-.account-android-widgets>strong{font-size:13px}
-.account-android-widgets>small{color:var(--muted);font-size:11px;line-height:1.35}
 .account-android-widgets>div{
   display:grid;
   grid-template-columns:repeat(3,minmax(0,1fr));
   gap:8px;
   margin-top:3px;
 }
-.account-android-widgets .account-secondary{min-height:36px;padding:7px 8px;font-size:12px}
+.account-android-widgets .account-secondary{min-height:44px;padding:6px 4px;border-radius:7px;font-size:12px;overflow-wrap:anywhere}
 .account-desktop-widgets .account-secondary:disabled{
   cursor:wait;
   opacity:.6;
@@ -4764,7 +4763,7 @@ body.account-open{overflow:hidden}
   margin-top:3px;
   padding:9px 11px;
   border:1px solid rgba(110,231,255,.22);
-  border-radius:11px;
+  border-radius:7px;
   background:rgba(110,231,255,.055);
   color:var(--text);
   font:inherit;
@@ -4785,6 +4784,7 @@ body.account-open{overflow:hidden}
   font-size:13px;
   line-height:1.4;
 }
+.account-status:empty{display:none}
 .account-status[data-type="error"]{color:#fca5a5}
 .account-status[data-type="success"]{color:#6ee7b7}
 .account-privacy{
@@ -4819,7 +4819,7 @@ html.theme-light .account-status[data-type="success"]{color:#137333}
     width:100%;
     max-height:100%;
     padding:18px;
-    border-radius:15px;
+    border-radius:8px;
   }
   .account-head{margin-bottom:14px}
   .account-referrals>header{align-items:center}

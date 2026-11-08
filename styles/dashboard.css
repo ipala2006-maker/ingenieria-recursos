@@ -252,9 +252,11 @@
 }
 
 .dashboard-calendar__views button.is-active{
-  background:color-mix(in srgb,var(--accent) 15%,var(--panel));
-  color:var(--text);
+  background:var(--accent);
+  color:#111b2a;
 }
+html.theme-light .dashboard-calendar__views button.is-active{color:#fff}
+.dashboard-calendar__views button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
 .dashboard-calendar[data-view="week"] .dashboard-calendar__grid{
   grid-template-columns:1fr;
@@ -959,14 +961,37 @@ html.theme-light .quick-panel--assistant{
 }
 
 .quick-panel:not(.quick-panel--assistant){
-  width:min(100%,400px);
+  box-sizing:border-box;
+  width:min(100%,460px);
   overflow-x:hidden;
   overflow-y:auto;
-  padding-bottom:max(18px,env(safe-area-inset-bottom));
+  padding:16px 18px max(16px,env(safe-area-inset-bottom));
 }
 
-.quick-panel__form--note{
-  gap:10px;
+[data-quick-panel=note] .quick-panel{display:flex;flex-direction:column;overflow:hidden}
+.quick-panel > .quick-panel__form--note[data-quick-note-form]{
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+  gap:4px;
+  container:quick-note / inline-size;
+}
+.quick-panel__note-fields{min-height:0;display:grid;gap:7px;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;padding:3px}
+[data-quick-panel=note] .quick-panel__head{flex:none;align-items:center;margin-bottom:6px}
+[data-quick-panel=note] .quick-panel__close{width:44px;height:44px;flex:none;border-radius:7px}
+.quick-panel__form--note .note-colors{margin:0}
+.quick-panel__form--note .note-colors legend{margin:0}
+.quick-panel__form--note .note-colors__options{gap:2px}
+.quick-panel__form--note .note-color-option{width:44px;height:44px}
+.quick-panel__form--note .quick-panel__submit{min-height:44px}
+.quick-panel__form--note [data-alarm-slot]:empty{display:none}
+.quick-panel__note-footer{flex:none;display:grid;grid-template-columns:minmax(0,1fr);gap:6px;padding-top:8px;border-top:1px solid var(--border)}
+.quick-panel__note-footer:has(.note-entry-next){grid-template-columns:minmax(0,1fr) 44px}
+.quick-panel__note-footer .quick-panel__status{grid-column:1/-1}
+.quick-panel__note-footer .quick-panel__submit{min-width:0;margin:0}
+@media(max-width:600px){
+  [data-quick-panel=note] .quick-panel{max-height:calc(100dvh - max(12px,env(safe-area-inset-top)));padding-inline:14px}
+  .quick-panel__form--note .quick-panel__field input{min-height:44px;font-size:16px}
 }
 
 @media(max-width:960px){

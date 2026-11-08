@@ -51,6 +51,9 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
       },selector);
       const pick=async date=>{
         await reader.locator('[data-dashboard-calendar-view=month]').click();
+        assert.equal(await reader.locator('[data-dashboard-calendar-view=month]').getAttribute('aria-pressed'),'true');
+        assert.equal(await reader.locator('[data-dashboard-calendar-view=week]').getAttribute('aria-pressed'),'false');
+        assert.notEqual(await reader.locator('[data-dashboard-calendar-view=month]').evaluate(el=>getComputedStyle(el).backgroundColor),await reader.locator('[data-dashboard-calendar-view=week]').evaluate(el=>getComputedStyle(el).backgroundColor));
         const day='[data-dashboard-date="'+date+'"]';
         await expectSemibold('[data-calendar-reader] '+day+' .dashboard-calendar__number');
         await reader.locator(day).click();

@@ -171,20 +171,26 @@
           </form>
         </div>
 
-        <div class="account-profile" data-account-profile hidden>
+        <section class="account-profile account-group" data-account-profile aria-labelledby="accountSyncHeading" hidden>
+          <h3 id="accountSyncHeading">Cuenta y sincronización</h3>
           <div class="account-identity">
             <span class="account-avatar" aria-hidden="true">${userIcon()}</span>
             <div>
               <strong data-account-email></strong>
-              <span data-account-sync-label>Sincronización activa</span>
+              <span data-account-sync-label role="status">Sincronización activa</span>
             </div>
           </div>
-          <div class="account-benefits">
-            <p>${checkIcon()} Inbox y organización</p>
-            <p>${checkIcon()} Archivos y carpetas personales</p>
-            <p>${checkIcon()} Tema y preferencias</p>
+          <div class="account-sync-actions">
+            <button class="account-primary" type="button" data-account-sync>${updateIcon()}Sincronizar ahora</button>
+            <button class="account-link" type="button" data-account-signout>Cerrar sesión</button>
           </div>
-          <a class="account-secondary" href="/mi-espacio.html" data-account-drive>Mi espacio \u00b7 Conectar Google Drive</a>
+          <details class="account-sync-usage" data-account-usage>
+            <summary>Consumo de sincronización</summary>
+            <dl data-account-usage-values></dl>
+            <small>Solo este navegador. Tamaños JSON sin compresión; no incluyen cabeceras, Realtime, alarmas ni otros servicios.</small>
+            <button class="account-link" type="button" data-account-usage-export>Exportar medición</button>
+          </details>
+          <a class="account-link account-drive-link" href="/mi-espacio.html" data-account-drive>Mi espacio \u00b7 Google Drive</a>
           <section class="account-referrals" data-account-referrals hidden>
             <header>
               <div><strong>Referidos</strong><small>Quien llega con tu enlace obtiene 35%. Vos obtenés 45% al sumar 3 registros verificados este mes.</small></div>
@@ -213,23 +219,18 @@
             </label>
             <button class="account-primary" type="submit">Guardar nueva contraseña</button>
           </form>
-          <button class="account-primary" type="button" data-account-sync>Sincronizar ahora</button>
-          <details class="account-sync-usage" data-account-usage>
-            <summary>Consumo de sincronización</summary>
-            <dl data-account-usage-values></dl>
-            <small>Solo este navegador. Tamaños JSON sin compresión; no incluyen cabeceras, Realtime, alarmas ni otros servicios.</small>
-            <button class="account-link" type="button" data-account-usage-export>Exportar medición</button>
-          </details>
-          <button class="account-secondary" type="button" data-account-signout>Cerrar sesión</button>
-        </div>
+        </section>
 
         <div class="account-unavailable" data-account-unavailable hidden>
           <p>La sincronización de cuentas está casi lista, pero falta conectar el almacenamiento seguro.</p>
         </div>
 
-        <div class="account-app-actions">
-          <a class="account-link" href="https://estudiemos.ar/consentimiento?preferencias=1" data-cmp-preferences>Preferencias de cookies</a>
-          <a class="account-link" href="${getRootPath()}?tutorial=1" data-onboarding-replay>Ver recorrido de bienvenida</a>
+        <section class="account-app-actions account-group" aria-labelledby="accountPreferencesHeading">
+          <h3 id="accountPreferencesHeading">Preferencias generales</h3>
+          <div class="account-preference-links">
+            <a class="account-link" href="https://estudiemos.ar/consentimiento?preferencias=1" data-cmp-preferences>Preferencias de cookies</a>
+            <a class="account-link" href="${getRootPath()}?tutorial=1" data-onboarding-replay>Recorrido de bienvenida</a>
+          </div>
           <button class="account-update" type="button" data-account-update>
             ${updateIcon()}
             <span>
@@ -238,11 +239,10 @@
             </span>
           </button>
           <a class="account-link" data-account-update-manual hidden href="https://github.com/ipala2006-maker/ingenieria-recursos/releases/download/android-latest/Estudiemos-Android.apk" target="_self" rel="noreferrer">${updateIcon()}<span>Descarga alternativa para Android</span></a>
-        </div>
+        </section>
 
-        <div class="account-android-widgets" data-account-android-widgets hidden>
-          <strong>Widgets de Android</strong>
-          <small>Elegí cuál querés agregar a la pantalla de inicio.</small>
+        <section class="account-android-widgets account-group" data-account-android-widgets aria-labelledby="accountAndroidWidgetsHeading" hidden>
+          <h3 id="accountAndroidWidgetsHeading">Widgets de Android</h3>
           <div>
             <button class="account-secondary" type="button" data-account-widget="workspace">Mi espacio</button>
             <button class="account-secondary" type="button" data-account-widget="agenda">Inbox</button>
@@ -250,11 +250,10 @@
             <button class="account-secondary" type="button" data-account-widget="pomodoro">Pomodoro</button>
             <button class="account-secondary" type="button" data-account-widget="streak">Racha</button>
           </div>
-        </div>
+        </section>
 
-        <div class="account-android-widgets account-desktop-widgets" data-account-desktop-widgets hidden>
-          <strong>Widgets de escritorio</strong>
-          <small>Elegí el que querés agregar. Te acompañamos sin salir de Estudiemos.</small>
+        <section class="account-android-widgets account-desktop-widgets account-group" data-account-desktop-widgets aria-labelledby="accountDesktopWidgetsHeading" hidden>
+          <h3 id="accountDesktopWidgetsHeading">Widgets de escritorio</h3>
           <div>
             <button class="account-secondary" type="button" data-account-desktop-widget="workspace">+ Mi espacio</button>
             <button class="account-secondary" type="button" data-account-desktop-widget="inbox">+ Inbox</button>
@@ -270,7 +269,7 @@
             ${desktopIcon()}
             <span><strong>Alarmas con la app cerrada</strong><small>Activar o comprobar la pantalla completa en Windows</small></span>
           </button>
-        </div>
+        </section>
 
         <p class="account-status" data-account-status role="status" aria-live="polite"></p>
         <p class="account-privacy">Tus datos privados solo pueden ser leídos por tu propia cuenta.</p>
@@ -848,6 +847,7 @@
         if(compact?.updated_at)cloudRevision=compact.updated_at;
         lastPullAt = Date.now(); syncFailures = 0; syncRetryAt = 0;
         updateSyncLabel("Sincronizado"); updateAccountIndicator(true);
+        if (reason === "manual") setStatus("Tus dispositivos ya tienen la misma información.", "success");
         return true;
       }
       const remote = result.data || (conditional ? {state:cachedCloudState, updated_at:cloudRevision} : null);
@@ -1932,10 +1932,6 @@
 
   function closeIcon() {
     return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6.7 5.3 5.3 5.3 5.3-5.3 1.4 1.4-5.3 5.3 5.3 5.3-1.4 1.4-5.3-5.3-5.3 5.3-1.4-1.4 5.3-5.3-5.3-5.3 1.4-1.4Z"/></svg>';
-  }
-
-  function checkIcon() {
-    return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.2 16.2-4.4-4.4 1.4-1.4 3 3 8.6-8.6 1.4 1.4-10 10Z"/></svg>';
   }
 
   function updateIcon() {
