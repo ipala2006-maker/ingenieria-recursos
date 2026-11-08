@@ -4,12 +4,12 @@ const source=fs.readFileSync(require('node:path').join(__dirname,'../scripts/cla
 const alice='00000000-0000-4000-8000-000000000001',bob='00000000-0000-4000-8000-000000000002';
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 const state={revision:'a'.repeat(32),classes:[{id:alice,title:'Maths'}],calendar:[]};
-function harness({open=false}={}){
-  let user=alice,now=Date.now();const listeners=new Map(),documentListeners=new Map(),values=new Map(),calls=[],timers=new Map();let writes=0,timerId=0;
+function harness({open=false,stored=new Map()}={}){
+  let user=alice,now=Date.now();const listeners=new Map(),documentListeners=new Map(),values=stored,calls=[],timers=new Map();let writes=0,timerId=0;
   const window={EstudiemosClassroomRules:rules,EstudiemosClassroomUI:{isOpen:()=>open},EstudiemosAccount:{getUser:()=>user?{id:user}:null,getSession:()=>user?{access_token:user}:null,whenReady:()=>Promise.resolve()},addEventListener(name,fn){if(!listeners.has(name))listeners.set(name,[]);listeners.get(name).push(fn);},dispatchEvent(event){for(const fn of listeners.get(event.type)||[])fn(event);}};
   const document={currentScript:{src:'https://app.test/scripts/classroom-sync.js'},hidden:false,addEventListener(name,fn){if(!documentListeners.has(name))documentListeners.set(name,[]);documentListeners.get(name).push(fn);}};
   vm.runInNewContext(source,{window,URL,URLSearchParams,AbortController,Date:class extends Date{static now(){return now;}},location:new URL('https://app.test/widget.html'),history:{replaceState(){}},CustomEvent:class{constructor(type,options={}){this.type=type;this.detail=options.detail;}},document,localStorage:{getItem:key=>values.get(key)||null,setItem(key,value){writes++;values.set(key,value);},removeItem:key=>values.delete(key)},sessionStorage:{getItem:()=>null,removeItem(){}},setTimeout(fn,delay){const id=++timerId;timers.set(id,{fn,delay});return id;},clearTimeout:id=>timers.delete(id),fetch:(url,options)=>new Promise(resolve=>calls.push({url:String(url),options,resolve:(body,status=200)=>resolve({ok:status<400,json:async()=>body})}))});
-  return {api:window.EstudiemosClasses,calls,values,timers,setClient(client){window.EstudiemosAccount.getClient=()=>client;},get writes(){return writes;},runPoll(){assert.equal(timers.size,1);const [id,timer]=timers.entries().next().value;timers.delete(id);now+=timer.delay;timer.fn();return timer.delay;},setHidden(value){document.hidden=value;for(const fn of documentListeners.get('visibilitychange')||[])fn();},switchUser(id){user=id;window.dispatchEvent({type:'estudiemos:account-change'});}};
+  return {api:window.EstudiemosClasses,calls,values,timers,storage(key){window.dispatchEvent({type:'storage',key});},setClient(client){window.EstudiemosAccount.getClient=()=>client;},get writes(){return writes;},runPoll(){assert.equal(timers.size,1);const [id,timer]=timers.entries().next().value;timers.delete(id);now+=timer.delay;timer.fn();return timer.delay;},setHidden(value){document.hidden=value;for(const fn of documentListeners.get('visibilitychange')||[])fn();},switchUser(id){user=id;window.dispatchEvent({type:'estudiemos:account-change'});}};
 }
 test('class state uses conditional refresh, memoized projections, cooldown and visibility-sized polling',async()=>{
   const h=harness();await tick();assert.equal(h.calls.length,1);h.calls[0].resolve(state);await tick();assert.equal(h.api.snapshot().classes[0].id,alice);
@@ -22,6 +22,29 @@ test('account switches invalidate both outstanding reads and locally cached clas
   const h=harness();await tick();h.switchUser(bob);await tick();assert.equal(h.calls.length,2);h.calls[0].resolve(state);await tick();assert.equal(h.api.snapshot(),null);
   h.calls[1].resolve({...state,revision:'b'.repeat(32),classes:[{id:bob,title:'New account'}]});await tick();assert.equal(h.api.snapshot().classes[0].id,bob);assert.ok(!h.values.get(rules.CACHE_KEY).includes(alice));
   h.switchUser('');assert.equal(h.api.snapshot(),null);assert.equal(h.values.has(rules.CACHE_KEY),false);assert.equal(h.timers.size,0);
+});
+test('class calendar visibility defaults to on, is scoped to the account and only changes the local projection',async()=>{
+  const h=harness();await tick();
+  const day='2026-10-24',fixture={...state,classes:[...state.classes,{id:bob,title:'Physics'}],
+    calendar:[alice,bob].map((classId,index)=>({id:classId,classId,data:{title:'Class '+index,date:day,allDay:true}}))};
+  h.calls[0].resolve(fixture);await tick();
+  const ids=api=>Array.from(api.events(day),item=>item.classId);
+  assert.deepEqual(ids(h.api),[alice,bob]);
+  assert.equal(h.api.setCalendarVisible(alice,false),true);
+  assert.deepEqual(ids(h.api),[bob]);
+  assert.equal(h.calls.length,1,'No fetch or mutation is added for the preference');
+  assert.equal(h.api.snapshot().calendar.length,2,'The course and cached dates are untouched');
+  const reopened=harness({stored:h.values});await tick();
+  assert.deepEqual(ids(reopened.api),[bob],'The preference applies to cached dates before the next network response');
+  assert.equal(h.api.setCalendarVisible(alice,true),true);
+  reopened.storage('estudiemos_class_calendar_hidden_v1:'+alice);
+  assert.deepEqual(ids(reopened.api),[alice,bob],'The other tab updates without fetching');
+  assert.equal(h.api.setCalendarVisible(alice,false),true);
+  h.switchUser(bob);await tick();h.calls[1].resolve(fixture);await tick();
+  assert.deepEqual(ids(h.api),[alice,bob],'Another account has its own default');
+  assert.equal(h.api.setCalendarVisible('00000000-0000-4000-8000-000000000003',false),false,'Unknown courses cannot be added to the preference');
+  h.switchUser('');assert.equal(h.api.events(day).length,0);
+  reopened.calls[0].resolve(fixture);await tick();
 });
 test('an explicit refresh surfaces a failed background load and failure backoff avoids repeated traffic',async()=>{
   const h=harness();await tick();const waiting=h.api.refresh(true);h.calls[0].resolve({message:'Unavailable'},503);await assert.rejects(waiting,/Unavailable/);
@@ -67,7 +90,7 @@ test('failed course retries stop while hidden or logged out and resume without b
 test('all course entrypoints load the current versioned course client',()=>{
   const root=require('node:path').join(__dirname,'..');
   for(const file of ['scripts/global-search.js','materias.html','widget.html']){
-    assert.match(fs.readFileSync(require('node:path').join(root,file),'utf8'),/scripts\/classroom-sync\.js\?v=20261107-panel-ux/);
+    assert.match(fs.readFileSync(require('node:path').join(root,file),'utf8'),/scripts\/classroom-sync\.js\?v=20261107-course-calendar/);
   }
 });
 test('writes beat stale background reads and remain bound to the original account',async()=>{

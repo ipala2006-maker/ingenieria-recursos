@@ -49,6 +49,11 @@
 .classroom-tabs button { border:0; border-bottom:2px solid transparent; border-radius:0; padding:12px 0; color:var(--muted); }
 .classroom-tabs [aria-selected=true] { border-bottom-color:var(--accent); color:var(--text); font-weight:650; }
 .classroom-section-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 0; }
+.classroom-date-options { display:flex;align-items:center;gap:4px 14px;flex-wrap:wrap;min-width:0; }
+.classroom-calendar-option { display:inline-flex;align-items:center;gap:8px;min-height:44px;cursor:pointer;font-size:12px;color:var(--text); }
+.classroom-calendar-option small,.classroom-timezone { color:var(--muted);font-size:11px; }
+.classroom-calendar-option small { display:block;margin-top:2px; }
+.classroom-section-head:has(.classroom-date-options) { flex-wrap:wrap;gap:8px 12px;padding:10px 0; }
 .classroom-row { display:flex; align-items:flex-start; gap:12px; padding:14px 0; border-bottom:1px solid var(--border); }
 .classroom-row>div:not(.classroom-actions) { flex:1; min-width:0; }
 .classroom-row>strong { flex:1; min-width:0; overflow-wrap:anywhere; }
@@ -176,10 +181,10 @@
 .classroom-upload input::file-selector-button { font:inherit; color:var(--text); background:var(--panel-2); border:1px solid var(--border); border-radius:4px; padding:5px 8px; margin-right:8px; cursor:pointer; }
 .classroom-form details>label { margin-top:14px; }
 .classroom-form>.classroom-actions:empty { display:none; }
-.classroom-toggle input:is([name=allDay],[name=moderator]) { appearance:none;position:relative;width:40px!important;height:24px!important;flex:0 0 40px;border:1px solid var(--border);border-radius:14px;background:var(--bg);margin:0;cursor:pointer; }
-.classroom-toggle input:is([name=allDay],[name=moderator])::before { content:'';position:absolute;left:3px;top:3px;width:16px;height:16px;border-radius:50%;background:var(--muted);transition:transform .16s; }
-.classroom-toggle input:is([name=allDay],[name=moderator]):checked { background:var(--accent);border-color:var(--accent); }
-.classroom-toggle input:is([name=allDay],[name=moderator]):checked::before { transform:translateX(16px);background:var(--bg); }
+.classroom-toggle input[role=switch],.classroom-toggle input[name=allDay] { appearance:none;position:relative;width:40px!important;height:24px!important;flex:0 0 40px;border:1px solid var(--border);border-radius:14px;background:var(--bg);margin:0;cursor:pointer; }
+.classroom-toggle input:is([role=switch],[name=allDay])::before { content:'';position:absolute;left:3px;top:3px;width:16px;height:16px;border-radius:50%;background:var(--muted);transition:transform .16s; }
+.classroom-toggle input:is([role=switch],[name=allDay]):checked { background:var(--accent);border-color:var(--accent); }
+.classroom-toggle input:is([role=switch],[name=allDay]):checked::before { transform:translateX(16px);background:var(--bg); }
 .is-choosing-role .classroom-sidebar { display:none; }
 .is-choosing-role .classroom-shell { grid-template-columns:minmax(0,1fr); }
 .classroom-role { max-width:640px; margin:auto; display:grid; gap:28px; padding:40px 0; }

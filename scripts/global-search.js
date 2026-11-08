@@ -45,7 +45,7 @@
   }
   if (!document.querySelector('script[data-classrooms]')) {
     const classes = document.createElement('script'); classes.dataset.classrooms = '';
-    classes.src = rootPath + 'scripts/classroom-sync.js?v=20261107-panel-ux';
+    classes.src = rootPath + 'scripts/classroom-sync.js?v=20261107-course-calendar';
     document.head.appendChild(classes);
   }
   if (!document.querySelector('script[data-course-drive]')) {
