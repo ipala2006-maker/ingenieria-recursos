@@ -2,6 +2,7 @@ const {chromium,webkit}=require('../tmp/ui-check/node_modules/playwright');
 const {PGlite}=require('@electric-sql/pglite'),{createRequire}=require('node:module');
 const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
 const root=path.resolve(__dirname,'..'),out=path.join(root,'tmp/classrooms');
+const assets=process.argv.includes('--built')?path.join(root,'dist-cloudflare'):root;
 const teacher='00000000-0000-4000-8000-000000000001',student='00000000-0000-4000-8000-000000000002',moderator='00000000-0000-4000-8000-000000000003';
 const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)').headers;
 const links=require('../shared/course-app-links'),official=links.publicOrigin();
@@ -42,7 +43,7 @@ const workerOrigin='https://estudiemos.estudiemos-services.workers.dev';
         res.status=code=>{res.statusCode=code;return res;};res.json=value=>{res.setHeader('Content-Type','application/json');res.end(JSON.stringify(value));};return sandbox.module.exports(req,res);
       }
       if(url.pathname.startsWith('/api/'))return res.writeHead(200,{'Content-Type':'application/json'}).end('{"enabled":false}');
-      const target=path.resolve(root,'.'+decodeURIComponent(url.pathname==='/'?'/index.html':url.pathname));if(!target.startsWith(root+path.sep))return res.writeHead(403).end();
+      const target=path.resolve(assets,'.'+decodeURIComponent(url.pathname==='/'?'/index.html':url.pathname));if(!target.startsWith(assets+path.sep))return res.writeHead(403).end();
       try{for(const{key,value}of headers)res.setHeader(key,key==='Content-Security-Policy'?value.replace(/;\s*upgrade-insecure-requests/,''):value);res.setHeader('Content-Type',({'.html':'text/html','.js':'text/javascript','.mjs':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.png':'image/png','.woff2':'font/woff2'})[path.extname(target)]||'application/octet-stream');res.end(fs.readFileSync(target));}catch(_){res.writeHead(404).end();}
     });
     await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const base='http://127.0.0.1:'+server.address().port;
@@ -67,7 +68,7 @@ const workerOrigin='https://estudiemos.estudiemos-services.workers.dev';
         window.addEventListener('estudiemos:account-change',()=>localStorage.setItem('class_test_user',window.__classUser||''));
         if(actualAccount)window.supabase={createClient:()=>({auth:{getSession:async()=>({data:{session:null}}),onAuthStateChange:()=>{},signUp:async values=>{window.__signup=values;return {data:{session:null},error:null};}}})};
       },{user,role,actualAccount,launchPlatform});
-      await ctx.route('**/*',route=>{
+      await ctx.route('**/*',async route=>{
         const url=new URL(route.request().url()),request=route.request(),method=request.method();
         if(driveFixture&&url.origin==='https://www.googleapis.com'){
           driveCalls.push({path:url.pathname,method,body:method==='PUT'?'PDF bytes':request.postData()});
@@ -85,6 +86,10 @@ const workerOrigin='https://estudiemos.estudiemos-services.workers.dev';
           return route.fulfill({status:404,json:{error:{message:'Fixture file missing'}}});
         }
         if(![base,official,workerOrigin].includes(url.origin))return route.abort();
+        if(ctx.pausedCourseRead&&url.pathname==='/rest/v1/rpc/classroom_read'&&request.postDataJSON()?.p_action===ctx.pausedCourseRead.operation){
+          const pause=ctx.pausedCourseRead;
+          await new Promise(resolve=>{pause.release=resolve;});
+        }
         if(url.searchParams.get('classes')==='1'&&method==='POST'&&ctx.failNextCourseWrite){
           ctx.failNextCourseWrite=false;
           return route.abort('internetdisconnected');
@@ -250,7 +255,50 @@ const workerOrigin='https://estudiemos.estudiemos-services.workers.dev';
     await lp.getByRole('link',{name:'Instalar Estudiemos',exact:true}).click();assert.equal(new URL(lp.url()).hash,'#instalar');assert.equal(new URL(lp.url()).pathname,'/materia/'+code);await lp.setViewportSize({width:1440,height:900});await lp.goto(base+'/materia/'+code+'?local=1');await lp.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-friendly-invitation-1440.png`)});await landing.close();
     const guest=await context('',320),gp=await guest.newPage();lastPage=gp;await gp.goto(base+'/#materia='+code);await gp.locator('[data-course-join]').waitFor();assert.equal(gp.url(),official+'/materia/'+code);await gp.locator('[data-course-invite-dates]').getByText(/Parcial actualizado/).waitFor();await gp.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-invitation-install.png`)});await gp.locator('[data-course-join]').click();await gp.waitForFunction(()=>window.__loginOpened);assert.equal(gp.url(),official+'/materia/'+code,'Guest signs in without losing the invitation landing');assert.equal(await gp.locator('.classroom-dialog[open]').count(),0,'Account sign-in is not hidden behind a native modal');assert.equal(await gp.locator('[data-study-goal-dialog][open]').count(),0);
     await gp.evaluate(id=>{window.__classUser=id;window.dispatchEvent(new CustomEvent('estudiemos:account-change'));},student);await gp.locator('.classroom-course-head h3').waitFor();assert.equal(await gp.evaluate(()=>localStorage.getItem('estudiemos_class_invite_v1')),null,'Successful enrollment consumes the durable invitation');await guest.close();
-    const signed=await context(student,390),signedPage=await signed.newPage();lastPage=signedPage;await signedPage.goto(base+'/materia/'+code);await signedPage.locator('.classroom-course-head h3').waitFor();assert.equal(await signedPage.locator('.classroom-course-head h3').innerText(),'Física · 1.º año');assert.equal(await signedPage.evaluate(()=>Boolean(window.__loginOpened)),false,'Active session opens the exact existing course without another login');await signed.close();
+    for(const platform of ['ios','inapp-ios']){
+      const signed=await context(student,390,'student',false,false,platform),signedPage=await signed.newPage();lastPage=signedPage;
+      signedPage.on('pageerror',error=>errors.push(error.message));
+      const stateRead={operation:'state'};
+      signed.pausedCourseRead=stateRead;
+      try{
+        await signedPage.goto(official+'/materia/'+code);
+        await signedPage.locator('.classroom-course-head h3').waitFor({timeout:5000});
+        assert.equal(typeof stateRead.release,'function','The course opens even while the initial state read is pending');
+      }finally{signed.pausedCourseRead=null;stateRead.release?.();}
+      await signedPage.waitForFunction(()=>!EstudiemosClasses.status().loading);
+      assert.equal(await signedPage.locator('.classroom-course-head h3').innerText(),'Física · 1.º año');
+      assert.equal(await signedPage.evaluate(()=>Boolean(window.__loginOpened)),false,'Active session opens the exact existing course without another login');
+      assert.equal(await signedPage.locator('dialog[open]').count(),1,'No background dialog covers the course');
+      const detailRead={operation:'detail'};
+      signed.pausedCourseRead=detailRead;
+      const isDetail=request=>request.url().endsWith('/rest/v1/rpc/classroom_read')&&request.postDataJSON()?.p_action==='detail';
+      try{
+        const pendingDetail=signedPage.waitForRequest(isDetail);
+        await signedPage.locator('[data-class-refresh]').tap();
+        await pendingDetail;
+        await signedPage.evaluate(()=>{window.__courseTabs=document.querySelector('.classroom-tabs');});
+        for(const tab of ['materials','members','events','materials']){
+          const button=signedPage.locator('[data-class-tab='+tab+']');
+          await button.tap({timeout:2500});
+          assert.equal(await button.getAttribute('aria-selected'),'true',tab+' reacts to the first tap during a slow refresh');
+        }
+        assert.equal(await signedPage.evaluate(()=>document.querySelector('.classroom-tabs')===window.__courseTabs),true,'Switching tabs keeps the tab controls mounted');
+        await signedPage.locator('[data-class-share]').tap({timeout:2500});
+        await signedPage.locator('[data-class-link]').waitFor();
+        await signedPage.locator('[data-class-back]').tap();
+        assert.equal(await signedPage.locator('[data-class-tab=materials]').getAttribute('aria-selected'),'true');
+        await signedPage.evaluate(()=>{window.__courseTabs=document.querySelector('.classroom-tabs');window.dispatchEvent(new CustomEvent('estudiemos:account-change'));});
+        assert.equal(await signedPage.evaluate(()=>document.querySelector('.classroom-tabs')===window.__courseTabs),true,'Same-account refresh keeps the current controls mounted');
+        const lateDetail=signedPage.waitForResponse(response=>isDetail(response.request()));
+        signed.pausedCourseRead=null;detailRead.release();
+        await lateDetail;
+      }finally{signed.pausedCourseRead=null;detailRead.release?.();}
+      await signedPage.locator('.classroom-material-link').filter({hasText:'Guía de ejercicios'}).waitFor();
+      assert.equal(await signedPage.evaluate(()=>document.querySelector('.classroom-tabs')===window.__courseTabs),true,'Late detail does not replace the tab controls');
+      await signedPage.locator('[data-class-close]').tap();
+      await signedPage.locator('.classroom-dialog').waitFor({state:'hidden'});
+      await signed.close();
+    }
     const mirror=await context(student,390),mirrorPage=await mirror.newPage();lastPage=mirrorPage;
     await mirrorPage.goto(workerOrigin+'/#materia='+code);
     await mirrorPage.locator('[data-class-copy-link]').waitFor();

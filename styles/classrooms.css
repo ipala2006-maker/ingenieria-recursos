@@ -3,6 +3,7 @@
 .classroom-dialog[open] { display:flex; flex-direction:column; }
 .classroom-dialog::backdrop,.classroom-confirm::backdrop { background:#03071299; backdrop-filter:blur(4px); }
 .classroom-dialog *, .classroom-confirm * { box-sizing:border-box; }
+.classroom-dialog :is(button,a),.classroom-confirm button { touch-action:manipulation; }
 .classroom-dialog [hidden] { display:none!important; }
 .classroom-head { display:flex; flex:none; align-items:center; justify-content:space-between; gap:16px; padding:16px 20px; border-bottom:1px solid var(--border); }
 .classroom-head>div { display:flex; align-items:center; gap:10px; }

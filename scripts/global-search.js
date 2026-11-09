@@ -52,7 +52,7 @@
   }
   if (!document.querySelector('script[data-classrooms]')) {
     const classes = document.createElement('script'); classes.dataset.classrooms = '';
-    classes.src = rootPath + 'scripts/classroom-sync.js?v=20261108-pwa-health';
+    classes.src = rootPath + 'scripts/classroom-sync.js?v=20261109-classroom-taps';
     document.head.appendChild(classes);
   }
   if (!document.querySelector('script[data-course-drive]')) {

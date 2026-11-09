@@ -98,8 +98,21 @@ test('failed course retries stop while hidden or logged out and resume without b
 test('all course entrypoints load the current versioned course client',()=>{
   const root=require('node:path').join(__dirname,'..');
   for(const file of ['scripts/global-search.js','materias.html','widget.html']){
-    assert.match(fs.readFileSync(require('node:path').join(root,file),'utf8'),/scripts\/classroom-sync\.js\?v=20261108-pwa-health/);
+    assert.match(fs.readFileSync(require('node:path').join(root,file),'utf8'),/scripts\/classroom-sync\.js\?v=20261109-classroom-taps/);
   }
+});
+test('a stalled SDK detail request has a hard deadline and cannot fall back after it expires',async()=>{
+  const h=harness();await tick();h.calls[0].resolve(state);await tick();
+  let finish;
+  h.setClient({rpc:()=>new Promise(resolve=>{finish=resolve;})});
+  const pending=h.api.detail(alice);
+  const deadline=[...h.timers.values()].find(timer=>timer.delay===15000);
+  assert.ok(deadline);
+  deadline.fn();
+  await assert.rejects(pending,{code:'CLASS_NETWORK'});
+  finish({error:{code:'PGRST202'}});await tick();
+  assert.equal(h.calls.length,1,'A late missing-function response cannot start a second request');
+  assert.equal(h.api.snapshot().classes.length,1);
 });
 test('writes beat stale background reads and remain bound to the original account',async()=>{
   const h=harness();await tick();h.calls[0].resolve(state);await tick();const old=h.api.refresh(true);await tick();const writing=h.api.act('join',{code:'ABCDEFGHJK'});await tick();

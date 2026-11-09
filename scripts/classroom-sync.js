@@ -54,13 +54,22 @@
     const url=new URL(endpoint),calendarVersions=Object.fromEntries(Object.entries(full?{}:model?.calendarVersions||{}).slice(0,64));
     if(detailId){url.searchParams.set('id',detailId);if(history)url.searchParams.set('history','1');}
     else if(!action){url.searchParams.set('stateProtocol','2');url.searchParams.set('calendarVersions',JSON.stringify(calendarVersions));if(!full&&model?.revision)url.searchParams.set('revision',model.revision);}
-    const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),15000);
+    const controller=new AbortController();let timeout;
+    // An SDK call may still be waiting on Auth before a fetch observes the signal.
+    const deadline=new Promise((_,reject)=>{timeout=setTimeout(()=>{controller.abort();reject(networkError(action));},15000);});
     try{
+      return await Promise.race([performRequest(),deadline]);
+    }catch(error){
+      if(['AbortError','TypeError','SyntaxError'].includes(error?.name))throw networkError(action);
+      throw error;
+    }finally{clearTimeout(timeout);}
+    async function performRequest(){
       const client=account()?.getClient?.();
       if(!action&&directRead&&typeof client?.rpc==='function'){
         const operation=detailId?(history?'history':'detail'):'state',payload=detailId?{id:detailId}:{revision:full?'':model?.revision||'',calendarVersions};
         let query=client.rpc('classroom_read',{p_action:operation,p_data:payload});if(query.abortSignal)query=query.abortSignal(controller.signal);
         const {data:result,error}=await query;
+        if(controller.signal.aborted)throw networkError(action);
         if(current!==identity()||version!==epoch)throw new Error('La cuenta cambió. Volvé a abrir Clases.');
         if(!error)return result;
         // Old servers can roll out before this private read function; never retry writes.
@@ -73,10 +82,7 @@
       if(current!==identity()||version!==epoch)throw new Error('La cuenta cambió. Volvé a abrir Clases.');
       if(!response.ok){const error=new Error(result.message||'No pudimos cargar Clases.');error.code=result.code;throw error;}
       return result;
-    }catch(error){
-      if(['AbortError','TypeError','SyntaxError'].includes(error?.name))throw networkError(action);
-      throw error;
-    }finally{clearTimeout(timeout);}
+    }
   }
   async function refresh(force=false){
     if(!owner||owner!==identity()||writing)return snapshot();
@@ -117,7 +123,7 @@
   async function open(options={}){
     if(location.pathname.endsWith('/widget.html')){const url=new URL('./',root);url.searchParams.set('clase',options.id||'');return window.open(url,'_blank','noopener,noreferrer');}
     launching=true;
-    if(!uiPromise)uiPromise=Promise.all([new Promise((resolve,reject)=>{if(document.querySelector('link[href*="styles/classrooms.css"]'))return resolve();const css=document.createElement('link');css.rel='stylesheet';css.href=new URL('styles/classrooms.css?v=20261107-calendar-account',root);css.onload=resolve;css.onerror=reject;document.head.append(css);}),new Promise((resolve,reject)=>{const script=document.createElement('script');script.src=new URL('scripts/classrooms.js?v=20261108-pwa-health',root);script.onload=resolve;script.onerror=reject;document.head.append(script);})]).catch(error=>{uiPromise=null;throw error;});
+    if(!uiPromise)uiPromise=Promise.all([new Promise((resolve,reject)=>{if(document.querySelector('link[href*="styles/classrooms.css"]'))return resolve();const css=document.createElement('link');css.rel='stylesheet';css.href=new URL('styles/classrooms.css?v=20261109-classroom-taps',root);css.onload=resolve;css.onerror=reject;document.head.append(css);}),new Promise((resolve,reject)=>{const script=document.createElement('script');script.src=new URL('scripts/classrooms.js?v=20261109-classroom-taps',root);script.onload=resolve;script.onerror=reject;document.head.append(script);})]).catch(error=>{uiPromise=null;throw error;});
     try{await uiPromise;window.EstudiemosClassroomUI.open(options);}catch(_){window.EstudiemosAccount?.open();}finally{launching=false;}
   }
   window.EstudiemosClasses=Object.freeze({snapshot,status:()=>({loading:Boolean(loading),failed:Boolean(lastError)}),events,calendarVisible,setCalendarVisible,refresh,act,detail:id=>request('',{},id),history:id=>request('',{},id,false,true),open,pendingLaunch:()=>launching});
