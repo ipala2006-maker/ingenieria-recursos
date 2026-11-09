@@ -7,7 +7,8 @@
   const requested = query.searchParams.get('tutorial') === '1';
   const classInvitation = ['clase','materia'].some(key=>new URLSearchParams(location.hash.slice(1)).has(key)) || ['clase','materia','materias','uploadClass'].some(key=>query.searchParams.has(key)) || pendingClass();
   let pending = requested || !classInvitation && !readStatus() && !hasPreviousUse();
-  let active = false, busy = false, closing = false, tour, layer, ring, steps = [], current = -1;
+  let active = false, starting = false, busy = false, closing = false, tour, layer, ring, steps = [], current = -1;
+  let privacy = location.origin === 'https://estudiemos.ar' && !window.EstudiemosAndroid ? 'loading' : 'ready';
   let cleanupPreview = () => {}, original, savedFocus, resizeFrame = 0, driverModule, targetObserver, exitTimer, transitionVersion = 0;
   const q = selector => document.querySelector(selector);
   const visible = element => Boolean(element?.getClientRects().length && getComputedStyle(element).visibility !== 'hidden');
@@ -41,7 +42,7 @@
     if (driverModule) return driverModule;
     const styles = ['scripts/vendor/driver/driver.css', 'styles/onboarding.css'];
     await Promise.all(styles.map(path => new Promise((resolve, reject) => {
-      const link = document.createElement('link'); link.rel = 'stylesheet'; link.href = new URL(path + '?v=20261027-polished-tour', root);
+      const link = document.createElement('link'); link.rel = 'stylesheet'; link.href = new URL(path + '?v=20261109-tour-touch', root);
       link.onload = resolve; link.onerror = reject; document.head.append(link);
     })));
     driverModule = await import(new URL('scripts/vendor/driver/driver.js.mjs?v=20261108-pwa-health', root));
@@ -88,6 +89,14 @@
     layer = document.createElement('dialog'); layer.className = 'onboarding-layer is-starting';
     layer.setAttribute('aria-labelledby', 'driver-popover-title'); layer.setAttribute('aria-describedby', 'driver-popover-description');
     ring = document.createElement('div'); ring.className = 'onboarding-focus'; ring.setAttribute('aria-hidden', 'true'); layer.append(ring);
+    for (const [direction, label] of [[-1, 'Paso anterior'], [1, 'Paso siguiente']]) {
+      const side = document.createElement('button');
+      side.type = 'button'; side.className = 'onboarding-nav';
+      side.dataset.tourDirection = direction;
+      side.setAttribute('aria-label', label);
+      side.addEventListener('click', () => go(current + direction));
+      layer.append(side);
+    }
     document.body.append(layer);
     layer.addEventListener('cancel', event => { event.preventDefault(); finish('skipped'); });
     layer.addEventListener('click', event => { if (!event.target.closest('button,a')) go(current+(event.clientX<innerWidth/2?-1:1)); });
@@ -135,7 +144,12 @@
     const [label,icon]=groups[steps[current].id],caption=document.createElement('div'),image=document.createElement('img'),text=document.createElement('span');
     caption.className='tour-context';image.src=new URL('assets/icons/'+icon+'.svg',root);image.alt='';image.width=18;image.height=18;text.textContent=label;caption.append(image,text);popover.wrapper.prepend(caption);
     const hint=document.createElement('span');hint.className='tour-hint';hint.textContent=matchMedia('(pointer:coarse)').matches?'Tocá a los lados':'Clic a los lados o flechas';popover.footer.append(hint);
-    popover.wrapper.setAttribute('role','document');popover.closeButton.textContent='Omitir';
+    // Driver's pointerdown filter can suppress the synthetic click from a WebKit tap.
+    const dismiss = document.createElement('button');
+    dismiss.type = 'button'; dismiss.className = 'tour-dismiss'; dismiss.textContent = 'Omitir';
+    dismiss.addEventListener('click', () => finish('skipped'));
+    popover.closeButton.replaceWith(dismiss);
+    popover.wrapper.setAttribute('role','document');
     popover.wrapper.style.setProperty('--tour-progress',((current+1)/steps.length*100)+'%');
   }
   async function go(index) {
@@ -161,12 +175,15 @@
   }
   function next() { go(current+1); }
   async function start(manual = false) {
-    if (active || !ready()) return false;
+    if (active || starting || !ready()) return false;
     if (manual) click('[data-account-close]');
     if (occupied()) return false;
     pending = true;
+    if (privacy !== 'ready') return false;
+    starting = true;
     try {
       const {driver} = await loadDriver();
+      if (privacy !== 'ready') return false;
       if (occupied() || active) { pending = false; return false; }
       active = true; busy = true; closing = false; current = 0;transitionVersion++;
       original = {state:history.state, url:location.href, view:history.state?.homeView || 'overview', scrollX, scrollY};
@@ -175,9 +192,9 @@
       tour = driver({
         animate:false, smoothScroll:false, allowScroll:false, allowKeyboardControl:false,
         overlayOpacity:0, disableActiveInteraction:true, showProgress:true, progressText:'{{current}} de {{total}}',
-        showButtons:['close'], closeBtnLabel:'Omitir recorrido',
+        showButtons:[],
         popoverClass:'estudiemos-tour', stagePadding:8, stageRadius:8,
-        onNextClick:next, onPrevClick:() => go(current-1), onCloseClick:() => finish('skipped'),
+        onNextClick:next, onPrevClick:() => go(current-1),
         onHighlightStarted:element => positionSpotlight(element || null),
         onHighlighted:revealStep,
         onPopoverRender:popover => {
@@ -192,6 +209,7 @@
       tour.drive();
       return true;
     } catch (_) { pending = false; if (active) finish('interrupted'); else window.dispatchEvent(new CustomEvent('estudiemos:onboarding-finished')); return false; }
+    finally { starting = false; }
   }
   function finish(status) {
     if (!active) return;
@@ -200,16 +218,18 @@
     }
     if(status==='interrupted'||!closing)finishNow(status);
   }
-  function finishNow(status) {
+  function finishNow(status, resume = false) {
     if(!active)return;
     clearTimeout(exitTimer);transitionVersion++;targetObserver?.disconnect();cancelAnimationFrame(resizeFrame);
     restorePreview();
-    active = false; pending = false; busy = false; closing = false;
+    active = false; pending = resume; busy = false; closing = false;
     tour?.destroy(); layer?.close(); layer?.remove();
     if (status !== 'interrupted') remember(status);
     if (original) { history.replaceState(original.state, '', original.url); navigate(original.view); scrollTo(original.scrollX, original.scrollY); }
-    savedFocus?.isConnected && savedFocus.focus({preventScroll:true});
-    window.dispatchEvent(new CustomEvent('estudiemos:onboarding-finished', {detail:{status}}));
+    if (!resume) {
+      savedFocus?.isConnected && savedFocus.focus({preventScroll:true});
+      window.dispatchEvent(new CustomEvent('estudiemos:onboarding-finished', {detail:{status}}));
+    }
   }
   document.addEventListener('click', event => {
     if (!event.target.closest('[data-onboarding-replay]')) return;
@@ -229,14 +249,44 @@
   window.addEventListener('pagehide', () => { if (active) finish('interrupted'); });
   window.addEventListener('estudiemos:study-update', () => { if (active && window.EstudiemosStudy?.snapshot().alarm) finish('interrupted'); });
   new MutationObserver(() => { if (active && q('.inbox-alarm-notice[open]')) finish('interrupted'); }).observe(document.body, {subtree:true, attributes:true, attributeFilter:['open']});
-  const startedAt = Date.now();
+  let startedAt = Date.now();
   const watcher = new MutationObserver(check);
   let checkTimer;
   function check() {
     if (!pending || active) { if (!pending) { watcher.disconnect(); clearTimeout(checkTimer); } return; }
+    if (starting || privacy !== 'ready') return;
     if (ready() && !occupied()) { watcher.disconnect(); clearTimeout(checkTimer); start(); return; }
     if (Date.now()-startedAt > 20000) { pending = false; watcher.disconnect(); clearTimeout(checkTimer); window.dispatchEvent(new CustomEvent('estudiemos:onboarding-finished')); return; }
     clearTimeout(checkTimer); checkTimer = setTimeout(check, 250);
   }
+  function observePrivacy() {
+    const settle = () => {
+      privacy = 'ready';
+      startedAt = Date.now();
+      requestAnimationFrame(check);
+    };
+    // The tutorial can run offline or if a content blocker prevents the CMP from loading.
+    const deadline = setTimeout(() => { if (privacy === 'loading') settle(); }, 2500);
+    const subscribe = () => {
+      if (!window.__tcfapi) { clearTimeout(deadline); settle(); return; }
+      try {
+        window.__tcfapi('addEventListener', 2, (data, ok) => {
+          if (!ok || data?.cmpStatus !== 'loaded') return;
+          if (data.eventStatus === 'cmpuishown') {
+            clearTimeout(deadline);
+            privacy = 'visible';
+            if (active && !closing) finishNow('interrupted', true);
+          } else if (['tcloaded','useractioncomplete'].includes(data.eventStatus) && privacy !== 'ready') {
+            clearTimeout(deadline);
+            settle();
+          }
+        });
+      } catch (_) { clearTimeout(deadline); settle(); }
+    };
+    // The consent tag is deferred; it installs its TCF stub before DOMContentLoaded.
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', subscribe, {once:true});
+    else subscribe();
+  }
+  if (privacy === 'loading') observePrivacy();
   if (pending) { watcher.observe(document.body, {childList:true, subtree:true, attributes:true, attributeFilter:['open','hidden']}); check(); }
 })();

@@ -110,3 +110,45 @@ test('a stale step cannot reopen or advance a later replay after its preview was
   const moving=context.go(1);assert.equal(context.layer.open,true,'Restacking finishes before the next animation frame');
   context.transitionVersion+=2;context.busy=false;release();await moving;assert.equal(calls.moved,0);assert.equal(context.current,0);assert.equal(context.busy,false);
 });
+
+function privacyFixture() {
+  const timers = new Map(), calls = [];
+  let listener, nextTimer = 0;
+  const context = {privacy:'loading', startedAt:0, active:false, closing:false, Date,
+    document:{readyState:'complete'}, window:{__tcfapi(command, version, callback) {
+      assert.equal(command,'addEventListener'); assert.equal(version,2); listener = callback;
+    }},
+    check(){ calls.push('check'); }, requestAnimationFrame(callback){ callback(); },
+    finishNow(status, resume){ calls.push([status,resume]); context.active = false; },
+    setTimeout(callback){ timers.set(++nextTimer,callback); return nextTimer; },
+    clearTimeout(id){ timers.delete(id); }
+  };
+  const start = source.indexOf('  function observePrivacy()');
+  vm.runInNewContext(source.slice(start, source.indexOf("  if (privacy === 'loading') observePrivacy();",start))+'\nobservePrivacy();',context);
+  return {context,calls, expire:()=>timers.get(1)?.(), emit:(eventStatus, cmpStatus='loaded')=>listener({eventStatus,cmpStatus},true)};
+}
+
+test('visible privacy controls keep priority without a time limit',()=>{
+  const {context,calls,expire,emit}=privacyFixture();
+  emit('cmpuishown');
+  expire();
+  assert.equal(context.privacy,'visible');
+  assert.deepEqual(calls,[]);
+  emit('useractioncomplete');
+  assert.equal(context.privacy,'ready');
+  assert.deepEqual(calls,['check']);
+});
+
+test('a blocked CMP does not hold the tour, and a late privacy dialog pauses it',()=>{
+  const {context,calls,expire,emit}=privacyFixture();
+  emit(undefined,'loading');
+  expire();
+  assert.equal(context.privacy,'ready');
+  context.active=true;
+  emit('cmpuishown');
+  assert.equal(context.privacy,'visible');
+  assert.deepEqual(calls,['check',['interrupted',true]]);
+  emit('useractioncomplete');
+  assert.equal(context.privacy,'ready');
+  assert.deepEqual(calls,['check',['interrupted',true],'check']);
+});

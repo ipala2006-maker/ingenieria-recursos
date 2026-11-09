@@ -83,7 +83,7 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
       await page.waitForFunction(()=>document.querySelector('.onboarding-layer')?.dataset.step==='note');await page.waitForTimeout(250);
       await page.mouse.click(4,80);await page.waitForFunction(()=>document.querySelector('.onboarding-layer')?.dataset.step==='welcome');await page.waitForTimeout(250);
       await page.mouse.click(width-4,80);await page.waitForFunction(()=>document.querySelector('.onboarding-layer')?.dataset.step==='note');await page.waitForTimeout(250);
-      await popover.locator('.driver-popover-close-btn').click();await layer.waitFor({state:'hidden'});
+      await popover.getByRole('button',{name:'Omitir'}).click();await layer.waitFor({state:'hidden'});
       assert.equal(await page.evaluate(()=>history.length),before.history,'Omitting from a note must not navigate back');assert.equal(await page.locator('[data-quick-panel=note]').isVisible(),false);
       assert.equal(await page.evaluate(()=>JSON.parse(localStorage.estudiemos_onboarding_v1).status),'skipped');
       assert.deepEqual(errors,[]);assert.ok(apiRequests.every(url=>!url.includes('friends=')&&!url.includes('dispatch')),JSON.stringify(apiRequests));
@@ -98,7 +98,7 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
     assert.equal(await page.locator('html').evaluate(el=>el.classList.contains('theme-light')),true);
     assert.equal(await page.evaluate(()=>location.search.includes('tutorial=')),false);
     await page.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-light-reduced.png`)});
-    await layer.locator('.driver-popover-close-btn').focus();await page.keyboard.press('ArrowRight');await page.waitForFunction(()=>document.querySelector('.onboarding-layer')?.dataset.step==='note');await page.waitForTimeout(100);
+    await layer.getByRole('button',{name:'Omitir'}).focus();await page.keyboard.press('ArrowRight');await page.waitForFunction(()=>document.querySelector('.onboarding-layer')?.dataset.step==='note');await page.waitForTimeout(100);
     await page.mouse.click(386,4);await page.waitForFunction(()=>document.querySelector('.onboarding-layer')?.dataset.step==='alarms');await page.waitForTimeout(100);
     await page.keyboard.press('Escape');await layer.waitFor({state:'hidden'});
     assert.equal(await page.evaluate(()=>JSON.parse(localStorage.estudiemos_onboarding_v1).status),'skipped');
