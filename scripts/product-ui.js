@@ -1,12 +1,14 @@
 (function () {
   if (!document.body.classList.contains('workspace-home') || document.querySelector('[data-home-navigation]')) return;
   const page = document.querySelector('.workspace-page');
+  const panels = page?.querySelector('.home-panels');
+  const layout = panels?.querySelector('.home-layout');
   const workspace = document.querySelector('.workspace-section');
   const dashboard = document.querySelector('.home-dashboard');
   const calendar = document.querySelector('.dashboard-calendar');
   const inbox = document.querySelector('.dashboard-agenda');
   const overview = document.querySelector('[data-study-home]');
-  if (!page || !workspace || !dashboard || !calendar || !inbox) return;
+  if (!panels || !layout || !overview || !workspace || !dashboard || !calendar || !inbox) return;
   const mobile = matchMedia('(max-width:700px), (min-width:701px) and (max-width:900px) and (max-height:899px)');
   const topbar = document.querySelector('.topbar');
   let topbarFrame=0;
@@ -19,16 +21,12 @@
   nav.dataset.homeNavigation = '';
   nav.setAttribute('aria-label', 'Vistas de inicio');
   nav.setAttribute('role', 'tablist');
-  const views = [...(overview ? [['overview','Inicio',overview]] : []), ['space','Mi espacio',workspace],['calendar','Calendario',calendar],['inbox','Inbox',inbox]];
+  const views = [['overview','Inicio',overview],['space','Mi espacio',workspace],['calendar','Calendario',calendar],['inbox','Inbox',inbox]];
   const panelLabels = new Map(views.map(([, , panel]) => [panel, panel.getAttribute('aria-labelledby')]));
   let current = views.some(([key]) => key === history.state?.homeView) ? history.state.homeView : views[0][0];
   let navigationAnimation = null;
   const isVisible = key => {
-    if (key === 'overview') {
-      if (window.EstudiemosOnboarding?.isActive() || document.body.classList.contains('home-layout-editing')) return true;
-      const value=window.EstudiemosHomeLayout?.read()||{};
-      return ['focus','progress','classes'].some(tool=>value.visible?.[tool]===true || (tool!=='classes'&&value.visible?.[tool]!==false)) || value.visible?.inbox===false;
-    }
+    if (key === 'overview') return true;
     const mapped = key === 'space' ? 'workspace' : key;
     if (mapped === 'workspace' && !window.EstudiemosRelease?.enabled('driveWorkspace')) return false;
     try {
@@ -43,29 +41,38 @@
     button.id = `home-tab-${key}`;
     button.dataset.homeView = key;
     button.setAttribute('role', 'tab');
-    if (!panel.id) panel.id = `home-panel-${key}`;
-    button.setAttribute('aria-controls', panel.id);
+    if (key!=='overview'&&!panel.id) panel.id = `home-panel-${key}`;
+    button.setAttribute('aria-controls', key==='overview'?panels.id:panel.id);
     nav.appendChild(button);
   }
   page.appendChild(nav);
   const render = () => {
-    if (!isVisible(current)) current = isVisible('inbox') ? 'inbox' : 'overview';
+    if (!isVisible(current)) {
+      current='overview';
+      if(history.state?.homeView)history.replaceState({...history.state,homeView:current},'');
+    }
     if(mobile.matches && history.state?.estudiemosUi==='home-session' && document.querySelector('.study-session-dialog[open]')) current='overview';
-    nav.hidden = !mobile.matches;
-    if (overview) overview.hidden = mobile.matches && current !== 'overview';
-    document.querySelector('.home-layout').hidden = mobile.matches && current === 'overview';
-    workspace.hidden = mobile.matches && current !== 'space';
-    dashboard.hidden = mobile.matches && !['calendar','inbox'].includes(current);
-    calendar.hidden = mobile.matches && current !== 'calendar';
-    inbox.hidden = mobile.matches && current !== 'inbox';
+    const compact=mobile.matches, stacked=compact&&current==='overview';
+    const show = key => !compact || stacked && isVisible(key) || current===key;
+    nav.hidden = !compact;
+    panels.toggleAttribute('data-stacked',stacked);
+    if(stacked){panels.setAttribute('role','tabpanel');panels.setAttribute('aria-labelledby','home-tab-overview');}
+    else{panels.removeAttribute('role');panels.removeAttribute('aria-labelledby');}
+    overview.hidden = !show('overview');
+    workspace.hidden = !show('space');
+    calendar.hidden = !show('calendar');
+    inbox.hidden = !show('inbox');
+    dashboard.hidden = calendar.hidden&&inbox.hidden;
+    layout.hidden = dashboard.hidden&&workspace.hidden;
     for (const [key,,panel] of views) {
       const button = nav.querySelector(`[data-home-view="${key}"]`);
       button.hidden = !isVisible(key);
       button.setAttribute('aria-selected', String(key === current));
       button.tabIndex = key === current ? 0 : -1;
-      panel.inert = mobile.matches && key !== current;
-      panel.setAttribute('role', mobile.matches ? 'tabpanel' : 'region');
-      const label = mobile.matches ? button.id : panelLabels.get(panel);
+      panel.inert = !show(key);
+      const tabPanel=compact&&!stacked&&key!=='overview';
+      panel.setAttribute('role', tabPanel ? 'tabpanel' : 'region');
+      const label = tabPanel ? button.id : panelLabels.get(panel);
       if (label) panel.setAttribute('aria-labelledby', label);
       else panel.removeAttribute('aria-labelledby');
     }
@@ -83,7 +90,8 @@
     history[replace ? 'replaceState' : 'pushState'](nextState, '', location.href);
     render();
     if (animate && mobile.matches && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      navigationAnimation = view[2].animate([{opacity:.65,translate:'0 4px'},{opacity:1,translate:'0 0'}], {duration:160,easing:'cubic-bezier(.2,.8,.2,1)'});
+      const surface=key==='overview'?panels:view[2];
+      navigationAnimation = surface.animate([{opacity:.65,translate:'0 4px'},{opacity:1,translate:'0 0'}], {duration:160,easing:'cubic-bezier(.2,.8,.2,1)'});
     }
     return true;
   }
@@ -98,6 +106,10 @@
   nav.addEventListener('click', event => {
     const button = event.target.closest('[data-home-view]');
     if (button) activate(button.dataset.homeView);
+  });
+  document.querySelector('.topbar .brand')?.addEventListener('click',event=>{
+    if(!mobile.matches||event.button>0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
+    event.preventDefault();activate('overview');panels.scrollTop=0;
   });
   nav.addEventListener('keydown', event => {
     const direction = {ArrowLeft:-1,ArrowRight:1}[event.key];

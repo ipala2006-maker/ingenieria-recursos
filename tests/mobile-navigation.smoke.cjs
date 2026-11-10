@@ -54,6 +54,10 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
       for(let i=0;i<12;i++)await tap(keys[i%keys.length]);
       await page.evaluate(()=>window.dispatchEvent(new CustomEvent('estudiemos:home-navigate',{detail:{view:'calendar'}})));await selected('calendar');
       await page.reload();await nav.waitFor();await selected('calendar');
+      await page.locator('.topbar .brand').tap();await selected('overview');
+      assert.equal(await page.locator('[data-home-space=calendar]').isVisible(),true,'Inicio keeps the enabled calendar available');
+      assert.equal(await page.locator('[data-home-space=inbox]').isVisible(),true,'Inicio keeps the enabled inbox available');
+      await page.goBack();await selected('calendar');
       await tap('overview');
       for(const theme of ['dark','light']){
         await page.evaluate(theme=>EstudiemosTheme.set(theme),theme);
@@ -67,6 +71,7 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
       });
       assert.equal(await nav.locator('[data-home-view=calendar]').isVisible(),false);
       assert.equal(await nav.locator('[data-home-view=space]').isVisible(),false);
+      assert.equal(await page.locator('[data-home-space=calendar]').isVisible(),false,'Hidden tools stay hidden inside Inicio');
       const remaining=await nav.locator('button:visible').evaluateAll(nodes=>nodes.map(el=>el.getBoundingClientRect().width));
       assert.equal(remaining.length,2);assert.ok(Math.abs(remaining[0]-remaining[1])<2,'hidden tools leave no empty slots');
       await nav.locator('[data-home-view=overview]').focus();await page.keyboard.press('ArrowRight');await selected('inbox');
@@ -75,6 +80,7 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
         const value=EstudiemosHomeLayout.read();value.visible.inbox=false;
         EstudiemosHomeLayout.write(value);window.dispatchEvent(new CustomEvent('estudiemos:home-customized'));
       });await selected('overview');
+      assert.equal(await page.evaluate(()=>history.state?.homeView),'overview','Removing the current tool updates the restored view');
       await page.locator('[data-home-customize]').tap();await page.locator('.home-layout-manage').tap();
       assert.equal(await page.locator('[data-home-customizer-spaces] input[value=shortcuts]').count(),0,'retired shortcuts have no misleading setting');
       await page.locator('.home-customizer__done').tap();await page.locator('.home-layout-done').tap();
