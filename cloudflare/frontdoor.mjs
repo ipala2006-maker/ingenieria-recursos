@@ -1,4 +1,5 @@
 import staticConfig from '../vercel.json' with { type: 'json' };
+import courseLinks from '../shared/course-app-links.js';
 
 const dynamicPath = pathname => pathname.startsWith('/api/') || pathname.startsWith('/materia/') || pathname.startsWith('/amistad/');
 const consentPaths = new Set(['/consentimiento', '/consentimiento/', '/consentimiento.html']);
@@ -40,6 +41,10 @@ export default {
         Location: url.href, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff'
       } });
     }
+    const destination = ['GET','HEAD'].includes(request.method) && courseLinks.publicEntryRedirect(url);
+    if (destination) return new Response(null, {status:308,headers:{
+      Location:destination.href,'Cache-Control':'no-store','Referrer-Policy':'no-referrer'
+    }});
     const binding = dynamicPath(url.pathname) ? env.BACKEND : env.ASSETS;
     try {
       if (!binding || typeof binding.fetch !== 'function') throw new Error('UNAVAILABLE_BINDING');

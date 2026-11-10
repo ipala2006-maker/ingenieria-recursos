@@ -41,7 +41,7 @@ Cuando tardás más en organizarte que en estudiar. Decilo como te salga.
 **Descripción:**
 
 Una frase se convierte en Inbox, calendario y un bloque de estudio. Probá
-Estudiemos: https://estudiemos-app.vercel.app/instalar.html?utm_source=youtube&utm_medium=shorts&utm_campaign=una_traba_menos_01
+Estudiemos: https://estudiemos.ar/instalar?utm_source=youtube&utm_medium=shorts&utm_campaign=una_traba_menos_01
 
 ## Hooks para pruebas A/B
 

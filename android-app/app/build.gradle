@@ -2,8 +2,8 @@ plugins {
     id "com.android.application"
 }
 
-def appOrigin = providers.gradleProperty('estudiemosAppOrigin').getOrElse('https://estudiemos.estudiemos-services.workers.dev')
-def allowedOrigins = ['https://estudiemos-app.vercel.app', 'https://estudiemos-candidate.estudiemos-services.workers.dev', 'https://estudiemos.estudiemos-services.workers.dev']
+def appOrigin = providers.gradleProperty('estudiemosAppOrigin').getOrElse('https://estudiemos.ar')
+def allowedOrigins = ['https://estudiemos.ar', 'https://estudiemos-app.vercel.app', 'https://estudiemos-candidate.estudiemos-services.workers.dev', 'https://estudiemos.estudiemos-services.workers.dev']
 if (!allowedOrigins.contains(appOrigin)) throw new GradleException('Untrusted Estudiemos app origin')
 
 android {
@@ -15,8 +15,8 @@ android {
         applicationId "com.estudiemos.app"
         minSdk 26
         targetSdk 35
-        versionCode 38
-        versionName "1.7.0"
+        versionCode 39
+        versionName "1.7.1"
         buildConfigField 'String', 'APP_ORIGIN', '"' + appOrigin + '"'
         manifestPlaceholders = [estudiemosAppHost: new URI(appOrigin).host]
     }

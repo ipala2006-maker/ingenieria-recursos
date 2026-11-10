@@ -4,16 +4,17 @@ const config = require('../vercel.json');
 const fs = require('node:fs');
 const path = require('node:path');
 const origin = 'https://estudiemos.estudiemos-services.workers.dev';
+const publicOrigin = 'https://estudiemos.ar';
 
 test('only public old entry points redirect to the exact stable origin, with reversible status', () => {
-  const redirects = config.redirects.filter(rule => rule.destination.startsWith(origin));
+  const redirects = config.redirects.filter(rule => rule.destination.startsWith(publicOrigin));
   assert.equal(redirects.length, 4);
   const expected = {
-    '/instalar.html': '/instalar.html', '/instalar': '/instalar.html',
+    '/instalar.html': '/instalar', '/instalar': '/instalar',
     '/materia/:code': '/materia/:code', '/amistad/:token': '/amistad/:token'
   };
   for (const rule of redirects) {
-    assert.equal(rule.destination, origin + expected[rule.source]);
+    assert.equal(rule.destination, publicOrigin + expected[rule.source]);
     assert.equal(rule.permanent, false);
     assert.equal(rule.has, undefined);
   }
@@ -31,7 +32,7 @@ test('the existing private Sheets consumer targets Cloudflare without changing c
 });
 
 test('legacy sessions, native handoff redemption and old notification transport are not blanket-redirected', () => {
-  const redirects = config.redirects.filter(rule => rule.destination.startsWith(origin));
+  const redirects = config.redirects.filter(rule => rule.destination.startsWith(publicOrigin));
   for (const pathname of ['/', '/api/widget-push', '/api/widget-link', '/api/account-config', '/widget.html']) {
     assert.ok(!redirects.some(rule => rule.source === pathname || rule.source === '/:path*' || rule.source === '/api/:path*'));
   }

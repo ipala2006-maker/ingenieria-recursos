@@ -27,7 +27,7 @@ Organiza. Enfocate. Avanza.
 
 ## Enlace
 
-`https://estudiemos-app.vercel.app/instalar.html?utm_source=instagram&utm_medium=profile&utm_campaign=launch`
+`https://estudiemos.ar/instalar?utm_source=instagram&utm_medium=profile&utm_campaign=launch`
 
 Cambiar `instagram` por `tiktok` o `youtube` en cada perfil.
 
@@ -58,7 +58,7 @@ mientras terminamos la experiencia de lanzamiento.
 
 ### Como se instala
 
-Entra a estudiemos-app.vercel.app/instalar.html y elegi tu dispositivo. Siempre
+Entra a estudiemos.ar/instalar y elegi tu dispositivo. Siempre
 vas a encontrar ahi la version mas reciente.
 
 ### Privacidad

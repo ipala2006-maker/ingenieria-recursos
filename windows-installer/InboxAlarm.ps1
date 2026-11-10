@@ -118,7 +118,7 @@ namespace Estudiemos {
   $openButton.BackColor = [Drawing.ColorTranslator]::FromHtml('#18253B')
   $openButton.ForeColor = [Drawing.Color]::White
   $openButton.Font = New-Object Drawing.Font('Segoe UI Semibold', 14, [Drawing.FontStyle]::Bold)
-  $openButton.Add_Click({ Start-Process 'https://estudiemos.estudiemos-services.workers.dev/?agenda=1'; $form.Close() })
+  $openButton.Add_Click({ Start-Process 'https://estudiemos.ar/?agenda=1'; $form.Close() })
 
   $dismissButton = New-Object Windows.Forms.Button
   $dismissButton.Text = 'Entendido'

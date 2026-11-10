@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const links = require('../shared/course-app-links');
 const source = fs.readFileSync(path.join(__dirname,'../scripts/pomodoro.js'),'utf8');
 
 function floatingClock(remaining=3300) {
@@ -44,7 +45,7 @@ function floatingOpening(requestWindow, origin='https://estudiemos.ar') {
   let built=0;
   const opened=[];
   const context={pipWindow:null,pipOpening:false,pipDial:null,pipDialPreview:null,
-    supportsMobileFloating:()=>false,window:{location:{origin},open:(...args)=>opened.push(args),documentPictureInPicture:{requestWindow}},
+    supportsMobileFloating:()=>false,window:{location:{origin},open:(...args)=>opened.push(args),documentPictureInPicture:{requestWindow},EstudiemosCourseAppLinks:links},
     prepareAudio:()=>{},buildFloatingTimer:()=>built++,closeMenu:()=>{},render:()=>{}};
   vm.createContext(context);
   vm.runInContext(source.slice(source.indexOf('  async function openFloatingTimer()'),source.indexOf('  function buildFloatingTimer(')),context);
@@ -52,7 +53,7 @@ function floatingOpening(requestWindow, origin='https://estudiemos.ar') {
 }
 
 test('old production origins open the official timer without navigating or using their PiP window',async()=>{
-  for(const origin of ['https://estudiemos.estudiemos-services.workers.dev','https://estudiemos-app.vercel.app']){
+  for(const origin of ['https://estudiemos.estudiemos-services.workers.dev','https://estudiemos-candidate.estudiemos-services.workers.dev','https://estudiemos-app.vercel.app']){
     let requested=false;
     const t=floatingOpening(()=>{requested=true;},origin);
     await t.context.openFloatingTimer();

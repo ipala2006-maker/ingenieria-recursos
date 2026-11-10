@@ -1029,7 +1029,7 @@
     }
     if (!("documentPictureInPicture" in window)) return;
     // The browser takes the floating window's origin from its opener.
-    if (["https://estudiemos.estudiemos-services.workers.dev", "https://estudiemos-app.vercel.app"].includes(window.location.origin)) {
+    if (window.EstudiemosCourseAppLinks?.isLegacyOrigin?.(window.location.origin)) {
       window.open("https://estudiemos.ar/?pomodoro=1", "_blank", "noopener,noreferrer");
       return;
     }

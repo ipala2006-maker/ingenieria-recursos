@@ -28,6 +28,7 @@ test('friendly class links render a real minimal invitation and WhatsApp metadat
   assert.equal(res.headers['Content-Security-Policy'],require('../vercel.json').headers.find(rule=>rule.source==='/(.*)').headers.find(h=>h.key==='Content-Security-Policy').value);
   assert.equal(rules.invitation('https://estudiemos-app.vercel.app/materia/'+code,'https://app.test'),code);
   assert.equal(rules.invitation('https://estudiemos.estudiemos-services.workers.dev/materia/'+code,'https://app.test'),code);
+  assert.equal(rules.invitation('https://estudiemos-candidate.estudiemos-services.workers.dev/materia/'+code,'https://app.test'),code);
   assert.equal(rules.invitation('https://estudiemos.ar/materia/'+code,'https://app.test'),code);
   assert.equal(rules.invitation('https://attacker.test/materia/'+code,'https://app.test'),'');
 });

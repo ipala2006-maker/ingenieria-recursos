@@ -73,5 +73,5 @@ dispersos y dificultad para convertir intenciones en una rutina constante.
 **Proba Estudiemos.**
 
 Destino unico:
-`https://estudiemos-app.vercel.app/instalar.html`
+`https://estudiemos.ar/instalar`
 

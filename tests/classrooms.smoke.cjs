@@ -53,7 +53,7 @@ const workerOrigin='https://estudiemos.estudiemos-services.workers.dev';
       const ctx=await browser.newContext({viewport:{width,height:900},isMobile:width<500,hasTouch:width<500,serviceWorkers:'block',userAgent});
       const driveItems=new Map(),driveCalls=[];let driveId=0,pendingUpload;
       const driveRoot={id:'course-root',name:'Estudiemos',mimeType:'application/vnd.google-apps.folder'};ctx.courseDriveCalls=driveCalls;
-      await ctx.addInitScript(({user,role,actualAccount,launchPlatform})=>{
+      await ctx.addInitScript(({user,role,actualAccount,launchPlatform,student})=>{
         const effectiveUser=localStorage.getItem('class_test_user')??user;
         localStorage.setItem('estudiemos_onboarding_v1',JSON.stringify({status:'completed'}));
         localStorage.setItem('estudiemos_home_layout','{}');
@@ -65,9 +65,30 @@ const workerOrigin='https://estudiemos.estudiemos-services.workers.dev';
         if(launchPlatform==='ipad'){Object.defineProperty(navigator,'platform',{value:'MacIntel'});Object.defineProperty(navigator,'maxTouchPoints',{value:5});}
         if(launchPlatform==='windows-installed')localStorage.setItem('estudiemos_windows_app_links','true');
         window.__externalLinks=[];document.addEventListener('click',event=>{const link=event.target.closest('a[href^="intent:"],a[href^="estudiemos-app:"]');if(link){window.__externalLinks.push({href:link.href,active:navigator.userActivation.isActive});event.preventDefault();}});
-        window.addEventListener('estudiemos:account-change',()=>localStorage.setItem('class_test_user',window.__classUser||''));
-        if(actualAccount)window.supabase={createClient:()=>({auth:{getSession:async()=>({data:{session:null}}),onAuthStateChange:()=>{},signUp:async values=>{window.__signup=values;return {data:{session:null},error:null};}}})};
-      },{user,role,actualAccount,launchPlatform});
+        window.addEventListener('estudiemos:account-change',event=>{
+          if(event.detail?.user)window.__classUser=event.detail.user.id;
+          localStorage.setItem('class_test_user',window.__classUser||'');
+        });
+        if(actualAccount){
+          const fixtureSession={user:{id:student,email:'student@example.test'},access_token:student};
+          const accountState={select(){return this;},eq(){return this;},maybeSingle:async()=>({data:{state:{},updated_at:'2026-01-01T00:00:00Z'}})};
+          window.supabase={createClient:()=>({
+            auth:{
+              getSession:async()=>({data:{session:localStorage.getItem('class_test_user')===student?fixtureSession:null}}),onAuthStateChange:()=>{},
+              signUp:async values=>{window.__signup=values;return {data:{session:null},error:null};},
+              signInWithPassword:async({password})=>{
+                if(password!=='FixtureOnlyPass123!')return {error:{code:'invalid_credentials'}};
+                localStorage.setItem('class_test_user',student);
+                return {data:{session:fixtureSession},error:null};
+              }
+            },
+            channel:()=>({on(){return this;},subscribe(){return this;}}),
+            removeChannel:async()=>{},
+            from:()=>accountState,
+            rpc:async(name,args)=>name.startsWith('classroom_')?(await fetch('/rest/v1/rpc/'+name,{method:'POST',headers:{Authorization:'Bearer '+student},body:JSON.stringify(args)})).json():{error:{code:'PGRST202'}}
+          })};
+        }
+      },{user,role,actualAccount,launchPlatform,student});
       await ctx.route('**/*',async route=>{
         const url=new URL(route.request().url()),request=route.request(),method=request.method();
         if(driveFixture&&url.origin==='https://www.googleapis.com'){
@@ -328,6 +349,22 @@ const workerOrigin='https://estudiemos.estudiemos-services.workers.dev';
     const signup=await context('',390,'student',false,true),signupPage=await signup.newPage();lastPage=signupPage;signupPage.on('pageerror',error=>errors.push(error.message));await signupPage.goto(official+'/materia/'+code);await signupPage.locator('[data-course-join]').click();await signupPage.locator('#accountTitle').filter({hasText:'Unirte a la cátedra'}).waitFor();assert.match(await signupPage.locator('[data-account-auth] .account-intro').innerText(),/Física/);await signupPage.locator('[data-account-form] [name=email]').fill('pilot@example.test');await signupPage.locator('[data-account-form] [name=password]').fill('FixtureOnlyPass123!');await signupPage.locator('[data-account-signup]').click();await signupPage.waitForFunction(()=>Boolean(window.__signup));const emailReturn=new URL(await signupPage.evaluate(()=>window.__signup.options.emailRedirectTo));assert.equal(emailReturn.origin,official);assert.equal(emailReturn.searchParams.get('materia'),code);assert.equal(emailReturn.searchParams.get('unirme'),'1');
     for(const width of [320,390,768]){await signupPage.setViewportSize({width,height:844});assert.equal(await signupPage.locator('.account-shell').evaluate(el=>getComputedStyle(el).position),'fixed','Account styles load on invitation pages');assert.equal(await signupPage.locator('.account-panel').evaluate(el=>el.scrollWidth<=el.clientWidth+1),true,'Sign-in panel fits');assert.equal(await signupPage.locator('[data-account-signup]').isVisible(),true);await signupPage.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-invitation-signup-${width}.png`)});}await signup.close();
     const crawler=await browser.newContext({javaScriptEnabled:false,viewport:{width:390,height:844}}),crawlerPage=await crawler.newPage();lastPage=crawlerPage;await crawlerPage.goto(base+'/materia/'+code);assert.equal(await crawlerPage.locator('#courseInviteTitle').innerText(),'Física · 1.º año');assert.match(await crawlerPage.locator('[property="og:title"]').getAttribute('content'),/Física/);assert.equal(await crawlerPage.locator('[data-course-join]').isVisible(),true);await crawler.close();
+    const login=await context('',390,'student',false,true,'ios'),loginPage=await login.newPage();lastPage=loginPage;
+    loginPage.on('pageerror',error=>errors.push(error.message));
+    await loginPage.goto(official+'/materia/'+code);
+    await loginPage.locator('[data-course-join]').tap();
+    const loginForm=loginPage.locator('[data-account-form]');
+    await loginForm.locator('[name=email]').fill('student@example.test');
+    await loginForm.locator('[name=password]').fill('IncorrectPassword');
+    await loginForm.locator('button[type=submit]').tap();
+    await loginPage.getByText('El correo o la contraseña no son correctos.').waitFor();
+    assert.equal(new URL(loginPage.url()).pathname,'/materia/'+code);
+    await loginForm.locator('[name=password]').fill('FixtureOnlyPass123!');
+    await loginForm.locator('button[type=submit]').tap();
+    await loginPage.locator('.classroom-course-head h3').filter({hasText:'Física · 1.º año'}).waitFor();
+    assert.equal(new URL(loginPage.url()).origin,official);assert.equal(await loginPage.locator('dialog[open]').count(),1);
+    assert.equal(await loginPage.evaluate(()=>localStorage.getItem('estudiemos_class_invite_v1')),null);
+    await login.close();
     const longCode='JKLMNPQRST';await db.query('select classroom_action($1,$2,$3)',[teacher,'create',{code:longCode,title:'Análisis Matemático y Aplicaciones para Ingeniería · Comisión del turno de la tarde',teacherName:'Departamento de Ciencias Básicas · Equipo docente',institution:'Universidad del grupo de prueba',timezone:'UTC',ownerRole:'teacher',color:'teal'}]);
     const responsive=await context('',390),responsivePage=await responsive.newPage();lastPage=responsivePage;
     for(const width of [320,390,768,1440]){await responsivePage.setViewportSize({width,height:844});await responsivePage.goto(base+'/materia/'+longCode);await responsivePage.locator('[data-course-join]').waitFor();await responsivePage.locator('.course-invite-symbol img').evaluate(img=>img.decode());assert.equal(await responsivePage.locator('.course-install-invitation img').evaluateAll(images=>images.every(img=>img.complete&&img.naturalWidth>0)),true,'All invitation icons render');assert.equal(await responsivePage.locator('body').evaluate(el=>el.scrollWidth<=innerWidth),true,'Long course names do not overflow');assert.equal(await responsivePage.locator('[data-course-join]').evaluate(el=>el.getBoundingClientRect().bottom<=innerHeight),true,'Primary action stays in the first viewport');await responsivePage.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-invitation-long-${width}.png`)});}await responsive.close();

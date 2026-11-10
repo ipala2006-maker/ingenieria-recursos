@@ -37,6 +37,10 @@ function secured(response) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    const entry = ['GET','HEAD'].includes(request.method) && courseLinks.publicEntryRedirect(url);
+    if (entry) return secured(new Response(null, {status:308,headers:{
+      Location:entry.href,'Cache-Control':'no-store','Referrer-Policy':'no-referrer'
+    }}));
     if (url.pathname === '/api/widget-link' && url.searchParams.get('alarmFeed') === '1' && !url.searchParams.has('alarmSetup')) {
       return secured(Response.redirect(url.origin + '/.well-known/windows-alarms-retired.json', 307));
     }

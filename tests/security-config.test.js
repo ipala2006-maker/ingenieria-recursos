@@ -73,7 +73,7 @@ test("Supabase CDN fallback verifies the same pinned library as the server proxy
   const implementation = account.slice(account.indexOf("  function loadScript(source)"), account.indexOf("  async function signIn()"));
   let appended;
   const sandbox = { SUPABASE_CDN: cdn, SUPABASE_INTEGRITY: integrity, Promise,
-    window: { supabase: { createClient() {} } },
+    window: { setTimeout, clearTimeout, supabase: { createClient() {} } },
     document: { createElement: () => ({ dataset: {} }), head: { appendChild(script) { appended = script; queueMicrotask(script.onload); } } } };
   vm.runInNewContext(implementation, sandbox);
   await sandbox.loadScript(cdn);

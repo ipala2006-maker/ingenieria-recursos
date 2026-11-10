@@ -2,7 +2,7 @@
 
 Aplicación de productividad para organizar archivos, Inbox, calendario y sesiones de estudio.
 
-Sitio público: [https://estudiemos-app.vercel.app](https://estudiemos-app.vercel.app)
+Sitio público: [https://estudiemos.ar](https://estudiemos.ar)
 
 ## Estructura
 
@@ -75,7 +75,7 @@ Preparación técnica:
 1. Ejecutar una vez `supabase/whatsapp.sql` desde SQL Editor.
 2. En Meta for Developers crear o elegir una aplicación Business, agregar WhatsApp y obtener el número de prueba o definitivo.
 3. En Vercel agregar las variables `SUPABASE_SECRET_KEY`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID` y `WHATSAPP_PUBLIC_NUMBER`.
-4. Configurar en Meta el webhook `https://estudiemos-app.vercel.app/api/whatsapp-webhook`, usar el mismo valor de `WHATSAPP_VERIFY_TOKEN` y suscribirse al campo `messages`.
+4. Configurar en Meta el webhook `https://estudiemos.ar/api/whatsapp-webhook`, usar el mismo valor de `WHATSAPP_VERIFY_TOKEN` y suscribirse al campo `messages`.
 5. Volver a desplegar. Desde Perfil, cada estudiante puede generar un código de 15 minutos y enviar el mensaje preparado al WhatsApp oficial.
 
 `WHATSAPP_GRAPH_VERSION` y `WHATSAPP_DAILY_COMMAND_LIMIT` son opcionales. El límite diario predeterminado es 30 órdenes por cuenta. Las claves privadas pertenecen únicamente a Vercel y nunca deben pegarse en HTML, JavaScript del navegador ni GitHub.
@@ -99,7 +99,7 @@ Configuración inicial:
 1. Crear un proyecto gratuito en Supabase.
 2. Abrir **SQL Editor**, pegar el contenido de `supabase/schema.sql` y ejecutarlo una vez.
 3. En el mismo editor, ejecutar `supabase/workspace.sql` para crear el espacio privado de archivos y sus reglas de acceso, y `supabase/security.sql` para activar el rate limit distribuido.
-4. En **Authentication → URL Configuration**, usar `https://estudiemos-app.vercel.app` como Site URL y agregar `https://estudiemos-app.vercel.app/**` a Redirect URLs.
+4. En **Authentication → URL Configuration**, usar `https://estudiemos.ar` como Site URL y agregar `https://estudiemos.ar/**` a Redirect URLs.
 5. Copiar la Project URL y la Publishable key desde **Project Settings → API Keys**.
 6. En Vercel agregar para Production las variables `SUPABASE_URL` y `SUPABASE_PUBLISHABLE_KEY`.
 7. Volver a desplegar el último commit.
@@ -161,7 +161,7 @@ Para probar los widgets nativos durante el desarrollo se necesita Windows 11, Wi
 
 ## Descarga permanente
 
-La página [https://estudiemos-app.vercel.app/instalar.html](https://estudiemos-app.vercel.app/instalar.html) es el punto único para instalar Estudiemos. El botón Android usa siempre la dirección permanente `android-latest`; cada compilación nativa reemplaza el APK anterior sin cambiar el enlace. Los cambios solamente web se actualizan automáticamente y no requieren reinstalar la aplicación.
+La página [estudiemos.ar/instalar](https://estudiemos.ar/instalar) es el punto único para instalar Estudiemos. El botón Android usa siempre la dirección permanente `android-latest`; cada compilación nativa reemplaza el APK anterior sin cambiar el enlace. Los cambios solamente web se actualizan automáticamente y no requieren reinstalar la aplicación.
 
 ## Tareas
 

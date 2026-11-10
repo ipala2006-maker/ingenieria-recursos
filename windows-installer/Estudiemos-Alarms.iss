@@ -57,7 +57,7 @@ Root: HKCU; Subkey: "Software\Classes\Estudiemos.AlarmConnection"; ValueType: st
 Root: HKCU; Subkey: "Software\Classes\Estudiemos.AlarmConnection\DefaultIcon"; ValueType: string; ValueData: "{sys}\shell32.dll,110"
 Root: HKCU; Subkey: "Software\Classes\Estudiemos.AlarmConnection\shell\open\command"; ValueType: string; ValueData: "{sys}\wscript.exe ""{app}\AlarmLauncher.vbs"" ""%1"""
 [Run]
-Filename: "https://estudiemos.estudiemos-services.workers.dev/?alarms-setup=1"; Flags: shellexec nowait skipifsilent
+Filename: "https://estudiemos.ar/?alarms-setup=1"; Flags: shellexec nowait skipifsilent
 
 [Code]
 function LegacyWindowsSupport: Boolean;
