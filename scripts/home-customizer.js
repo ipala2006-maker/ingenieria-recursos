@@ -184,7 +184,7 @@
     const before=read(),value=on&&before.preset==='light'&&!before.placement?clone(before):prepare(clone(before));
     if(value.visible[key]===on)return true;
     let adapted=false;
-    const stored=value.placement,desktop=lastLayout||(stored?.width>0&&stored?.height>0?board.freeLayout(stored,value.tree,stored.width,stored.height,effectiveVisibility(before.visible)):null);
+    const stored=value.placement,desktop=mobile.matches?null:lastLayout||(stored?.width>0&&stored?.height>0?board.freeLayout(stored,value.tree,stored.width,stored.height,effectiveVisibility(before.visible)):null);
     if(on&&desktop&&key!=='shortcuts'){
       value.placement=board.remember(desktop,value.placement,value.tree);
       const result=board.addTool(key,value.placement.boxes[key],desktop.boxes,desktop.width,desktop.height);
