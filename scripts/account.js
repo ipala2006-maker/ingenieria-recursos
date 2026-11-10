@@ -62,6 +62,8 @@
   let cloudPollTimer = 0;
   let remoteRefreshTimer = 0;
   let recovery = null;
+  let invitationPassword = false;
+  let expiredCourseLink = false;
   let authActionInFlight = false;
   let recoveryTimer = 0;
   const recoveryCooldowns = new Map();
@@ -99,6 +101,7 @@
     getPublicAppOrigin: () => accountConfig?.publicAppOrigin,
     whenReady: () => readyPromise,
     open: () => openDialog(),
+    close: () => closeDialog(),
     updateApp: () => updateApplication()
   };
 
@@ -159,7 +162,7 @@
               <span>Correo electrónico</span>
               <input type="email" name="email" autocomplete="email" required placeholder="nombre@correo.com" />
             </label>
-            <label>
+            <label data-account-password>
               <span>Contraseña</span>
               <input type="password" name="password" minlength="${MIN_PASSWORD_LENGTH}" autocomplete="current-password" required placeholder="Mínimo ${MIN_PASSWORD_LENGTH} caracteres" />
             </label>
@@ -176,6 +179,7 @@
             <button class="account-primary" type="submit" data-account-signin>Ingresar</button>
             <button class="account-secondary" type="button" data-account-signup>Crear cuenta</button>
             <button class="account-link" type="button" data-account-reset>Olvidé mi contraseña</button>
+            <button class="account-link" type="button" data-account-course-mode hidden>Usar contraseña</button>
           </form>
         </div>
 
@@ -325,6 +329,11 @@
       if (event.target.closest("[data-account-close]") || event.target === document.querySelector(".account-shell")) closeDialog();
       if (event.target.closest("[data-account-signup]")) signUp();
       if (event.target.closest("[data-account-reset]")) openRecovery();
+      if (event.target.closest("[data-account-course-mode]")) {
+        invitationPassword = !invitationPassword;
+        renderRecovery();
+        setStatus("", "info");
+      }
       if (event.target.closest("[data-recovery-resend]")) resetPassword(true);
       if (event.target.closest("[data-recovery-back]")) backFromRecovery();
       if (event.target.closest("[data-account-captcha-retry]")) resetCaptcha();
@@ -345,7 +354,8 @@
 
     document.querySelector("[data-account-form]")?.addEventListener("submit", (event) => {
       event.preventDefault();
-      signIn();
+      if (courseInvitation() && !invitationPassword) sendCourseLink(event.currentTarget.elements.email.value);
+      else signIn();
     });
     document.querySelector("[data-recovery-form]")?.addEventListener("submit", (event) => {
       event.preventDefault();
@@ -412,6 +422,7 @@
       };
       stage = "library";
       await loadSupabaseLibrary();
+      expiredCourseLink = clearExpiredCourseLink(new URL(location.href));
       client = window.supabase.createClient(config.url, config.publishableKey, {
         auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
       });
@@ -488,6 +499,19 @@
     }
   }
 
+  function clearExpiredCourseLink(url) {
+    if (url.searchParams.get("unirme") !== "1" || !/^[A-HJ-NP-Z2-9]{10}$/.test(url.searchParams.get("materia") || "")) return false;
+    const hash = new URLSearchParams(url.hash.slice(1));
+    const errors = [url.searchParams, hash].filter(params => params.get("error_code") === "otp_expired");
+    if (!errors.length) return false;
+    for (const params of errors) {
+      for (const key of ["error", "error_code", "error_description"]) params.delete(key);
+    }
+    url.hash = hash.toString();
+    history.replaceState(history.state, "", url);
+    return true;
+  }
+
   function finishReady(available) {
     if (!readySettled) {
       readySettled = true;
@@ -543,6 +567,26 @@
     });
   }
 
+  function courseInvitation() {
+    return !session && window.EstudiemosCourseInvitation?.pending();
+  }
+
+  async function sendCourseLink(value) {
+    if (!client || authActionInFlight || !courseInvitation()) return;
+    const email = value.trim();
+    if (!isValidEmail(email)) return setStatus("Ingresá un correo electrónico válido.", "error");
+    const captcha = getCaptchaOptions();
+    if (captcha === null) return;
+    const redirect = window.EstudiemosCourseInvitation.confirmationUrl(new URL(getRootPath(), location.href));
+    await runAuthAction("Enviando enlace...", "No pudimos enviar el enlace. Revisá tu conexión y volvé a intentar.", async () => {
+      const { error } = await client.auth.signInWithOtp({
+        email, options: { emailRedirectTo: redirect.href, shouldCreateUser: true, ...captcha }
+      });
+      if (error) return setStatus(authErrorMessage(error), "error");
+      setStatus("Revisá tu correo y abrí el enlace para entrar directo a la cátedra.", "success");
+    }, true);
+  }
+
   async function signIn() {
     if (!client || authActionInFlight) return;
     const credentials = getCredentials();
@@ -578,7 +622,7 @@
         if (COMMERCIAL_LAUNCH_ENABLED) window.setTimeout(() => refreshReferralStatus(true), 300);
         return;
       }
-      setStatus("Te enviamos un correo. Abrilo para confirmar tu cuenta y después ingresá.", "success");
+      setStatus(courseInvitation() ? "Revisá tu correo y abrí el enlace para entrar directo a la cátedra." : "Te enviamos un correo. Abrilo para confirmar tu cuenta y después ingresá.", "success");
     }, true);
   }
 
@@ -815,7 +859,18 @@
     panel.classList.toggle("is-recovering", Boolean(recovery));
     auth.hidden = !configAvailable || Boolean(session || recovery);
     const title = panel.querySelector("#accountTitle");
-    const invitation = !session && window.EstudiemosCourseInvitation?.pending();
+    const invitation = courseInvitation();
+    const emailOnly = Boolean(invitation && !invitationPassword);
+    const signIn = auth.querySelector("[data-account-form]");
+    signIn.querySelector("[data-account-password]").hidden = emailOnly;
+    signIn.elements.password.required = !emailOnly;
+    signIn.elements.password.disabled = emailOnly;
+    signIn.querySelector("[data-account-signin]").textContent = emailOnly ? "Enviarme el enlace" : "Ingresar";
+    signIn.querySelector("[data-account-signup]").hidden = emailOnly;
+    signIn.querySelector("[data-account-reset]").hidden = emailOnly;
+    const mode = signIn.querySelector("[data-account-course-mode]");
+    mode.hidden = !invitation;
+    mode.textContent = emailOnly ? "Usar contraseña" : "Usar enlace por correo";
     title.textContent = request ? "Recuperar contraseña" : recovery ? "Nueva contraseña" : invitation ? "Unirte a la cátedra" : "Tu cuenta";
     section.querySelector("[data-recovery-intro]").textContent = request
       ? "Ingresá el correo de tu cuenta."
@@ -2274,16 +2329,19 @@
     // A native top-layer dialog remains usable above any alarm or calendar editor.
     if (!shell.open) shell.showModal();
     document.body.classList.add("account-open");
-    const invitation = !session && window.EstudiemosCourseInvitation?.pending();
+    const invitation = courseInvitation();
     const accountIntro = shell.querySelector('.account-intro');
     if (accountIntro) accountIntro.textContent = invitation
-      ? (invitation.preview?.title ? 'Vas a unirte a ' + invitation.preview.title + '. Ingresá o creá tu cuenta para continuar.' : 'Ingresá o creá tu cuenta. Tu invitación está guardada para continuar en la cátedra.')
+      ? (invitation.preview?.title ? 'Entrá a ' + invitation.preview.title + ' con tu correo.' : 'Entrá a la cátedra con tu correo.')
       : 'Usá la misma cuenta en tu computadora, tablet y celular para mantener tus datos sincronizados.';
     renderSyncUsage();
     if (session && COMMERCIAL_LAUNCH_ENABLED && options.refreshReferrals !== false) refreshReferralStatus(true);
     if (sessionStorage.getItem("estudiemos_app_update_complete") === "true") {
       sessionStorage.removeItem("estudiemos_app_update_complete");
       setStatus("Estudiemos está actualizado.", "success");
+    } else if (invitation && expiredCourseLink) {
+      expiredCourseLink = false;
+      setStatus("El enlace de correo venció. Pedí uno nuevo para entrar a la misma cátedra.", "error");
     } else {
       setStatus("", "info");
     }

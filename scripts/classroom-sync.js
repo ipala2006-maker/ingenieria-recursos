@@ -1,6 +1,7 @@
 (function(){
   if(window.EstudiemosClasses||!window.EstudiemosClassroomRules)return;
   const rules=window.EstudiemosClassroomRules,root=new URL('../',document.currentScript.src),endpoint=new URL('api/account-config?classes=1',root);
+  let openingInvitation=rules.CODE.test(rules.invitation(location.href,root.origin))&&!document.body?.classList.contains('teacher-workspace')&&!location.pathname.endsWith('/widget.html');
   let owner='',model=null,epoch=0,serial=0,loading=null,writing=false,launching=false,lastRead=0,retryAt=0,failures=0,lastError=null,timer=0,uiPromise,directRead=true,projection=new Map();
   const account=()=>window.EstudiemosAccount;
   const identity=()=>account()?.getUser()?.id||'';
@@ -87,7 +88,7 @@
   async function refresh(force=false){
     if(!owner||owner!==identity()||writing)return snapshot();
     if(loading)return force?loading.then(value=>{if(lastError)throw lastError;return value;}):loading;
-    if(!force&&(document.hidden||Date.now()<retryAt||Date.now()-lastRead<30000))return snapshot();
+    if(!force&&(openingInvitation||document.hidden||Date.now()<retryAt||Date.now()-lastRead<30000))return snapshot();
     const version=++serial;
     const task=(async()=>{
       try{const result=await request();if(version!==serial)return snapshot();if(!result.unchanged)try{persist(result);}catch(error){if(error.message!=='CALENDAR_REBASE_REQUIRED')throw error;const full=await request('',{},'',true);if(version!==serial)return snapshot();persist(full);}lastRead=Date.now();failures=0;retryAt=0;lastError=null;return snapshot();}
@@ -123,7 +124,7 @@
   async function open(options={}){
     if(location.pathname.endsWith('/widget.html')){const url=new URL('./',root);url.searchParams.set('clase',options.id||'');return window.open(url,'_blank','noopener,noreferrer');}
     launching=true;
-    if(!uiPromise)uiPromise=Promise.all([new Promise((resolve,reject)=>{if(document.querySelector('link[href*="styles/classrooms.css"]'))return resolve();const css=document.createElement('link');css.rel='stylesheet';css.href=new URL('styles/classrooms.css?v=20261109-classroom-taps',root);css.onload=resolve;css.onerror=reject;document.head.append(css);}),new Promise((resolve,reject)=>{const script=document.createElement('script');script.src=new URL('scripts/classrooms.js?v=20261109-classroom-taps',root);script.onload=resolve;script.onerror=reject;document.head.append(script);})]).catch(error=>{uiPromise=null;throw error;});
+    if(!uiPromise)uiPromise=Promise.all([new Promise((resolve,reject)=>{if(document.querySelector('link[href*="styles/classrooms.css"]'))return resolve();const css=document.createElement('link');css.rel='stylesheet';css.href=new URL('styles/classrooms.css?v=20261109-classroom-taps',root);css.onload=resolve;css.onerror=reject;document.head.append(css);}),new Promise((resolve,reject)=>{const script=document.createElement('script');script.src=new URL('scripts/classrooms.js?v=20261110-course-entry',root);script.onload=resolve;script.onerror=reject;document.head.append(script);})]).catch(error=>{uiPromise=null;throw error;});
     try{await uiPromise;window.EstudiemosClassroomUI.open(options);}catch(_){window.EstudiemosAccount?.open();}finally{launching=false;}
   }
   window.EstudiemosClasses=Object.freeze({snapshot,status:()=>({loading:Boolean(loading),failed:Boolean(lastError)}),events,calendarVisible,setCalendarVisible,refresh,act,detail:id=>request('',{},id),history:id=>request('',{},id,false,true),open,pendingLaunch:()=>launching});
@@ -144,7 +145,8 @@
       try{sessionStorage.setItem(rules.PENDING_KEY,JSON.stringify({code,auto:true,expires:Date.now()+7*86400000,owner:identity(),...(saved?.code===code?{preview:saved.preview}:{})}));}catch(_){}
       if(!identity()&&!url.searchParams.has('unirme')&&!window.EstudiemosAndroid&&!matchMedia('(display-mode: standalone)').matches&&!navigator.standalone){const invitation=window.EstudiemosCourseAppLinks?.canonicalUrl(code,account()?.getPublicAppOrigin?.());if(invitation)return location.replace(invitation);}
       if(!window.EstudiemosCourseRole?.get())window.EstudiemosCourseRole?.set('student');
-      const hash=new URLSearchParams(url.hash.slice(1));hash.delete('clase');hash.delete('materia');url.hash=hash.toString();url.searchParams.delete('materia');url.searchParams.delete('unirme');history.replaceState(history.state,'',url);open({join:code,autoJoin:true});
+      const hash=new URLSearchParams(url.hash.slice(1));hash.delete('clase');hash.delete('materia');url.hash=hash.toString();url.searchParams.delete('materia');url.searchParams.delete('unirme');history.replaceState(history.state,'',url);
+      try{await open({join:code,autoJoin:true,promptAccount:true});}finally{openingInvitation=false;}
     }
     else if(requested){const uploadId=url.searchParams.get('uploadClass'),upload=url.searchParams.get('drive')==='connected';url.searchParams.delete('clase');url.searchParams.delete('materia');url.searchParams.delete('materias');url.searchParams.delete('uploadClass');url.searchParams.delete('drive');history.replaceState(history.state,'',url);if(uploadId)await refresh(true);open({id:rules.UUID.test(uploadId||id||'')?(uploadId||id):'',upload});}
     else try{const pending=window.EstudiemosCourseInvitation?.pending(identity())||JSON.parse(sessionStorage.getItem(rules.PENDING_KEY)||'null');if(pending?.expires>Date.now()&&(!pending.owner||pending.owner===identity())){if(!window.EstudiemosCourseRole?.get())window.EstudiemosCourseRole?.set('student');open({join:pending.code,autoJoin:pending.auto===true});}else{sessionStorage.removeItem(rules.PENDING_KEY);if(window.EstudiemosCourseRole?.get()==='teacher'&&document.body.classList.contains('workspace-home')&&!document.body.classList.contains('drive-library-page')&&!url.search&&!url.hash)location.replace(window.EstudiemosCourseRole.teacherUrl());}}catch(_){}
