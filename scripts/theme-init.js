@@ -193,9 +193,12 @@
     document.head.appendChild(feedback);
   }
   loadProfessionalStyleEarly();
-  installSpeculationRules();
   registerServiceWorkerEarly();
-  loadSmoothNavigation();
+  // Invitation pages use native links and handle joining themselves.
+  if (!/^\/materia\/[A-HJ-NP-Z2-9]{10}\/?$/i.test(location.pathname)) {
+    installSpeculationRules();
+    loadSmoothNavigation();
+  }
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", syncHomeLinks);

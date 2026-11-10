@@ -32,7 +32,8 @@ body.course-invitation-page { background:#10151e; }
 .course-invite-footer .install-action { min-width:0;border-radius:6px;min-height:48px;box-shadow:none;font-size:14px;padding:12px 16px;transition:background-color .16s ease,border-color .16s ease; }
 .course-invite-footer .install-action>img { flex:none; }
 .course-invite-footer .install-action--primary>img { filter:brightness(0);transform:rotate(180deg); }
-.course-invite-footer .install-action[aria-busy="true"] { opacity:.7;pointer-events:none; }
+.course-invite-footer .install-action:is(:hover,:focus-visible) { transform:none;box-shadow:none; }
+.course-invite-footer .install-action[aria-busy="true"] { opacity:.7; }
 .course-invite-retry { margin-top:12px;min-height:44px;padding:8px 16px;background:transparent;color:var(--install-blue);border:1px solid var(--install-line);border-radius:6px;cursor:pointer; }
 .course-invite-footer .install-hero__actions>a:nth-child(3) { grid-column:1/-1; }
 .course-invite-footer .install-hero__actions:has([data-course-native])>[data-course-install] { min-height:44px;border:0;background:transparent;color:var(--install-muted); }
