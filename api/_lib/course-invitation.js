@@ -21,7 +21,7 @@ module.exports=async function courseInvitation(req,res){
     .replace(/<script>\s*if \(\(location\.protocol[\s\S]*?<\/script>/,''); // Local installer redirect is not part of a served invitation.
   let html=installTemplate.replace('<title>Estudiemos | Tu estudio, conectado</title>','<title>'+view.esc(title)+'</title>')
     .replace(/((?:href|src)=")\.\//g,'$1/').replace('class="install-page"','class="install-page course-invitation-page"')
-    .replace('<link rel="stylesheet" href="/styles/install.css','<link rel="stylesheet" href="/styles/app.css?v=20261023-sync"><link rel="stylesheet" href="/styles/install.css');
+    .replace('<link rel="stylesheet" href="/styles/install.css','<link rel="stylesheet" href="/styles/app.css?v=20261110-entry-taps"><link rel="stylesheet" href="/styles/install.css');
   const meta=(key,value)=>{html=html.replace(new RegExp('((?:name|property)="'+key+'" content=")[^"]*'),(_all,start)=>start+view.esc(value));};
   for(const key of ['description','og:description'])meta(key,description);
   meta('og:title',title);meta('og:url',url);meta('og:image',image);meta('og:image:alt','Invitación a una cátedra en Estudiemos');
