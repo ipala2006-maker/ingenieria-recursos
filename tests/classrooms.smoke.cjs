@@ -107,6 +107,15 @@ const workerOrigin='https://estudiemos.estudiemos-services.workers.dev';
           return route.fulfill({status:404,json:{error:{message:'Fixture file missing'}}});
         }
         if(![base,official,workerOrigin].includes(url.origin))return route.abort();
+        if(ctx.pausedCoursePreview&&url.pathname==='/api/account-config'&&url.searchParams.has('invite')){
+          const pause=ctx.pausedCoursePreview;
+          await new Promise(resolve=>{pause.release=resolve;});
+        }
+        if(ctx.pausedCoursePreview&&url.pathname.startsWith('/materia/')){
+          const response=await route.fetch({url:base+url.pathname+url.search,maxRedirects:0,headers:{...request.headers(),origin:base}});
+          const body=(await response.text()).replace('data-course-preview=','data-unused-course-preview=');
+          return route.fulfill({response,body});
+        }
         if(ctx.pausedCourseRead&&url.pathname==='/rest/v1/rpc/classroom_read'&&request.postDataJSON()?.p_action===ctx.pausedCourseRead.operation){
           const pause=ctx.pausedCourseRead;
           await new Promise(resolve=>{pause.release=resolve;});
@@ -271,9 +280,42 @@ const workerOrigin='https://estudiemos.estudiemos-services.workers.dev';
     await mc.close();await rc.close();await dc.close();
     await sp.evaluate(()=>{window.__classUser='';window.dispatchEvent(new CustomEvent('estudiemos:account-change'));});assert.equal(await sp.locator('.classroom-main').innerText().then(text=>text.includes('Parcial actualizado')),false);assert.equal(await sp.evaluate(()=>EstudiemosClasses.snapshot()),null);assert.equal(await sp.evaluate(()=>localStorage.getItem('estudiemos_classes_v1')),null);
     const previewResponse=await fetch(base+'/api/account-config?classes=1&invite='+code),preview=await previewResponse.json();assert.equal(previewResponse.status,200);assert.equal(preview.title,'Física · 1.º año');assert.equal(preview.calendar[0].data.note,'');assert.equal(preview.materials,undefined);assert.equal(preview.members,undefined);assert.equal(preview.owner_id,undefined);
-    const landing=await context('',390),lp=await landing.newPage();lastPage=lp;let extraPreviewReads=0;lp.on('request',request=>{if(request.url().includes('classes=1&invite='))extraPreviewReads++;});
+    const landing=await context('',390,'student',false,false,'ios');
+    await landing.addInitScript(()=>{
+      const observer=new MutationObserver(()=>{
+        const join=document.querySelector('[data-course-join]');if(!join)return;
+        window.__firstJoinLink=join;observer.disconnect();
+      });
+      observer.observe(document,{childList:true,subtree:true});
+    });
+    const lp=await landing.newPage();lastPage=lp;let extraPreviewReads=0;lp.on('request',request=>{if(request.url().includes('classes=1&invite='))extraPreviewReads++;});
     await lp.goto(base+'/materia/'+code+'?local=1');await lp.locator('[data-course-invite-dates]').getByText(/Parcial actualizado/).waitFor();assert.equal(extraPreviewReads,0,'Server-rendered invitation avoids a second preview lookup');assert.equal(await lp.locator('#courseInviteTitle').innerText(),'Física · 1.º año');assert.equal(await lp.locator('body').evaluate(el=>el.scrollWidth<=innerWidth),true);await lp.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-friendly-invitation-390.png`)});
+    await lp.locator('[data-course-routing=ready]').waitFor();
+    assert.equal(await lp.locator('[data-course-join]').evaluate(link=>link===window.__firstJoinLink),true,'Hydration must retain the link the visitor first sees');
+    assert.equal(await lp.locator('[data-course-join]').evaluate(link=>getComputedStyle(link).touchAction),'manipulation');
+    assert.equal(await lp.locator('script[src*="scripts/smooth-nav.js"],#estudiemosSpeculationRules').count(),0,'Invitation routes do not start the generic navigation prefetch');
     await lp.getByRole('link',{name:'Instalar Estudiemos',exact:true}).click();assert.equal(new URL(lp.url()).hash,'#instalar');assert.equal(new URL(lp.url()).pathname,'/materia/'+code);await lp.setViewportSize({width:1440,height:900});await lp.goto(base+'/materia/'+code+'?local=1');await lp.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-friendly-invitation-1440.png`)});await landing.close();
+    const slow=await context('',390,'student',false,false,'ios'),slowPage=await slow.newPage();lastPage=slowPage;
+    slow.pausedCoursePreview={};
+    try{
+      await slowPage.goto(official+'/materia/'+code,{waitUntil:'domcontentloaded'});
+      const join=slowPage.locator('[data-course-join]');
+      await join.tap({timeout:5000});
+      await slowPage.waitForFunction(()=>window.__loginOpened,null,{timeout:5000});
+      assert.equal(typeof slow.pausedCoursePreview.release,'function','The first tap opens login while preview is still pending');
+      assert.equal(await slowPage.evaluate(()=>EstudiemosCourseInvitation.pending()?.code),code);
+      assert.equal(await join.evaluate(link=>{window.__heldJoin=link;const box=link.getBoundingClientRect();return document.elementFromPoint(box.x+box.width/2,box.y+box.height/2)?.closest('[data-course-join]')===link;}),true,'No invisible layer intercepts the link');
+      const pointer={pointerId:42,pointerType:'touch',isPrimary:true,bubbles:true};
+      await join.dispatchEvent('pointerdown',pointer);
+      const previewReturned=slowPage.waitForResponse(response=>response.url().includes('classes=1&invite='));
+      slow.pausedCoursePreview.release();await (await previewReturned).finished();
+      await slowPage.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+      assert.equal(await slowPage.locator('#courseInviteTitle').innerText(),'Te invitaron a una cátedra','A late preview must not move a pressed target');
+      if(process.env.TEST_WEBKIT==='1')await join.dispatchEvent('touchcancel',{bubbles:true,touches:[]});
+      else await join.dispatchEvent('pointerup',pointer);
+      await slowPage.locator('#courseInviteTitle').filter({hasText:'Física · 1.º año'}).waitFor();
+      assert.equal(await join.evaluate(link=>link===window.__heldJoin),true,'The preview updates without replacing the join control');
+    }finally{slow.pausedCoursePreview.release?.();await slow.close();}
     const guest=await context('',320),gp=await guest.newPage();lastPage=gp;await gp.goto(base+'/#materia='+code);await gp.locator('[data-course-join]').waitFor();assert.equal(gp.url(),official+'/materia/'+code);await gp.locator('[data-course-invite-dates]').getByText(/Parcial actualizado/).waitFor();await gp.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-invitation-install.png`)});await gp.locator('[data-course-join]').click();await gp.waitForFunction(()=>window.__loginOpened);assert.equal(gp.url(),official+'/materia/'+code,'Guest signs in without losing the invitation landing');assert.equal(await gp.locator('.classroom-dialog[open]').count(),0,'Account sign-in is not hidden behind a native modal');assert.equal(await gp.locator('[data-study-goal-dialog][open]').count(),0);
     await gp.evaluate(id=>{window.__classUser=id;window.dispatchEvent(new CustomEvent('estudiemos:account-change'));},student);await gp.locator('.classroom-course-head h3').waitFor();assert.equal(await gp.evaluate(()=>localStorage.getItem('estudiemos_class_invite_v1')),null,'Successful enrollment consumes the durable invitation');await guest.close();
     for(const platform of ['ios','inapp-ios']){
