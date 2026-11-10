@@ -263,7 +263,7 @@
   function loadProductInterface() {
     if (document.querySelector('script[src*="scripts/product-ui.js"]')) return;
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/product-ui.js?v=20261027-adaptive`;
+    script.src = `${rootPath}scripts/product-ui.js?v=20261110-steady-tour`;
     document.head.appendChild(script);
   }
 
