@@ -103,12 +103,21 @@ test('reduced motion dismisses immediately instead of waiting for an invisible a
   const {context,calls}=exitFixture(true);context.finish('skipped');assert.equal(context.active,false);assert.equal(calls.removed,1);assert.equal(calls.timers.length,0);
 });
 test('a stale step cannot reopen or advance a later replay after its preview was interrupted',async()=>{
-  let release;const frame=new Promise(resolve=>{release=resolve;}),calls={moved:0};
+  let release;const frame=new Promise(resolve=>{release=resolve;}),calls={moved:0,restacked:0},dialogs=[];
   const context={active:true,busy:false,closing:false,current:0,transitionVersion:0,steps:[{id:'welcome'},{id:'note',view:'inbox',preview:'note'}],reduced:{matches:true},
-    layer:{open:true,classList:{add(){}},close(){this.open=false;},showModal(){this.open=true;}},restorePreview(){},navigate(){},openPreview:()=>()=>{},frame:()=>frame,settlePreview:async()=>{},tour:{moveTo(){calls.moved++;}},finish(){throw Error('A stale transition must not close the replay');}};
+    document:{querySelectorAll:()=>dialogs},layer:{open:true,classList:{add(){}},close(){this.open=false;},showModal(){this.open=true;calls.restacked++;}},restorePreview(){},navigate(){},openPreview(){dialogs.push({open:true});return ()=>{};},frame:()=>frame,tour:{moveTo(){calls.moved++;}},finish(){throw Error('A stale transition must not close the replay');}};
   vm.createContext(context);vm.runInContext(source.slice(source.indexOf('  async function go(index)'),source.indexOf('  function next()')),context);
-  const moving=context.go(1);assert.equal(context.layer.open,true,'Restacking finishes before the next animation frame');
+  dialogs.push(context.layer);
+  const moving=context.go(1);assert.equal(context.layer.open,true,'Restacking finishes before the next animation frame');assert.equal(calls.restacked,1);
   context.transitionVersion+=2;context.busy=false;release();await moving;assert.equal(calls.moved,0);assert.equal(context.current,0);assert.equal(context.busy,false);
+});
+
+test('steps sharing a preview update immediately without closing the tour or waiting for a fade',async()=>{
+  const moved=[],context={active:true,busy:false,closing:false,current:0,transitionVersion:0,steps:[{id:'note',view:'inbox',preview:'note'},{id:'alarms',view:'inbox',preview:'note'}],
+    layer:{dataset:{step:'note'},classList:{add(){}}},tour:{moveTo:index=>moved.push(index)},positionSpotlight(){},finish(){throw Error('Step update interrupted');}};
+  vm.runInNewContext(source.slice(source.indexOf('  async function go(index)'),source.indexOf('  function next()')),context);
+  const next=context.go(1);
+  assert.equal(context.layer.dataset.step,'alarms');assert.deepEqual(moved,[1]);await next;
 });
 
 function privacyFixture() {

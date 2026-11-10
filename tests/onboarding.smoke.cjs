@@ -25,7 +25,16 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
       await context.addInitScript(()=>{window.__permissionRequests=0;window.__tourInputFocus=0;document.addEventListener('focusin',event=>{if(window.EstudiemosOnboarding?.isActive()&&event.target.matches('input,textarea,select'))window.__tourInputFocus++;});if(window.Notification)Notification.requestPermission=async()=>{window.__permissionRequests++;return 'denied';};});
       await context.addInitScript(()=>{
         window.__uncoveredTourFrames=0;
-        function sample(){if(window.EstudiemosOnboarding?.isActive()&&!document.querySelector('.onboarding-layer')?.open)window.__uncoveredTourFrames++;requestAnimationFrame(sample);}
+        window.__hiddenTourMessageFrames=0;
+        function sample(){
+          const layer=document.querySelector('.onboarding-layer');
+          if(window.EstudiemosOnboarding?.isActive()&&!layer?.open)window.__uncoveredTourFrames++;
+          if(window.__watchTourFrames&&layer?.open&&!layer.matches('.is-starting,.is-exiting')){
+            const message=layer.querySelector('.driver-popover');
+            if(!message||getComputedStyle(message).display==='none'||Number(getComputedStyle(message).opacity)<.98)window.__hiddenTourMessageFrames++;
+          }
+          requestAnimationFrame(sample);
+        }
         requestAnimationFrame(sample);
       });
       await context.route('**/*',route=>{
@@ -36,6 +45,7 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
       const page=await context.newPage();lastPage=page;page.on('pageerror',e=>{errors.push(e.message);console.error(e.message);});page.on('dialog',async d=>{dialogs.push(d.message());await d.dismiss();});
       await page.goto(base);
       const layer=page.locator('.onboarding-layer'),popover=layer.locator('.driver-popover');
+      const turn=x=>width<500?page.touchscreen.tap(x,80):page.mouse.click(x,80);
       await layer.waitFor({state:'visible'});await popover.waitFor({state:'visible'});
       await page.waitForFunction(()=>!document.querySelector('[data-study-goal-dialog]').open);
       const before=await page.evaluate(()=>({history:history.length,agenda:localStorage.getItem('bandeja_agenda'),schedules:localStorage.getItem('bandeja_horarios'),layout:localStorage.getItem('estudiemos_home_layout_local'),config:EstudiemosStudy.snapshot().config}));
@@ -62,8 +72,9 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
           await page.setViewportSize({width,height:900});await page.waitForTimeout(350);
           assert.equal(await page.locator('.driver-active-element').evaluate(el=>el.classList.contains('study-session__fields')),true);
         }
-        if(step==='done'){await page.mouse.click(width-4,80);break;}
-        await page.mouse.click(width-4,80);
+        if(i===0)await page.evaluate(()=>{window.__watchTourFrames=true;});
+        if(step==='done'){await turn(width-4);break;}
+        await turn(width-4);
         await page.waitForFunction(previous=>document.querySelector('.onboarding-layer')?.dataset.step!==previous,step);
       }
       assert.ok(visited.includes('done'),visited.join(','));
@@ -73,16 +84,17 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
       assert.deepEqual(after,before,'The tour must not change tasks, schedules, configuration, layout or history length');
       assert.equal(await page.evaluate(()=>EstudiemosStudy.snapshot().running),false);assert.equal(await page.evaluate(()=>window.__permissionRequests),0);assert.equal(await page.evaluate(()=>window.__tourInputFocus),0,'Do not summon a phone keyboard during previews');assert.deepEqual(dialogs,[]);
       assert.equal(await page.evaluate(()=>window.__uncoveredTourFrames),0,'Native preview changes must not flash an uncovered app frame');
+      assert.equal(await page.evaluate(()=>window.__hiddenTourMessageFrames),0,'Every step must keep a fully visible tutorial message until the next one appears');
       assert.equal(await page.evaluate(()=>JSON.parse(localStorage.estudiemos_onboarding_v1).status),'completed');
       await page.locator('[data-study-goal-close]').click();
       await page.reload();await page.waitForFunction(()=>window.EstudiemosOnboarding&&window.EstudiemosStudy);
       assert.equal(await layer.count(),0,'No repeat on next launch');
       if(await page.locator('[data-study-goal-dialog]').isVisible())await page.locator('[data-study-goal-close]').click();
       await page.locator('[data-account-open]').click();await page.locator('[data-onboarding-replay]').click();await layer.waitFor({state:'visible'});
-      await popover.waitFor({state:'visible'});await page.waitForTimeout(230);await page.mouse.click(width-4,80);
+      await popover.waitFor({state:'visible'});await page.waitForTimeout(230);await turn(width-4);
       await page.waitForFunction(()=>document.querySelector('.onboarding-layer')?.dataset.step==='note');await page.waitForTimeout(250);
-      await page.mouse.click(4,80);await page.waitForFunction(()=>document.querySelector('.onboarding-layer')?.dataset.step==='welcome');await page.waitForTimeout(250);
-      await page.mouse.click(width-4,80);await page.waitForFunction(()=>document.querySelector('.onboarding-layer')?.dataset.step==='note');await page.waitForTimeout(250);
+      await turn(4);await page.waitForFunction(()=>document.querySelector('.onboarding-layer')?.dataset.step==='welcome');await page.waitForTimeout(250);
+      await turn(width-4);await page.waitForFunction(()=>document.querySelector('.onboarding-layer')?.dataset.step==='note');await page.waitForTimeout(250);
       await popover.getByRole('button',{name:'Omitir'}).click();await layer.waitFor({state:'hidden'});
       assert.equal(await page.evaluate(()=>history.length),before.history,'Omitting from a note must not navigate back');assert.equal(await page.locator('[data-quick-panel=note]').isVisible(),false);
       assert.equal(await page.evaluate(()=>JSON.parse(localStorage.estudiemos_onboarding_v1).status),'skipped');

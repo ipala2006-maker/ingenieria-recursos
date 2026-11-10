@@ -34,15 +34,15 @@
   function available(key) {
     return !q(`[data-home-space="${key}"]`)?.classList.contains('home-space-disabled') && (window.EstudiemosRelease?.homeSpaceEnabled(key) ?? true);
   }
-  function navigate(view) { window.dispatchEvent(new CustomEvent('estudiemos:home-navigate', {detail:{view, replace:true}})); }
+  function navigate(view) { window.dispatchEvent(new CustomEvent('estudiemos:home-navigate', {detail:{view, replace:true, animate:false}})); }
   function click(selector) { q(selector)?.click(); }
-  const frame = () => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  const frame = () => new Promise(resolve => requestAnimationFrame(resolve));
 
   async function loadDriver() {
     if (driverModule) return driverModule;
     const styles = ['scripts/vendor/driver/driver.css', 'styles/onboarding.css'];
     await Promise.all(styles.map(path => new Promise((resolve, reject) => {
-      const link = document.createElement('link'); link.rel = 'stylesheet'; link.href = new URL(path + '?v=20261109-tour-touch', root);
+      const link = document.createElement('link'); link.rel = 'stylesheet'; link.href = new URL(path + '?v=20261110-steady-tour', root);
       link.onload = resolve; link.onerror = reject; document.head.append(link);
     })));
     driverModule = await import(new URL('scripts/vendor/driver/driver.js.mjs?v=20261108-pwa-health', root));
@@ -116,28 +116,17 @@
     layer.style.setProperty('--tour-clip', `polygon(evenodd,0 0,100% 0,100% 100%,0 100%,0 0,${left}px ${top}px,${left}px ${bottom}px,${right}px ${bottom}px,${right}px ${top}px,${left}px ${top}px)`);
     ring.hidden = !box; if (box) Object.assign(ring.style, {left:left+'px', top:top+'px', width:right-left+'px', height:bottom-top+'px'});
   }
-  async function settlePreview(step) {
-    if(reduced.matches || !step.target)return;
-    const animations=[];
-    for(let node=resolveTarget(step);node&&node!==document.body;node=node.parentElement){
-      for(const animation of node.getAnimations()){
-        const end=animation.effect?.getComputedTiming().endTime;
-        if(animation.playState==='running'&&Number.isFinite(end)&&end<=400)animations.push(animation.finished.catch(()=>{}));
-      }
-    }
-    if(!animations.length)return;
-    let timeout;
-    await Promise.race([Promise.all(animations),new Promise(resolve=>{timeout=setTimeout(resolve,260);})]);clearTimeout(timeout);
-  }
   function revealStep() {
     positionSpotlight();targetObserver?.disconnect();
     const target=tour?.getActiveElement();
     if(target&&target.id!=='driver-dummy-element'&&window.ResizeObserver){targetObserver||=new ResizeObserver(resize);targetObserver.observe(target);}
     const version=transitionVersion;
-    requestAnimationFrame(()=>{
+    const reveal = () => {
       if(!active||closing||version!==transitionVersion)return;
       layer.classList.remove('is-starting','is-changing');busy=false;layer.focus({preventScroll:true});
-    });
+    };
+    if(layer.classList.contains('is-starting'))requestAnimationFrame(reveal);
+    else reveal();
   }
   function decoratePopover(popover) {
     const groups={welcome:['Tu inicio','book-open'],note:['Organización','file-text'],alarms:['Organización','calendar-days'],calendar:['Organización','calendar-days'],program:['Organización','calendar-days'],pomodoro:['Concentración','book-open'],session:['Concentración','settings-2'],progress:['Tu progreso','book-open'],friends:['Conectados','users-round'],classes:['Conectados','graduation-cap'],drive:['Tus apuntes','folder'],layout:['Personalización','settings-2'],account:['Tu cuenta','users-round'],done:['A tu ritmo','book-open']};
@@ -157,20 +146,23 @@
     if (index >= steps.length) { finish('completed'); return; }
     if (index < 0) return;
     busy = true;const version=++transitionVersion;
+    layer.classList.add('is-changing');
     try {
       const previous = steps[current], step = steps[index];
-      layer.classList.add('is-changing');
-      if(!reduced.matches)await new Promise(resolve=>setTimeout(resolve,80));
-      if(!active||closing||version!==transitionVersion)return;
       const changePreview=previous?.preview!==step.preview,changeView=step.view&&previous?.view!==step.view;
       if(changePreview||changeView){
+        const openDialogs = changePreview && new Set(document.querySelectorAll('dialog[open]'));
         if(changePreview)restorePreview();if(changeView)navigate(step.view);if(changePreview)cleanupPreview=openPreview(step.preview);
-        // Restack above native previews in the same task, without painting an uncovered frame.
-        layer.close();layer.showModal();await frame();await settlePreview(step);
+        // Only a newly opened native preview can cover the current message.
+        if(openDialogs && [...document.querySelectorAll('dialog[open]')].some(dialog=>!openDialogs.has(dialog))){
+          layer.close();layer.showModal();
+        }
+        await frame();
       }
       if (!active||closing||version!==transitionVersion) return;
       current = index; layer.dataset.step = step.id;
       tour.moveTo(index);
+      positionSpotlight();
     } catch (_) { if(version===transitionVersion)finish('interrupted'); }
   }
   function next() { go(current+1); }
@@ -195,7 +187,6 @@
         showButtons:[],
         popoverClass:'estudiemos-tour', stagePadding:8, stageRadius:8,
         onNextClick:next, onPrevClick:() => go(current-1),
-        onHighlightStarted:element => positionSpotlight(element || null),
         onHighlighted:revealStep,
         onPopoverRender:popover => {
           layer.append(popover.wrapper);decoratePopover(popover);

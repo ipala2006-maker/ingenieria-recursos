@@ -71,7 +71,7 @@
     }
     window.dispatchEvent(new CustomEvent('estudiemos:home-view', { detail: { view: current, mobile: mobile.matches } }));
   };
-  function activate(key, replace = false) {
+  function activate(key, replace = false, animate = true) {
     const view = views.find(([name]) => name === key);
     if (!view || !isVisible(key)) return false;
     if (current === key) return true;
@@ -82,7 +82,7 @@
     if(nextState.estudiemosUi==='home-session')delete nextState.estudiemosUi;
     history[replace ? 'replaceState' : 'pushState'](nextState, '', location.href);
     render();
-    if (mobile.matches && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (animate && mobile.matches && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
       navigationAnimation = view[2].animate([{opacity:.65,translate:'0 4px'},{opacity:1,translate:'0 0'}], {duration:160,easing:'cubic-bezier(.2,.8,.2,1)'});
     }
     return true;
@@ -90,7 +90,7 @@
   window.addEventListener('estudiemos:home-navigate', event => {
     const view = views.find(([key]) => key === event.detail?.view);
     if (!view || !isVisible(view[0])) return;
-    if (mobile.matches) activate(view[0], event.detail?.replace === true);
+    if (mobile.matches) activate(view[0], event.detail?.replace === true, event.detail?.animate !== false);
     else view[2].scrollIntoView({ behavior: event.detail?.replace || matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block:'nearest' });
     view[2].setAttribute('tabindex','-1');
     view[2].focus({ preventScroll:true });
