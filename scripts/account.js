@@ -397,9 +397,12 @@
   async function initialize() {
     let stage = "config";
     try {
-      const response = await fetch(`${getRootPath()}api/account-config`, { cache: "no-store" });
-      const config = await response.json().catch(() => ({}));
-      if (!response.ok || !config.enabled || !config.url || !config.publishableKey) throw new Error("not-configured");
+      const config = await authStartupDeadline(async (signal) => {
+        const response = await fetch(`${getRootPath()}api/account-config`, { cache: "no-store", signal });
+        if (!response.ok) throw new Error("not-configured");
+        return response.json();
+      });
+      if (!config.enabled || !config.url || !config.publishableKey) throw new Error("not-configured");
       accountConfig = {
         url: config.url,
         publishableKey: config.publishableKey,
@@ -446,17 +449,17 @@
       if (pendingNativeSession?.accessToken && pendingNativeSession?.refreshToken) {
         applyingNativeSession = true;
         try {
-          await client.auth.setSession({
+          await authStartupDeadline(() => client.auth.setSession({
             access_token: pendingNativeSession.accessToken,
             refresh_token: pendingNativeSession.refreshToken
-          });
+          }));
         } catch (_) {
           // A failed native handoff must not prevent loading the browser session.
         } finally {
           applyingNativeSession = false;
         }
       }
-      const result = await client.auth.getSession();
+      const result = await authStartupDeadline(() => client.auth.getSession());
       if (result.error) throw result.error;
       session = result.data.session;
       if (session) prepareLocalAccountSwitch(session.user.id);
@@ -501,6 +504,19 @@
     return loadScript(sameOriginClient).catch(() => loadScript(SUPABASE_CDN));
   }
 
+  async function authStartupDeadline(load) {
+    const controller = new AbortController();
+    let timeout;
+    const expired = new Promise((_, reject) => {
+      timeout = window.setTimeout(() => {
+        controller.abort();
+        reject(new Error("account-startup-timeout"));
+      }, 10000);
+    });
+    try { return await Promise.race([load(controller.signal), expired]); }
+    finally { window.clearTimeout(timeout); }
+  }
+
   function loadScript(source) {
     return new Promise((resolve, reject) => {
       const script = document.createElement("script");
@@ -511,11 +527,18 @@
         script.crossOrigin = "anonymous";
       }
       script.dataset.supabaseClient = "true";
-      script.onload = () => window.supabase?.createClient ? resolve() : reject(new Error("invalid-client"));
-      script.onerror = () => {
+      const fail = () => {
+        window.clearTimeout(timeout);
         script.remove();
         reject(new Error("client-load-failed"));
       };
+      const timeout = window.setTimeout(fail, 8000);
+      script.onload = () => {
+        window.clearTimeout(timeout);
+        if (window.supabase?.createClient) resolve();
+        else fail();
+      };
+      script.onerror = fail;
       document.head.appendChild(script);
     });
   }
@@ -541,7 +564,7 @@
     const captcha = getCaptchaOptions();
     if (captcha === null) return;
     const baseRedirect = new URL(getRootPath(), location.href);
-    const emailRedirect = window.EstudiemosCourseInvitation?.confirmationUrl?.(baseRedirect) || baseRedirect;
+    const emailRedirect = window.EstudiemosCourseInvitation?.confirmationUrl?.(baseRedirect) || authReturnUrl();
     const pendingReferral = COMMERCIAL_LAUNCH_ENABLED ? normalizeReferralCode(localStorage.getItem(PENDING_REFERRAL_KEY)) : "";
     if (pendingReferral) emailRedirect.searchParams.set("ref", pendingReferral);
     await runAuthAction("Creando tu cuenta...", "No pudimos crear la cuenta. Revisá tu conexión y volvé a intentar.", async () => {
@@ -557,6 +580,11 @@
       }
       setStatus("Te enviamos un correo. Abrilo para confirmar tu cuenta y después ingresá.", "success");
     }, true);
+  }
+
+  function authReturnUrl() {
+    const base = new URL(getRootPath(), location.href);
+    return window.EstudiemosCourseAppLinks?.authReturnUrl(base) || base;
   }
 
   async function runAuthAction(progress, failure, action, refreshCaptcha = false) {
@@ -857,7 +885,7 @@
     setRecoveryStatus("Enviando correo...");
     try {
       const result = await client.auth.resetPasswordForEmail(email, {
-        redirectTo: new URL(getRootPath(), location.href).href,
+        redirectTo: authReturnUrl().href,
         ...captcha
       });
       const error = result.error;
@@ -870,7 +898,9 @@
       if (error && !rateLimited && error.code !== "user_not_found") {
         return setRecoveryStatus(error.code === "captcha_failed"
           ? "No pudimos verificar la comprobación. Volvé a completarla."
-          : "No pudimos solicitar el correo. Revisá tu conexión e intentá de nuevo.", "error");
+          : error.status >= 500
+            ? "El servicio de correo no pudo completar el envío. Volvé a intentar más tarde."
+            : "No pudimos solicitar el correo. Revisá tu conexión e intentá de nuevo.", "error");
       }
       flow.email = email;
       flow.step = "code";
@@ -1692,6 +1722,10 @@
   }
 
   function authErrorMessage(error) {
+    if (error?.code === "captcha_failed") return "No pudimos verificar la comprobación. Volvé a completarla.";
+    if (error?.code === "email_not_confirmed") return "Primero confirmá tu cuenta desde el correo que te enviamos.";
+    if (error?.code === "invalid_credentials") return "El correo o la contraseña no son correctos.";
+    if (error?.status === 429) return "Hubo demasiados intentos. Esperá un momento y probá nuevamente.";
     if (error?.name === "AuthRetryableFetchError" || error?.status === 0 || error?.status >= 500) {
       return "No pudimos conectar con el servicio de cuentas. Volvé a intentar.";
     }
@@ -1991,7 +2025,7 @@
       const accountLink = await createWindowsWidgetLink(widget);
       if (!session?.access_token || session.user?.id!==userId) throw new Error('La cuenta cambió. Volvé a intentar con tu sesión actual.');
       const query = new URLSearchParams({ widget, callback: '1', link: accountLink });
-      if (location.origin === 'https://estudiemos.estudiemos-services.workers.dev') query.set('source', 'cloudflare');
+      if (['https://estudiemos.ar','https://estudiemos.estudiemos-services.workers.dev'].includes(location.origin)) query.set('source', 'cloudflare');
       const launcher = document.createElement('a');
       launcher.href = `estudiemos-widgets://add?${query.toString()}`;
       document.body.appendChild(launcher); launcher.click(); launcher.remove();

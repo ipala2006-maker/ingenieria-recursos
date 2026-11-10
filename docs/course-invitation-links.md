@@ -2,7 +2,7 @@
 
 ## Recorrido
 
-- Compartir siempre `https://estudiemos-app.vercel.app/materia/CODIGO` desde la catedra. Los enlaces anteriores con `#materia=` siguen siendo compatibles; solo los enlaces nuevos tienen metadatos especificos para redes.
+- Compartir siempre `https://estudiemos.ar/materia/CODIGO` desde la catedra. Si un enlace a Vercel ya no abre, pega el enlace completo o su codigo en Materias > Unirme en el dominio oficial; los formatos anteriores con `#materia=` tambien se reconocen como entrada.
 - Dentro de la app, o al elegir expresamente continuar por web, una sesion activa abre e incorpora la catedra automaticamente. Una persona ya inscripta abre la misma catedra sin duplicar su membresia ni sus fechas.
 - Si Android o Windows deja el HTTPS en el navegador, la primera accion es **Abrir en Estudiemos**. No se carga el SDK de Auth ni se aprovecha una sesion del navegador para mandar al usuario a la version web por sorpresa. **Unirme desde el navegador** es una eleccion separada y explicita.
 - Sin sesion, se muestra la materia, su responsable, institucion y una muestra de fechas. "Unirme a la catedra" abre el acceso sobre esa presentacion. Instalar es opcional.
@@ -12,7 +12,7 @@
 
 ## App instalada
 
-Android nativo, desde la version 1.6.9, declara App Links verificados solo para `/materia/` en el dominio oficial. `CourseLinks` valida y normaliza la ruta a un ingreso del mismo origen, sin reenviar tokens ni URLs arbitrarias. Una apertura en frio y una apertura con la app existente usan el mismo destino. No se borran cookies ni la sesion persistente del WebView.
+Android nativo, desde la version 1.7.1, usa `estudiemos.ar` y declara App Links verificados solo para `/materia/` en ese dominio. `CourseLinks` valida enlaces actuales y antiguos sin reenviar tokens ni URLs arbitrarias. Una apertura en frio y una apertura con la app existente usan el mismo destino. El cambio de origen del WebView puede requerir volver a ingresar una vez; no borra la cuenta ni sus datos sincronizados.
 
 La asociacion publica esta en `/.well-known/assetlinks.json`. Su huella es la del certificado de firma del APK oficial, verificado con Google apksig, no la huella del archivo APK. La publicacion de Android comprueba la firma de cada APK contra esa asociacion antes de publicarlo. No se concede acceso a credenciales con Digital Asset Links.
 
@@ -65,7 +65,7 @@ En Android de prueba, despues de instalar el nuevo APK:
 ```text
 adb shell pm verify-app-links --re-verify com.estudiemos.app
 adb shell pm get-app-links com.estudiemos.app
-adb shell am start -W -a android.intent.action.VIEW -c android.intent.category.BROWSABLE -d "https://estudiemos-app.vercel.app/materia/CODIGO_REAL"
+adb shell am start -W -a android.intent.action.VIEW -c android.intent.category.BROWSABLE -d "https://estudiemos.ar/materia/CODIGO_REAL"
 ```
 
 El dominio debe indicar `verified`. Probar con app cerrada y abierta, usuario conectado y desconectado. Comprobar la ruta publica de asociacion con HTTP 200, JSON y sin redireccion, y que el APK firmado conserve la huella declarada. El pipeline Android ejecuta los tests Java de enlaces y construye la app. La confirmacion real por correo y la decision de apertura del sistema requieren su comprobacion en dispositivo/cuenta de prueba, no se deducen de una captura local.

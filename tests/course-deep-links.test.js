@@ -34,7 +34,8 @@ test('release signature must match the published URL-only domain association',()
   assert.throws(()=>verifySigners('Signer #1 certificate SHA-256 digest: '+digest,[{...associations[0],relation:['delegate_permission/common.get_login_creds']}]),/URL-handling/);
   const manifest=fs.readFileSync(require.resolve('../android-app/app/src/main/AndroidManifest.xml'),'utf8');
   assert.match(manifest,/<intent-filter android:autoVerify="true">/);
-  assert.match(manifest,/android:host="estudiemos-app.vercel.app" android:pathPrefix="\/materia\/"/);
+  assert.match(manifest,/android:host="\$\{estudiemosAppHost\}" android:pathPrefix="\/materia\/"/);
+  assert.doesNotMatch(manifest,/estudiemos-app\.vercel\.app/);
   const handler=fs.readFileSync(require.resolve('../android-app/app/src/main/java/com/estudiemos/app/MainActivity.java'),'utf8');
   assert.match(handler,/CourseLinks.appUrl/);assert.doesNotMatch(handler,/clearCache\(|removeAllCookies\(/);
   assert.match(handler,/getString\("course_launch_url", ""\)/);assert.match(handler,/!incomingCourse\.equals\(previousCourse\)/);

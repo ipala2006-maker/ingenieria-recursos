@@ -38,14 +38,14 @@
   }
   if (!window.EstudiemosCourseAppLinks) {
     const links = document.createElement('script');
-    links.src = rootPath + 'shared/course-app-links.js?v=20261108-official-course-links';
+    links.src = rootPath + 'shared/course-app-links.js?v=20261109-official-access';
     links.onload = initialize;
     document.head.appendChild(links);
     return;
   }
   if (!window.EstudiemosClassroomRules) {
     const classes = document.createElement('script');
-    classes.src = rootPath + 'shared/classrooms.js?v=20261108-official-course-links';
+    classes.src = rootPath + 'shared/classrooms.js?v=20261109-official-access';
     classes.onload = initialize;
     document.head.appendChild(classes);
     return;
@@ -359,7 +359,7 @@
     if (document.querySelector('script[src*="scripts/pomodoro.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/pomodoro.js?v=20261108-pwa-health`;
+    script.src = `${rootPath}scripts/pomodoro.js?v=20261109-official-access`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -405,7 +405,7 @@
     if (document.querySelector('script[src*="scripts/account.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/account.js?v=20261108-pwa-health`;
+    script.src = `${rootPath}scripts/account.js?v=20261109-official-access`;
     script.defer = true;
     document.head.appendChild(script);
   }

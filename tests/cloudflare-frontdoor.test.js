@@ -40,6 +40,26 @@ test('missing or failing bindings expose no private errors and never fall back t
   assert.doesNotMatch(source, /process\.env|Authorization:|fetch\(['"`]|console\.|new URL\([^)]*,/);
 });
 
+test('old public entry links migrate directly without moving sessions, callbacks or arbitrary query data',async()=>{
+  const {default:worker}=await load();
+  const old='https://estudiemos.estudiemos-services.workers.dev';
+  const token='a'.repeat(32);
+  const env={ASSETS:{fetch:async()=>new Response('static')},BACKEND:{fetch:async()=>new Response('private')}};
+  for(const [from,to] of [
+    ['/instalar.html?materia=abcde-fghjk&utm_source=whatsapp&token=fixture&next=https://other.test','/instalar?utm_source=whatsapp&materia=ABCDEFGHJK'],
+    ['/instalar/','/instalar'],['/amistad/'+token+'?next=https://other.test','/amistad/'+token]
+  ]){
+    const response=await worker.fetch(new Request(old+from),env);
+    assert.equal(response.status,308);
+    assert.equal(response.headers.get('location'),'https://estudiemos.ar'+to);
+    assert.equal(response.headers.get('cache-control'),'no-store');
+  }
+  for(const route of ['/?materia=ABCDEFGHJK&code=fixture','/widget.html?linked=1','/api/account-config?drive=callback','/api/widget-link?token=fixture']){
+    const response=await worker.fetch(new Request(old+route),env);
+    assert.equal(response.status,200);assert.equal(response.headers.get('location'),null);
+  }
+});
+
 test('production configurations preserve the existing secret-bearing worker and expose no keys in the stable frontend', () => {
   const root = path.join(__dirname, '..');
   const frontend = JSON.parse(fs.readFileSync(path.join(root, 'wrangler.frontdoor.jsonc'), 'utf8'));

@@ -4,7 +4,7 @@ import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 
 public class CourseLinksTest {
-    private static final String APP = "https://estudiemos.estudiemos-services.workers.dev/";
+    private static final String APP = "https://estudiemos.ar/";
     private static final String EXPECTED = APP + "?unirme=1&materia=ABCDEFGHJK";
 
     @Test public void configuredCloudflareOriginRetainsOldInvitationsWithoutTrustingOtherHosts() {
@@ -19,6 +19,9 @@ public class CourseLinksTest {
         for (String url : new String[] {
                 APP + "materia/ABCDEFGHJK", APP + "materia/abcdefghjk/?utm_source=whatsapp",
                 APP + "?materia=ABCDE-FGHJK", APP + "#clase=ABCDEFGHJK",
+                "https://estudiemos-app.vercel.app/materia/ABCDEFGHJK",
+                "https://estudiemos.estudiemos-services.workers.dev/#materia=ABCDEFGHJK",
+                "https://estudiemos-candidate.estudiemos-services.workers.dev/?materia=ABCDEFGHJK",
                 "estudiemos://open?materia=abcdefghjk", "estudiemos://open?clase=ABCDE-FGHJK",
                 APP.replace("https:", "http:") + "materia/ABCDEFGHJK"
         }) assertEquals(url, EXPECTED, CourseLinks.appUrl(url));

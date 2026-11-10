@@ -1,6 +1,6 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const source=fs.readFileSync(require.resolve('../scripts/course-invitation.js'),'utf8');
-function boot(local=new Map(),session=new Map()){const wrap=values=>({getItem:key=>values.get(key)||null,setItem:(key,value)=>values.set(key,value),removeItem:key=>values.delete(key)}),window={EstudiemosCourseAppLinks:require('../shared/course-app-links'),localStorage:wrap(local),sessionStorage:wrap(session)};vm.runInNewContext(source,{window,URL,Date,document:{readyState:'loading',currentScript:{src:'https://app.test/scripts/course-invitation.js'},addEventListener(){}}});return {api:window.EstudiemosCourseInvitation,window,local,session};}
+function boot(local=new Map(),session=new Map(),origin='https://app.test'){const wrap=values=>({getItem:key=>values.get(key)||null,setItem:(key,value)=>values.set(key,value),removeItem:key=>values.delete(key)}),window={EstudiemosCourseAppLinks:require('../shared/course-app-links'),localStorage:wrap(local),sessionStorage:wrap(session)};vm.runInNewContext(source,{window,URL,Date,document:{readyState:'loading',currentScript:{src:origin+'/scripts/course-invitation.js'},addEventListener(){}}});return {api:window.EstudiemosCourseInvitation,window,local,session};}
 test('pending course invitations survive a restart, expire, and stay bound to their intended account',()=>{
   const h=boot();h.api.save('ABCDEFGHJK','alice',{title:'Shared class',calendar:[]});h.session.clear();assert.equal(h.api.pending('alice').preview.title,'Shared class');assert.equal(h.api.pending('bob'),null);assert.equal(h.api.pending(),null);h.api.clear();assert.equal(h.local.size,0);
   h.api.save('BAD');assert.equal(h.api.pending(),null);h.api.save('ABCDEFGHJK');assert.equal(h.api.pending('alice').auto,true);
@@ -23,5 +23,13 @@ test('canonical links contain only the validated course code',()=>{
   const h=boot();assert.equal(h.api.canonicalUrl('ABCDEFGHJK').href,'https://estudiemos.ar/materia/ABCDEFGHJK');
   for(const value of ['BAD','https://other.test','ABCDEFGHJK?access_token=secret']){
     assert.equal(h.api.appUrl(value).href,'https://app.test/');assert.equal(h.api.canonicalUrl(value),null);
+  }
+});
+
+test('confirmation on an old origin returns to the official site with the original invitation',()=>{
+  for(const origin of ['https://estudiemos-app.vercel.app','https://estudiemos.estudiemos-services.workers.dev','https://estudiemos-candidate.estudiemos-services.workers.dev']){
+    const {api}=boot(undefined,undefined,origin);
+    api.save('ABCDEFGHJK');
+    assert.equal(api.confirmationUrl(origin+'/').href,'https://estudiemos.ar/?materia=ABCDEFGHJK&unirme=1');
   }
 });

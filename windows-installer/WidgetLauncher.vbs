@@ -10,10 +10,8 @@ rawRequest = WScript.Arguments(0)
 request = LCase(rawRequest)
 linkToken = GetQueryValue(rawRequest, "link")
 source = GetQueryValue(rawRequest, "source")
-appOrigin = "https://estudiemos-app.vercel.app"
-If source = "cloudflare" Then
-  appOrigin = "https://estudiemos.estudiemos-services.workers.dev"
-ElseIf source <> "" Then
+appOrigin = "https://estudiemos.ar"
+If source <> "" And source <> "cloudflare" Then
   WScript.Quit 4
 End If
 If InStr(request, "estudiemos-widgets://alarms?") = 1 Then

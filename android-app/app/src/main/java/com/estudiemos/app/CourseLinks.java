@@ -9,16 +9,16 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 final class CourseLinks {
-    private static final String ORIGIN = "https://estudiemos.estudiemos-services.workers.dev/";
+    private static final String ORIGIN = "https://estudiemos.ar";
     private static final Pattern PATH = Pattern.compile("^/materia/([A-HJ-NP-Z2-9]{10})/?$", Pattern.CASE_INSENSITIVE);
 
     static String appUrl(String incoming) {
-        return appUrl(incoming, ORIGIN.substring(0, ORIGIN.length() - 1));
+        return appUrl(incoming, ORIGIN);
     }
 
     static String appUrl(String incoming, String origin) {
         if (origin == null) return "";
-        if (!origin.equals("https://estudiemos-app.vercel.app")
+        if (!origin.equals(ORIGIN) && !origin.equals("https://estudiemos-app.vercel.app")
                 && !origin.equals("https://estudiemos-candidate.estudiemos-services.workers.dev")
                 && !origin.equals("https://estudiemos.estudiemos-services.workers.dev")) return "";
         String code = code(incoming);
@@ -33,7 +33,8 @@ final class CourseLinks {
             String scheme = uri.getScheme(), route = uri.getRawPath();
             boolean custom = "estudiemos".equalsIgnoreCase(scheme) && "open".equalsIgnoreCase(uri.getHost())
                     && uri.getPort() == -1 && (route == null || route.isEmpty() || route.equals("/"));
-            boolean trustedHost = "estudiemos-app.vercel.app".equalsIgnoreCase(uri.getHost())
+            boolean trustedHost = "estudiemos.ar".equalsIgnoreCase(uri.getHost())
+                    || "estudiemos-app.vercel.app".equalsIgnoreCase(uri.getHost())
                     || "estudiemos-candidate.estudiemos-services.workers.dev".equalsIgnoreCase(uri.getHost())
                     || "estudiemos.estudiemos-services.workers.dev".equalsIgnoreCase(uri.getHost());
             boolean web = trustedHost

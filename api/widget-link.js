@@ -4,6 +4,7 @@ const { enforceRateLimit, isSameOriginRequest, rejectOversizedBody, requireJsonR
 
 const LINK_LIFETIME_SECONDS = 120;
 const { appOrigin } = require('./_lib/app-origin');
+const { publicOrigin } = require('../shared/course-app-links');
 const VALID_WIDGETS = new Set(["workspace", "inbox", "calendar", "pomodoro", "streak"]);
 
 module.exports = async function widgetLink(request, response) {
@@ -43,6 +44,7 @@ async function createHandoff(request, response) {
   const payload = {
     sub: user.id,
     widget,
+    origin: request.headers.host === new URL(publicOrigin()).host ? publicOrigin() : appOrigin(),
     exp: expiresAt,
     nonce: crypto.randomBytes(12).toString("base64url")
   };
@@ -63,7 +65,8 @@ async function redeemHandoff(request, response) {
   const user = await adminRequest(`/auth/v1/admin/users/${encodeURIComponent(payload.sub)}`);
   if (!user?.email) return response.status(404).send("No encontramos la cuenta.");
 
-  const redirectTo = `${appOrigin()}/widget.html?view=${encodeURIComponent(widget)}&embed=rainmeter&linked=1`;
+  const origin = payload.origin === publicOrigin() ? publicOrigin() : appOrigin();
+  const redirectTo = `${origin}/widget.html?view=${encodeURIComponent(widget)}&embed=rainmeter&linked=1`;
   const generated = await adminRequest("/auth/v1/admin/generate_link", {
     method: "POST",
     body: JSON.stringify({ type: "magiclink", email: user.email, redirect_to: redirectTo })

@@ -4,7 +4,7 @@
 
 Todos los perfiles apuntan a:
 
-`https://estudiemos-app.vercel.app/instalar.html`
+`https://estudiemos.ar/instalar`
 
 Para campañas usar parametros consistentes:
 

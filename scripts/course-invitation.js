@@ -9,8 +9,9 @@
   function appUrl(code){const url=new URL('./',root);if(CODE.test(code)){url.searchParams.set('unirme','1');url.hash='materia='+code;}return url;}
   function canonicalUrl(code){return window.EstudiemosCourseAppLinks.canonicalUrl(code,window.EstudiemosAccount?.getPublicAppOrigin?.());}
   function confirmationUrl(base){
-    const url=new URL(base,root);
-    if(url.origin!==root.origin)return new URL('./',root);
+    const source=new URL(base,root);
+    if(source.origin!==root.origin)return new URL('./',root);
+    const url=window.EstudiemosCourseAppLinks?.authReturnUrl(source)||source;
     const value=pending(window.EstudiemosAccount?.getUser()?.id||'');
     if(value){url.searchParams.set('materia',value.code);url.searchParams.set('unirme','1');}
     return url;
@@ -72,7 +73,7 @@
     let ready;
     const loadAccount=()=>ready||(ready=new Promise(resolve=>{
       if(window.EstudiemosAccount)return resolve(window.EstudiemosAccount);
-      const script=document.createElement('script');script.src=new URL('scripts/account.js?v=20261108-pwa-health',root);
+      const script=document.createElement('script');script.src=new URL('scripts/account.js?v=20261109-official-access',root);
       script.onload=()=>resolve(window.EstudiemosAccount||null);script.onerror=()=>resolve(null);document.head.append(script);
     }));
     section.addEventListener('click',async event=>{
@@ -83,9 +84,11 @@
         if(hint)hint.textContent='Aceptá «Abrir Estudiemos» si el sistema lo pide. Si no se abre, podés continuar desde el navegador o actualizar la instalación.';
         return; // Keep the original click activation; do not await Auth or substitute a timed redirect.
       }
-      if(!event.target.closest('[data-course-join]')||event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
+      const button=event.target.closest('[data-course-join]');
+      if(!button||event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
+      if(button.getAttribute('aria-busy')==='true'){event.preventDefault();return;}
       event.preventDefault();webChosen=true;save(code,'',currentPreview);
-      const button=section.querySelector('[data-course-join]');button.setAttribute('aria-busy','true');
+      button.setAttribute('aria-busy','true');
       let timer;
       const account=await Promise.race([loadAccount(),new Promise(resolve=>{timer=setTimeout(()=>resolve(null),8000);})]);clearTimeout(timer);
       button.removeAttribute('aria-busy');

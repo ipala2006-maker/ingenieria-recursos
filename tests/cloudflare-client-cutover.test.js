@@ -10,13 +10,15 @@ const legacy = 'https://estudiemos-app.vercel.app';
 
 test('new native clients and desktop skins select Cloudflare without replacing app identity', () => {
   const gradle = fs.readFileSync(path.join(root, 'android-app/app/build.gradle'), 'utf8');
-  assert.ok(gradle.includes("getOrElse('" + origin + "')"));
+  const publicOrigin = 'https://estudiemos.ar';
+  assert.ok(gradle.includes("getOrElse('" + publicOrigin + "')"));
   assert.match(gradle, /applicationId "com.estudiemos.app"/);
   const launcher = fs.readFileSync(path.join(root, 'windows-installer/AppLauncher.vbs'), 'utf8');
-  assert.ok(launcher.includes(origin + '/?windows-bundle=1'));
+  assert.ok(launcher.includes(publicOrigin + '/?windows-bundle=1'));
   for (const name of ['Calendario', 'Inbox', 'MiEspacio', 'Pomodoro', 'Racha']) {
     const skin = fs.readFileSync(path.join(root, 'windows-rainmeter/Skins/Estudiemos', name, name + '.ini'), 'utf8');
-    assert.ok(skin.includes(origin), name + ' uses the new hosting');
+    assert.ok(skin.includes(publicOrigin), name + ' uses the official domain');
+    assert.ok(!skin.includes(origin));
     assert.ok(!skin.includes(legacy));
   }
 });

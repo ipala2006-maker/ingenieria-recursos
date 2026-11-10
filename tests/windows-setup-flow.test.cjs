@@ -72,10 +72,12 @@ test('opening a native protocol never marks a widget added or clears pending sel
 });
 
 test('Cloudflare widgets select only the fixed Cloudflare helper recipient',async()=>{
-  const h=widgetHarness();h.context.location.origin='https://estudiemos.estudiemos-services.workers.dev';
-  await h.context.launchWindowsWidget('calendar');
-  assert.equal(new URL(h.links[0]).searchParams.get('source'),'cloudflare');
-  assert.ok(!h.links[0].includes('https%3A'),'no caller-provided remote endpoint');
+  for(const origin of ['https://estudiemos.ar','https://estudiemos.estudiemos-services.workers.dev']){
+    const h=widgetHarness();h.context.location.origin=origin;
+    await h.context.launchWindowsWidget('calendar');
+    assert.equal(new URL(h.links[0]).searchParams.get('source'),'cloudflare');
+    assert.ok(!h.links[0].includes('https%3A'),'no caller-provided remote endpoint');
+  }
 });
 test('offline or invalid account-link responses do not open a disconnected widget',async()=>{
   for(const fetch of [async()=>{throw Error('offline');},async()=>({ok:false,json:async()=>({})}),async()=>({ok:true,json:async()=>({})})]){

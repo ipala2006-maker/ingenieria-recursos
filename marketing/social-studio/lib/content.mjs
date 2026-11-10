@@ -90,7 +90,7 @@ export function makeCopy(b, platform, id) {
   const topic = TOPICS[b.topic];
   const tags = ['Estudiemos', ...topic.tags];
   const cta = { instagram: 'Guardalo para tu proxima semana de parciales.', tiktok: 'Pasaselo a tu grupo de cursada.', youtube: 'Proba este paso en tu proxima sesion.' }[platform];
-  const link = new URL('https://estudiemos-app.vercel.app/instalar.html');
+  const link = new URL('https://estudiemos.ar/instalar');
   link.search = new URLSearchParams({ utm_source: platform, utm_medium: 'organic_social', utm_campaign: id }).toString();
   const destination = platform === 'youtube' ? `Estudiemos: ${link.href}` : 'Estudiemos. Enlace de instalacion en el perfil.';
   return { title: `${b.hook} | Estudiemos`.slice(0, 100), description: `${b.hook}\n\n${b.tip}\n\n${cta}\n${destination}`, hashtags: tags, cta, link: link.href };
