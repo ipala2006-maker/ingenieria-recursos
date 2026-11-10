@@ -98,7 +98,7 @@ test('failed course retries stop while hidden or logged out and resume without b
 test('all course entrypoints load the current versioned course client',()=>{
   const root=require('node:path').join(__dirname,'..');
   for(const file of ['scripts/global-search.js','materias.html','widget.html']){
-    assert.match(fs.readFileSync(require('node:path').join(root,file),'utf8'),/scripts\/classroom-sync\.js\?v=20261109-classroom-taps/);
+    assert.match(fs.readFileSync(require('node:path').join(root,file),'utf8'),/scripts\/classroom-sync\.js\?v=20261110-course-entry/);
   }
 });
 test('a stalled SDK detail request has a hard deadline and cannot fall back after it expires',async()=>{

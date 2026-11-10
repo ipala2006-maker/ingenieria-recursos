@@ -96,7 +96,11 @@
     if(toggle)toggle.checked=visible;
     main.querySelectorAll('[data-class-calendar]').forEach(button=>button.hidden=course.archived||!visible);
   }
-  function drawJoin(){main.innerHTML=`<button type="button" data-class-back>${icon('arrow-left')}Mis materias</button><form data-class-form="join" class="classroom-form"><h3>Unirme a una materia</h3><label>Link o código de la materia<input name="code" required maxlength="1200" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="Pegá el enlace o ABCDE-FGHJK" value="${escape(joinCode)}"></label><button class="classroom-primary" type="submit">Aceptar y unirme</button></form>`;}
+  function drawJoin(){
+    main.innerHTML=autoJoin&&accountId()
+      ? '<div class="classroom-empty" aria-busy="true"></div>'
+      : `<button type="button" data-class-back>${icon('arrow-left')}Mis materias</button><form data-class-form="join" class="classroom-form"><h3>Unirme a una materia</h3><label>Link o código de la materia<input name="code" required maxlength="1200" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="Pegá el enlace o ABCDE-FGHJK" value="${escape(joinCode)}"></label><button class="classroom-primary" type="submit">${joinCode?'Unirme':'Aceptar y unirme'}</button></form>`;
+  }
   function drawHistory(){
     const labels={course_create:'Creó la cátedra',course_update:'Modificó la cátedra',course_archive:'Archivó la cátedra',course_restore:'Reactivó la cátedra',invite_rotate:'Renovó la invitación',event_add:'Publicó una fecha',event_edit:'Modificó una fecha',event_remove:'Quitó una fecha',material_add:'Publicó un archivo',material_edit:'Modificó un archivo',material_remove:'Quitó un archivo',member_remove:'Expulsó a un participante',member_unblock:'Habilitó una participación',member_permissions:'Modificó permisos',owner_transfer:'Asumió como colaborador'};
     main.innerHTML=`<button type="button" data-class-back>${icon('arrow-left')}Volver a la materia</button><div class="classroom-section-head"><h3>Actividad reciente</h3><button type="button" data-class-history aria-label="Actualizar actividad">${icon('refresh-cw')}</button></div><p class="classroom-muted">Últimas 30 modificaciones de esta cátedra.</p><ol class="classroom-history">${historyData===null?'<li>Cargando actividad…</li>':historyData.map(item=>`<li><div><strong>${escape(item.actor)}</strong><span>${roleLabel(item.role)}</span><time>${escape(new Date(item.at).toLocaleString('es-AR',{dateStyle:'short',timeStyle:'short'}))}</time></div><p>${labels[item.action]||'Actualizó la cátedra'}</p><small>${escape(item.label)}</small></li>`).join('')||'<li>Sin modificaciones registradas todavía.</li>'}</ol>`;
@@ -210,13 +214,18 @@
     await loadDestinations(upload.closest('form'),upload);
   },true);
   async function mutate(action,data,message){
-    if(busy)return;const version=++sequence;lock(true);status('Guardando…');
+    if(busy)return;const version=++sequence;lock(true);status(action==='join'?'Entrando a la cátedra…':'Guardando…');
     if(['event_save','event_remove','material_save','material_remove'].includes(action)){
       const entry=(action.startsWith('event_')?detail?.events:detail?.materials)?.find(item=>item.id===(data.itemId||editing));
       data={...data,expectedVersion:entry?.version||0};
     }
     try{const result=await api.act(action,{id:selected,...data});if(version!==sequence||!isOpen())return;selected=['leave','delete'].includes(action)?'':result.selected;detail=result.detail||null;view=selected?'class':'list';if(['member_permissions','member_remove','member_unblock'].includes(action)){tab='members';if(action==='member_remove')managingMember='';}else if(['join','create'].includes(action))tab='events';if(action.startsWith('material_'))tab='materials';editing='';uploaded=null;if(action==='join'){joinCode='';autoJoin=false;window.EstudiemosCourseInvitation?.clear();try{sessionStorage.removeItem(rules.PENDING_KEY);}catch(_){}}draw();status(message||'Cambios guardados.');}
     catch(error){if(version===sequence){
+      if(action==='join'){
+        if(autoJoin){autoJoin=false;draw();}
+        status(error.code==='CLASS_NETWORK'?'No pudimos completar el ingreso. Volvé a intentar.':error.message,true);
+        return;
+      }
       if(error.code==='CLASS_NETWORK'){status(error.message,true);return;}
       if(error.code==='VERSION_CONFLICT'){
         status(error.message,true);
@@ -372,14 +381,14 @@
     const user=window.EstudiemosAccount?.getUser();
     if(!autoJoin||!joinCode||!user||busy||!isOpen())return;
     if(!roles?.get())roles?.set('student');
-    if(window.EstudiemosCourseInvitation){const pending=window.EstudiemosCourseInvitation.pending(user.id);if(!pending||pending.code!==joinCode){autoJoin=false;joinCode='';return;}window.EstudiemosCourseInvitation.save(joinCode,user.id,pending.preview);}
+    if(window.EstudiemosCourseInvitation){const pending=window.EstudiemosCourseInvitation.pending(user.id);if(!pending||pending.code!==joinCode){autoJoin=false;joinCode='';draw();status('Volvé a abrir el enlace de la cátedra o pegá su código.',true);return;}window.EstudiemosCourseInvitation.save(joinCode,user.id,pending.preview);}
     await mutate('join',{code:joinCode},'Ya estás en la materia. Sus fechas están en tu calendario.');
   }
   window.addEventListener('estudiemos:account-change',()=>{
     const owner=accountId();if(owner===accountOwner)return;accountOwner=owner;
     sequence++;selected='';detail=null;uploaded=null;document.querySelectorAll('.classroom-confirm[open]').forEach(node=>node.close());
     view=joinCode?'join':'list';busy=false;draw();lock(false);
-    if((resume||standalone||autoJoin)&&owner){resume=false;showHost();if(autoJoin&&joinCode)joinInvitation();else refresh();}
+    if((resume||standalone||autoJoin)&&owner){if(resume&&autoJoin)window.EstudiemosAccount?.close?.();resume=false;showHost();if(autoJoin&&joinCode)joinInvitation();else refresh();}
   });
   window.addEventListener('estudiemos:classes-updated',event=>{
     if(!isOpen()||accountId()!==accountOwner)return;
@@ -392,7 +401,9 @@
     if(busy)return;
     lastFocus=document.activeElement;status('');joinCode=options.join||joinCode;autoJoin=options.autoJoin===true;
     if(!standalone&&!joinCode)try{const pending=JSON.parse(sessionStorage.getItem(rules.PENDING_KEY)||'null');if(pending?.expires>Date.now()&&(!pending.owner||pending.owner===window.EstudiemosAccount?.getUser()?.id))joinCode=pending.code;else sessionStorage.removeItem(rules.PENDING_KEY);}catch(_){}
-    sequence++;view=joinCode?'join':'list';selected=options.id||'';detail=null;if(selected&&current())view='class';showHost();draw();
+    sequence++;view=joinCode?'join':'list';selected=options.id||'';detail=null;if(selected&&current())view='class';
+    if(options.promptAccount&&autoJoin&&joinCode&&!accountId()){resume=true;window.EstudiemosAccount?.open();return;}
+    showHost();draw();
     if(autoJoin&&joinCode&&accountId()){joinInvitation();return;}
     if(window.EstudiemosAccount?.getUser())refresh().then(()=>{if(!isOpen())return;if(options.id&&current()&&view==='list'){view='class';draw();}const saveId=options.upload?window.EstudiemosCourseDrive?.resumeSave(selected):'';if(saveId&&detail?.materials.some(item=>item.id===saveId)){savingMaterial=saveId;view='save-material';draw();}else if(options.upload&&can('filesAdd')){view='material';editing='';uploaded=null;materialDraftId=crypto.randomUUID();draw();}joinInvitation();});
   }});
