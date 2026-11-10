@@ -37,11 +37,20 @@ else (async()=>{
       await page.locator('.study-goal-save').click();
       await page.locator('[data-home-empty]').waitFor({state:'visible'});
       assert.deepEqual(await page.evaluate(()=>Object.entries(EstudiemosHomeLayout.read().visible).filter(([,value])=>value).map(([key])=>key)),['calendar','inbox']);
-      if(mobile)assert.equal(await page.locator('[data-home-view=inbox]').getAttribute('aria-selected'),'true');
+      if(mobile){
+        assert.equal(await page.locator('[data-home-view=overview]').getAttribute('aria-selected'),'true');
+        assert.equal(await page.locator('[data-home-space=calendar]').isVisible(),true);
+        assert.equal(await page.locator('[data-home-space=inbox]').isVisible(),true);
+        assert.equal(await page.locator('[data-home-space=focus]').isVisible(),false);
+      }
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
       if(!mobile)assert.equal(await page.evaluate(()=>document.documentElement.scrollHeight<=innerHeight+1),true);
       const connect=await page.locator('[data-home-connect-drive]').boundingBox(),content=await page.locator('[data-home-empty]').boundingBox();
       assert.ok(connect.y>=content.y-1&&connect.y+connect.height<=content.y+content.height+1,'Both welcome actions fit without a nested scroll');
+      if(mobile){
+        const welcomeAction=await page.locator('.home-start-primary').boundingBox(),home=await page.locator('.home-panels').boundingBox();
+        assert.ok(welcomeAction.y+welcomeAction.height<=home.y+home.height+1,'The first task action is visible before scrolling');
+      }
       await page.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-${viewport.width}-empty.png`)});
       if(viewport.width===390){
         await page.evaluate(()=>EstudiemosTheme.set('light'));await page.waitForTimeout(220);
