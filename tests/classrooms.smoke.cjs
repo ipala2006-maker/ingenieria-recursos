@@ -74,7 +74,13 @@ const workerOrigin='https://estudiemos.estudiemos-services.workers.dev';
           const accountState={select(){return this;},eq(){return this;},maybeSingle:async()=>({data:{state:{},updated_at:'2026-01-01T00:00:00Z'}})};
           window.supabase={createClient:()=>({
             auth:{
-              getSession:async()=>({data:{session:localStorage.getItem('class_test_user')===student?fixtureSession:null}}),onAuthStateChange:()=>{},
+              getSession:async()=>{
+                if(new URLSearchParams(location.hash.slice(1)).get('access_token')==='fixture-email-confirmed'){
+                  localStorage.setItem('class_test_user',student);history.replaceState(history.state,'',location.pathname+location.search);
+                }
+                return {data:{session:localStorage.getItem('class_test_user')===student?fixtureSession:null}};
+              },onAuthStateChange:()=>{},
+              signInWithOtp:async values=>{window.__courseEmail=values;return {data:{session:null},error:null};},
               signUp:async values=>{window.__signup=values;return {data:{session:null},error:null};},
               signInWithPassword:async({password})=>{
                 if(password!=='FixtureOnlyPass123!')return {error:{code:'invalid_credentials'}};
@@ -128,7 +134,16 @@ const workerOrigin='https://estudiemos.estudiemos-services.workers.dev';
         if(url.searchParams.get('drive')==='token')return route.fulfill({json:{accessToken:'fixture-only',expiresAt:Date.now()+3600000}});
         if(actualAccount&&url.pathname==='/api/account-config'&&!url.search)return route.fulfill({json:{enabled:true,url:'https://fixture.supabase.co',publishableKey:'test-only',captchaSiteKey:'',publicAppOrigin:official}});
         if(url.pathname==='/scripts/account.js'&&!actualAccount)return route.fulfill({contentType:'text/javascript',body:`window.EstudiemosAccount={getUser:()=>window.__classUser?{id:window.__classUser}:null,getSession:()=>window.__classUser?{access_token:window.__classUser}:null,whenReady:()=>Promise.resolve({session:window.__classUser?{access_token:window.__classUser}:null}),isSynchronized:()=>true,getPublicAppOrigin:()=>${JSON.stringify(official)},getClient:()=>({rpc:async(name,args)=>(await fetch('/rest/v1/rpc/'+name,{method:'POST',headers:{Authorization:'Bearer '+window.__classUser},body:JSON.stringify(args)})).json()}),open:()=>{window.__loginOpened=true},refresh:async()=>{}};window.dispatchEvent(new CustomEvent('estudiemos:account-ready'));`});
-        if(url.origin!==base)return route.fetch({url:base+url.pathname+url.search,maxRedirects:0,headers:{...request.headers(),origin:base}}).then(response=>route.fulfill({response}));
+        if(url.origin!==base){
+          try{
+            const response=await route.fetch({url:base+url.pathname+url.search,maxRedirects:0,headers:{...request.headers(),origin:base}});
+            await route.fulfill({response});
+          }catch(error){
+            // A fast navigation can cancel a proxied asset while the context is closing.
+            if(!/Fetch response has been disposed|Target page, context or browser has been closed/.test(error.message))throw error;
+          }
+          return;
+        }
         return route.continue();
       });return ctx;
     }
@@ -318,7 +333,7 @@ const workerOrigin='https://estudiemos.estudiemos-services.workers.dev';
     }finally{slow.pausedCoursePreview.release?.();await slow.close();}
     const guest=await context('',320),gp=await guest.newPage();lastPage=gp;await gp.goto(base+'/#materia='+code);await gp.locator('[data-course-join]').waitFor();assert.equal(gp.url(),official+'/materia/'+code);await gp.locator('[data-course-invite-dates]').getByText(/Parcial actualizado/).waitFor();await gp.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-invitation-install.png`)});await gp.locator('[data-course-join]').click();await gp.waitForFunction(()=>window.__loginOpened);assert.equal(gp.url(),official+'/materia/'+code,'Guest signs in without losing the invitation landing');assert.equal(await gp.locator('.classroom-dialog[open]').count(),0,'Account sign-in is not hidden behind a native modal');assert.equal(await gp.locator('[data-study-goal-dialog][open]').count(),0);
     await gp.evaluate(id=>{window.__classUser=id;window.dispatchEvent(new CustomEvent('estudiemos:account-change'));},student);await gp.locator('.classroom-course-head h3').waitFor();assert.equal(await gp.evaluate(()=>localStorage.getItem('estudiemos_class_invite_v1')),null,'Successful enrollment consumes the durable invitation');await guest.close();
-    for(const platform of ['ios','inapp-ios']){
+    for(const platform of ['ios','inapp-ios','windows','android']){
       const signed=await context(student,390,'student',false,false,platform),signedPage=await signed.newPage();lastPage=signedPage;
       signedPage.on('pageerror',error=>errors.push(error.message));
       const stateRead={operation:'state'};
@@ -326,7 +341,7 @@ const workerOrigin='https://estudiemos.estudiemos-services.workers.dev';
       try{
         await signedPage.goto(official+'/materia/'+code);
         await signedPage.locator('.classroom-course-head h3').waitFor({timeout:5000});
-        assert.equal(typeof stateRead.release,'function','The course opens even while the initial state read is pending');
+        assert.equal(stateRead.release,undefined,'Joining skips the initial class-state read');
       }finally{signed.pausedCourseRead=null;stateRead.release?.();}
       await signedPage.waitForFunction(()=>!EstudiemosClasses.status().loading);
       assert.equal(await signedPage.locator('.classroom-course-head h3').innerText(),'Física · 1.º año');
@@ -374,28 +389,55 @@ const workerOrigin='https://estudiemos.estudiemos-services.workers.dev';
     assert.equal(new URL(mirrorPage.url()).origin,official);
     await mirror.close();
     for(const platform of ['android','windows']){
-      const native=await context(student,390,'student',false,false,platform),nativePage=await native.newPage();lastPage=nativePage;
-      await nativePage.goto(base+'/materia/'+code);await nativePage.locator('[data-course-routing=ready]').waitFor();assert.equal(await nativePage.evaluate(()=>Boolean(window.EstudiemosAccount)),false,'App-first landing does not load the browser Auth SDK');
-      await nativePage.locator('[data-course-native][data-course-primary]').waitFor();assert.equal(new URL(nativePage.url()).pathname,'/materia/'+code,'A browser session must not bypass the installed-app action');
+      const native=await context('',390,'student',false,false,platform),nativePage=await native.newPage();lastPage=nativePage;
+      await nativePage.goto(base+'/materia/'+code);await nativePage.locator('[data-course-native][data-course-primary]').waitFor();
       await nativePage.locator('[data-course-native][data-course-primary]').click();const attempts=await nativePage.evaluate(()=>window.__externalLinks);assert.equal(attempts.length,1);assert.equal(attempts[0].active,true,'Native URL receives the original trusted click, not an asynchronous Auth redirect');assert.ok(attempts[0].href.includes('materia='+code));assert.equal(await nativePage.evaluate(()=>Boolean(window.__loginOpened)),false,'Opening the installed app never shows the browser login');
       await nativePage.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-open-installed-${platform}.png`)});
-      await nativePage.locator('[data-course-join]').click();await nativePage.locator('.classroom-course-head h3').waitFor();await native.close();
+      await nativePage.locator('[data-course-join]').click();await nativePage.waitForFunction(()=>window.__loginOpened);await native.close();
     }
     const noApp=await context('',390,'student',false,false,'android'),noAppPage=await noApp.newPage();lastPage=noAppPage;await noAppPage.goto(base+'/materia/'+code+'?abrir=web');await noAppPage.locator('[data-course-join][data-course-primary]').click();await noAppPage.waitForFunction(()=>window.__loginOpened);assert.equal((await noAppPage.evaluate(()=>window.__externalLinks)).length,0,'Missing/blocked app falls back to the same presentation, without another launch or APK download');await noApp.close();
-    const known=await context('',390,'student',false,false,'windows-installed'),knownPage=await known.newPage();lastPage=knownPage;await knownPage.goto(base+'/materia/'+code);await knownPage.locator('[data-course-routing=ready]').waitFor();assert.equal((await knownPage.evaluate(()=>window.__externalLinks)).length,1,'Known Windows installation gets one automatic opening attempt');assert.equal(await knownPage.evaluate(()=>Boolean(window.EstudiemosAccount)),false);await knownPage.reload();await knownPage.locator('[data-course-routing=ready]').waitFor();assert.equal((await knownPage.evaluate(()=>window.__externalLinks)).length,0,'A blocked opening or reload cannot create a launch loop');await knownPage.goto(base+'/materia/'+code+'?abrir=web');await knownPage.locator('[data-course-join][data-course-primary]').waitFor();assert.equal((await knownPage.evaluate(()=>window.__externalLinks)).length,0,'Explicit web mode suppresses automatic app opening');await known.close();
+    const known=await context('',390,'student',false,false,'windows-installed'),knownPage=await known.newPage();lastPage=knownPage;await knownPage.goto(base+'/materia/'+code);await knownPage.waitForFunction(()=>window.__externalLinks.length===1);await knownPage.reload();await knownPage.locator('[data-course-routing=ready]').waitFor();assert.equal((await knownPage.evaluate(()=>window.__externalLinks)).length,0,'A blocked opening or reload cannot create a launch loop');await knownPage.goto(base+'/materia/'+code+'?abrir=web');await knownPage.locator('[data-course-join][data-course-primary]').waitFor();assert.equal((await knownPage.evaluate(()=>window.__externalLinks)).length,0,'Explicit web mode suppresses automatic app opening');await known.close();
     const inside=await context(student,390,'student',false,false,'inapp-android'),insidePage=await inside.newPage();lastPage=insidePage;await insidePage.goto(base+'/materia/'+code);await insidePage.locator('.classroom-course-head h3').waitFor();assert.equal((await insidePage.evaluate(()=>window.__externalLinks)).length,0,'An already open Android app does not recursively launch itself');await inside.close();
     for(const platform of ['ios','ipad']){
       const ios=await context('',390,'student',false,false,platform),iosPage=await ios.newPage();lastPage=iosPage;await iosPage.goto(base+'/materia/'+code);await iosPage.locator('[data-course-open-status]').filter({hasText:'En iPhone y iPad'}).waitFor();assert.equal(await iosPage.locator('.course-install-invitation [data-course-native]').count(),0,'No fake iOS app-opening action');await iosPage.locator('[data-course-join][data-course-primary]').click();await iosPage.waitForFunction(()=>window.__loginOpened);assert.equal(new URL(iosPage.url()).pathname,'/materia/'+code);await iosPage.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-invitation-${platform}.png`)});await ios.close();
     }
     const iosInside=await context(student,390,'student',false,false,'inapp-ios'),iosInsidePage=await iosInside.newPage();lastPage=iosInsidePage;await iosInsidePage.goto(base+'/materia/'+code);await iosInsidePage.locator('.classroom-course-head h3').waitFor();assert.equal((await iosInsidePage.evaluate(()=>window.__externalLinks)).length,0);await iosInside.close();
-    const signup=await context('',390,'student',false,true),signupPage=await signup.newPage();lastPage=signupPage;signupPage.on('pageerror',error=>errors.push(error.message));await signupPage.goto(official+'/materia/'+code);await signupPage.locator('[data-course-join]').click();await signupPage.locator('#accountTitle').filter({hasText:'Unirte a la cátedra'}).waitFor();assert.match(await signupPage.locator('[data-account-auth] .account-intro').innerText(),/Física/);await signupPage.locator('[data-account-form] [name=email]').fill('pilot@example.test');await signupPage.locator('[data-account-form] [name=password]').fill('FixtureOnlyPass123!');await signupPage.locator('[data-account-signup]').click();await signupPage.waitForFunction(()=>Boolean(window.__signup));const emailReturn=new URL(await signupPage.evaluate(()=>window.__signup.options.emailRedirectTo));assert.equal(emailReturn.origin,official);assert.equal(emailReturn.searchParams.get('materia'),code);assert.equal(emailReturn.searchParams.get('unirme'),'1');
+    const retry=await context(student,390,'student',false,false,'ios'),retryPage=await retry.newPage();lastPage=retryPage;
+    retry.failNextCourseWrite=true;await retryPage.goto(official+'/materia/'+code);
+    await retryPage.getByText('No pudimos completar el ingreso. Volvé a intentar.').waitFor();
+    assert.equal(await retryPage.locator('[data-class-form=join] input').inputValue(),code);
+    await retryPage.locator('[data-class-form=join] button[type=submit]').tap();
+    await retryPage.locator('.classroom-course-head h3').waitFor();await retry.close();
+    const signup=await context('',390,'student',false,true,'ios'),signupPage=await signup.newPage();lastPage=signupPage;signupPage.on('pageerror',error=>errors.push(error.message));await signupPage.goto(official+'/materia/'+code);
+    const emailForm=signupPage.locator('[data-account-form]');await emailForm.locator('[name=email]').fill('pilot@example.test');
+    assert.equal(await emailForm.locator('[name=password]').isVisible(),false,'An invitation starts with email alone, without a prior click');
+    await emailForm.getByRole('button',{name:'Enviarme el enlace'}).tap();
+    await signupPage.getByText('Revisá tu correo y abrí el enlace para entrar directo a la cátedra.').waitFor();
+    const emailRequest=await signupPage.evaluate(()=>window.__courseEmail),emailReturn=new URL(emailRequest.options.emailRedirectTo);
+    assert.equal(emailRequest.options.shouldCreateUser,true);assert.equal(emailReturn.origin,official);assert.equal(emailReturn.searchParams.get('materia'),code);assert.equal(emailReturn.searchParams.get('unirme'),'1');
+    const confirmed=await context('',390,'student',false,true,'ios'),confirmedPage=await confirmed.newPage();lastPage=confirmedPage;
+    emailReturn.hash='access_token=fixture-email-confirmed&type=magiclink';
+    await confirmedPage.goto(emailReturn.href);
+    await confirmedPage.locator('.classroom-course-head h3').filter({hasText:'Física · 1.º año'}).waitFor();
+    assert.equal(await confirmedPage.locator('.account-shell[open]').count(),0,'Email opens the correct course even in a fresh browser context');await confirmed.close();
+    const expired=await context('',390,'student',false,true,'ios'),expiredPage=await expired.newPage();lastPage=expiredPage;
+    emailReturn.hash='error=access_denied&error_code=otp_expired&error_description=expired';
+    await expiredPage.goto(emailReturn.href);
+    await expiredPage.getByText('El enlace de correo venció. Pedí uno nuevo para entrar a la misma cátedra.').waitFor();
+    await expiredPage.locator('[data-account-form] [name=email]').fill('pilot@example.test');
+    await expiredPage.getByRole('button',{name:'Enviarme el enlace'}).tap();
+    assert.equal(new URL(await expiredPage.evaluate(()=>window.__courseEmail.options.emailRedirectTo)).searchParams.get('materia'),code);await expired.close();
+    lastPage=signupPage;await emailForm.getByRole('button',{name:'Usar contraseña'}).tap();
+    await emailForm.locator('[name=password]').fill('FixtureOnlyPass123!');await signupPage.locator('[data-account-signup]').tap();
+    await signupPage.waitForFunction(()=>Boolean(window.__signup));
+    assert.equal(new URL(await signupPage.evaluate(()=>window.__signup.options.emailRedirectTo)).searchParams.get('materia'),code);
     for(const width of [320,390,768]){await signupPage.setViewportSize({width,height:844});assert.equal(await signupPage.locator('.account-shell').evaluate(el=>getComputedStyle(el).position),'fixed','Account styles load on invitation pages');assert.equal(await signupPage.locator('.account-panel').evaluate(el=>el.scrollWidth<=el.clientWidth+1),true,'Sign-in panel fits');assert.equal(await signupPage.locator('[data-account-signup]').isVisible(),true);await signupPage.screenshot({path:path.join(out,`${process.env.TEST_WEBKIT?'webkit':'chrome'}-invitation-signup-${width}.png`)});}await signup.close();
     const crawler=await browser.newContext({javaScriptEnabled:false,viewport:{width:390,height:844}}),crawlerPage=await crawler.newPage();lastPage=crawlerPage;await crawlerPage.goto(base+'/materia/'+code);assert.equal(await crawlerPage.locator('#courseInviteTitle').innerText(),'Física · 1.º año');assert.match(await crawlerPage.locator('[property="og:title"]').getAttribute('content'),/Física/);assert.equal(await crawlerPage.locator('[data-course-join]').isVisible(),true);await crawler.close();
     const login=await context('',390,'student',false,true,'ios'),loginPage=await login.newPage();lastPage=loginPage;
     loginPage.on('pageerror',error=>errors.push(error.message));
     await loginPage.goto(official+'/materia/'+code);
-    await loginPage.locator('[data-course-join]').tap();
     const loginForm=loginPage.locator('[data-account-form]');
+    await loginForm.getByRole('button',{name:'Usar contraseña'}).tap();
     await loginForm.locator('[name=email]').fill('student@example.test');
     await loginForm.locator('[name=password]').fill('IncorrectPassword');
     await loginForm.locator('button[type=submit]').tap();

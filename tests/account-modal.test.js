@@ -18,7 +18,7 @@ function harness() {
   };
   const classes = new Set();
   const context = {
-    accountReturnFocus: null, session: null, COMMERCIAL_LAUNCH_ENABLED: false,
+    accountReturnFocus: null, session: null, courseInvitation: () => null, COMMERCIAL_LAUNCH_ENABLED: false,
     document: { activeElement: origin, querySelector: selector => selector === '.account-shell' ? shell : fallback,
       body: { classList: { add: key => classes.add(key), remove: key => classes.delete(key) } } },
     window: { setTimeout: fn => tasks.push(fn) }, sessionStorage: { getItem: () => null },

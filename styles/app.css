@@ -4562,6 +4562,7 @@ body.account-open{overflow:hidden}
 .account-recovery-intro{margin-bottom:16px;overflow-wrap:anywhere}
 .account-recovery-form{gap:10px}
 .account-recovery-form [hidden]{display:none}
+.account-form :is([data-account-password],[data-account-signup],[data-account-reset],[data-account-course-mode])[hidden]{display:none}
 .account-recovery-form input{min-width:0;font-size:16px;border-radius:8px}
 .account-recovery-form input[aria-invalid="true"]{border-color:var(--account-recovery-error,#fca5a5)}
 .account-recovery-form .account-otp input{font-size:20px;font-weight:600;font-variant-numeric:tabular-nums}

@@ -14,14 +14,14 @@ module.exports=async function courseInvitation(req,res){
   if(valid)try{model=await preview(code);}catch(error){unavailable=error.message==='INVALID_CODE';http=unavailable?404:503;status=unavailable?'La cátedra ya no está disponible o cambió su enlace.':'No pudimos cargar la invitación. Podés continuar en la app o volver a intentar.';}
   const url=appLinks.canonicalUrl(code,origin)?.href||origin+'/instalar',title=model?model.title+' · Invitación en Estudiemos':'Invitación a una cátedra · Estudiemos';
   const description=model?'Sumate a '+model.title+'. '+(model.teacherName?'Compartida por '+model.teacherName+'. ':'')+'Fechas y materiales de tu cursada, en Estudiemos.':'Tu comisión, sus fechas y sus materiales. Sumate en Estudiemos.';
-  const image=origin+'/assets/course-invite-preview.png',joinUrl=unavailable?origin+'/':origin+'/?unirme=1#materia='+code;
+  const image=origin+'/assets/course-invite-preview.png',joinUrl=unavailable?origin+'/':origin+'/?materia='+code+'&unirme=1';
   const platform=appLinks.platform(req.headers?.['user-agent']),nativeUrl=appLinks.nativeUrl(code,platform,origin+'/');
   // Reuse installation controls without shipping hidden product demos/media.
   const installTemplate=(template.slice(0,template.indexOf('<main>')+6)+template.slice(template.indexOf('<section class="install-downloads"')))
     .replace(/<script>\s*if \(\(location\.protocol[\s\S]*?<\/script>/,''); // Local installer redirect is not part of a served invitation.
   let html=installTemplate.replace('<title>Estudiemos | Tu estudio, conectado</title>','<title>'+view.esc(title)+'</title>')
     .replace(/((?:href|src)=")\.\//g,'$1/').replace('class="install-page"','class="install-page course-invitation-page"')
-    .replace('<link rel="stylesheet" href="/styles/install.css','<link rel="stylesheet" href="/styles/app.css?v=20261110-entry-taps"><link rel="stylesheet" href="/styles/install.css');
+    .replace('<link rel="stylesheet" href="/styles/install.css','<link rel="stylesheet" href="/styles/app.css?v=20261110-course-entry"><link rel="stylesheet" href="/styles/install.css');
   const meta=(key,value)=>{html=html.replace(new RegExp('((?:name|property)="'+key+'" content=")[^"]*'),(_all,start)=>start+view.esc(value));};
   for(const key of ['description','og:description'])meta(key,description);
   meta('og:title',title);meta('og:url',url);meta('og:image',image);meta('og:image:alt','Invitación a una cátedra en Estudiemos');
