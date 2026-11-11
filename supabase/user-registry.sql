@@ -24,7 +24,7 @@ create or replace function private.sync_user_registry()
 returns trigger
 language plpgsql
 security definer
-set search_path = public, private, pg_temp
+set search_path = ''
 as $$
 begin
   insert into public.user_registry (
@@ -58,6 +58,8 @@ drop trigger if exists on_auth_user_registry_change on auth.users;
 create trigger on_auth_user_registry_change
 after insert or update of email, email_confirmed_at, phone, phone_confirmed_at, last_sign_in_at on auth.users
 for each row execute function private.sync_user_registry();
+
+revoke execute on function private.sync_user_registry() from public, anon, authenticated, service_role;
 
 insert into public.user_registry (
   user_id,
