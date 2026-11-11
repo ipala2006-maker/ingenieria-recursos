@@ -8,6 +8,24 @@ const part = (text, start, end) => text.slice(text.indexOf(start),text.indexOf(e
 const user = { user: { id:'test-user' } };
 const network = () => { throw new TypeError('Private upstream error'); };
 
+test('opening a notification preserves existing drafts and recovers when its target window closes', async () => {
+  const destination = 'https://fixture.test/?agenda=1';
+  const editor = {url:'https://fixture.test/',focus:()=>assert.fail('Wrong window'),navigate:()=>assert.fail('Unsaved editor was replaced')};
+  const target = {url:destination,focus:async()=>target,navigate:()=>assert.fail('The target does not need to reload')};
+  let windows = [editor], opened = 0;
+  const ctx = {self:{clients:{matchAll:async()=>windows,openWindow:async url=>{assert.equal(url,destination);opened++;return {url};}}}};
+  const sw = source('../service-worker.js');
+  vm.runInNewContext(sw.slice(sw.indexOf('async function openAppWindow(')),ctx);
+  assert.equal((await ctx.openAppWindow(destination)).url,destination);
+  assert.equal(opened,1);
+  windows = [editor,target];
+  assert.equal(await ctx.openAppWindow(destination),target);
+  assert.equal(opened,1);
+  target.focus=async()=>{throw new Error('Window closed');};
+  assert.equal((await ctx.openAppWindow(destination)).url,destination);
+  assert.equal(opened,2);
+});
+
 function authHarness() {
   const statuses = [], busy = [], storage = new Map();
   let clear = 0, captcha = 0;

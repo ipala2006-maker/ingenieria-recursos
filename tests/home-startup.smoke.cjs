@@ -1,13 +1,18 @@
 const {chromium,webkit}=require('../tmp/ui-check/node_modules/playwright');
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const board=require('../shared/home-board');
+const {createPreview}=require('./helpers/app-preview.cjs');
 const root=path.resolve(__dirname,'..'),out=path.join(root,'tmp/home-startup');
-const base=process.env.TEST_URL||'http://127.0.0.1:8183/';
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 (async()=>{
-  let browser;
+  let browser,server;
   try {
     fs.mkdirSync(out,{recursive:true});
+    if(!process.env.TEST_URL){
+      server=createPreview({withNotice:false});
+      await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+    }
+    const base=process.env.TEST_URL||'http://127.0.0.1:'+server.address().port+'/';
     browser=process.env.TEST_WEBKIT==='1'?await webkit.launch():await chromium.launch({channel:'chrome'});
     for(const viewport of [{width:1440,height:900},{width:1024,height:768},{width:768,height:1024},{width:390,height:844}])for(const preset of ['light','custom']) {
       const mobile=viewport.width<=700;
@@ -64,5 +69,5 @@ const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
       await context.close();
     }
     console.log('Stable startup: delayed customizer, visible tools, saved geometry, viewport fit and CLS passed.');
-  }finally{await browser?.close();}
+  }finally{await browser?.close();if(server)await new Promise(resolve=>server.close(resolve));}
 })().catch(error=>{console.error(error);process.exitCode=1;});
