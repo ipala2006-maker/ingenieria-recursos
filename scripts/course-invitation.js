@@ -74,7 +74,7 @@
     let ready;
     const loadAccount=()=>ready||(ready=new Promise(resolve=>{
       if(window.EstudiemosAccount)return resolve(window.EstudiemosAccount);
-      const script=document.createElement('script');script.src=new URL('scripts/account.js?v=20261110-course-entry',root);
+      const script=document.createElement('script');script.src=new URL('scripts/account.js?v=20261111-launch-candidate',root);
       script.onload=()=>resolve(window.EstudiemosAccount||null);script.onerror=()=>resolve(null);document.head.append(script);
     }));
     section.addEventListener('click',async event=>{

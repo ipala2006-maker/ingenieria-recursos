@@ -246,15 +246,25 @@ function capitalize(value) {
 }
 
 async function openAppWindow(destination) {
-  const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-  for (const client of windows) {
-    // A notification must not replace a window that may contain an unsaved form.
-    if (client.url !== destination || typeof client.focus !== "function") continue;
+  const options = { type: "window", includeUncontrolled: true };
+  const windows = await self.clients.matchAll(options);
+  const target = new URL(destination);
+  const home = new URL("./", self.registration.scope);
+  const tool = target.origin === home.origin && target.pathname === home.pathname
+    ? (target.searchParams.get("agenda") === "1" ? "agenda" : target.searchParams.get("pomodoro") === "1" ? "pomodoro" : "")
+    : "";
+  const candidates = [...windows.filter(client => client.url === destination), ...windows.filter(client => client.url !== destination)];
+  for (const client of candidates) {
+    if (typeof client.focus !== "function") continue;
     try {
       const focused = await client.focus();
-      if (focused) return focused;
+      if (!focused) continue;
+      if (tool && focused.url !== destination) focused.postMessage?.({ type: "ESTUDIEMOS_OPEN_TOOL", tool });
+      return focused;
     } catch (_) { /* The matching window may have closed while we were focusing it. */ }
   }
+  // Some installed browsers reuse the last app window even through openWindow().
+  if (windows.length && (await self.clients.matchAll(options)).length) return undefined;
   if (self.clients.openWindow) return self.clients.openWindow(destination);
   return undefined;
 }

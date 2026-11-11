@@ -1,5 +1,9 @@
 # Continuidad cuando los secretos solo existen en Vercel
 
+**Documento histórico.** Describe el plan previo al corte. Vercel fue retirado del
+tráfico y no es un respaldo operativo; para el estado actual, ver
+[candidato de lanzamiento](candidato-lanzamiento-internacional-20261111.md).
+
 Estado: plan preparado, NO ejecutado. El titular confirmo el 28/10/2026 que
 no conserva copias originales. Mantener Vercel operativo, sin borrar variables,
 proyecto, datos cifrados ni conexiones. No pedir claves por chat ni agregar una

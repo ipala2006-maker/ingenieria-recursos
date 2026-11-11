@@ -8,22 +8,55 @@ const part = (text, start, end) => text.slice(text.indexOf(start),text.indexOf(e
 const user = { user: { id:'test-user' } };
 const network = () => { throw new TypeError('Private upstream error'); };
 
-test('opening a notification preserves existing drafts and recovers when its target window closes', async () => {
+test('notifications never ask the browser to navigate an existing app window', async () => {
   const destination = 'https://fixture.test/?agenda=1';
-  const editor = {url:'https://fixture.test/',focus:()=>assert.fail('Wrong window'),navigate:()=>assert.fail('Unsaved editor was replaced')};
+  const messages=[];
+  const editor = {url:'https://fixture.test/',focus:async()=>editor,postMessage:data=>messages.push(data),navigate:()=>assert.fail('Unsaved editor was replaced')};
   const target = {url:destination,focus:async()=>target,navigate:()=>assert.fail('The target does not need to reload')};
   let windows = [editor], opened = 0;
-  const ctx = {self:{clients:{matchAll:async()=>windows,openWindow:async url=>{assert.equal(url,destination);opened++;return {url};}}}};
+  const ctx = {URL,self:{registration:{scope:editor.url},clients:{matchAll:async()=>windows,openWindow:async url=>{assert.equal(url,destination);opened++;return {url};}}}};
   const sw = source('../service-worker.js');
   vm.runInNewContext(sw.slice(sw.indexOf('async function openAppWindow(')),ctx);
-  assert.equal((await ctx.openAppWindow(destination)).url,destination);
-  assert.equal(opened,1);
+  assert.equal(await ctx.openAppWindow(destination),editor);
+  assert.equal(opened,0);
+  assert.equal(messages[0].tool,'agenda');
   windows = [editor,target];
   assert.equal(await ctx.openAppWindow(destination),target);
-  assert.equal(opened,1);
+  assert.equal(messages.length,1);
   target.focus=async()=>{throw new Error('Window closed');};
+  assert.equal(await ctx.openAppWindow(destination),editor);
+  windows = [target];
+  assert.equal(await ctx.openAppWindow(destination),undefined,'a window which still exists is not replaced');
+  assert.equal(opened,0);
+  windows = [];
   assert.equal((await ctx.openAppWindow(destination)).url,destination);
-  assert.equal(opened,2);
+  assert.equal(opened,1);
+  const manifest = JSON.parse(source('../site.webmanifest'));
+  assert.equal(manifest.launch_handler.client_mode,'navigate-new');
+});
+
+test('a notification cannot dismiss an active editor or invoke an unknown tool', () => {
+  const controller={}, data={type:'ESTUDIEMOS_OPEN_TOOL',tool:'agenda'};
+  let openEditor=true, activeField=false, agenda=0, pomodoro=0;
+  const ctx={workspaceHome:true,navigator:{serviceWorker:{controller,addEventListener(){}}},
+    openAgenda:()=>agenda++,document:{body:{classList:{contains:()=>false}},
+      activeElement:{closest:()=>activeField},
+      querySelector:selector=>selector==='[data-pomodoro-open]'?{click:()=>pomodoro++}:
+        selector==='.agenda-board'||openEditor}};
+  const js=source('../scripts/dashboard.js');
+  vm.runInNewContext(part(js,'  function openToolFromNotification(','  function renderDashboard('),ctx);
+  ctx.openToolFromNotification({source:controller,data});
+  openEditor=false; activeField=true;
+  ctx.openToolFromNotification({source:controller,data});
+  assert.equal(agenda,0);
+  activeField=false;
+  ctx.openToolFromNotification({source:{},data});
+  ctx.openToolFromNotification({source:controller,data:{...data,tool:'settings'}});
+  assert.equal(agenda,0);
+  ctx.openToolFromNotification({source:controller,data});
+  ctx.openToolFromNotification({source:controller,data:{...data,tool:'pomodoro'}});
+  assert.equal(agenda,1);
+  assert.equal(pomodoro,1);
 });
 
 function authHarness() {
