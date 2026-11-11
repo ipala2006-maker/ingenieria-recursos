@@ -433,7 +433,7 @@
       configAvailable = true;
       let widgetSession = null;
       if (widgetOtp !== null) {
-        if (/^[a-f0-9]{64}$/i.test(widgetOtp)) try {
+        if (/^[a-f0-9]{56}$/i.test(widgetOtp)) try {
           const result = await authStartupDeadline(() => client.auth.verifyOtp({ token_hash: widgetOtp, type: "email" }));
           widgetSession = !result.error && result.data?.session?.user?.id ? result.data.session : null;
           widgetLinkFailed = !widgetSession;

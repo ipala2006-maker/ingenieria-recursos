@@ -4,7 +4,7 @@ const { enforceRateLimit, isSameOriginRequest, rejectOversizedBody, requireJsonR
 
 const LINK_LIFETIME_SECONDS = 120;
 const { publicOrigin } = require('../shared/course-app-links');
-const OTP_HASH = /^[a-f0-9]{64}$/i;
+const OTP_HASH = /^[a-f0-9]{56}$/i;
 const VALID_WIDGETS = new Set(["workspace", "inbox", "calendar", "pomodoro", "streak"]);
 
 module.exports = async function widgetLink(request, response) {
