@@ -71,6 +71,7 @@
   let referralBusy = false;
   let referralShareCode = "";
   let readySettled = false;
+  let widgetLinkFailed = false;
   let captchaToken = "";
   let captchaWidgetId = null;
   let captchaLoading = false;
@@ -95,6 +96,7 @@
     canSaveLocalNotes: () => (localStorage.getItem(LINKED_USER_KEY) || "") === (session?.user?.id || ""),
     isSynchronized: () => Boolean(session?.user?.id && (AUTH_ONLY || synchronizedUserId === session.user.id)),
     getSession: () => session,
+    widgetLinkFailed: () => widgetLinkFailed,
     getClient: () => client,
     getPublicAppOrigin: () => accountConfig?.publicAppOrigin,
     whenReady: () => readyPromise,
@@ -395,6 +397,8 @@
   }
 
   async function initialize() {
+    const widgetOtp = takeDesktopWidgetOtp();
+    widgetLinkFailed = widgetOtp !== null;
     let stage = "config";
     try {
       const config = await authStartupDeadline(async (signal) => {
@@ -416,6 +420,14 @@
         auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
       });
       configAvailable = true;
+      let widgetSession = null;
+      if (widgetOtp !== null) {
+        if (/^[a-f0-9]{56}$/i.test(widgetOtp)) try {
+          const result = await authStartupDeadline(() => client.auth.verifyOtp({ token_hash: widgetOtp, type: "email" }));
+          widgetSession = !result.error && result.data?.session?.user?.id ? result.data.session : null;
+          widgetLinkFailed = !widgetSession;
+        } catch (_) {}
+      }
       client.auth.onAuthStateChange((event, nextSession) => {
         window.setTimeout(async () => {
           const previousUser = session?.user?.id || "";
@@ -459,7 +471,7 @@
           applyingNativeSession = false;
         }
       }
-      const result = await authStartupDeadline(() => client.auth.getSession());
+      const result = widgetSession ? {data:{session:widgetSession}} : await authStartupDeadline(() => client.auth.getSession());
       if (result.error) throw result.error;
       session = result.data.session;
       if (session) prepareLocalAccountSwitch(session.user.id);
@@ -486,6 +498,19 @@
       renderAccountState();
       finishReady(false);
     }
+  }
+
+  function takeDesktopWidgetOtp() {
+    if (!document.body?.hasAttribute?.("data-desktop-widget-host") || location.origin !== "https://estudiemos.ar") return null;
+    const url = new URL(location.href);
+    if (url.searchParams.get("embed") !== "rainmeter" || url.searchParams.get("linked") !== "1") return null;
+    const fragment = new URLSearchParams(url.hash.slice(1));
+    if (!fragment.has("widget_otp")) return null;
+    const value = fragment.get("widget_otp");
+    url.searchParams.delete("linked");
+    url.hash = "";
+    history.replaceState(history.state, "", url);
+    return value;
   }
 
   function finishReady(available) {
@@ -1995,6 +2020,10 @@
     if (widget === 'workspace' && !window.EstudiemosRelease?.enabled('workspace')) return setStatus('Mi espacio: próximamente.', 'success');
     const validWidgets = ["workspace", "inbox", "calendar", "pomodoro", "streak"];
     if (isWindowsDevice() && validWidgets.includes(widget)) {
+      if (window.EstudiemosCourseAppLinks?.isLegacyOrigin(location.origin)) {
+        location.assign(`https://estudiemos.ar/?setup-widget=${encodeURIComponent(widget)}`);
+        return;
+      }
       showWidgetSetup(widget);
       if(localStorage.getItem(WINDOWS_WIDGETS_READY_KEY)==='true')launchWindowsWidget(widget);
       return;
@@ -2024,7 +2053,7 @@
     try {
       const accountLink = await createWindowsWidgetLink(widget);
       if (!session?.access_token || session.user?.id!==userId) throw new Error('La cuenta cambió. Volvé a intentar con tu sesión actual.');
-      const query = new URLSearchParams({ widget, callback: '1', link: accountLink });
+      const query = new URLSearchParams({ widget, link: accountLink });
       if (['https://estudiemos.ar','https://estudiemos.estudiemos-services.workers.dev'].includes(location.origin)) query.set('source', 'cloudflare');
       const launcher = document.createElement('a');
       launcher.href = `estudiemos-widgets://add?${query.toString()}`;
@@ -2125,16 +2154,20 @@
     const returnedWidget = url.searchParams.get("windows-widget-added") || "";
     const addedWidget = ['inbox','calendar','pomodoro','streak'].includes(returnedWidget)?returnedWidget:'';
     const requestedWidget=url.searchParams.get('setup-widget');
-    if(requestedWidget){url.searchParams.delete('setup-widget');history.replaceState(history.state,'',`${url.pathname}${url.search}${url.hash}`);window.setTimeout(()=>showWidgetSetup(requestedWidget),0);}
-    if (!ready && !addedWidget) return;
+    if (!ready && !addedWidget && !requestedWidget) return;
     const pendingWidget = localStorage.getItem(WINDOWS_WIDGET_PENDING_KEY);
-    localStorage.setItem(WINDOWS_WIDGETS_READY_KEY, "true");
+    if (ready || addedWidget) localStorage.setItem(WINDOWS_WIDGETS_READY_KEY, "true");
     if (addedWidget) {
       localStorage.removeItem(WINDOWS_WIDGET_PENDING_KEY);
     }
     url.searchParams.delete("windows-widgets-ready");
     url.searchParams.delete("windows-widget-added");
+    url.searchParams.delete("setup-widget");
     history.replaceState(history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    if (requestedWidget || (ready && pendingWidget && !addedWidget)) {
+      readyPromise.then(() => showWidgetSetup(requestedWidget || pendingWidget));
+      return;
+    }
     window.setTimeout(() => {
       openDialog();
       const widgetLabel = {
@@ -2144,10 +2177,6 @@
         pomodoro: "Pomodoro",
         streak: "Racha"
       }[addedWidget || pendingWidget];
-      if (ready && pendingWidget && !addedWidget) {
-        readyPromise.finally(() => {showWidgetSetup(pendingWidget);launchWindowsWidget(pendingWidget);});
-        return;
-      }
       setStatus(
         widgetLabel
           ? `Windows recibió ${widgetLabel}. Minimizá Estudiemos para verlo en el escritorio.`

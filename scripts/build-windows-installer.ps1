@@ -1,5 +1,6 @@
 param(
-  [string]$OutputPath = ""
+  [string]$OutputPath = "",
+  [switch]$WidgetsOnly
 )
 
 $ErrorActionPreference = "Stop"
@@ -70,8 +71,11 @@ if ([IO.Path]::GetFullPath($OutputPath) -ne [IO.Path]::GetFullPath($defaultOutpu
 }
 
 Copy-Item -LiteralPath $defaultOutput -Destination $legacyOutput -Force
-
-& $innoCompiler "/Qp" (Join-Path $installerRoot 'Estudiemos-Alarms.iss')
-if ($LASTEXITCODE -ne 0) { throw 'No se pudo crear el instalador de alarmas.' }
+$hash = (Get-FileHash -LiteralPath $legacyOutput -Algorithm SHA256).Hash.ToLowerInvariant()
+Set-Content -LiteralPath ([IO.Path]::ChangeExtension($legacyOutput, '.sha256')) -Encoding ASCII -Value "$hash  Estudiemos-Para-Windows.exe"
+if (-not $WidgetsOnly) {
+  & $innoCompiler "/Qp" (Join-Path $installerRoot 'Estudiemos-Alarms.iss')
+  if ($LASTEXITCODE -ne 0) { throw 'No se pudo crear el instalador de alarmas.' }
+}
 
 Get-Item -LiteralPath $OutputPath

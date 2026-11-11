@@ -1,4 +1,4 @@
-#define AppVersion "2.1.0.0"
+#define AppVersion "2.1.1.0"
 #define RainmeterInstaller "Rainmeter-4.5.26.exe"
 #ifndef OutputBaseName
   #define OutputBaseName "Estudiemos-Widgets-para-Windows"
@@ -200,7 +200,6 @@ procedure CurStepChanged(CurStep: TSetupStep);
 var
   ResultCode: Integer;
   RainmeterExe: String;
-  LauncherScript: String;
   RequestedWidget: String;
 begin
   if CurStep = ssPostInstall then
@@ -230,14 +229,9 @@ begin
       MsgBox('Windows no pudo preparar los recordatorios de racha. Las alarmas de Inbox y los widgets se mantienen disponibles.', mbInformation, MB_OK);
 
     RequestedWidget := DetectRequestedWidget;
-    if RequestedWidget <> '' then
-    begin
-      Sleep(650);
-      LauncherScript := ExpandConstant('{app}\WidgetLauncher.vbs');
-      ExecAsOriginalUser(ExpandConstant('{sys}\wscript.exe'),
-        '"' + LauncherScript + '" "estudiemos-widgets://add?widget=' + RequestedWidget + '&callback=0"',
-        '', SW_HIDE, ewNoWait, ResultCode);
-    end;
+    if (RequestedWidget <> '') and (not WizardSilent) then
+      ShellExecAsOriginalUser('open', 'https://estudiemos.ar/?windows-widgets-ready=1&setup-widget=' + RequestedWidget,
+        '', '', SW_SHOWNORMAL, ewNoWait, ResultCode);
 
     if (RequestedWidget = '') and (not WizardSilent) then
       ExecAsOriginalUser(ExpandConstant('{sys}\wscript.exe'),
