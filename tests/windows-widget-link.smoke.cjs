@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const root = path.join(__dirname, '../dist-cloudflare');
 const origin = 'https://estudiemos.ar';
-const otp = 'ab'.repeat(32);
+const otp = require('node:crypto').createHash('sha224').update('fixture-widget-code').digest('hex');
 const base = origin + '/widget.html?embed=rainmeter&view=';
 const output = path.join(__dirname, '../tmp/classrooms');
 const engine = process.env.TEST_WEBKIT ? 'webkit' : 'chromium';

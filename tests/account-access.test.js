@@ -34,7 +34,7 @@ test('widget handoffs always land on the official widget without relying on Supa
   const localRequire=require('node:module').createRequire(file);
   const worker='https://estudiemos.estudiemos-services.workers.dev',official='https://estudiemos.ar';
   const user={id:'fixture',email:'fixture@example.test',email_confirmed_at:'2026-01-01'};
-  const otp='ab'.repeat(32), issued=[];
+  const otp=require('node:crypto').createHash('sha224').update('fixture-widget-code').digest('hex'), issued=[];
   const context={module:{exports:{}},Buffer,URL,URLSearchParams,Date,process:{env:{SUPABASE_SECRET_KEY:'fixture'}},require(name){
     if(name==='./_lib/supabase-admin')return {isConfigured:()=>true,authenticateBearer:async()=>user,adminRequest:async(path,options)=>{
       if(path==='/auth/v1/admin/users/'+user.id)return user;
@@ -75,12 +75,12 @@ test('a widget OTP is consumed only on the official embedded widget and removed 
     ['https://estudiemos.ar','other',true],
     ['https://estudiemos.ar','rainmeter',false]
   ]){
-    const href=origin+'/widget.html?view=inbox&embed='+embed+'&linked=1#widget_otp='+'ab'.repeat(32);
+    const href=origin+'/widget.html?view=inbox&embed='+embed+'&linked=1#widget_otp='+'ab'.repeat(28);
     let clean;
     const ctx={URL,URLSearchParams,location:{origin,href},history:{replaceState(_a,_b,url){clean=url;}},document:{body:{hasAttribute:()=>host}}};
     vm.runInNewContext(extract('function takeDesktopWidgetOtp(', 'function finishReady('),ctx);
     const valid=origin==='https://estudiemos.ar'&&embed==='rainmeter'&&host;
-    assert.equal(ctx.takeDesktopWidgetOtp(),valid?'ab'.repeat(32):null);
+    assert.equal(ctx.takeDesktopWidgetOtp(),valid?'ab'.repeat(28):null);
     assert.equal(clean?.href,valid?origin+'/widget.html?view=inbox&embed=rainmeter':undefined);
   }
 });
