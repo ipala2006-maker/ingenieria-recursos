@@ -1256,9 +1256,9 @@
     if (background && hydrated && !dirty && Date.now() - lastPullAt < cloudCheckInterval()) return true;
     syncing = true;
     if(resuming)lastResumeCheckAt=Date.now();
-    const agendaBefore=localStorage.getItem('bandeja_agenda');
-    const previousCloudAgenda=JSON.stringify(cachedCloudState?.values?.bandeja_agenda);
     const notifyResume=(resuming || reason==='startup' && !dirty) && localStorage.getItem(LINKED_USER_KEY)===userId;
+    const agendaBefore=notifyResume?localStorage.getItem('bandeja_agenda'):null;
+    const previousCloudAgenda=notifyResume?JSON.stringify(cachedCloudState?.values?.bandeja_agenda):null;
     if (!background) updateSyncLabel("Sincronizando...");
     try {
       // The RPC checks the revision atomically. A fresh read before every own
@@ -1279,27 +1279,30 @@
         const probe = await check.maybeSingle();
         if (session?.user?.id !== userId || accountGeneration !== generation) return false;
         if (probe.error) throw probe.error;
-        recordSyncUsage(userId, { checks: 1, receivedBytes: syncJsonBytes(probe.data) });
-        if ((resuming && !probe.data || probe.data?.updated_at === cloudRevision) && localStorage.getItem(DIRTY_KEY) !== "true") {
-          recordSyncUsage(userId, { unchangedChecks: 1 });
+        const unchanged=(resuming && !probe.data || probe.data?.updated_at === cloudRevision) && localStorage.getItem(DIRTY_KEY) !== "true";
+        recordSyncUsage(userId, { checks: 1, receivedBytes: syncJsonBytes(probe.data), ...(unchanged?{unchangedChecks:1}:{}) });
+        if (unchanged) {
           finishSynchronization(reason, userId, false);
           return true;
         }
       }
-      let compact = await compactSync();
+      const compact = await compactSync();
+      if (session?.user?.id !== userId || accountGeneration !== generation) return false;
+      const compactChanged=compact&&!compact.missing&&Object.keys(compact.versions).some(key=>compactVersions?.[key]!==compact.versions[key]);
+      const compactUnchanged=compact&&!compactChanged&&hydrated&&localStorage.getItem(DIRTY_KEY)!=="true";
       let query = compact ? null : client.from("user_states")
         .select("state, updated_at")
         .eq("user_id", userId);
       // RLS still scopes the row. An unchanged revision returns no state payload.
       const conditional = hydrated && cachedCloudState && cloudRevisionUser === userId && cloudRevision && !["manual", "signout"].includes(reason);
       if (conditional && query) query = query.neq("updated_at", cloudRevision);
-      const result = compact ? {data:compact.missing?null:{state:mergeCompactState(compact),updated_at:compact.updated_at}} : await query.maybeSingle();
+      // An unchanged acknowledgement does not need to rebuild or serialize the profile.
+      const result = compact ? {data:compact.missing||compactUnchanged?null:{state:mergeCompactState(compact),updated_at:compact.updated_at}} : await query.maybeSingle();
       if (session?.user?.id !== userId || accountGeneration !== generation) return false;
       if (result.error) throw result.error;
-      const compactChanged=compact&&!compact.missing&&Object.keys(compact.versions).some(key=>compactVersions?.[key]!==compact.versions[key]);
       recordSyncUsage(userId, { checks: 1, fullDownloads: compact?(!cachedCloudState&&result.data?1:0):result.data?1:0, unchangedChecks: compact?!compactChanged?1:0:conditional&&!result.data?1:0, receivedBytes: compact?compact.receivedJsonBytes:syncJsonBytes(result.data),sentBytes:compact?syncJsonBytes({p_known:compactKnown(),p_patch:null,p_expected:null}):0, ...(result.data ? {profileBytes:syncJsonBytes(result.data.state)} : {}) });
       if (compact)compactVersions=compact.versions;
-      if ((compact?!compactChanged&&hydrated:conditional&&!result.data) && localStorage.getItem(DIRTY_KEY) !== "true") {
+      if (compact ? compactUnchanged : conditional && !result.data && localStorage.getItem(DIRTY_KEY) !== "true") {
         if(compact?.updated_at)cloudRevision=compact.updated_at;
         lastPullAt = Date.now(); syncFailures = 0; syncRetryAt = 0;
         updateSyncLabel("Sincronizado"); updateAccountIndicator(true);

@@ -10,6 +10,8 @@ No sustituye las pruebas de usuario ni los paneles de consumo. No requiere un se
 
 Las sondas comprueban Inicio, configuración de Auth/Turnstile y disponibilidad declarada de Web Push; se repiten una sola vez ante fallo. No hacen registro, login, sincronización o envíos reales. El workflow revisa metadatos de un artefacto vigente con menos de 40 horas, sin descargarlo ni descifrarlo.
 
+Presupuesto: cuatro rondas significan **12 GET públicos por día**, hasta 24 si todos fallan y se reintentan. Auth y Web Push usan el limitador existente y solo Web Push consulta su disponibilidad: normalmente 12 RPC pequeñas en Supabase al día, sin sondear tablas de estudiantes ni escanear logs. La consulta opcional de Analytics es una petición a Cloudflare por ronda, no a Supabase.
+
 Con Analytics, se evalúan métricas agregadas de 24 horas: solicitudes de la cuenta, errores de ejecución de las APIs, latencia p99, CPU p99 y cortes por límite de CPU. El log público muestra estados y alertas, no cifras exactas. Para las cifras, consultar el panel o ejecutar `node scripts/production-watch.cjs` localmente con las credenciales de lectura disponibles en el entorno. Se advierte a partir de 70.000 solicitudes y se alerta a partir de 90.000 en esa ventana móvil. Contrastar con el día UTC del panel antes de concluir que se alcanzó una cuota. Los errores de ejecución no representan todos los HTTP 5xx. [Límites de Workers](https://developers.cloudflare.com/workers/platform/limits/).
 
 ## Mientras aumenta el tráfico
