@@ -9,7 +9,7 @@ Incluye estructura, funciones, politicas RLS y datos de `public`, `auth` y
 `private`: cuentas, identidades, notas, amigos, catedras, miembros, fechas,
 materiales y conexiones de Drive cifradas. Incluye nuevas tablas de esos schemas.
 
-No exporta archivos de Drive, Storage, Vault, claves de Vercel ni configuracion
+No exporta archivos de Drive, Storage, Vault, secretos de Cloudflare ni configuracion
 SMTP/OAuth del proveedor. No conserva sesiones, refresh tokens, colas de envio,
 suscripciones push ni contadores de rate limit. Tras restaurar, los usuarios
 inician sesion y vuelven a habilitar los avisos. Las alarmas se reproyectan al
@@ -98,7 +98,7 @@ notas ni simular un respaldo exitoso para reducir consumo.
    el schema Auth de un proyecto activo a ciegas.
 4. Reaplicar los grants de las migraciones del repo: el dump no exporta owners
    ni ACL. Comprobar cuentas/identidades, notas, miembros, FK, funciones y RLS.
-   Recuperar las claves de Drive/Vercel y SMTP por separado; sin la clave de
+   Recuperar las claves de Drive en Cloudflare y las de SMTP por separado; sin la clave de
    cifrado de Drive sus tokens no son utilizables y hay que reconectar.
 5. Recien despues planificar la restauracion real. El exportador no puede borrar
    produccion. La prueba descrita abajo tampoco admite un destino remoto.

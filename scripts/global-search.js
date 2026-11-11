@@ -405,7 +405,7 @@
     if (document.querySelector('script[src*="scripts/account.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/account.js?v=20261111-launch-candidate`;
+    script.src = `${rootPath}scripts/account.js?v=20261111-sync-efficiency`;
     script.defer = true;
     document.head.appendChild(script);
   }

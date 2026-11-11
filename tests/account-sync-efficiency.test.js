@@ -169,3 +169,29 @@ test('compact compare-and-swap conflicts retry with fresh remote changes and do 
 test('an explicit zero change timestamp does not inherit an unrelated tool edit',async()=>{
   const h=harness();await h.read('startup');h.advance(1000);h.context.markLocalChange('bandeja_agenda');const values=JSON.parse(h.local.get('estudiemos_cloud_key_changed'));values.estudiemos_theme=0;h.local.set('estudiemos_cloud_key_changed',JSON.stringify(values));assert.equal(h.context.captureLocalState().changedAt.estudiemos_theme,0);
 });
+
+test('unchanged compact acknowledgements skip profile reconstruction without hiding new edits',async()=>{
+  const h=harness();
+  installCompact(h);
+  assert.equal(await h.read('startup'),true);
+  const usage=h.context.getSyncUsage().days['2026-10-23'];
+  const merge=h.context.mergeCompactState;
+  let merged=0, usageWrites=0;
+  h.context.mergeCompactState=(...args)=>{merged++;return merge(...args);};
+  const save=h.context.localStorage.setItem;
+  h.context.localStorage.setItem=(key,value)=>{if(key.startsWith('estudiemos_sync_usage:'))usageWrites++;save(key,value);};
+  assert.equal(await h.read('verify'),true);
+  assert.equal(merged,0);
+  assert.equal(h.context.getSyncUsage().days['2026-10-23'].profileBytes,usage.profileBytes);
+  usageWrites=0;
+  h.advance(120000);
+  assert.equal(await h.read('poll'),true);
+  assert.equal(usageWrites,1,'A quiet poll records both counters in one storage write');
+  const remote=h.rows.get('alice');
+  remote.state.values.bandeja_agenda[0].title='Updated on another device';
+  remote.state.changedAt.bandeja_agenda=h.context.Date.now();
+  remote.updated_at=new h.context.Date().toISOString();
+  assert.equal(await h.read('verify'),true);
+  assert.equal(merged,1);
+  assert.equal(JSON.parse(h.local.get('bandeja_agenda'))[0].title,'Updated on another device');
+});
