@@ -29,30 +29,58 @@ test('login errors distinguish retryable security and rate limits from wrong cre
   ])assert.match(context.authErrorMessage(error),message);
 });
 
-test('widget login returns to the origin that issued the signed handoff, not the redemption host',async()=>{
+test('widget handoffs always land on the official widget without relying on Supabase redirect settings',async()=>{
   const file=require.resolve('../api/widget-link.js');
   const localRequire=require('node:module').createRequire(file);
   const worker='https://estudiemos.estudiemos-services.workers.dev',official='https://estudiemos.ar';
-  const user={id:'fixture',email:'fixture@example.test'};
-  const redirects=[];
-  const context={module:{exports:{}},Buffer,URL,Date,process:{env:{SUPABASE_SECRET_KEY:'fixture'}},require(name){
+  const user={id:'fixture',email:'fixture@example.test',email_confirmed_at:'2026-01-01'};
+  const otp='ab'.repeat(32), issued=[];
+  const context={module:{exports:{}},Buffer,URL,URLSearchParams,Date,process:{env:{SUPABASE_SECRET_KEY:'fixture'}},require(name){
     if(name==='./_lib/supabase-admin')return {isConfigured:()=>true,authenticateBearer:async()=>user,adminRequest:async(path,options)=>{
-      if(path.startsWith('/auth/v1/admin/users/'))return user;
-      redirects.push(JSON.parse(options.body).redirect_to);
-      return {action_link:'https://fixture.supabase.co/auth/v1/verify'};
+      if(path==='/auth/v1/admin/users/'+user.id)return user;
+      assert.equal(path,'/auth/v1/admin/generate_link');
+      issued.push(JSON.parse(options.body));
+      return {id:user.id,hashed_token:otp,action_link:'https://legacy.example/auth'};
     }};
-    if(name==='./_lib/app-origin')return {appOrigin:()=>worker};
     if(name==='./_lib/request-security')return {...localRequire(name),enforceRateLimit:async()=>true};
     return localRequire(name);
   }};
   vm.runInNewContext(fs.readFileSync(file,'utf8'),context);
-  for(const origin of [official,worker]){
+  for(const origin of [official,worker,'https://estudiemos-app.vercel.app']){
     const issue={method:'POST',headers:{host:new URL(origin).host,origin,'content-type':'application/json'},body:{widget:'inbox'}};
-    const response={headers:new Map(),status(code){this.statusCode=code;return this;},setHeader(key,value){this.headers.set(key,value);},json(value){this.body=value;},end(){}};
+    const response={headers:new Map(),status(code){this.statusCode=code;return this;},setHeader(key,value){this.headers.set(key,value);},json(value){this.body=value;},send(){},end(){}};
     await context.module.exports(issue,response);
     assert.equal(response.statusCode,200);
-    await context.module.exports({method:'GET',headers:{host:new URL(worker).host},query:{token:response.body.token}},response);
-    assert.equal(response.statusCode,302);
-    assert.equal(redirects.at(-1),origin+'/widget.html?view=inbox&embed=rainmeter&linked=1');
+    const token=response.body.token;
+    for(const host of [new URL(worker).host,new URL(official).host]) {
+      await context.module.exports({method:'GET',headers:{host},query:{token}},response);
+      assert.equal(response.statusCode,302);
+      const destination=new URL(response.headers.get('Location'));
+      assert.equal(destination.origin,official);
+      assert.equal(destination.pathname,'/widget.html');
+      assert.equal(destination.search,'?view=inbox&embed=rainmeter&linked=1');
+      assert.equal(destination.hash,'#widget_otp='+otp);
+      assert.match(response.headers.get('Cache-Control'),/^no-store/);
+    }
+    await context.module.exports({method:'GET',headers:{host:'estudiemos.ar'},query:{token:token.replace(/^./,'!')}},response);
+    assert.equal(response.statusCode,401);
+  }
+  assert.deepEqual(issued,Array(6).fill({type:'magiclink',email:user.email}));
+});
+
+test('a widget OTP is consumed only on the official embedded widget and removed before auth starts',()=>{
+  for(const [origin,embed,host] of [
+    ['https://estudiemos.ar','rainmeter',true],
+    ['https://estudiemos-app.vercel.app','rainmeter',true],
+    ['https://estudiemos.ar','other',true],
+    ['https://estudiemos.ar','rainmeter',false]
+  ]){
+    const href=origin+'/widget.html?view=inbox&embed='+embed+'&linked=1#widget_otp='+'ab'.repeat(32);
+    let clean;
+    const ctx={URL,URLSearchParams,location:{origin,href},history:{replaceState(_a,_b,url){clean=url;}},document:{body:{hasAttribute:()=>host}}};
+    vm.runInNewContext(extract('function takeDesktopWidgetOtp(', 'function finishReady('),ctx);
+    const valid=origin==='https://estudiemos.ar'&&embed==='rainmeter'&&host;
+    assert.equal(ctx.takeDesktopWidgetOtp(),valid?'ab'.repeat(32):null);
+    assert.equal(clean?.href,valid?origin+'/widget.html?view=inbox&embed=rainmeter':undefined);
   }
 });

@@ -59,6 +59,7 @@ ElseIf InStr(request, "widget=streak") > 0 Then
 End If
 
 If configName = "" Then WScript.Quit 3
+If Not IsSafeLinkToken(linkToken) Then WScript.Quit 4
 
 screenWidth = 1366
 screenHeight = 768
@@ -144,28 +145,18 @@ End If
 
 RunBang "!Redraw", configName, ""
 
-If IsSafeLinkToken(linkToken) Then
-  WScript.Sleep 1200
-  command = Chr(34) & rainmeterPath & Chr(34) & " !CommandMeasure " & _
-    Chr(34) & "WebView" & Chr(34) & " " & _
-    Chr(34) & "Navigate " & appOrigin & "/api/widget-link?token=" & linkToken & Chr(34) & " " & _
-    Chr(34) & "Estudiemos\" & configName & Chr(34)
-  shell.Run command, 0, False
-End If
+WScript.Sleep 1200
+command = Chr(34) & rainmeterPath & Chr(34) & " !CommandMeasure " & _
+  Chr(34) & "WebView" & Chr(34) & " " & _
+  Chr(34) & "Navigate " & appOrigin & "/api/widget-link?token=" & linkToken & Chr(34) & " " & _
+  Chr(34) & "Estudiemos\" & configName & Chr(34)
+shell.Run command, 0, False
 
 If InStr(request, "callback=1") > 0 Then
   WScript.Sleep 900
   On Error Resume Next
   Err.Clear
-  If source = "cloudflare" Then
-    shell.Run appOrigin & "/?windows-widget-added=" & widgetKey, 0, False
-  Else
-    shell.Run "web+estudiemos://open?target=widget-added&widget=" & widgetKey, 0, False
-  End If
-  If Err.Number <> 0 Then
-    Err.Clear
-    shell.Run appOrigin & "/?windows-widget-added=" & widgetKey, 0, False
-  End If
+  shell.Run appOrigin & "/?windows-widget-added=" & widgetKey, 0, False
   On Error GoTo 0
 End If
 

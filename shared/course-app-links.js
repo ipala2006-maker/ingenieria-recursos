@@ -21,6 +21,14 @@
     if(!isLegacyOrigin(url.origin))return null;
     const friend=/^\/amistad\/([a-f0-9]{32})\/?$/.exec(url.pathname);
     if(friend)return new URL('/amistad/'+friend[1],PUBLIC_ORIGIN);
+    if(/^\/widget(?:\.html)?\/?$/.test(url.pathname)){
+      const target=new URL('/widget.html',PUBLIC_ORIGIN);
+      const view=url.searchParams.get('view'),embed=url.searchParams.get('embed'),source=url.searchParams.get('source');
+      if(['workspace','inbox','calendar','pomodoro','streak'].includes(view))target.searchParams.set('view',view);
+      if(embed==='rainmeter')target.searchParams.set('embed',embed);
+      if(source==='desktop-app')target.searchParams.set('source',source);
+      return target;
+    }
     if(!/^\/instalar(?:\.html)?\/?$/.test(url.pathname))return null;
     const target=new URL('/instalar',PUBLIC_ORIGIN);
     for(const [name,value] of url.searchParams){

@@ -3,8 +3,8 @@ const { adminRequest, authenticateBearer, isConfigured } = require("./_lib/supab
 const { enforceRateLimit, isSameOriginRequest, rejectOversizedBody, requireJsonRequest, setSecurityHeaders } = require("./_lib/request-security");
 
 const LINK_LIFETIME_SECONDS = 120;
-const { appOrigin } = require('./_lib/app-origin');
 const { publicOrigin } = require('../shared/course-app-links');
+const OTP_HASH = /^[a-f0-9]{64}$/i;
 const VALID_WIDGETS = new Set(["workspace", "inbox", "calendar", "pomodoro", "streak"]);
 
 module.exports = async function widgetLink(request, response) {
@@ -20,8 +20,8 @@ module.exports = async function widgetLink(request, response) {
     if (request.query?.alarmSetup || request.query?.alarmFeed === '1' || ['alarms-connect','alarms-confirm'].includes(request.body?.action)) {
       return await require('./_lib/inbox-alarm-feed')(request, response);
     }
-    if (request.method === "POST") return createHandoff(request, response);
-    if (request.method === "GET") return redeemHandoff(request, response);
+    if (request.method === "POST") return await createHandoff(request, response);
+    if (request.method === "GET") return await redeemHandoff(request, response);
     response.setHeader("Allow", "GET, POST");
     return response.status(405).json({ message: "Método no permitido." });
   } catch (error) {
@@ -34,7 +34,7 @@ async function createHandoff(request, response) {
   if (!isSameOriginRequest(request)) return response.status(403).json({ message: "Origen no permitido." });
   if (!requireJsonRequest(request, response)) return;
   const user = await authenticateBearer(request.headers.authorization);
-  if (!user?.id) return response.status(401).json({ message: "Ingresá a tu cuenta antes de agregar el widget." });
+  if (!user?.id || !user.email || !user.email_confirmed_at) return response.status(401).json({ message: "Ingresá con una cuenta verificada antes de agregar el widget." });
 
   const widget = normalizeWidget(request.body?.widget);
   if (!widget) return response.status(400).json({ message: "Widget no válido." });
@@ -44,7 +44,6 @@ async function createHandoff(request, response) {
   const payload = {
     sub: user.id,
     widget,
-    origin: request.headers.host === new URL(publicOrigin()).host ? publicOrigin() : appOrigin(),
     exp: expiresAt,
     nonce: crypto.randomBytes(12).toString("base64url")
   };
@@ -63,18 +62,19 @@ async function redeemHandoff(request, response) {
   if (widget === 'workspace' && !require('../shared/release').enabled('workspace')) return response.status(503).send('Mi espacio: próximamente.');
 
   const user = await adminRequest(`/auth/v1/admin/users/${encodeURIComponent(payload.sub)}`);
-  if (!user?.email) return response.status(404).send("No encontramos la cuenta.");
-
-  const origin = payload.origin === publicOrigin() ? publicOrigin() : appOrigin();
-  const redirectTo = `${origin}/widget.html?view=${encodeURIComponent(widget)}&embed=rainmeter&linked=1`;
+  if (user?.id !== payload.sub || !user.email || !user.email_confirmed_at) return response.status(404).send("No encontramos la cuenta.");
   const generated = await adminRequest("/auth/v1/admin/generate_link", {
     method: "POST",
-    body: JSON.stringify({ type: "magiclink", email: user.email, redirect_to: redirectTo })
+    body: JSON.stringify({ type: "magiclink", email: user.email })
   });
-  if (!generated?.action_link) throw new Error("SUPABASE_LINK_MISSING");
+  if (!OTP_HASH.test(generated?.hashed_token || "") || generated.id !== user.id) throw new Error("SUPABASE_WIDGET_LINK_INVALID");
 
+  // Keep the OTP in the fragment, without using the provider's redirect URL.
+  const destination = new URL('/widget.html', publicOrigin());
+  destination.search = new URLSearchParams({view:widget,embed:'rainmeter',linked:'1'});
+  destination.hash = new URLSearchParams({widget_otp:generated.hashed_token});
   response.statusCode = 302;
-  response.setHeader("Location", generated.action_link);
+  response.setHeader("Location", destination.href);
   return response.end();
 }
 
@@ -93,7 +93,7 @@ function verifyToken(token) {
   if (actual.length !== expected.length || !crypto.timingSafeEqual(actual, expected)) return null;
   try {
     const payload = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"));
-    if (!payload?.sub || !normalizeWidget(payload.widget) || Number(payload.exp) < Math.floor(Date.now() / 1000)) return null;
+    if (!payload?.sub || !normalizeWidget(payload.widget) || !Number.isSafeInteger(payload.exp) || payload.exp < Math.floor(Date.now() / 1000)) return null;
     return payload;
   } catch (_) {
     return null;

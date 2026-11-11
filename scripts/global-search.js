@@ -405,7 +405,7 @@
     if (document.querySelector('script[src*="scripts/account.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/account.js?v=20261110-course-entry`;
+    script.src = `${rootPath}scripts/account.js?v=20261111-launch-candidate`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -428,7 +428,7 @@
     if (document.querySelector('script[src*="scripts/desktop-widgets.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/desktop-widgets.js?v=20261107-jakarta`;
+    script.src = `${rootPath}scripts/desktop-widgets.js?v=20261111-widget-link`;
     script.async = false;
     document.head.appendChild(script);
   }
