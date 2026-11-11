@@ -17,6 +17,33 @@ const call=async(db,user,action='state',data={})=>{
 };
 const create=async(db,user=ids[0],data={})=>call(db,user,'create',{...base,...data});
 
+test('overlapping requests keep courses isolated, enroll once and preserve the winning edit', async()=>{
+  const db=await database();
+  try {
+    const [teacher,student,peer,otherTeacher]=ids;
+    const [{selected:id},{selected:otherId}]=await Promise.all([
+      create(db,teacher),create(db,otherTeacher,{code:'KLMNPQRSTU',title:'Otra comisión'})
+    ]);
+    await Promise.all([call(db,student,'join',{code:base.code}),call(db,peer,'join',{code:base.code}),
+      call(db,student,'join',{code:base.code})]);
+    const roster=await call(db,teacher,'detail',{id});
+    assert.equal(roster.members.length,2);
+    assert.deepEqual((await call(db,otherTeacher)).classes.map(course=>course.id),[otherId]);
+    const itemId='10000000-0000-4000-8000-000000000001';
+    await call(db,teacher,'event_save',{id,itemId,event:activity,expectedVersion:0});
+    const original=(await call(db,teacher,'detail',{id})).events[0];
+    const changes=await Promise.allSettled(['Parcial temprano','Parcial tarde'].map(title=>
+      call(db,teacher,'event_save',{id,itemId,event:{...activity,title},expectedVersion:original.version})));
+    assert.equal(changes.filter(change=>change.status==='fulfilled').length,1);
+    assert.match(changes.find(change=>change.status==='rejected').reason.message,/VERSION_CONFLICT/);
+    const states=await Promise.all([student,peer,otherTeacher].map(user=>call(db,user)));
+    assert.deepEqual(states[0].calendar,states[1].calendar);
+    assert.equal(states[0].calendar.length,1);
+    assert.equal(states[0].calendar[0].data.title,changes[0].status==='fulfilled'?'Parcial temprano':'Parcial tarde');
+    assert.deepEqual(states[2].calendar,[]);
+  } finally {await db.close();}
+});
+
 test('all active members can share the current invitation without gaining edit or roster access',async()=>{
   const db=await database();try{
     await db.exec(fs.readFileSync(path.join(root,'supabase/classroom-member-sharing.sql'),'utf8'));
