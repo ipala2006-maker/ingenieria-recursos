@@ -21,7 +21,7 @@ html body { font-family:var(--font); }
 .task-list,.workspace-widget-list { flex:1;height:auto;min-height:0;gap:5px;padding:3px;overscroll-behavior:contain; }
 .task-row,.workspace-widget-row { min-height:54px;padding:9px 7px;border-radius:4px; }
 .task-row:hover,.workspace-widget-row:hover { transform:none;box-shadow:inset 2px 0 var(--accent); }
-.task-row strong,.workspace-widget-row strong { font-size:13px;font-weight:550;white-space:normal;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.3; }
+.task-row strong,.workspace-widget-row strong { font-size:13px;font-weight:550;white-space:normal;overflow-wrap:anywhere;line-height:1.35; }
 .task-row small,.workspace-widget-row small { font-size:11px; }
 .task-row input { width:20px;height:20px; }
 .workspace-widget-icon { width:34px;height:34px;transform:none;background:var(--soft);box-shadow:inset 0 1px #ffffff30,0 3px 0 var(--line),0 6px 8px #0003;position:relative; }
@@ -167,14 +167,18 @@ html body { font-family:var(--font); }
 }
 .widget-section:has(+.widget-connect) { padding-bottom:52px; }
 .widget-connect { left:14px;right:14px;bottom:10px;min-height:36px; }
+.widget-connection { display:flex;flex-direction:column;align-items:start;justify-content:safe center;gap:9px;padding:16px;overflow:auto; }
+.widget-connection h1,.widget-connection p { margin:0;overflow-wrap:anywhere; }
+.widget-connection p { font-size:13px;color:var(--muted); }
+.widget-connection button { flex:none;min-height:38px;max-width:100%;padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:var(--soft);color:var(--text);text-align:left;cursor:pointer; }
 @container widget (max-width:320px) {
   .widget-section { padding:10px; }
   .section-head h1,.streak-widget-head h1 { font-size:16px; }
   .streak-widget-metrics strong { font-size:15px; }
   .pomodoro-widget-ring strong { font-size:32px; }
   .widget-calendar[data-view=week] .calendar-day { grid-template-columns:44px minmax(0,1fr) auto;gap:6px;padding:6px; }
-  .widget-calendar[data-view=week] .calendar-day em { grid-template-columns:minmax(54px,64px) minmax(0,1fr);gap:6px;font-size:11px; }
-  .widget-calendar[data-view=week] .calendar-day em b { font-size:9px; }
+  .widget-calendar[data-view=week] .calendar-day em { grid-template-columns:minmax(0,1fr);gap:2px;font-size:12px; }
+  .widget-calendar[data-view=week] .calendar-day em b { font-size:10px;text-align:left; }
 }
 @container widget (max-height:300px) {
   .widget-section { padding:10px; }

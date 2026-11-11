@@ -1,6 +1,6 @@
 (function () {
   if (window.EstudiemosDesktopWidgets) return;
-  const designUrl=new URL('../styles/widget-console.css?v=20261107-jakarta',document.currentScript.src).href;
+  const designUrl=new URL('../styles/widget-console.css?v=20261111-widget-link',document.currentScript.src).href;
   const depthUrl=new URL('./widget-depth.js?v=20261003-refined',document.currentScript.src).href;
   const chartStyleUrl=new URL('../styles/study-chart.css?v=20261003-refined',document.currentScript.src).href;
   let depthModule=null,depthPending=null;
@@ -18,6 +18,8 @@
   const CLOUD_REFRESH_KEY = "estudiemos_desktop_widget_cloud_refresh";
   const CLOUD_REFRESH_INTERVAL = 10000;
   const standaloneHost = document.querySelector("[data-desktop-widget-host]");
+  const rainmeter = document.documentElement.classList.contains("rainmeter-widget");
+  let accountReady = false;
   const state = {
     view: getInitialView(),
     month: new Date().getMonth(),
@@ -51,7 +53,9 @@
   window.addEventListener("load", scheduleNativeWindowsSync, { once: true });
   scheduleNativeWindowsSync();
   if (standaloneHost) mountStandalone();
-  window.EstudiemosAccount?.whenReady?.().then(loadWorkspaceItems).catch(() => {});
+  const ready = window.EstudiemosAccount?.whenReady?.();
+  if (ready) ready.finally(() => {accountReady = true; loadWorkspaceItems(); render();}).catch(() => {});
+  else accountReady = true;
 
   async function open(view = "inbox") {
     if (!isDesktopDevice()) return false;
@@ -88,7 +92,8 @@
   }
 
   function widgetUrl(view) {
-    const root = new URL(window.EstudiemosRoot || "./", location.origin).href;
+    const base = new URL(window.EstudiemosRoot || "./", location.origin);
+    const root = window.EstudiemosCourseAppLinks?.authReturnUrl(base) || base;
     const url = new URL("widget.html", root);
     url.searchParams.set("view", view);
     url.searchParams.set("source", "desktop-app");
@@ -175,14 +180,19 @@
     });
     const content = doc.getElementById("widgetContent");
     if (!content) return;
-    let markup = state.view === "workspace" ? workspaceMarkup()
+    const account = window.EstudiemosAccount;
+    const user = account?.getUser?.();
+    const connectionFailed = account?.widgetLinkFailed?.();
+    const connectionNeeded = rainmeter && (!accountReady || !user || connectionFailed);
+    let markup = connectionNeeded ? connectionMarkup(connectionFailed)
+      : state.view === "workspace" ? workspaceMarkup()
       : state.view === "calendar" ? calendarMarkup()
       : state.view === "pomodoro" ? pomodoroMarkup()
       : state.view === "streak" ? streakMarkup() : inboxMarkup();
     const workspacePaused = state.view === 'workspace' && !window.EstudiemosRelease?.enabled('workspace');
     const footer = doc.querySelector('body > footer');
-    if (footer) footer.hidden = workspacePaused;
-    if (!workspacePaused && standaloneHost && !window.EstudiemosAccount?.getUser?.()) {
+    if (footer) footer.hidden = workspacePaused || !user || connectionFailed;
+    if (!rainmeter && !workspacePaused && standaloneHost && !user && accountReady) {
       markup += '<button class="widget-connect" type="button" data-widget-account>Conectar cuenta</button>';
     }
     if(renderedWidgets.get(content) !== markup) {
@@ -194,12 +204,21 @@
       renderedWidgets.set(content,markup);
       if(focusIndex >= 0) content.querySelectorAll('button,input,a')[focusIndex]?.focus({preventScroll:true});
     }
+    if(connectionNeeded) {depthModule?.disposeWidget(content);return;}
     if(state.view==='pomodoro') updatePomodoroDisplay(content);
     if(state.view==='pomodoro' || state.view==='streak') {
       if(!depthPending) depthPending=import(depthUrl).then(module=>depthModule=module).catch(()=>null);
       depthPending.then(module=>module?.enhanceWidget(content));
     } else depthModule?.disposeWidget(content);
     syncRainmeterReminderState();
+  }
+
+  function connectionMarkup(failed) {
+    const label = {workspace:"Mi espacio",inbox:"Inbox",calendar:"Calendario",streak:"Racha",pomodoro:"Pomodoro"}[state.view];
+    return `<section class="widget-section widget-connection"><h1>${label}</h1><p role="status">${!accountReady
+      ? "Conectando tu cuenta…"
+      : failed ? "No se pudo vincular el widget." : "Este widget todavía no está conectado."}</p>
+      ${accountReady ? '<button type="button" data-widget-reconnect>Conectar desde Estudiemos</button>' : ""}</section>`;
   }
 
   function syncRainmeterReminderState() {
@@ -272,6 +291,9 @@
   }
 
   function handleWidgetClick(event) {
+    if (event.target.closest("[data-widget-reconnect]")) {
+      return openMainApp(`?windows-widgets-ready=1&setup-widget=${encodeURIComponent(state.view)}`);
+    }
     const studyDay=event.target.closest('[data-widget-study-day]');
     if(studyDay) {
       const content=studyDay.closest('#widgetContent');
@@ -758,34 +780,14 @@
   }
 
   function openMainApp(search) {
-    const destination = new URL(search, window.location.origin).href;
-    const appLink = createAppLink(destination);
-    if (document.documentElement.classList.contains("rainmeter-widget")) {
+    const destination = new URL(search, "https://estudiemos.ar/").href;
+    if (rainmeter) {
       try {
-        window.RainmeterAPI?.Bang?.(`["${appLink}"]`);
+        window.RainmeterAPI?.Bang?.(`["${destination}"]`);
       } catch (_) {}
       return;
     }
-    window.open(appLink, "estudiemos-main", "noopener");
-  }
-
-  function createAppLink(destination) {
-    const url = new URL(destination);
-    const params = new URLSearchParams();
-    if (url.searchParams.get("agenda") === "1") {
-      params.set("target", "agenda");
-      const date = url.searchParams.get("date") || "";
-      if (/^\d{4}-\d{2}-\d{2}$/.test(date)) params.set("date", date);
-    } else if (url.searchParams.get("pomodoro") === "1") {
-      params.set("target", "pomodoro");
-    } else if (url.searchParams.get("workspaceItem")) {
-      params.set("target", "workspace");
-      params.set("item", url.searchParams.get("workspaceItem"));
-      params.set("kind", url.searchParams.get("workspaceKind") === "file" ? "file" : "folder");
-    } else {
-      params.set("target", "home");
-    }
-    return `web+estudiemos://open?${params.toString()}`;
+    window.open(destination, "estudiemos-main", "noopener");
   }
 
   function dateValue(date) {
