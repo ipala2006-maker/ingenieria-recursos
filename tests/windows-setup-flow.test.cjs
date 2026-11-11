@@ -33,6 +33,8 @@ test('Windows download includes app shortcuts, widgets and the hidden alarm serv
   assert.match(installer,/Name: "\{userprograms\}\\Estudiemos"/);
   assert.match(installer,/AlarmService\\InstallInboxAlarm.ps1/);
   assert.match(installer,/not WizardSilent/,'silent maintenance must not open the app');
+  assert.match(installer,/https:\/\/estudiemos\.ar\/\?windows-widgets-ready=1&setup-widget=/);
+  assert.doesNotMatch(installer,/estudiemos-widgets:\/\/add/,'an installer never launches a widget without an account handoff');
   const launcher=read('windows-installer/AppLauncher.vbs');
   assert.match(launcher,/--app=/);assert.match(launcher,/windows-bundle=1/);
   assert.match(launcher,/If WScript.Arguments\(0\) = "--setup"/);
@@ -66,7 +68,7 @@ function widgetHarness(){
 
 test('opening a native protocol never marks a widget added or clears pending selection',async()=>{
   const h=widgetHarness();await h.context.launchWindowsWidget('calendar');
-  assert.equal(h.links.length,1);assert.match(h.links[0],/callback=1/);assert.match(h.links[0],/link=pilot.signature/);
+  assert.equal(h.links.length,1);assert.doesNotMatch(h.links[0],/callback=1/);assert.match(h.links[0],/link=pilot.signature/);
   assert.equal(h.saved.get('pending'),'calendar');assert.equal(h.saved.has('ready'),false);
   assert.match(h.messages.at(-1),/Todavía no confirmamos/);assert.deepEqual(h.busy,[true,false]);
 });

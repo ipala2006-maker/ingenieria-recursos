@@ -31,7 +31,10 @@ test('early geometry is bounded, filters unavailable tools and releases without 
 
 test('mobile keeps its existing navigation, and a missing release helper fails closed for gated tools',()=>{
   const mobile=boot({mobile:true});
-  assert.equal(mobile.body.classList.contains('home-board'),false);assert.equal(mobile.style.textContent,'');
+  assert.equal(mobile.body.classList.contains('home-board'),false);
+  assert.match(mobile.style.textContent,/data-home-space="focus"\]\{display:none!important\}/);
+  assert.match(mobile.style.textContent,/data-home-space="assistant"\]\{display:none!important\}/);
+  assert.doesNotMatch(mobile.style.textContent,/data-home-space="(?:calendar|inbox)"|\b(?:left|top|width|height):/);
   const fallback=boot({release:false});
   assert.match(fallback.style.textContent,/data-home-space="assistant"\]\{display:none!important\}/);
   assert.match(fallback.style.textContent,/data-home-space="workspace"\]\{display:none!important\}/);

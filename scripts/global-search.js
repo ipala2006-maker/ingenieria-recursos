@@ -52,7 +52,7 @@
   }
   if (!document.querySelector('script[data-classrooms]')) {
     const classes = document.createElement('script'); classes.dataset.classrooms = '';
-    classes.src = rootPath + 'scripts/classroom-sync.js?v=20261109-classroom-taps';
+    classes.src = rootPath + 'scripts/classroom-sync.js?v=20261110-course-entry';
     document.head.appendChild(classes);
   }
   if (!document.querySelector('script[data-course-drive]')) {
@@ -263,7 +263,7 @@
   function loadProductInterface() {
     if (document.querySelector('script[src*="scripts/product-ui.js"]')) return;
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/product-ui.js?v=20261110-steady-tour`;
+    script.src = `${rootPath}scripts/product-ui.js?v=20261110-stable-home`;
     document.head.appendChild(script);
   }
 
@@ -405,7 +405,7 @@
     if (document.querySelector('script[src*="scripts/account.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/account.js?v=20261109-official-access`;
+    script.src = `${rootPath}scripts/account.js?v=20261111-launch-candidate`;
     script.defer = true;
     document.head.appendChild(script);
   }
@@ -428,7 +428,7 @@
     if (document.querySelector('script[src*="scripts/desktop-widgets.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/desktop-widgets.js?v=20261107-jakarta`;
+    script.src = `${rootPath}scripts/desktop-widgets.js?v=20261111-widget-link`;
     script.async = false;
     document.head.appendChild(script);
   }

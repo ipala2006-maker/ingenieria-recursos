@@ -62,6 +62,8 @@
   let cloudPollTimer = 0;
   let remoteRefreshTimer = 0;
   let recovery = null;
+  let invitationPassword = false;
+  let expiredCourseLink = false;
   let authActionInFlight = false;
   let recoveryTimer = 0;
   const recoveryCooldowns = new Map();
@@ -71,6 +73,7 @@
   let referralBusy = false;
   let referralShareCode = "";
   let readySettled = false;
+  let widgetLinkFailed = false;
   let captchaToken = "";
   let captchaWidgetId = null;
   let captchaLoading = false;
@@ -95,10 +98,12 @@
     canSaveLocalNotes: () => (localStorage.getItem(LINKED_USER_KEY) || "") === (session?.user?.id || ""),
     isSynchronized: () => Boolean(session?.user?.id && (AUTH_ONLY || synchronizedUserId === session.user.id)),
     getSession: () => session,
+    widgetLinkFailed: () => widgetLinkFailed,
     getClient: () => client,
     getPublicAppOrigin: () => accountConfig?.publicAppOrigin,
     whenReady: () => readyPromise,
     open: () => openDialog(),
+    close: () => closeDialog(),
     updateApp: () => updateApplication()
   };
 
@@ -159,7 +164,7 @@
               <span>Correo electrónico</span>
               <input type="email" name="email" autocomplete="email" required placeholder="nombre@correo.com" />
             </label>
-            <label>
+            <label data-account-password>
               <span>Contraseña</span>
               <input type="password" name="password" minlength="${MIN_PASSWORD_LENGTH}" autocomplete="current-password" required placeholder="Mínimo ${MIN_PASSWORD_LENGTH} caracteres" />
             </label>
@@ -176,6 +181,7 @@
             <button class="account-primary" type="submit" data-account-signin>Ingresar</button>
             <button class="account-secondary" type="button" data-account-signup>Crear cuenta</button>
             <button class="account-link" type="button" data-account-reset>Olvidé mi contraseña</button>
+            <button class="account-link" type="button" data-account-course-mode hidden>Usar contraseña</button>
           </form>
         </div>
 
@@ -325,6 +331,11 @@
       if (event.target.closest("[data-account-close]") || event.target === document.querySelector(".account-shell")) closeDialog();
       if (event.target.closest("[data-account-signup]")) signUp();
       if (event.target.closest("[data-account-reset]")) openRecovery();
+      if (event.target.closest("[data-account-course-mode]")) {
+        invitationPassword = !invitationPassword;
+        renderRecovery();
+        setStatus("", "info");
+      }
       if (event.target.closest("[data-recovery-resend]")) resetPassword(true);
       if (event.target.closest("[data-recovery-back]")) backFromRecovery();
       if (event.target.closest("[data-account-captcha-retry]")) resetCaptcha();
@@ -345,7 +356,8 @@
 
     document.querySelector("[data-account-form]")?.addEventListener("submit", (event) => {
       event.preventDefault();
-      signIn();
+      if (courseInvitation() && !invitationPassword) sendCourseLink(event.currentTarget.elements.email.value);
+      else signIn();
     });
     document.querySelector("[data-recovery-form]")?.addEventListener("submit", (event) => {
       event.preventDefault();
@@ -395,6 +407,8 @@
   }
 
   async function initialize() {
+    const widgetOtp = takeDesktopWidgetOtp();
+    widgetLinkFailed = widgetOtp !== null;
     let stage = "config";
     try {
       const config = await authStartupDeadline(async (signal) => {
@@ -412,10 +426,19 @@
       };
       stage = "library";
       await loadSupabaseLibrary();
+      expiredCourseLink = clearExpiredCourseLink(new URL(location.href));
       client = window.supabase.createClient(config.url, config.publishableKey, {
         auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
       });
       configAvailable = true;
+      let widgetSession = null;
+      if (widgetOtp !== null) {
+        if (/^[a-f0-9]{56}$/i.test(widgetOtp)) try {
+          const result = await authStartupDeadline(() => client.auth.verifyOtp({ token_hash: widgetOtp, type: "email" }));
+          widgetSession = !result.error && result.data?.session?.user?.id ? result.data.session : null;
+          widgetLinkFailed = !widgetSession;
+        } catch (_) {}
+      }
       client.auth.onAuthStateChange((event, nextSession) => {
         window.setTimeout(async () => {
           const previousUser = session?.user?.id || "";
@@ -459,7 +482,7 @@
           applyingNativeSession = false;
         }
       }
-      const result = await authStartupDeadline(() => client.auth.getSession());
+      const result = widgetSession ? {data:{session:widgetSession}} : await authStartupDeadline(() => client.auth.getSession());
       if (result.error) throw result.error;
       session = result.data.session;
       if (session) prepareLocalAccountSwitch(session.user.id);
@@ -486,6 +509,32 @@
       renderAccountState();
       finishReady(false);
     }
+  }
+
+  function clearExpiredCourseLink(url) {
+    if (url.searchParams.get("unirme") !== "1" || !/^[A-HJ-NP-Z2-9]{10}$/.test(url.searchParams.get("materia") || "")) return false;
+    const hash = new URLSearchParams(url.hash.slice(1));
+    const errors = [url.searchParams, hash].filter(params => params.get("error_code") === "otp_expired");
+    if (!errors.length) return false;
+    for (const params of errors) {
+      for (const key of ["error", "error_code", "error_description"]) params.delete(key);
+    }
+    url.hash = hash.toString();
+    history.replaceState(history.state, "", url);
+    return true;
+  }
+
+  function takeDesktopWidgetOtp() {
+    if (!document.body?.hasAttribute?.("data-desktop-widget-host") || location.origin !== "https://estudiemos.ar") return null;
+    const url = new URL(location.href);
+    if (url.searchParams.get("embed") !== "rainmeter" || url.searchParams.get("linked") !== "1") return null;
+    const fragment = new URLSearchParams(url.hash.slice(1));
+    if (!fragment.has("widget_otp")) return null;
+    const value = fragment.get("widget_otp");
+    url.searchParams.delete("linked");
+    url.hash = "";
+    history.replaceState(history.state, "", url);
+    return value;
   }
 
   function finishReady(available) {
@@ -543,6 +592,26 @@
     });
   }
 
+  function courseInvitation() {
+    return !session && window.EstudiemosCourseInvitation?.pending();
+  }
+
+  async function sendCourseLink(value) {
+    if (!client || authActionInFlight || !courseInvitation()) return;
+    const email = value.trim();
+    if (!isValidEmail(email)) return setStatus("Ingresá un correo electrónico válido.", "error");
+    const captcha = getCaptchaOptions();
+    if (captcha === null) return;
+    const redirect = window.EstudiemosCourseInvitation.confirmationUrl(new URL(getRootPath(), location.href));
+    await runAuthAction("Enviando enlace...", "No pudimos enviar el enlace. Revisá tu conexión y volvé a intentar.", async () => {
+      const { error } = await client.auth.signInWithOtp({
+        email, options: { emailRedirectTo: redirect.href, shouldCreateUser: true, ...captcha }
+      });
+      if (error) return setStatus(authErrorMessage(error), "error");
+      setStatus("Revisá tu correo y abrí el enlace para entrar directo a la cátedra.", "success");
+    }, true);
+  }
+
   async function signIn() {
     if (!client || authActionInFlight) return;
     const credentials = getCredentials();
@@ -578,7 +647,7 @@
         if (COMMERCIAL_LAUNCH_ENABLED) window.setTimeout(() => refreshReferralStatus(true), 300);
         return;
       }
-      setStatus("Te enviamos un correo. Abrilo para confirmar tu cuenta y después ingresá.", "success");
+      setStatus(courseInvitation() ? "Revisá tu correo y abrí el enlace para entrar directo a la cátedra." : "Te enviamos un correo. Abrilo para confirmar tu cuenta y después ingresá.", "success");
     }, true);
   }
 
@@ -815,7 +884,18 @@
     panel.classList.toggle("is-recovering", Boolean(recovery));
     auth.hidden = !configAvailable || Boolean(session || recovery);
     const title = panel.querySelector("#accountTitle");
-    const invitation = !session && window.EstudiemosCourseInvitation?.pending();
+    const invitation = courseInvitation();
+    const emailOnly = Boolean(invitation && !invitationPassword);
+    const signIn = auth.querySelector("[data-account-form]");
+    signIn.querySelector("[data-account-password]").hidden = emailOnly;
+    signIn.elements.password.required = !emailOnly;
+    signIn.elements.password.disabled = emailOnly;
+    signIn.querySelector("[data-account-signin]").textContent = emailOnly ? "Enviarme el enlace" : "Ingresar";
+    signIn.querySelector("[data-account-signup]").hidden = emailOnly;
+    signIn.querySelector("[data-account-reset]").hidden = emailOnly;
+    const mode = signIn.querySelector("[data-account-course-mode]");
+    mode.hidden = !invitation;
+    mode.textContent = emailOnly ? "Usar contraseña" : "Usar enlace por correo";
     title.textContent = request ? "Recuperar contraseña" : recovery ? "Nueva contraseña" : invitation ? "Unirte a la cátedra" : "Tu cuenta";
     section.querySelector("[data-recovery-intro]").textContent = request
       ? "Ingresá el correo de tu cuenta."
@@ -1995,6 +2075,10 @@
     if (widget === 'workspace' && !window.EstudiemosRelease?.enabled('workspace')) return setStatus('Mi espacio: próximamente.', 'success');
     const validWidgets = ["workspace", "inbox", "calendar", "pomodoro", "streak"];
     if (isWindowsDevice() && validWidgets.includes(widget)) {
+      if (window.EstudiemosCourseAppLinks?.isLegacyOrigin(location.origin)) {
+        location.assign(`https://estudiemos.ar/?setup-widget=${encodeURIComponent(widget)}`);
+        return;
+      }
       showWidgetSetup(widget);
       if(localStorage.getItem(WINDOWS_WIDGETS_READY_KEY)==='true')launchWindowsWidget(widget);
       return;
@@ -2024,7 +2108,7 @@
     try {
       const accountLink = await createWindowsWidgetLink(widget);
       if (!session?.access_token || session.user?.id!==userId) throw new Error('La cuenta cambió. Volvé a intentar con tu sesión actual.');
-      const query = new URLSearchParams({ widget, callback: '1', link: accountLink });
+      const query = new URLSearchParams({ widget, link: accountLink });
       if (['https://estudiemos.ar','https://estudiemos.estudiemos-services.workers.dev'].includes(location.origin)) query.set('source', 'cloudflare');
       const launcher = document.createElement('a');
       launcher.href = `estudiemos-widgets://add?${query.toString()}`;
@@ -2125,16 +2209,20 @@
     const returnedWidget = url.searchParams.get("windows-widget-added") || "";
     const addedWidget = ['inbox','calendar','pomodoro','streak'].includes(returnedWidget)?returnedWidget:'';
     const requestedWidget=url.searchParams.get('setup-widget');
-    if(requestedWidget){url.searchParams.delete('setup-widget');history.replaceState(history.state,'',`${url.pathname}${url.search}${url.hash}`);window.setTimeout(()=>showWidgetSetup(requestedWidget),0);}
-    if (!ready && !addedWidget) return;
+    if (!ready && !addedWidget && !requestedWidget) return;
     const pendingWidget = localStorage.getItem(WINDOWS_WIDGET_PENDING_KEY);
-    localStorage.setItem(WINDOWS_WIDGETS_READY_KEY, "true");
+    if (ready || addedWidget) localStorage.setItem(WINDOWS_WIDGETS_READY_KEY, "true");
     if (addedWidget) {
       localStorage.removeItem(WINDOWS_WIDGET_PENDING_KEY);
     }
     url.searchParams.delete("windows-widgets-ready");
     url.searchParams.delete("windows-widget-added");
+    url.searchParams.delete("setup-widget");
     history.replaceState(history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    if (requestedWidget || (ready && pendingWidget && !addedWidget)) {
+      readyPromise.then(() => showWidgetSetup(requestedWidget || pendingWidget));
+      return;
+    }
     window.setTimeout(() => {
       openDialog();
       const widgetLabel = {
@@ -2144,10 +2232,6 @@
         pomodoro: "Pomodoro",
         streak: "Racha"
       }[addedWidget || pendingWidget];
-      if (ready && pendingWidget && !addedWidget) {
-        readyPromise.finally(() => {showWidgetSetup(pendingWidget);launchWindowsWidget(pendingWidget);});
-        return;
-      }
       setStatus(
         widgetLabel
           ? `Windows recibió ${widgetLabel}. Minimizá Estudiemos para verlo en el escritorio.`
@@ -2274,16 +2358,19 @@
     // A native top-layer dialog remains usable above any alarm or calendar editor.
     if (!shell.open) shell.showModal();
     document.body.classList.add("account-open");
-    const invitation = !session && window.EstudiemosCourseInvitation?.pending();
+    const invitation = courseInvitation();
     const accountIntro = shell.querySelector('.account-intro');
     if (accountIntro) accountIntro.textContent = invitation
-      ? (invitation.preview?.title ? 'Vas a unirte a ' + invitation.preview.title + '. Ingresá o creá tu cuenta para continuar.' : 'Ingresá o creá tu cuenta. Tu invitación está guardada para continuar en la cátedra.')
+      ? (invitation.preview?.title ? 'Entrá a ' + invitation.preview.title + ' con tu correo.' : 'Entrá a la cátedra con tu correo.')
       : 'Usá la misma cuenta en tu computadora, tablet y celular para mantener tus datos sincronizados.';
     renderSyncUsage();
     if (session && COMMERCIAL_LAUNCH_ENABLED && options.refreshReferrals !== false) refreshReferralStatus(true);
     if (sessionStorage.getItem("estudiemos_app_update_complete") === "true") {
       sessionStorage.removeItem("estudiemos_app_update_complete");
       setStatus("Estudiemos está actualizado.", "success");
+    } else if (invitation && expiredCourseLink) {
+      expiredCourseLink = false;
+      setStatus("El enlace de correo venció. Pedí uno nuevo para entrar a la misma cátedra.", "error");
     } else {
       setStatus("", "info");
     }

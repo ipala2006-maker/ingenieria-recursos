@@ -9,7 +9,7 @@
   "assets": {
     "directory": "./dist-cloudflare",
     "binding": "ASSETS",
-    "run_worker_first": ["/api/*", "/materia/*", "/amistad/*", "/instalar", "/instalar/", "/instalar.html"],
+    "run_worker_first": ["/api/*", "/materia/*", "/amistad/*", "/instalar", "/instalar/", "/instalar.html", "/widget", "/widget/", "/widget.html"],
     "html_handling": "auto-trailing-slash",
     "not_found_handling": "404-page"
   },

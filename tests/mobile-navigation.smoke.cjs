@@ -1,7 +1,7 @@
 const {chromium,webkit}=require('../tmp/ui-check/node_modules/playwright');
 const assert=require('node:assert/strict'),http=require('node:http'),fs=require('node:fs'),path=require('node:path');
 const root=path.resolve(__dirname,'..'),live=process.env.TEST_BASE_URL;
-if(live)assert.equal(new URL(live).origin,'https://estudiemos-app.vercel.app');
+if(live)assert.equal(new URL(live).origin,'https://estudiemos.ar');
 const output=path.join(root,'tmp/mobile-navigation',live?'live':'local');
 const types={'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.png':'image/png','.webp':'image/webp','.woff2':'font/woff2','.wav':'audio/wav','.webmanifest':'application/manifest+json'};
 const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)').headers;
@@ -54,6 +54,10 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
       for(let i=0;i<12;i++)await tap(keys[i%keys.length]);
       await page.evaluate(()=>window.dispatchEvent(new CustomEvent('estudiemos:home-navigate',{detail:{view:'calendar'}})));await selected('calendar');
       await page.reload();await nav.waitFor();await selected('calendar');
+      await page.locator('.topbar .brand').tap();await selected('overview');
+      assert.equal(await page.locator('[data-home-space=calendar]').isVisible(),true,'Inicio keeps the enabled calendar available');
+      assert.equal(await page.locator('[data-home-space=inbox]').isVisible(),true,'Inicio keeps the enabled inbox available');
+      await page.goBack();await selected('calendar');
       await tap('overview');
       for(const theme of ['dark','light']){
         await page.evaluate(theme=>EstudiemosTheme.set(theme),theme);
@@ -67,6 +71,9 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
       });
       assert.equal(await nav.locator('[data-home-view=calendar]').isVisible(),false);
       assert.equal(await nav.locator('[data-home-view=space]').isVisible(),false);
+      const calendar=page.locator('[data-home-space=calendar]');
+      const hiddenCalendar=await calendar.evaluate(el=>({hidden:el.hidden,display:getComputedStyle(el).display}));
+      assert.deepEqual(hiddenCalendar,{hidden:true,display:'none'},'Hidden tools stay hidden inside Inicio');
       const remaining=await nav.locator('button:visible').evaluateAll(nodes=>nodes.map(el=>el.getBoundingClientRect().width));
       assert.equal(remaining.length,2);assert.ok(Math.abs(remaining[0]-remaining[1])<2,'hidden tools leave no empty slots');
       await nav.locator('[data-home-view=overview]').focus();await page.keyboard.press('ArrowRight');await selected('inbox');
@@ -75,6 +82,7 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
         const value=EstudiemosHomeLayout.read();value.visible.inbox=false;
         EstudiemosHomeLayout.write(value);window.dispatchEvent(new CustomEvent('estudiemos:home-customized'));
       });await selected('overview');
+      assert.equal(await page.evaluate(()=>history.state?.homeView),'overview','Removing the current tool updates the restored view');
       await page.locator('[data-home-customize]').tap();await page.locator('.home-layout-manage').tap();
       assert.equal(await page.locator('[data-home-customizer-spaces] input[value=shortcuts]').count(),0,'retired shortcuts have no misleading setting');
       await page.locator('.home-customizer__done').tap();await page.locator('.home-layout-done').tap();

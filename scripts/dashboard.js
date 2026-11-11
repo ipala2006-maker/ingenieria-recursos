@@ -778,6 +778,20 @@
     waitForElement(".agenda-board", dispatch, 100);
   }
 
+  function openToolFromNotification(event) {
+    const controller = navigator.serviceWorker?.controller;
+    if (!workspaceHome || !controller || event.source !== controller || event.data?.type !== "ESTUDIEMOS_OPEN_TOOL") return;
+    // Foregrounding is safe while editing; opening another tool is not.
+    if (document.querySelector("dialog[open], [data-quick-panel]:not([hidden])") ||
+        document.activeElement?.closest("input, textarea, select, [contenteditable=true]")) return;
+    if (event.data.tool === "agenda") {
+      if (!document.body.classList.contains("agenda-open") && document.querySelector(".agenda-board")) openAgenda();
+    } else if (event.data.tool === "pomodoro" && !document.body.classList.contains("agenda-open")) {
+      document.querySelector("[data-pomodoro-open]")?.click();
+    }
+  }
+  navigator.serviceWorker?.addEventListener?.("message", openToolFromNotification);
+
   function renderDashboard() {
     renderCalendar();
     renderAgenda();

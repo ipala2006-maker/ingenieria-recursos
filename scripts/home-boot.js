@@ -12,7 +12,10 @@
     for(const key of keys)visible[key]=available(key)
       &&(key==='classes'?saved.visible?.[key]===true:saved.visible?.[key]!==false);
     body.classList.toggle('home-board',!mobile.matches);
-    if(mobile.matches){style.textContent='';return;}
+    if(mobile.matches){
+      style.textContent=keys.filter(key=>!visible[key]).map(key=>`html.home-starting body.workspace-home [data-home-space="${key}"]{display:none!important}`).join('\n');
+      return;
+    }
     const width=Math.max(1,Math.min(1800,innerWidth-24)),height=Math.max(1,innerHeight-57-64);
     const layout=board.freeLayout(saved.placement,board.sanitize(saved.tree),width,height,visible);
     style.textContent=keys.map(key=>{

@@ -5,7 +5,7 @@ import admin from '../api/_lib/supabase-admin.js';
 import scopes from '../api/_lib/push-scope.js';
 
 export async function preparePush(subscription, payload, vapidDetails = {
-  subject: process.env.APP_ORIGIN || 'https://estudiemos-app.vercel.app',
+  subject: process.env.APP_ORIGIN || scopes.CLOUDFLARE_ORIGIN,
   publicKey: process.env.WEB_PUSH_PUBLIC_KEY, privateKey: process.env.WEB_PUSH_PRIVATE_KEY
 }) {
   if (!credentials.validSubscription(subscription)) throw new Error('Invalid push destination');

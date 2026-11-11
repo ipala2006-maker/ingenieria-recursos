@@ -36,6 +36,7 @@ html body :is(.workspace-search,.workspace-sort select,.workspace-view-toggle) {
 @supports (transition-behavior:allow-discrete) and (overlay:auto) {
   @media(prefers-reduced-motion:no-preference) {
     html body.workspace-home.home-resizable .workspace-page [data-home-space] { transition:opacity var(--motion-fast) ease,display var(--motion-fast) allow-discrete; }
+    .workspace-home.home-resizable:not(.home-board) .workspace-page [data-home-space] { transition:opacity var(--motion-fast) ease; }
     html body.workspace-home.home-resizable .workspace-page [data-home-space].home-space-disabled { opacity:0;pointer-events:none; }
     html body dialog:is(.home-customizer,.study-session-dialog,.study-goal-dialog,.calendar-reader,.calendar-tools-dialog,.friends-dialog,.classroom-dialog,.classroom-confirm,.drive-dialog,.windows-setup,.inbox-alarm-dialog) {
       opacity:0;translate:0 7px;animation:none;

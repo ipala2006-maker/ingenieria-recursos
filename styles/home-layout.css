@@ -27,8 +27,15 @@
 .home-customizer__dimensions output { font-size:11px;font-variant-numeric:tabular-nums; }
 .home-customizer footer { position:sticky;bottom:-18px;background:var(--panel);padding-block:12px;gap:8px;flex-wrap:wrap; }
 .home-customizer footer button { flex:1;min-height:44px;white-space:nowrap; }
+.home-panels { display:contents; }
 @media(max-width:700px),(min-width:701px) and (max-width:900px) and (max-height:899px) {
   .workspace-home.home-resizable .workspace-page { display:flex;overflow:hidden;padding-bottom:env(safe-area-inset-bottom,0px);height:calc(100dvh - var(--home-topbar-height,57px)); }
+  .home-resizable .home-panels[data-stacked] { display:block;flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;padding-bottom:12px; }
+  .workspace-home.home-resizable .home-panels[data-stacked] .study-home { overflow:visible;padding-bottom:0; }
+  .workspace-home.home-resizable .home-panels[data-stacked] .home-layout { display:flex;flex-direction:column;gap:12px;margin-top:12px; }
+  .workspace-home.home-resizable .home-panels[data-stacked] .home-dashboard { border:0;padding:0;margin:0; }
+  .workspace-home.home-resizable .home-panels[data-stacked] .home-dashboard__grid { display:flex;flex-direction:column;gap:12px;height:auto; }
+  .workspace-home.home-resizable .home-panels[data-stacked] :is(.workspace-section,.dashboard-widget) { flex:none;height:auto;min-height:var(--home-tool-height,280px); }
   .workspace-home.home-resizable .study-home:not([hidden]) { display:block;overflow-y:auto;overflow-x:hidden;min-height:0;flex:1;padding:6px 1px 16px;overscroll-behavior-y:contain; }
   .workspace-home.home-resizable .study-home__head { margin-bottom:12px;gap:8px; }
   .workspace-home.home-resizable .study-home__head h1 { font-size:20px; }

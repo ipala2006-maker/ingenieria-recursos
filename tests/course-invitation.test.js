@@ -6,7 +6,15 @@ test('pending course invitations survive a restart, expire, and stay bound to th
   h.api.save('BAD');assert.equal(h.api.pending(),null);h.api.save('ABCDEFGHJK');assert.equal(h.api.pending('alice').auto,true);
   const key='estudiemos_class_invite_v1';for(const map of[h.local,h.session]){const value=JSON.parse(map.get(key));value.expires=1;map.set(key,JSON.stringify(value));}assert.equal(boot(h.local,h.session).api.pending('alice'),null);
 });
-test('the continue link preserves the code on the same app origin and never silently installs software',()=>{const h=boot(),url=h.api.appUrl('ABCDEFGHJK');assert.equal(url.origin,'https://app.test');assert.equal(url.searchParams.get('unirme'),'1');assert.equal(url.hash,'#materia=ABCDEFGHJK');assert.doesNotMatch(source,/\.download\s*\(|requestPermission\s*\(/);});
+test('the continue link preserves the code on the same app origin and never silently installs software',()=>{const h=boot(),url=h.api.appUrl('ABCDEFGHJK');assert.equal(url.origin,'https://app.test');assert.equal(url.searchParams.get('unirme'),'1');assert.equal(url.searchParams.get('materia'),'ABCDEFGHJK');assert.doesNotMatch(source,/\.download\s*\(|requestPermission\s*\(/);});
+
+test('the latest invitation in memory wins if the browser blocks storage writes',()=>{
+  const h=boot();h.api.save('ABCDEFGHJK');
+  for(const storage of [h.window.sessionStorage,h.window.localStorage])storage.setItem=()=>{throw new Error('Storage unavailable');};
+  h.api.save('JKLMNPQRST');
+  assert.equal(h.api.pending().code,'JKLMNPQRST');
+  assert.equal(h.api.confirmationUrl('https://app.test/').searchParams.get('materia'),'JKLMNPQRST');
+});
 
 test('confirmation emails carry the invitation in the query without conflicting with the auth hash',()=>{
   const h=boot(),rules=require('../shared/classrooms');h.api.save('ABCDEFGHJK');

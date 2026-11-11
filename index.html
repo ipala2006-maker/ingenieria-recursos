@@ -27,13 +27,13 @@
     <title>Estudiemos</title>
     <script src="./scripts/course-role.js?v=20261024-roles" data-role-entry></script>
     <script src="./shared/course-app-links.js?v=20261109-official-access"></script>
-    <script src="./scripts/course-invitation.js?v=20261109-official-access"></script>
+    <script src="./scripts/course-invitation.js?v=20261111-launch-candidate"></script>
     <script src="./shared/release.js?v=20261019-drive"></script>
     <link rel="stylesheet" href="./styles/release.css?v=20261107-jakarta" />
     <link rel="preload" href="./assets/fonts/plus-jakarta-sans-latin.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="./styles/professional.css?v=20261107-jakarta" />
     <script src="./scripts/theme-init.js?v=20261026-course-links"></script>
-    <link rel="stylesheet" href="./styles/app.css?v=20261108-password-recovery" />
+    <link rel="stylesheet" href="./styles/app.css?v=20261110-course-entry" />
     <link rel="stylesheet" href="./styles/workspace.css?v=20261020-controls" />
     <link rel="stylesheet" href="./styles/workspace-drive.css?v=20261107-panel-ux" />
     <link rel="stylesheet" href="./styles/dashboard.css?v=20261107-compact-panels" />
@@ -42,18 +42,18 @@
     <link rel="stylesheet" href="./styles/interaction.css?v=20261107-compact-panels" />
     <link rel="stylesheet" href="./styles/study-depth.css?v=20261007-flat-controls" />
     <link rel="stylesheet" href="./styles/home-console.css?v=20261107-compact-panels" />
-    <link rel="stylesheet" href="./styles/home-layout.css?v=20261107-panel-polish" />
+    <link rel="stylesheet" href="./styles/home-layout.css?v=20261110-stable-home" />
     <link rel="stylesheet" href="./styles/home-start.css?v=20261107-panel-polish" />
     <link rel="stylesheet" href="./styles/study-chart.css?v=20261107-jakarta" />
     <link rel="stylesheet" href="./styles/calendar-month.css?v=20261107-panel-polish" />
-    <link rel="stylesheet" href="./styles/surface-motion.css?v=20261027-adaptive" />
+    <link rel="stylesheet" href="./styles/surface-motion.css?v=20261111-launch-candidate" />
     <link rel="stylesheet" href="./styles/home-boot.css?v=20261027-stable-start" />
     <script src="./shared/home-layout-storage.js?v=20261027-light"></script>
     <script src="./shared/home-board.js?v=20261027-adaptive"></script>
   </head>
 
   <body class="workspace-home">
-    <script src="./scripts/home-boot.js?v=20261027-stable-start"></script>
+    <script src="./scripts/home-boot.js?v=20261110-stable-home"></script>
     <header class="topbar">
       <a class="brand" href="./">
         <span class="brand__mark" aria-hidden="true">&sum;</span>
@@ -64,6 +64,7 @@
     </header>
 
     <main class="workspace-page">
+      <div class="home-panels" id="home-panel-overview" data-stacked>
       <section class="study-home" aria-labelledby="studyHomeTitle" data-study-home>
         <header class="study-home__head">
           <div><p class="workspace-eyebrow" data-home-date>Tu día de estudio</p><h1 id="studyHomeTitle">Tu día, en orden.</h1></div>
@@ -205,6 +206,34 @@
 
         <section class="home-dashboard" aria-label="Calendario e Inbox">
           <div class="home-dashboard__grid">
+            <section class="dashboard-widget dashboard-agenda" aria-labelledby="dashboardAgendaTitle" data-home-space="inbox">
+              <header class="dashboard-widget__head">
+                <div>
+                  <span class="dashboard-widget__eyebrow">Pendientes</span>
+                  <h2 id="dashboardAgendaTitle">Inbox</h2>
+                </div>
+                <button class="dashboard-widget__action" type="button" data-quick-note-open aria-label="Crear anotación" title="Nueva anotación">
+                  <svg viewBox="0 0 24 24"><path d="M4 5h10v14H4V5Zm13 1 2 2-7.5 7.5-3 .7.7-3L17 6Z"/></svg>
+                </button>
+              </header>
+              <div class="home-empty" data-home-empty hidden>
+                <img class="home-empty__icon" src="./assets/icons/book-open.svg" width="32" height="32" alt="" />
+                <h3>¡Bienvenido a Estudiemos!</h3>
+                <p>Arrancá con tu primera tarea o conectá Google Drive para tener tus apuntes a mano.</p>
+                <div class="home-empty__actions">
+                  <button type="button" class="home-start-primary" data-quick-note-open><img src="./assets/icons/plus.svg" width="18" height="18" alt="" />Crear mi primera tarea</button>
+                  <button type="button" data-home-connect-drive><img src="./assets/icons/folder.svg" width="18" height="18" alt="" />Conectar Google Drive</button>
+                </div>
+              </div>
+              <div class="dashboard-agenda__list" data-dashboard-agenda></div>
+              <div class="home-suggestions" data-home-suggestions hidden>
+                <span>Sumá a tu inicio</span>
+                <div><button type="button" data-home-add-tool="focus"><img src="./assets/icons/plus.svg" width="16" height="16" alt="" />Pomodoro</button><button type="button" data-home-add-tool="classes"><img src="./assets/icons/plus.svg" width="16" height="16" alt="" />Cátedras</button></div>
+              </div>
+              <button class="home-tools-open" type="button" data-home-tools-open><img src="./assets/icons/settings-2.svg" width="18" height="18" alt="" />Herramientas del inicio</button>
+              <button class="dashboard-agenda__open" type="button" data-dashboard-agenda-open>Ver Inbox</button>
+            </section>
+
             <section class="dashboard-widget dashboard-calendar" aria-label="Calendario académico" data-dashboard-calendar-widget data-calendar-surface data-home-space="calendar">
               <header class="dashboard-widget__head">
                 <div>
@@ -233,39 +262,13 @@
               <div class="dashboard-calendar__weekdays" aria-hidden="true"><span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span></div>
               <div class="dashboard-calendar__grid" data-dashboard-calendar></div>
             </section>
-
-            <section class="dashboard-widget dashboard-agenda" aria-labelledby="dashboardAgendaTitle" data-home-space="inbox">
-              <header class="dashboard-widget__head">
-                <div>
-                  <span class="dashboard-widget__eyebrow">Pendientes</span>
-                  <h2 id="dashboardAgendaTitle">Inbox</h2>
-                </div>
-                <button class="dashboard-widget__action" type="button" data-quick-note-open aria-label="Crear anotación" title="Nueva anotación">
-                  <svg viewBox="0 0 24 24"><path d="M4 5h10v14H4V5Zm13 1 2 2-7.5 7.5-3 .7.7-3L17 6Z"/></svg>
-                </button>
-              </header>
-              <div class="home-empty" data-home-empty hidden>
-                <img class="home-empty__icon" src="./assets/icons/book-open.svg" width="32" height="32" alt="" />
-                <h3>¡Bienvenido a Estudiemos!</h3>
-                <p>Arrancá con tu primera tarea o conectá Google Drive para tener tus apuntes a mano.</p>
-                <div class="home-empty__actions">
-                  <button type="button" class="home-start-primary" data-quick-note-open><img src="./assets/icons/plus.svg" width="18" height="18" alt="" />Crear mi primera tarea</button>
-                  <button type="button" data-home-connect-drive><img src="./assets/icons/folder.svg" width="18" height="18" alt="" />Conectar Google Drive</button>
-                </div>
-              </div>
-              <div class="dashboard-agenda__list" data-dashboard-agenda></div>
-              <div class="home-suggestions" data-home-suggestions hidden>
-                <span>Sumá a tu inicio</span>
-                <div><button type="button" data-home-add-tool="focus"><img src="./assets/icons/plus.svg" width="16" height="16" alt="" />Pomodoro</button><button type="button" data-home-add-tool="classes"><img src="./assets/icons/plus.svg" width="16" height="16" alt="" />Cátedras</button></div>
-              </div>
-              <button class="home-tools-open" type="button" data-home-tools-open><img src="./assets/icons/settings-2.svg" width="18" height="18" alt="" />Herramientas del inicio</button>
-              <button class="dashboard-agenda__open" type="button" data-dashboard-agenda-open>Ver Inbox</button>
-            </section>
           </div>
         </section>
       </div>
 
       <input type="file" multiple hidden data-workspace-file-input accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.md,.rtf,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.webp,.heic,.zip,.rar,.7z,.json,.xml,.mp3,.m4a,.wav,.mp4,.mov,.webm" />
+
+      </div>
 
       <footer class="footer">
         <span>© <span id="year"></span> Estudiemos</span>
@@ -283,15 +286,15 @@
     <script src="./scripts/onboarding.js?v=20261110-steady-tour"></script>
     <script src="./data/data.js?v=20260804-quimica-completa"></script>
     <script src="./shared/study-goal.js?v=20261010-daily-goal"></script>
-    <script src="./scripts/global-search.js?v=20261110-steady-tour"></script>
+    <script src="./scripts/global-search.js?v=20261111-launch-candidate"></script>
 
     <script src="./shared/plans.js?v=20260827-real-plans"></script>
     <script src="./shared/drive-files.js?v=20261107-panel-ux"></script>
     <script src="./shared/drive-widget.js?v=20261020"></script>
     <script src="./scripts/workspace-drive.js?v=20261109-official-access"></script>
-    <script src="./scripts/dashboard.js?v=20261108-pwa-health"></script>
+    <script src="./scripts/dashboard.js?v=20261111-launch-candidate"></script>
     <script type="module" src="./scripts/study-home.js?v=20261024-tour"></script>
-    <script src="./scripts/home-customizer.js?v=20261027-stable-start"></script>
+    <script src="./scripts/home-customizer.js?v=20261110-stable-home"></script>
     <script src="./scripts/home-start.js?v=20261027-light"></script>
     <script type="module" src="./scripts/ad-banner.js?v=20261104-global"></script>
 

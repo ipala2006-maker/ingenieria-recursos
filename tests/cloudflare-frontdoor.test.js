@@ -47,14 +47,15 @@ test('old public entry links migrate directly without moving sessions, callbacks
   const env={ASSETS:{fetch:async()=>new Response('static')},BACKEND:{fetch:async()=>new Response('private')}};
   for(const [from,to] of [
     ['/instalar.html?materia=abcde-fghjk&utm_source=whatsapp&token=fixture&next=https://other.test','/instalar?utm_source=whatsapp&materia=ABCDEFGHJK'],
-    ['/instalar/','/instalar'],['/amistad/'+token+'?next=https://other.test','/amistad/'+token]
+    ['/instalar/','/instalar'],['/amistad/'+token+'?next=https://other.test','/amistad/'+token],
+    ['/widget.html?view=inbox&embed=rainmeter&next=https://other.test&token=fixture','/widget.html?view=inbox&embed=rainmeter']
   ]){
     const response=await worker.fetch(new Request(old+from),env);
     assert.equal(response.status,308);
     assert.equal(response.headers.get('location'),'https://estudiemos.ar'+to);
     assert.equal(response.headers.get('cache-control'),'no-store');
   }
-  for(const route of ['/?materia=ABCDEFGHJK&code=fixture','/widget.html?linked=1','/api/account-config?drive=callback','/api/widget-link?token=fixture']){
+  for(const route of ['/?materia=ABCDEFGHJK&code=fixture','/api/account-config?drive=callback','/api/widget-link?token=fixture']){
     const response=await worker.fetch(new Request(old+route),env);
     assert.equal(response.status,200);assert.equal(response.headers.get('location'),null);
   }
