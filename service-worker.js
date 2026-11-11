@@ -248,8 +248,12 @@ function capitalize(value) {
 async function openAppWindow(destination) {
   const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
   for (const client of windows) {
-    if ("navigate" in client) await client.navigate(destination);
-    if ("focus" in client) return client.focus();
+    // A notification must not replace a window that may contain an unsaved form.
+    if (client.url !== destination || typeof client.focus !== "function") continue;
+    try {
+      const focused = await client.focus();
+      if (focused) return focused;
+    } catch (_) { /* The matching window may have closed while we were focusing it. */ }
   }
   if (self.clients.openWindow) return self.clients.openWindow(destination);
   return undefined;

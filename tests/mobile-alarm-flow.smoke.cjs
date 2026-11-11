@@ -89,7 +89,7 @@ async function main() {
       } else await page.evaluate(() => EstudiemosAccount.open());
       const account = page.locator('.account-shell');
       await account.waitFor({ state: 'visible' });
-      const email = account.locator('input[name="email"]');
+      const email = account.locator('[data-account-form] input[name="email"]');
       await email.scrollIntoViewIfNeeded();
       assert.ok(await email.evaluate(el => { const r = el.getBoundingClientRect(); return el === document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2); }), 'login must be above the alarm, not hidden behind it');
       await email.fill('fixture@example.invalid');
@@ -113,7 +113,7 @@ async function main() {
       await editor.locator('[name="inboxAlarmEnabled"]').check();
       if (mobile) await editor.locator('[data-alarm-permission]').tap();
       else await page.evaluate(() => EstudiemosAccount.open());
-      await account.locator('input[name="email"]').fill('second@example.invalid');
+      await email.fill('second@example.invalid');
       await page.keyboard.press('Escape');
       await account.waitFor({ state: 'hidden' });
       assert.equal(await editor.evaluate(el => el.open), true, 'closing login preserves the native alarm editor');
