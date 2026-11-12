@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cinemática: frenado con aceleración constante | Estudiemos</title>
+  <meta name="description" content="Resolvé un problema de frenado con MRUA: signos, tiempo de detención y distancia. Incluye un control independiente y un ejercicio con solución.">
+  <link rel="canonical" href="https://estudiemos.ar/guias/cinematica-mrua">
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles/study-guides.css?v=20261112">
+</head>
+<body>
+  <a class="guide-skip" href="#contenido">Ir al contenido</a>
+  <header class="guide-header">
+    <div class="guide-wrap">
+      <a class="guide-brand" href="/"><img src="/assets/favicon.svg" alt="" width="30" height="30">Estudiemos</a>
+      <nav aria-label="Principal"><a href="/guias/">Guías</a><a href="/instalar">Instalar</a></nav>
+    </div>
+  </header>
+  <main id="contenido" class="guide-wrap">
+    <article class="guide-article">
+      <header class="guide-intro">
+        <a class="guide-crumb" href="/guias/">Todas las guías</a>
+        <p class="guide-kicker">Física · Guía de Estudiemos</p>
+        <h1>Cinemática: resolver un frenado</h1>
+        <p class="guide-lead">La clave del movimiento rectilíneo uniformemente acelerado (MRUA) no es memorizar fórmulas: es fijar los signos y separar los tramos en los que la aceleración cambia.</p>
+      </header>
+      <section aria-labelledby="eje">
+        <h2 id="eje">1. Fijá el eje y el instante inicial</h2>
+        <p>Una ciclista se mueve en línea recta a 5 m/s. Empieza a frenar y su velocidad disminuye 1 m/s cada segundo hasta quedar detenida. ¿Cuándo se detiene y cuánto avanza?</p>
+        <p>Elegí el eje positivo en el sentido en que va la bici. Poné el origen donde empieza a frenar y tomá ese momento como t = 0. Con ese eje, v₀ = +5 m/s y a = −1 m/s². La velocidad final es cero.</p>
+      </section>
+      <section aria-labelledby="cuentas">
+        <h2 id="cuentas">2. Calculá tiempo y distancia por separado</h2>
+        <p>Durante el frenado la aceleración es constante. Usá la ecuación de velocidad primero:</p>
+        <p class="guide-formula">v(t) = v₀ + at<br>0 = 5 m/s − (1 m/s²)t → t = 5 s</p>
+        <p>Ahora calculá el desplazamiento. En este tramo nunca cambia de sentido, así que su valor positivo también es la distancia recorrida.</p>
+        <p class="guide-formula">Δx = v₀t + ½at² = 25 m − 12,5 m = 12,5 m</p>
+        <p><strong>Control independiente:</strong> la gráfica velocidad-tiempo es una recta desde 5 hasta 0 m/s. El área bajo esa recta es el triángulo de base 5 s y altura 5 m/s: ½ × 5 s × 5 m/s = 12,5 m.</p>
+        <table>
+          <caption>Valores durante el frenado y después de detenerse</caption>
+          <thead><tr><th scope="col">Tiempo</th><th scope="col">Velocidad</th><th scope="col">Posición</th></tr></thead>
+          <tbody>
+            <tr><td>0 s</td><td>5 m/s</td><td>0 m</td></tr>
+            <tr><td>2 s</td><td>3 m/s</td><td>8 m</td></tr>
+            <tr><td>5 s</td><td>0 m/s</td><td>12,5 m</td></tr>
+            <tr><td>6 s, si queda quieta</td><td>0 m/s</td><td>12,5 m</td></tr>
+          </tbody>
+        </table>
+      </section>
+      <section aria-labelledby="modelo">
+        <h2 id="modelo">3. No prolongues el modelo más allá del frenado</h2>
+        <p class="guide-note">Si reemplazás t = 6 s en la ecuación de frenado, da −1 m/s, como si la ciclista se moviera hacia atrás. El enunciado solo sostiene esa aceleración <em>hasta detenerse</em>. Si queda quieta, el tramo siguiente tiene velocidad y aceleración nulas.</p>
+        <p>Si elegís el eje positivo al revés, v₀ y a cambian de signo y el desplazamiento pasa a ser −12,5 m. El tiempo y la distancia recorrida siguen siendo 5 s y 12,5 m.</p>
+      </section>
+      <section aria-labelledby="practica">
+        <h2 id="practica">Practicá: frenado con tiempo de reacción</h2>
+        <p>Un colectivo circula a 36 km/h. Desde que el conductor ve el semáforo, pasa 1 s a velocidad constante antes de que empiece a frenar. Después mantiene una aceleración de −2 m/s² hasta parar. ¿Cuánto tarda y cuánto recorre desde que ve el semáforo?</p>
+        <details><summary>Ver solución</summary><p>36 km/h son 10 m/s. Recorre 10 m durante el primer segundo. En el frenado tarda 10 / 2 = 5 s y avanza ½ × 10 m/s × 5 s = 25 m. En total son <strong>6 s y 35 m</strong>. No apliques la aceleración de frenado al segundo de reacción.</p></details>
+      </section>
+      <p>Para ampliar: <a href="https://openstax.org/books/university-physics-volume-1/pages/3-4-motion-with-constant-acceleration">OpenStax, movimiento con aceleración constante</a> (en inglés).</p>
+      <nav aria-label="Guías relacionadas"><a href="/guias/derivadas-y-tasa-de-cambio">De posición a velocidad: guía de derivadas</a></nav>
+    </article>
+  </main>
+  <footer class="guide-footer"><div class="guide-wrap"><span>Estudiemos</span><nav aria-label="Información"><a href="/about#privacidad">Privacidad</a><a href="/about#terminos">Términos</a><a href="/about#contacto">Contacto</a></nav></div></footer>
+</body>
+</html>

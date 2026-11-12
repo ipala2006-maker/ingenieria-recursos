@@ -14,6 +14,8 @@
 .workspace-home .study-home__head { grid-column:1/-1; margin:0; align-items:center; }
 .workspace-home .study-home__head h1 { margin:2px 0 0; font-size:20px; }
 .workspace-home .study-home__head .workspace-eyebrow { font-size:10px; }
+.study-home__meta { display:flex; align-items:center; gap:4px 10px; flex-wrap:wrap; }
+.study-home__meta a { color:var(--accent); font-size:11px; font-weight:600; padding:4px 0; text-decoration:underline; text-underline-offset:3px; }
 .workspace-home :is(.study-focus,.study-progress,.study-assistant,.workspace-section,.dashboard-calendar,.dashboard-agenda) {
   --bay-tone:var(--panel);
   min-width:0; min-height:0; position:relative; margin:0; padding:12px; border:1px solid var(--bay-edge); border-radius:8px;

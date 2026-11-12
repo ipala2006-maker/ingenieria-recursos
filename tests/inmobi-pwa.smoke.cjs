@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 
 const origin = 'https://estudiemos.ar';
 const live = process.argv.includes('--live');
+const simulateAds = !live && process.env.TEST_ADS_FIXTURE === '1';
 const engine = process.env.TEST_WEBKIT === '1' ? webkit : chromium;
 const root = path.resolve(__dirname, '..');
 const mime = {'.html':'text/html', '.js':'text/javascript', '.mjs':'text/javascript', '.css':'text/css', '.svg':'image/svg+xml', '.woff2':'font/woff2'};
@@ -44,6 +45,7 @@ async function main() {
       try {
         let body = await readFile(file);
         if (url.pathname === '/scripts/account.js') body = Buffer.from(body.toString() + fixture);
+        if (simulateAds && url.pathname === '/shared/release.js') body = Buffer.from(body.toString().replace(/ads: (true|false)/, 'ads: true'));
         const headers = {'Content-Type':mime[path.extname(file)] || 'application/octet-stream'};
         const response = await frontdoor.fetch(new Request(url), { ASSETS: {fetch:async () => new Response(body,{headers})} });
         return route.fulfill({status:response.status,headers:Object.fromEntries(response.headers),body:Buffer.from(await response.arrayBuffer())});
@@ -89,14 +91,16 @@ async function main() {
     assert.equal(loads,0);
     await reopen();
     await accept.click();
-    await page.waitForFunction(() => window.__simulatedAds === true);
-    assert.equal(loads,1,'only the consented free fixture loads the SDK');
+    if (simulateAds) await page.waitForFunction(() => window.__simulatedAds === true);
+    const expectedLoads = Number(simulateAds);
+    assert.equal(loads,expectedLoads,'consent does not bypass the production pause');
     const granted = await state();
     assert.equal(granted.google,true);
     await reopen();
-    const navigation = page.waitForEvent('domcontentloaded');
+    const navigation = simulateAds ? page.waitForEvent('domcontentloaded') : null;
     await rejectAll.click();
-    await navigation;
+    if (navigation) await navigation;
+    else await page.reload();
     const denied = await state();
     assert.equal(denied.google,false);
     assert.notEqual(denied.tcString,granted.tcString);
@@ -107,9 +111,9 @@ async function main() {
     }
     await go('/consentimiento?preferencias=1');
     await rejectAll.waitFor({timeout:12000});
-    assert.equal(loads,1);
+    assert.equal(loads,expectedLoads);
     assert.deepEqual(errors,[]);
-    console.log(`PASS ${engine.name()} ${live?'production':'local'}: real InMobi, account reopening, denial and revocation across app pages, one intercepted AdSense load`);
+    console.log(`PASS ${engine.name()} ${live?'production':'local'}: real InMobi, persistent denial and revocation; AdSense SDK requests: ${loads}`);
   } catch (error) {
     console.log('Page errors:',errors);
     console.log((await page.locator('body').innerText()).slice(-1800));

@@ -4,7 +4,7 @@ const { execFileSync } = require('node:child_process');
 const root = path.resolve(__dirname, '..');
 const output = path.join(root, 'dist-cloudflare');
 const config = require('../vercel.json');
-const directories = new Set(['assets', 'data', 'downloads', 'pages', 'pdfs', 'scripts', 'shared', 'styles', 'widgets', '.well-known']);
+const directories = new Set(['assets', 'data', 'downloads', 'guias', 'pages', 'pdfs', 'scripts', 'shared', 'styles', 'widgets', '.well-known']);
 const extensions = new Set(['.html', '.css', '.js', '.json', '.webmanifest', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg', '.ico', '.woff', '.woff2', '.ttf', '.mp3', '.wav', '.mp4', '.webm', '.pdf', '.exe', '.apk', '.rmskin', '.txt', '.xml', '.sha256']);
 const operationalScripts = new Set(['scripts/security-check.js', 'scripts/csp-check.js']);
 
@@ -32,7 +32,12 @@ function build() {
     fs.copyFileSync(source, path.join(output, file));
   }
   const rules = config.headers.map(rule => [rule.source === '/(.*)' ? '/*' : rule.source, ...rule.headers.map(header => `  ${header.key}: ${header.value}`)].join('\n')).join('\n\n');
-  fs.writeFileSync(path.join(output, '_headers'), rules + '\n/service-worker.js\n  Cache-Control: no-cache\n/site.webmanifest\n  Cache-Control: no-cache\n');
+  // Legacy resource indexes remain navigable, but aren't standalone study guides.
+  const catalogRules = ['carrera', 'materia', 'tema'].map(section =>
+    `/pages/${section}/*\n  X-Robots-Tag: noindex, follow`
+  ).join('\n\n');
+  fs.writeFileSync(path.join(output, '_headers'), rules + '\n\n' + catalogRules +
+    '\n\n/service-worker.js\n  Cache-Control: no-cache\n/site.webmanifest\n  Cache-Control: no-cache\n');
   fs.writeFileSync(path.join(output, '_redirects'), '/index.html / 302\n');
   if (files.length > 19998) throw new Error('Too many static assets for Workers Free');
   console.log(JSON.stringify({ publicFiles: files.length + 2, output: 'dist-cloudflare', privateSourcePublished: false }));
