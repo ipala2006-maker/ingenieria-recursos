@@ -40,6 +40,7 @@ async function check(engine, width, height, colorScheme) {
     const guides = page.locator('.study-home__head').getByRole('link', { name: 'Guías de estudio' });
     assert.equal(await guides.isVisible(), true);
     await guides.click();
+    await page.waitForLoadState('load');
     assert.equal(new URL(page.url()).pathname, '/guias/');
     assert.equal(await page.getByRole('heading', { level: 1, name: 'Guías de estudio' }).count(), 1);
     const out = path.join(__dirname, '../tmp/public-guides');
@@ -47,6 +48,7 @@ async function check(engine, width, height, colorScheme) {
     await page.screenshot({ path: path.join(out, `${engine.name()}-${width}-index.png`) });
     for (const slug of ['preparar-un-parcial', 'derivadas-y-tasa-de-cambio', 'cinematica-mrua']) {
       await page.locator(`main a[href="/guias/${slug}"]`).click();
+      await page.waitForLoadState('load');
       assert.equal(new URL(page.url()).pathname, '/guias/' + slug);
       assert.equal(await page.getByRole('article').count(), 1);
       const layout = await page.evaluate(() => ({
