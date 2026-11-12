@@ -35,6 +35,7 @@ const policy=JSON.parse(fs.readFileSync(path.join(root,'vercel.json'),'utf8')).h
         }
         if(url.pathname.startsWith('/api/'))return route.fulfill({contentType:'application/json',body:'{"enabled":false}'});
         if(url.pathname==='/scripts/inmobi-choice-tag.js')return route.fulfill({contentType:'text/javascript',body:''});
+        if(url.pathname==='/shared/release.js')return route.fulfill({contentType:'text/javascript',body:fs.readFileSync(path.join(root,'shared/release.js'),'utf8').replace(/ads: (true|false)/,'ads: true')});
         if(url.pathname==='/scripts/account.js')return route.fulfill({contentType:'text/javascript',body:`window.EstudiemosAccount={getUser:()=>window.__adUser,getSession:()=>window.__adUser?{access_token:'fixture',user:window.__adUser}:null,getClient:()=>null,whenReady:async()=>({}),isSynchronized:()=>true,sync(){},refresh:async()=>{},open(){}};window.dispatchEvent(new Event('estudiemos:account-ready'));`});
         const file=path.resolve(root,'.'+decodeURIComponent(url.pathname==='/'?'/index.html':url.pathname));
         if(!file.startsWith(root+path.sep))return route.abort();

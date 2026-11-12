@@ -1,0 +1,90 @@
+@import url("./typography.css?v=20261107-jakarta");
+
+:root {
+  color-scheme: dark;
+  --page: #0f1724;
+  --paper: #172231;
+  --text: #eff4fb;
+  --muted: #b1bfd0;
+  --line: #354355;
+  --accent: #a7c9ff;
+  --subject: #91d7bd;
+  --example: #edcc90;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+    --page: #f7f9fc;
+    --paper: #eaf0f8;
+    --text: #192637;
+    --muted: #46566b;
+    --line: #ccd7e4;
+    --accent: #1d559a;
+    --subject: #1d644f;
+    --example: #775013;
+  }
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; font: 400 1rem/1.65 var(--font); background: var(--page); color: var(--text); }
+a { color: var(--accent); text-underline-offset: 0.2em; }
+a:hover { text-decoration-thickness: 2px; }
+:where(a, summary):focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 2px; }
+.guide-skip { position: absolute; top: 8px; left: 12px; padding: 8px 12px; background: var(--paper); transform: translateY(-150%); }
+.guide-skip:focus { transform: none; }
+.guide-header, .guide-footer { border-block-end: 1px solid var(--line); }
+.guide-wrap { width: min(100% - 32px, 62rem); margin-inline: auto; }
+.guide-header .guide-wrap, .guide-footer .guide-wrap, .guide-header nav, .guide-footer nav {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 18px;
+}
+.guide-header .guide-wrap, .guide-footer .guide-wrap { justify-content: space-between; }
+.guide-header a, .guide-footer a { display: inline-flex; align-items: center; min-height: 44px; text-decoration: none; }
+.guide-header a[aria-current], .guide-header a:hover, .guide-footer a:hover { text-decoration: underline; }
+.guide-header .guide-brand { color: var(--text); font-weight: 700; gap: 9px; min-height: 56px; }
+.guide-brand img { width: 30px; height: 30px; }
+.guide-intro { padding-block: 40px 22px; }
+.guide-crumb { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; }
+.guide-kicker { margin: 0; color: var(--subject); font-size: 0.8125rem; font-weight: 700; }
+h1, h2, h3 { line-height: 1.2; margin-block: 0 12px; }
+h1 { max-width: 22ch; margin-block-start: 8px; font-size: 2.5rem; }
+h2 { font-size: 1.3rem; }
+h3 { font-size: 1.05rem; }
+p { margin-block: 0 14px; }
+.guide-lead { max-width: 62ch; color: var(--muted); font-size: 1.075rem; }
+.guide-index { margin: 6px 0 40px; padding: 0; list-style: none; border-block-start: 1px solid var(--line); }
+.guide-index li { border-block-end: 1px solid var(--line); }
+.guide-index a { display: block; position: relative; padding: 18px 35px 18px 0; text-decoration: none; }
+.guide-index a:hover strong { text-decoration: underline; }
+.guide-index strong { display: block; color: var(--text); font-size: 1.18rem; }
+.guide-index p { color: var(--muted); margin: 4px 0 0; }
+.guide-index svg { position: absolute; inset: 50% 5px auto auto; width: 18px; height: 18px; transform: translateY(-50%); }
+.guide-article { max-width: 72ch; padding-block-end: 32px; }
+.guide-article section { margin-block: 0 28px; scroll-margin-top: 12px; }
+.guide-article :where(ul, ol) { padding-inline-start: 1.4em; margin-block: 8px 16px; }
+.guide-article li + li { margin-block-start: 7px; }
+.guide-note, .guide-formula, .guide-article details { background: var(--paper); padding: 12px 14px; border-radius: 6px; }
+.guide-note { border-inline-start: 3px solid var(--example); }
+.guide-formula { font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.guide-article details { padding-block: 0; }
+.guide-article details p { padding-block-end: 14px; }
+.guide-article summary { min-height: 44px; padding-block: 9px; font-weight: 700; color: var(--accent); cursor: pointer; }
+.guide-article table { border-collapse: collapse; width: 100%; margin-block: 10px 18px; font-variant-numeric: tabular-nums; }
+.guide-article :where(th, td) { padding: 7px 8px; border-block-end: 1px solid var(--line); text-align: start; vertical-align: top; }
+.guide-article caption { text-align: start; color: var(--muted); margin-block-end: 4px; }
+.guide-article nav { padding-block-start: 16px; border-block-start: 1px solid var(--line); }
+.guide-article nav a { display: inline-block; padding-block: 8px; }
+.guide-footer { border-block-start: 1px solid var(--line); border-block-end: 0; padding-block: 6px; color: var(--muted); font-size: 0.875rem; }
+
+@media (max-width: 34rem) {
+  .guide-intro { padding-block: 24px 14px; }
+  h1 { font-size: 1.85rem; }
+  .guide-article :where(th, td) { padding-inline: 4px; }
+}
+
+@media print {
+  :root { color-scheme: light; --page: white; --paper: #f0f0f0; --text: black; --muted: #333; --accent: #174482; }
+  .guide-header, .guide-footer, .guide-skip, .guide-crumb { display: none; }
+  .guide-wrap { width: 100%; }
+  .guide-intro { padding-block-start: 0; }
+}

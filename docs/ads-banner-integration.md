@@ -1,11 +1,23 @@
 # AdSense: bottom anchor integration
 
 Publisher: `ca-pub-9605920128105982` (public identifier, not a secret).
-Production code is enabled, but delivery is fail-closed until a confirmed Free account,
-valid advertising consent and the exact origin `https://estudiemos.ar` are present.
+Production delivery is paused after the 12 November 2026 site review. The
+ownership meta tag, authorized `ads.txt` and InMobi preferences remain active.
 No prices, checkout, tool restrictions or paid infrastructure are enabled.
 
-## Current production status (5 November 2026)
+## Site review (12 November 2026)
+
+- The public `/guias/` library is readable without an account, scripts or third-party
+  requests. The sitemap lists the canonical public documents; the older resource
+  directories are still navigable but no longer promoted for indexing.
+- `shared/release.js` keeps ads off on the application dashboards. Do not flip
+  the switch simply because the site becomes Ready. Review the actual pages and
+  proposed placements against [Google's inventory policy](https://support.google.com/publisherpolicies/answer/11112688),
+  and keep consent/Pro rules on any approved placement.
+- Ownership is already established. Request review from Sites, without deleting
+  the site or changing its authorized seller record.
+
+## Previous production status (5 November 2026)
 
 PR #128 enabled InMobi Choice globally on the advertising-capable PWA screens:
 Inicio (`/`), Mi espacio (`/mi-espacio`) and Materias (`/materias`), including

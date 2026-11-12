@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Derivadas y tasa de cambio: ejemplo resuelto | Estudiemos</title>
+  <meta name="description" content="Calculá velocidad media, velocidad instantánea y aceleración con la misma función. Ejemplo resuelto, errores de unidades y un ejercicio para practicar.">
+  <link rel="canonical" href="https://estudiemos.ar/guias/derivadas-y-tasa-de-cambio">
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles/study-guides.css?v=20261112">
+</head>
+<body>
+  <a class="guide-skip" href="#contenido">Ir al contenido</a>
+  <header class="guide-header">
+    <div class="guide-wrap">
+      <a class="guide-brand" href="/"><img src="/assets/favicon.svg" alt="" width="30" height="30">Estudiemos</a>
+      <nav aria-label="Principal"><a href="/guias/">Guías</a><a href="/instalar">Instalar</a></nav>
+    </div>
+  </header>
+  <main id="contenido" class="guide-wrap">
+    <article class="guide-article">
+      <header class="guide-intro">
+        <a class="guide-crumb" href="/guias/">Todas las guías</a>
+        <p class="guide-kicker">Análisis Matemático · Guía de Estudiemos</p>
+        <h1>Derivadas: del promedio al instante</h1>
+        <p class="guide-lead">Con la misma función podés responder preguntas distintas: dónde está un objeto, en qué sentido se mueve y cómo cambia su velocidad.</p>
+      </header>
+      <section aria-labelledby="promedio">
+        <h2 id="promedio">1. Velocidad media: compará dos instantes</h2>
+        <p>Un carrito se mueve sobre una recta. Su posición, en metros, está dada por <strong>s(t) = t³ − 6t² + 9t</strong> entre 0 y 4 segundos. ¿Cuál es su velocidad media entre el segundo 1 y el 3?</p>
+        <p>Evaluá la posición en los extremos: s(1) = 1 − 6 + 9 = 4 m y s(3) = 27 − 54 + 27 = 0 m. Dividí el desplazamiento por el tiempo que pasó:</p>
+        <p class="guide-formula">[s(3) − s(1)] / (3 − 1) = (0 − 4) m / 2 s = −2 m/s</p>
+        <p>El signo menos indica que terminó más atrás en el eje elegido. Es la pendiente de la recta que une esos dos puntos en la gráfica de posición, no la velocidad en cada instante.</p>
+      </section>
+      <section aria-labelledby="instante">
+        <h2 id="instante">2. Velocidad instantánea: derivá y evaluá</h2>
+        <p>Si te piden la velocidad <em>a los 2 segundos</em>, no hay un segundo extremo fijo. Tomá el cociente <strong>[s(2 + h) − s(2)] / h</strong> y preguntá a qué valor se acerca cuando h tiende a cero, con h distinto de cero. Ese límite es s′(2).</p>
+        <p>Con la regla de la potencia, la derivada de t³ es 3t², la de −6t² es −12t y la de 9t es 9.</p>
+        <p class="guide-formula">v(t) = s′(t) = 3t² − 12t + 9<br>v(2) = 12 − 24 + 9 = −3 m/s</p>
+        <p><strong>Chequeo:</strong> cerca del segundo 2, el cociente con h = 0,1 s vale −2,99 m/s. Se aproxima a −3 m/s, no a la velocidad media de −2 m/s entre los segundos 1 y 3.</p>
+      </section>
+      <section aria-labelledby="sentido">
+        <h2 id="sentido">3. Leé los signos antes de interpretar</h2>
+        <p>Al factorizar v(t) = 3(t − 1)(t − 3), aparecen dos instantes con velocidad cero. Entre 0 y 1 s el carrito va en el sentido positivo; entre 1 y 3 s va en el negativo; después del segundo 3 vuelve a avanzar en el positivo. El cambio de signo confirma que en ambos puntos invierte el sentido.</p>
+        <p>Si derivás otra vez, obtenés a(t) = 6t − 12. Así, a(2) = 0 m/s² aunque v(2) = −3 m/s. Una aceleración instantánea nula no implica que el objeto esté en reposo.</p>
+        <p class="guide-note"><strong>Control de unidades:</strong> s(2) = 2 m es una posición; v(2) = −3 m/s es una velocidad; la rapidez en ese instante es |v(2)| = 3 m/s.</p>
+      </section>
+      <section aria-labelledby="practica">
+        <h2 id="practica">Practicá sin mirar</h2>
+        <p>Otro móvil tiene posición q(t) = 2t² − 8t + 3 en metros. Entre t = 1 s y t = 4 s, calculá la velocidad media. Después calculá la velocidad a los 2 s e indicá si invierte el sentido ahí.</p>
+        <details><summary>Ver solución</summary><p>q(1) = −3 m y q(4) = 3 m, así que la media es 6 m / 3 s = 2 m/s. Como q′(t) = 4t − 8, a los 2 s la velocidad es cero. Antes de 2 s es negativa y después es positiva: el móvil cambia de sentido.</p></details>
+      </section>
+      <p>Para ampliar: <a href="https://openstax.org/books/calculus-volume-1/pages/3-4-derivatives-as-rates-of-change">OpenStax, derivadas como tasas de cambio</a> (en inglés).</p>
+      <nav aria-label="Guías relacionadas"><a href="/guias/cinematica-mrua">Aplicá los signos a un problema de frenado</a></nav>
+    </article>
+  </main>
+  <footer class="guide-footer"><div class="guide-wrap"><span>Estudiemos</span><nav aria-label="Información"><a href="/about#privacidad">Privacidad</a><a href="/about#terminos">Términos</a><a href="/about#contacto">Contacto</a></nav></div></footer>
+</body>
+</html>

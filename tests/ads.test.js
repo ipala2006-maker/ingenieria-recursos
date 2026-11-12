@@ -2,8 +2,8 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const ads=require('../shared/ads'),release=require('../shared/release');
 const now=Date.parse('2026-11-02T12:00:00Z');
 const user=access=>({id:'pilot',app_metadata:{estudiemos:access}});
-test('AdSense is configured only for the public custom domain with bottom non-expanding anchors',()=>{
-  assert.equal(release.enabled('ads'),true);
+test('AdSense delivery is paused while ownership and the conditional adapter are preserved',()=>{
+  assert.equal(release.enabled('ads'),false);
   const provider=fs.readFileSync(path.join(__dirname,'../scripts/ad-provider.js'),'utf8');
   assert.match(provider,/export const configured=true/);
   assert.match(provider,/origin==='https:\/\/estudiemos\.ar'/);
@@ -14,6 +14,7 @@ test('AdSense is configured only for the public custom domain with bottom non-ex
   for(const page of ['index.html','mi-espacio.html','materias.html']){
     const html=fs.readFileSync(path.join(__dirname,'..',page),'utf8');
     assert.match(html,/type="module" src="\.\/scripts\/ad-banner.js/);
+    assert.match(html,/shared\/release.js\?v=20261112-ads-review/);
     assert.match(html,/<meta name="google-adsense-account" content="ca-pub-9605920128105982"\s*\/?>/);
   }
 });
