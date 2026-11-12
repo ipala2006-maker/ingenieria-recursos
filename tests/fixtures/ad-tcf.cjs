@@ -1,20 +1,25 @@
 module.exports = function installMockTcf() {
-  let subscriber;
-  window.__emitTcf = status => {
+  const listeners = new Map();
+  let nextId = 1;
+  function notify(listenerId, callback, status) {
     const purposes = Object.fromEntries([1,2,3,4,7,9,10].map(id => [id, status === 'granted']));
-    subscriber?.({
-      listenerId: 1, cmpId: 300, cmpStatus: 'loaded', gdprApplies: true, isServiceSpecific: true,
+    callback({
+      listenerId, cmpId: 300, cmpStatus: 'loaded', gdprApplies: true, isServiceSpecific: true,
       eventStatus: 'useractioncomplete', tcString: 'C' + 'A'.repeat(80),
       purpose: {consents: purposes}, vendor: {consents: {755: status === 'granted'}}
     }, status !== 'unknown');
+  }
+  window.__emitTcf = status => {
+    for (const [id, callback] of [...listeners]) notify(id, callback, status);
   };
-  window.__tcfapi = (command, version, callback) => {
+  window.__tcfapi = (command, version, callback, listenerId) => {
     if (version !== 2) return;
     if (command === 'addEventListener') {
-      subscriber = callback;
-      window.__emitTcf(window.__state?.consent ?? window.__consent);
+      const id = nextId++;
+      listeners.set(id, callback);
+      notify(id, callback, window.__state?.consent ?? window.__consent);
     } else if (command === 'removeEventListener') {
-      subscriber = undefined;
+      callback(listeners.delete(listenerId));
     }
   };
 };
