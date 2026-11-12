@@ -37,6 +37,8 @@ function build() {
     `/pages/${section}/*\n  X-Robots-Tag: noindex, follow`
   ).join('\n\n');
   fs.writeFileSync(path.join(output, '_headers'), rules + '\n\n' + catalogRules +
+    // Keep public study guides free of automatic Cloudflare beacon injection.
+    '\n\n/guias/*\n  Cache-Control: public, must-revalidate, max-age=0, no-transform' +
     '\n\n/service-worker.js\n  Cache-Control: no-cache\n/site.webmanifest\n  Cache-Control: no-cache\n');
   fs.writeFileSync(path.join(output, '_redirects'), '/index.html / 302\n');
   if (files.length > 19998) throw new Error('Too many static assets for Workers Free');
