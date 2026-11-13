@@ -3,7 +3,7 @@ import courseLinks from '../shared/course-app-links.js';
 
 const dynamicPath = pathname => pathname.startsWith('/api/') || pathname.startsWith('/materia/') || pathname.startsWith('/amistad/');
 const consentPaths = new Set(['/consentimiento', '/consentimiento/', '/consentimiento.html']);
-const appPaths = new Set(['/', '/index.html', '/mi-espacio', '/mi-espacio/', '/mi-espacio.html', '/materias', '/materias/', '/materias.html']);
+const appPaths = new Set(['/', '/index.html', '/mi-espacio', '/mi-espacio/', '/mi-espacio.html', '/materias', '/materias/', '/materias.html', '/semana', '/progreso']);
 const cmpSources = {
   'script-src': ['https://cmp.inmobi.com'],
   'img-src': ['https://cmp.inmobi.com', 'https://supply.inmobicdn.net'],

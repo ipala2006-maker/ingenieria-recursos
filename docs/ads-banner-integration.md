@@ -1,21 +1,68 @@
 # AdSense: bottom anchor integration
 
 Publisher: `ca-pub-9605920128105982` (public identifier, not a secret).
-Production delivery is paused after the 12 November 2026 site review. The
+Production delivery is paused. The
 ownership meta tag, authorized `ads.txt` and InMobi preferences remain active.
 No prices, checkout, tool restrictions or paid infrastructure are enabled.
 
-## Site review (12 November 2026)
+## Product-first review and activation checklist (13 November 2026)
 
-- The public `/guias/` library is readable without an account, scripts or third-party
-  requests. The sitemap lists the canonical public documents; the older resource
-  directories are still navigable but no longer promoted for indexing.
-- `shared/release.js` keeps ads off on the application dashboards. Do not flip
-  the switch simply because the site becomes Ready. Review the actual pages and
-  proposed placements against [Google's inventory policy](https://support.google.com/publisherpolicies/answer/11112688),
-  and keep consent/Pro rules on any approved placement.
-- Ownership is already established. Request review from Sites, without deleting
-  the site or changing its authorized seller record.
+1. Open `https://estudiemos.ar/planificador` signed out. The HTML includes a
+   clearly marked example; JavaScript enables editing, overlap checks and .ics
+   export locally. It never calls account, ads or database APIs. It replaces
+   guides in the public navigation and sitemap; old URLs still work without
+   indexing or ads.
+2. In AdSense, go to Sites -> estudiemos.ar -> Request review. Keep the existing
+   site and use its ads.txt or ownership meta tag if verification is requested.
+   Do not enable delivery until AdSense says Ready.
+3. Keep Auto ads off in the AdSense site settings before enabling a manual unit.
+   The old anchor adapter is retained for reference but not imported by the
+   app documents. Do not reinsert it. Create separate responsive display units
+   for `/semana` and `/progreso` and use the real numeric slot IDs. Test the
+   positions against [Google's inventory](https://support.google.com/publisherpolicies/answer/11112688)
+   and [placement policy](https://support.google.com/publisherpolicies/answer/11035030).
+4. Check the [official crawler login](https://support.google.com/adsense/answer/161351)
+   after site approval. Our client-side Supabase session is not a server login
+   cookie. Do not assume it works with the crawler. Verify with Search Console
+   and an isolated, limited test account with synthetic data if supported. If
+   Google cannot evaluate a view, keep that placement off. Do not grant real
+   access, disable Turnstile, expose account data, or give bots special content.
+5. In the existing [InMobi site configuration](https://support.inmobi.com/monetize/adding-a-placement/protect-a-site/),
+   confirm coverage for Spain and pilot Latin American countries (Worldwide is
+   available). Confirm Google vendor 755, applicable regional choices, privacy
+   disclosures, and the appropriate audience/age treatment. Test accepting,
+   refusing, reopening and revoking in each market and on mobile. A signal
+   that European rules do not apply is not consent; these placements require
+   an explicit supported CMP grant, and must remain off in unverified regions.
+   Do not fabricate a TC string or treat non-personalized ads as consent-free.
+6. Start with an adult pilot audience. The app requires a verified Auth
+   user with server-managed `app_metadata.estudiemos_ads_pilot_adult: true`.
+   Only set this for known adult volunteers in verified markets; do not infer
+   age from being a student or add birth dates to the study database. Nobody
+   is enrolled by this release. Expand only after a reviewed age/privacy policy.
+7. Set `siteReady` and `consentAndAudienceVerified` in `shared/study-ad-config.js`
+   only after those checks; set `evaluated` and `slot` per eligible view, then
+   enable the existing `ads` release flag. This can be rolled back via the flag
+   or an individual placement, without changing the sitemap or features.
+
+`/semana` and `/progreso` render the local, account-bound replica without
+polling, fetching classes, writing data or loading Supabase JS. Only a candidate
+for an actual ad request verifies the existing session/Pro status, at most once
+per document (one account-config request and one Auth verification, no database
+queries from advertising). No private fields are sent as advertising parameters. The SDK is
+third-party script in the top-level document, not an isolation boundary: review
+this before enabling any view with personal content. No ads on the planner,
+home dashboard, notes/editors, timer, notifications, Drive, invitation, private
+classroom, widgets, APK or installed standalone windows in this pilot.
+
+Start with a small cohort. Track impression RPM, coverage, visibility, weekly
+retention and completion of study flows by country/device. Never refresh on a
+date change, task action, resume or timer transition. A schedule-only Cátedras
+view or a substantive daily summary could follow after privacy, moderation,
+layout and crawl checks. Do not extend the current slots to those views by
+turning Auto ads on.
+
+The sections below describe the former anchor integration for reference.
 
 ## Previous production status (5 November 2026)
 

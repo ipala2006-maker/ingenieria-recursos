@@ -1,6 +1,6 @@
 const test = require('node:test'), assert = require('node:assert/strict'), fs = require('node:fs'), path = require('node:path');
 const load = () => import('../cloudflare/frontdoor.mjs');
-const appPaths = ['/', '/index.html', '/mi-espacio', '/mi-espacio/', '/mi-espacio.html', '/materias', '/materias/', '/materias.html'];
+const appPaths = ['/', '/index.html', '/mi-espacio', '/mi-espacio/', '/mi-espacio.html', '/materias', '/materias/', '/materias.html', '/semana', '/progreso'];
 
 test('stable frontdoor forwards the original API request only to its internal service binding', async () => {
   const { default: worker } = await load();

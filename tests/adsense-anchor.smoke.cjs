@@ -39,7 +39,7 @@ const policy=JSON.parse(fs.readFileSync(path.join(root,'vercel.json'),'utf8')).h
         if(url.pathname==='/scripts/account.js')return route.fulfill({contentType:'text/javascript',body:`window.EstudiemosAccount={getUser:()=>window.__adUser,getSession:()=>window.__adUser?{access_token:'fixture',user:window.__adUser}:null,getClient:()=>null,whenReady:async()=>({}),isSynchronized:()=>true,sync(){},refresh:async()=>{},open(){}};window.dispatchEvent(new Event('estudiemos:account-ready'));`});
         const file=path.resolve(root,'.'+decodeURIComponent(url.pathname==='/'?'/index.html':url.pathname));
         if(!file.startsWith(root+path.sep))return route.abort();
-        try{return route.fulfill({headers:{'Content-Security-Policy':policy},contentType:({'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.png':'image/png','.webp':'image/webp','.woff2':'font/woff2'})[path.extname(file)]||'application/octet-stream',body:fs.readFileSync(file)});}catch(_){return route.fulfill({status:404,body:''});}
+        try{const body=fs.readFileSync(file);return route.fulfill({headers:{'Content-Security-Policy':policy},contentType:({'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.png':'image/png','.webp':'image/webp','.woff2':'font/woff2'})[path.extname(file)]||'application/octet-stream',body:url.pathname==='/'?body.toString().replace(/scripts\/cmp-preferences\.js\?v=20261113/,'scripts/ad-banner.js'):body});}catch(_){return route.fulfill({status:404,body:''});}
       });
       await page.goto(origin,{waitUntil:'networkidle'});
       return {page,context,errors,external,loads:()=>loads};

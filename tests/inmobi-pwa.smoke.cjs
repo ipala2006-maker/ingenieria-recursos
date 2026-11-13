@@ -44,6 +44,7 @@ async function main() {
       if (!file.startsWith(root + path.sep)) return route.abort();
       try {
         let body = await readFile(file);
+        if (simulateAds && url.pathname === '/') body = Buffer.from(body.toString().replace(/scripts\/cmp-preferences\.js\?v=20261113/, 'scripts/ad-banner.js'));
         if (url.pathname === '/scripts/account.js') body = Buffer.from(body.toString() + fixture);
         if (simulateAds && url.pathname === '/shared/release.js') body = Buffer.from(body.toString().replace(/ads: (true|false)/, 'ads: true'));
         const headers = {'Content-Type':mime[path.extname(file)] || 'application/octet-stream'};

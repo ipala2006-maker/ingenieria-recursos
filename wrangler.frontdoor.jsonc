@@ -9,7 +9,7 @@
   "assets": {
     "directory": "./dist-cloudflare",
     "binding": "ASSETS",
-    "run_worker_first": ["/api/*", "/materia/*", "/amistad/*", "/instalar", "/instalar/", "/instalar.html", "/widget", "/widget/", "/widget.html", "/consentimiento", "/consentimiento/", "/consentimiento.html", "/", "/index.html", "/mi-espacio", "/mi-espacio/", "/mi-espacio.html", "/materias", "/materias/", "/materias.html"],
+    "run_worker_first": ["/api/*", "/materia/*", "/amistad/*", "/instalar", "/instalar/", "/instalar.html", "/widget", "/widget/", "/widget.html", "/consentimiento", "/consentimiento/", "/consentimiento.html", "/", "/index.html", "/mi-espacio", "/mi-espacio/", "/mi-espacio.html", "/materias", "/materias/", "/materias.html", "/semana", "/progreso"],
     "html_handling": "auto-trailing-slash",
     "not_found_handling": "404-page"
   },

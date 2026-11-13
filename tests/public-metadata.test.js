@@ -10,7 +10,6 @@ const origin = 'https://estudiemos.ar';
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 const canonical = html => html.match(/<link\b[^>]*rel="canonical"[^>]*href="([^"]+)"/i)?.[1];
 const pageUrl = file => origin + '/' + file.replace(/(^|\/)index\.html$/, '$1').replace(/\.html$/, '');
-const guideFiles = ['guias/index.html', 'guias/preparar-un-parcial.html', 'guias/derivadas-y-tasa-de-cambio.html', 'guias/cinematica-mrua.html'];
 const pages = execFileSync('git', ['ls-files', '-z'], {cwd:root, encoding:'utf8'})
   .split('\0').filter(file => file.endsWith('.html') && allowed(file));
 
@@ -40,7 +39,7 @@ test('robots and sitemap advertise only unique, existing canonical pages on estu
   assert.doesNotMatch(xml, /workers\.dev|vercel\.app/);
   const urls = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map(match => match[1]);
   assert.equal(new Set(urls).size, urls.length);
-  assert.deepEqual(urls, ['index.html', 'instalar.html', 'about.html', ...guideFiles].map(pageUrl));
+  assert.deepEqual(urls, ['index.html', 'instalar.html', 'about.html', 'planificador.html'].map(pageUrl));
   for (const value of urls) {
     const url = new URL(value);
     assert.equal(url.origin, origin);
@@ -50,20 +49,16 @@ test('robots and sitemap advertise only unique, existing canonical pages on estu
   }
 });
 
-test('guides are reachable from the public app and readable without scripts or accounts', () => {
+test('the public planner is reachable and has an example without auth, ad code or client-side rendering', () => {
   for (const file of ['index.html', 'instalar.html', 'about.html']) {
-    assert.ok(read(file).includes('href="/guias/"'), file);
+    assert.ok(read(file).includes('href="/planificador"'), file);
+    assert.doesNotMatch(read(file), /href="\/guias\//);
   }
-  for (const file of guideFiles) {
-    const html = read(file);
-    assert.doesNotMatch(html, /<script\b|<iframe\b|<form\b|noindex|data-ad-slot|\/api\//i);
-    assert.equal([...html.matchAll(/<h1\b/g)].length, 1);
-    for (const [, target] of html.matchAll(/href="(\/guias\/[^"]*)"/g)) {
-      assert.ok(guideFiles.map(pageUrl).includes(origin + target), target);
-    }
-  }
-  for (const file of guideFiles.slice(1)) {
-    assert.ok(read(guideFiles[0]).includes(`href="${new URL(pageUrl(file)).pathname}"`), file);
-    assert.match(read(file), /<article\b[\s\S]*<h2\b[\s\S]*<\/article>/);
+  const planner=read('planificador.html');
+  assert.doesNotMatch(planner,/noindex|data-ad-slot|ad-banner|study-view-ads|account\.js|turnstile|\/api\//i);
+  assert.match(planner,/Semana de ejemplo[\s\S]+Lunes[\s\S]+Física I/);
+  for(const file of ['semana.html','progreso.html']){
+    assert.match(read(file),/content="noindex, follow"/);
+    assert.match(read(file),/content="no-referrer"/);
   }
 });
