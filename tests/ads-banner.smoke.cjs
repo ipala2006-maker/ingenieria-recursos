@@ -31,6 +31,10 @@ const root=path.resolve(__dirname,'..'),out=path.join(root,'tmp/ads-banner');
       await context.route('**/*',async route=>{
         const url=new URL(route.request().url());requests.push(url.pathname);
         if(url.origin!==base)return route.abort();
+        if(url.pathname===pagePath&&route.request().isNavigationRequest()){
+          const file=pagePath==='/'?'index.html':pagePath.slice(1);
+          return route.fulfill({contentType:'text/html',body:fs.readFileSync(path.join(root,file),'utf8').replace(/scripts\/cmp-preferences\.js\?v=20261113/,'scripts/ad-banner.js')});
+        }
         if(url.pathname==='/shared/release.js')return route.fulfill({contentType:'text/javascript',body:fs.readFileSync(path.join(root,'shared/release.js'),'utf8').replace(/ads: (true|false)/,'ads: '+enabled)});
         if(url.pathname==='/scripts/account.js')return route.fulfill({contentType:'text/javascript',body:`window.EstudiemosAccount={getUser:()=>window.__adUser,getSession:()=>window.__adUser?{access_token:'fixture',user:window.__adUser}:null,getClient:()=>null,whenReady:async()=>({}),isSynchronized:()=>true,sync(){},refresh:async()=>{},open(){}};window.dispatchEvent(new Event('estudiemos:account-ready'));`});
         if(url.pathname==='/scripts/ad-provider.js'){

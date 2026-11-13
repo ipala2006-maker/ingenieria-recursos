@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex, follow">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="canonical" href="https://estudiemos.ar/semana">
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles/study-views.css?v=20261113">
+  <title>Mi semana | Estudiemos</title>
+  <script src="/shared/release.js?v=20261112-ads-review" defer></script>
+  <script src="/shared/timetable.js?v=20261023-repeat" defer></script>
+  <script src="/shared/course-app-links.js?v=20261109-official-access" defer></script>
+  <script src="/shared/classrooms.js?v=20261109-official-access" defer></script>
+  <script src="/shared/study-views.js?v=20261113" defer></script>
+  <script src="/scripts/study-report.js?v=20261113" defer></script>
+  <script type="module" src="/scripts/study-report-session.js?v=20261113"></script>
+  <script type="module" src="/scripts/study-view-ads.js?v=20261113"></script>
+</head>
+<body data-study-view="week">
+  <a class="study-skip" href="#contenido">Ir al contenido</a>
+  <header class="study-view-header"><div class="study-wrap">
+    <a class="study-brand" href="/"><img src="/assets/favicon.svg" width="32" height="32" alt="">Estudiemos</a>
+    <nav aria-label="Herramientas"><a href="/">Inicio</a><a href="/semana" aria-current="page">Mi semana</a><a href="/progreso">Progreso</a></nav>
+  </div></header>
+  <main class="study-wrap study-main" id="contenido">
+    <header class="study-intro"><div><p class="study-kicker">CALENDARIO</p><h1>Mi semana</h1><p>Clases, entregas y pendientes en una sola vista.</p></div><a class="study-button" href="/?agenda=1">Editar en Calendario</a></header>
+    <p class="study-status" data-report-status role="status"></p>
+    <div data-report-content hidden>
+      <div class="study-toolbar">
+        <h2 data-report-period></h2>
+        <div aria-label="Navegar semanas"><button class="study-icon" type="button" data-report-shift="-1" aria-label="Semana anterior" title="Semana anterior"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button><button class="study-button" type="button" data-report-reset>Hoy</button><button class="study-icon" type="button" data-report-shift="1" aria-label="Semana siguiente" title="Semana siguiente"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button></div>
+      </div>
+      <dl class="study-totals" data-report-totals></dl>
+      <div class="study-week" data-report-results></div>
+      <div class="study-ad-marker" data-ad-viewport-marker aria-hidden="true"></div>
+      <aside class="study-placement" data-study-placement hidden aria-label="Publicidad"></aside>
+      <section class="study-context" data-report-undated hidden><div><h2>Pendientes sin fecha</h2><p data-report-undated-count></p></div><a href="/?agenda=1">Ver en Inbox</a></section>
+    </div>
+    <noscript><p>Activá JavaScript para consultar tus horarios guardados en este navegador.</p></noscript>
+  </main>
+  <footer class="study-view-footer"><div class="study-wrap"><span>Estudiemos</span><nav aria-label="Información"><a href="/planificador">Planificador</a><a href="/about#privacidad">Privacidad</a><a href="/consentimiento?preferencias=1" data-cmp-preferences>Preferencias de cookies</a></nav></div></footer>
+</body>
+</html>

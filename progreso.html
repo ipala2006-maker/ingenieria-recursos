@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex, follow">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="canonical" href="https://estudiemos.ar/progreso">
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles/study-views.css?v=20261113">
+  <title>Progreso de estudio | Estudiemos</title>
+  <script src="/shared/release.js?v=20261112-ads-review" defer></script>
+  <script src="/shared/timetable.js?v=20261023-repeat" defer></script>
+  <script src="/shared/study-goal.js?v=20261010-daily-goal" defer></script>
+  <script src="/shared/study-views.js?v=20261113" defer></script>
+  <script src="/scripts/study-report.js?v=20261113" defer></script>
+  <script type="module" src="/scripts/study-report-session.js?v=20261113"></script>
+  <script type="module" src="/scripts/study-view-ads.js?v=20261113"></script>
+</head>
+<body data-study-view="progress">
+  <a class="study-skip" href="#contenido">Ir al contenido</a>
+  <header class="study-view-header"><div class="study-wrap">
+    <a class="study-brand" href="/"><img src="/assets/favicon.svg" width="32" height="32" alt="">Estudiemos</a>
+    <nav aria-label="Herramientas"><a href="/">Inicio</a><a href="/semana">Mi semana</a><a href="/progreso" aria-current="page">Progreso</a></nav>
+  </div></header>
+  <main class="study-wrap study-main" id="contenido">
+    <header class="study-intro"><div><p class="study-kicker">ESTUDIO</p><h1>Tu progreso</h1><p>Consultá cómo repartiste tu tiempo de estudio.</p></div><a class="study-button" href="/?pomodoro=1">Abrir Pomodoro</a></header>
+    <p class="study-status" data-report-status role="status"></p>
+    <div data-report-content hidden>
+      <div class="study-toolbar">
+        <h2 data-report-period></h2>
+        <div aria-label="Período del informe"><button class="study-button" type="button" data-report-range="7" aria-pressed="true">7 días</button><button class="study-button" type="button" data-report-range="30" aria-pressed="false">30 días</button></div>
+      </div>
+      <dl class="study-totals" data-report-totals></dl>
+      <div class="study-bars" data-report-results></div>
+      <div class="study-ad-marker" data-ad-viewport-marker aria-hidden="true"></div>
+      <aside class="study-placement" data-study-placement hidden aria-label="Publicidad"></aside>
+    </div>
+    <noscript><p>Activá JavaScript para consultar el tiempo de estudio guardado en este navegador.</p></noscript>
+  </main>
+  <footer class="study-view-footer"><div class="study-wrap"><span>Estudiemos</span><nav aria-label="Información"><a href="/planificador">Planificador</a><a href="/about#privacidad">Privacidad</a><a href="/consentimiento?preferencias=1" data-cmp-preferences>Preferencias de cookies</a></nav></div></footer>
+</body>
+</html>

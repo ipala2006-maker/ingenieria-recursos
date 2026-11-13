@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Armá tu horario universitario semanal, detectá clases superpuestas y exportá tu cursada al calendario. Gratis, sin cuenta, en Estudiemos.">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="google-adsense-account" content="ca-pub-9605920128105982">
+  <link rel="canonical" href="https://estudiemos.ar/planificador">
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles/study-views.css?v=20261113">
+  <title>Planificador semanal universitario | Estudiemos</title>
+  <script src="/shared/timetable.js?v=20261023-repeat" defer></script>
+  <script src="/shared/study-views.js?v=20261113" defer></script>
+  <script src="/scripts/weekly-planner.js?v=20261113" defer></script>
+</head>
+<body data-study-view="planner">
+  <a class="study-skip" href="#contenido">Ir al contenido</a>
+  <header class="study-view-header"><div class="study-wrap">
+    <a class="study-brand" href="/"><img src="/assets/favicon.svg" width="32" height="32" alt="">Estudiemos</a>
+    <nav aria-label="Principal"><a href="/planificador" aria-current="page">Planificador</a><a href="/">Abrir Estudiemos</a></nav>
+  </div></header>
+  <main class="study-wrap study-main" id="contenido">
+    <header class="study-intro">
+      <div><p class="study-kicker">ESTUDIEMOS · CALENDARIO</p><h1>Planificador semanal</h1>
+        <p>Ordená tus clases y bloques de estudio, detectá horarios que se pisan y llevá tu semana a tu calendario. No necesitás cuenta.</p></div>
+      <button class="study-button study-primary" type="button" data-planner-add hidden><img src="/assets/icons/plus.svg" alt="">Agregar horario</button>
+    </header>
+    <div class="study-toolbar">
+      <span data-planner-mode>Semana de ejemplo</span>
+      <div data-planner-tools hidden>
+        <button class="study-button" type="button" data-planner-start>Usar este ejemplo</button>
+        <button class="study-button" type="button" data-planner-blank>Empezar en blanco</button>
+        <button class="study-button" type="button" data-planner-example hidden>Ver ejemplo</button>
+        <button class="study-button" type="button" data-planner-export hidden>Exportar .ics</button>
+      </div>
+    </div>
+    <div class="study-week" data-planner-grid aria-label="Horario de la semana">
+      <section><h2>Lunes</h2><ul><li class="study-event tone-blue"><strong>Análisis Matemático</strong><span>08:00–10:00 · Clase</span></li><li class="study-event tone-amber"><strong>Repaso de ejercicios</strong><span>16:00–17:00 · Estudio</span></li></ul></section>
+      <section><h2>Martes</h2><ul><li class="study-event tone-teal"><strong>Física I</strong><span>10:00–12:00 · Laboratorio</span></li></ul></section>
+      <section><h2>Miércoles</h2><ul><li class="study-event tone-blue"><strong>Análisis Matemático</strong><span>08:00–10:00 · Clase</span></li></ul></section>
+      <section><h2>Jueves</h2><ul><li class="study-event tone-violet"><strong>Programación</strong><span>14:00–16:00 · Práctica</span></li></ul></section>
+      <section><h2>Viernes</h2><ul><li class="study-event tone-teal"><strong>Física I</strong><span>10:00–12:00 · Laboratorio</span></li></ul></section>
+      <section><h2>Sábado</h2><p>Sin horarios</p></section>
+      <section><h2>Domingo</h2><p>Sin horarios</p></section>
+    </div>
+    <p class="study-status" data-planner-status role="status">Ejemplo ficticio de una cursada de ingeniería.</p>
+    <noscript><p>Podés consultar el ejemplo sin JavaScript. Activá JavaScript para crear y exportar tu semana.</p></noscript>
+    <section class="study-context" aria-labelledby="planner-context">
+      <div><h2 id="planner-context">De tu semana a tu cursada</h2><p>El planificador guarda horarios semanales en este navegador. En la app, el Calendario también reúne fechas únicas, tareas del Inbox y fechas publicadas por tus cátedras. Los archivos de Drive y los datos de tu cuenta no aparecen en esta página.</p></div>
+      <a href="/">Ir a Estudiemos</a>
+    </section>
+    <section class="study-context" aria-labelledby="planner-course">
+      <div><p class="study-kicker">CÁTEDRA DE EJEMPLO</p><h2 id="planner-course">Física I · Comisión A</h2><p>Una misma comisión puede compartir horarios y fechas de evaluación. Agregá el laboratorio a tu semana de prueba para ver cómo convive con tus otros horarios.</p></div>
+      <button type="button" class="study-button" data-planner-course hidden>Agregar laboratorio</button>
+    </section>
+    <dialog class="study-editor" data-planner-editor aria-labelledby="planner-editor-title">
+      <form data-planner-form>
+        <header><h2 id="planner-editor-title">Agregar horario</h2><button class="study-icon" type="button" data-planner-close aria-label="Cerrar" title="Cerrar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></header>
+        <label>Actividad<input name="title" required maxlength="90" placeholder="Ej.: Laboratorio de Física"></label>
+        <fieldset><legend>Días</legend><div class="study-day-options">
+          <label><input type="checkbox" name="day" value="1">Lun</label><label><input type="checkbox" name="day" value="2">Mar</label>
+          <label><input type="checkbox" name="day" value="3">Mié</label><label><input type="checkbox" name="day" value="4">Jue</label>
+          <label><input type="checkbox" name="day" value="5">Vie</label><label><input type="checkbox" name="day" value="6">Sáb</label>
+          <label><input type="checkbox" name="day" value="0">Dom</label>
+        </div></fieldset>
+        <div class="study-form-pair"><label>Desde<input name="start" type="time" required value="08:00"></label><label>Hasta<input name="end" type="time" required value="10:00"></label></div>
+        <label>Lugar (opcional)<input name="place" maxlength="90" placeholder="Ej.: Aula 12"></label>
+        <fieldset><legend>Color</legend><div class="study-colors">
+          <label class="tone-blue"><input type="radio" name="color" value="blue" checked aria-label="Azul"><span></span></label>
+          <label class="tone-teal"><input type="radio" name="color" value="teal" aria-label="Turquesa"><span></span></label>
+          <label class="tone-violet"><input type="radio" name="color" value="violet" aria-label="Violeta"><span></span></label>
+          <label class="tone-rose"><input type="radio" name="color" value="rose" aria-label="Rosa"><span></span></label>
+          <label class="tone-amber"><input type="radio" name="color" value="amber" aria-label="Ámbar"><span></span></label>
+        </div></fieldset>
+        <p class="study-status" role="alert" data-planner-error></p>
+        <footer><button class="study-button study-danger" type="button" data-planner-remove hidden>Quitar horario</button><button class="study-button study-primary" type="submit">Guardar horario</button></footer>
+      </form>
+    </dialog>
+  </main>
+  <footer class="study-view-footer"><div class="study-wrap"><span>Estudiemos</span><nav aria-label="Información"><a href="/about#privacidad">Privacidad</a><a href="/consentimiento?preferencias=1" data-cmp-preferences>Preferencias de cookies</a><a href="/about#contacto">Contacto</a></nav></div></footer>
+</body>
+</html>
