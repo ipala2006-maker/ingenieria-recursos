@@ -6,7 +6,9 @@
   const query = new URL(location.href);
   const requested = query.searchParams.get('tutorial') === '1';
   const classInvitation = ['clase','materia'].some(key=>new URLSearchParams(location.hash.slice(1)).has(key)) || ['clase','materia','materias','uploadClass'].some(key=>query.searchParams.has(key)) || pendingClass();
-  let pending = requested || !classInvitation && !readStatus() && !hasPreviousUse();
+  const installed = Boolean(window.EstudiemosAndroid || window.navigator?.standalone || matchMedia('(display-mode: standalone)').matches);
+  // Web visitors can try the tools immediately; installed apps keep their first-run tour.
+  let pending = requested || installed && !classInvitation && !readStatus() && !hasPreviousUse();
   let active = false, starting = false, busy = false, closing = false, tour, layer, ring, steps = [], current = -1;
   let privacy = location.origin === 'https://estudiemos.ar' && !window.EstudiemosAndroid ? 'loading' : 'ready';
   let cleanupPreview = () => {}, original, savedFocus, resizeFrame = 0, driverModule, targetObserver, exitTimer, transitionVersion = 0;
@@ -14,7 +16,7 @@
   const visible = element => Boolean(element?.getClientRects().length && getComputedStyle(element).visibility !== 'hidden');
   window.EstudiemosOnboarding = Object.freeze({ start: () => start(true), pending: () => pending || active, isActive: () => active });
   if (requested) { query.searchParams.delete('tutorial'); history.replaceState(history.state, '', query); }
-  if (!pending && !readStatus() && !classInvitation) remember('existing');
+  if (!pending && !readStatus() && !classInvitation && hasPreviousUse()) remember('existing');
   function pendingClass() { try { return window.EstudiemosCourseInvitation?.pending(window.EstudiemosAccount?.getUser()?.id||'') || JSON.parse(sessionStorage.getItem('estudiemos_class_invite_v1') || 'null')?.expires > Date.now(); } catch (_) { return false; } }
 
   function readStatus() { try { return JSON.parse(localStorage.getItem(KEY) || 'null')?.status || ''; } catch (_) { return ''; } }

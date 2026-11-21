@@ -12,7 +12,7 @@
     const drive=window.EstudiemosDriveLibrary?.status?.();
     const settled=account && (!account.getUser?.() || account.isSynchronized?.()===true);
     const classesKnown=!account?.getUser?.() || Boolean(snapshot);
-    const isEmpty=Boolean(settled && classesKnown && drive?.ready && !drive.connected && !list('bandeja_agenda').length && !list('bandeja_horarios').length && !snapshot?.calendar?.length);
+    const isEmpty=Boolean(settled && classesKnown && (!account.getUser?.() || drive?.ready) && !drive?.connected && !list('bandeja_agenda').length && !list('bandeja_horarios').length && !snapshot?.calendar?.length);
     empty.hidden=!isEmpty;inbox.hidden=isEmpty;
     const layout=window.EstudiemosHomeLayout?.read()||{};
     suggestions.hidden=layout.preset!=='light';

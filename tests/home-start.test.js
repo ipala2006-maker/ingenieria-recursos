@@ -25,12 +25,19 @@ test('welcome never replaces an account still restoring, a connected Drive, or s
     const f=fixture();
     if(kind==='sync'){f.state.user={id:'student'};f.state.synced=false;}
     if(kind==='classes-loading')f.state.user={id:'student'};
-    if(kind==='drive-loading')f.state.drive.ready=false;
+    if(kind==='drive-loading'){f.state.user={id:'student'};f.state.model={classes:[],calendar:[]};f.state.drive.ready=false;}
     if(kind==='drive-connected')f.state.drive.connected=true;
     if(kind==='weekly')f.values.bandeja_horarios='[{"id":"slot"}]';
     if(kind==='class-calendar')f.state.model={classes:[],calendar:[{id:'exam'}]};
     f.render();assert.equal(f.empty.hidden,true,kind);assert.equal(f.inbox.hidden,false,kind);
   }
+});
+
+test('an anonymous empty visitor does not wait for Drive to see the useful welcome',()=>{
+  const f=fixture();f.state.drive={ready:false,connected:false};f.render();
+  assert.equal(f.empty.hidden,false);assert.equal(f.inbox.hidden,true);
+  f.values.bandeja_agenda='[{"title":"Real task"}]';f.render();
+  assert.equal(f.empty.hidden,true);assert.equal(f.inbox.hidden,false);
 });
 test('course rows use the existing snapshot, omit archived courses, and open the exact course',()=>{
   const f=fixture();f.state.user={id:'student'};f.state.model={classes:[{id:'one',title:'<img onerror=alert(1)>',institution:'Comisión 1'},{id:'old',archived:true}],calendar:[]};f.render();
