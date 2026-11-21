@@ -21,6 +21,7 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
     for(const width of process.env.TEST_WIDTHS?process.env.TEST_WIDTHS.split(',').map(Number):[1440,1024,390,320]){
       const context=await browser.newContext({viewport:{width,height:width===320?568:900},hasTouch:width<500,isMobile:width<500,serviceWorkers:'block'});
       const apiRequests=[],errors=[],dialogs=[];
+      await context.addInitScript(()=>{Object.defineProperty(navigator,'standalone',{value:true});});
       if(width===1440)await context.addInitScript(()=>localStorage.setItem('estudiemos_home_layout','{}'));
       await context.addInitScript(()=>{window.__permissionRequests=0;window.__tourInputFocus=0;document.addEventListener('focusin',event=>{if(window.EstudiemosOnboarding?.isActive()&&event.target.matches('input,textarea,select'))window.__tourInputFocus++;});if(window.Notification)Notification.requestPermission=async()=>{window.__permissionRequests++;return 'denied';};});
       await context.addInitScript(()=>{
@@ -90,7 +91,7 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
       await page.reload();await page.waitForFunction(()=>window.EstudiemosOnboarding&&window.EstudiemosStudy);
       assert.equal(await layer.count(),0,'No repeat on next launch');
       if(await page.locator('[data-study-goal-dialog]').isVisible())await page.locator('[data-study-goal-close]').click();
-      await page.locator('[data-account-open]').click();await page.locator('[data-onboarding-replay]').click();await layer.waitFor({state:'visible'});
+      await page.locator('[data-account-open]').click();await page.locator('.account-shell [data-onboarding-replay]').click();await layer.waitFor({state:'visible'});
       await popover.waitFor({state:'visible'});await page.waitForTimeout(230);await turn(width-4);
       await page.waitForFunction(()=>document.querySelector('.onboarding-layer')?.dataset.step==='note');await page.waitForTimeout(250);
       await turn(4);await page.waitForFunction(()=>document.querySelector('.onboarding-layer')?.dataset.step==='welcome');await page.waitForTimeout(250);
@@ -121,9 +122,11 @@ const headers=require('../vercel.json').headers.find(rule=>rule.source==='/(.*)'
     await layer.waitFor({state:'hidden'});assert.equal(await page.locator('.inbox-alarm-notice[open]').evaluate(el=>el.open),true,'A real task alarm must interrupt the tour');
     await extra.close();
     const failed=await browser.newContext({serviceWorkers:'block'});await failed.route('**/*',route=>{const url=new URL(route.request().url());if(url.origin!==base||url.pathname.includes('/vendor/driver/'))return route.abort();if(url.pathname.startsWith('/api/'))return route.fulfill({json:{enabled:false}});return route.continue();});
+    await failed.addInitScript(()=>{Object.defineProperty(navigator,'standalone',{value:true});});
     const failedPage=await failed.newPage();lastPage=failedPage;await failedPage.goto(base);await failedPage.waitForFunction(()=>window.EstudiemosStudy&&window.EstudiemosOnboarding&&!EstudiemosOnboarding.pending());
     assert.equal(await failedPage.locator('.onboarding-layer').count(),0);await failedPage.locator('[data-study-goal-dialog]').waitFor({state:'visible'});await failed.close();
     const interrupted=await browser.newContext({serviceWorkers:'block'});await interrupted.route('**/*',route=>{const url=new URL(route.request().url());if(url.origin!==base)return route.abort();if(url.pathname.startsWith('/api/'))return route.fulfill({json:{enabled:false}});return route.continue();});
+    await interrupted.addInitScript(()=>{Object.defineProperty(navigator,'standalone',{value:true});});
     const alarmPage=await interrupted.newPage();lastPage=alarmPage;await alarmPage.goto(base);await alarmPage.locator('.onboarding-layer').waitFor({state:'visible'});await alarmPage.waitForTimeout(450);
     await alarmPage.evaluate(()=>{const dialog=document.createElement('dialog');dialog.className='inbox-alarm-notice';document.body.append(dialog);dialog.showModal();});
     await alarmPage.locator('.onboarding-layer').waitFor({state:'hidden'});assert.equal(await alarmPage.locator('[data-study-goal-dialog]').evaluate(el=>el.open),false,'First-use goal must not cover a real alarm');

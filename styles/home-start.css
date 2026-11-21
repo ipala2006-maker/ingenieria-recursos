@@ -12,6 +12,10 @@
 .home-empty { flex:1;min-height:0;overflow:auto;padding:20px 8px;align-content:center; }
 .home-empty h3 { margin:16px 0 8px;font-size:22px;line-height:1.25; }
 .home-empty p { max-width:38em;margin:0;color:var(--muted);font-size:14px;line-height:1.6; }
+.home-empty .home-start-secondary { display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;box-sizing:border-box;max-width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;line-height:1.4;text-decoration:none; }
+.home-empty .home-start-secondary img { width:18px;height:18px;flex:none; }
+.home-empty .home-empty__help { display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:12px;font-size:12px; }
+.home-empty__help a { display:inline-flex;align-items:center;min-height:32px;color:var(--accent);text-underline-offset:3px; }
 .home-empty__icon { opacity:.8; }
 .home-empty img,.home-suggestions img,.home-tools-open img,.home-classes img { filter:invert(.75) sepia(.15) saturate(2) hue-rotate(175deg); }
 .theme-light :is(.home-empty,.home-suggestions,.home-tools-open,.home-classes) img { filter:none;opacity:.75; }

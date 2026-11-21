@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <script defer src="/scripts/inmobi-choice-tag.js?v=20261104-global"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Organizá tus tareas, tu calendario y tus sesiones de estudio con Inbox, Pomodoro, racha y Amigos." />
+    <meta name="description" content="Estudiemos es tu organizador universitario gratuito: horarios, tareas, fechas de cátedra y sesiones de estudio. Probá el planificador sin registro." />
     <meta name="application-name" content="Estudiemos" />
     <meta name="google-adsense-account" content="ca-pub-9605920128105982" />
     <meta name="theme-color" content="#0f172a" />
@@ -12,7 +12,7 @@
     <meta property="og:site_name" content="Estudiemos" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content="Estudiemos" />
-    <meta property="og:description" content="Organizá tus tareas, tu calendario y tus sesiones de estudio con Inbox, Pomodoro, racha y Amigos." />
+    <meta property="og:description" content="Estudiemos es tu organizador universitario gratuito: horarios, tareas, fechas de cátedra y sesiones de estudio. Probá el planificador sin registro." />
     <meta property="og:url" content="https://estudiemos.ar/" />
     <meta property="og:image" content="https://estudiemos.ar/assets/install/free-launch-preview.png" />
     <meta property="og:image:alt" content="Estudiemos: Inbox, calendario, Pomodoro y progreso" />
@@ -24,7 +24,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="apple-touch-icon" href="./assets/icon-180.png" />
-    <title>Estudiemos</title>
+    <title>Estudiemos | Organizador universitario gratuito</title>
     <script src="./scripts/course-role.js?v=20261024-roles" data-role-entry></script>
     <script src="./shared/course-app-links.js?v=20261109-official-access"></script>
     <script src="./scripts/course-invitation.js?v=20261111-launch-candidate"></script>
@@ -43,7 +43,7 @@
     <link rel="stylesheet" href="./styles/study-depth.css?v=20261007-flat-controls" />
     <link rel="stylesheet" href="./styles/home-console.css?v=20261113-study-reports" />
     <link rel="stylesheet" href="./styles/home-layout.css?v=20261110-stable-home" />
-    <link rel="stylesheet" href="./styles/home-start.css?v=20261107-panel-polish" />
+    <link rel="stylesheet" href="./styles/home-start.css?v=20261121-first-visit" />
     <link rel="stylesheet" href="./styles/study-chart.css?v=20261107-jakarta" />
     <link rel="stylesheet" href="./styles/calendar-month.css?v=20261107-panel-polish" />
     <link rel="stylesheet" href="./styles/surface-motion.css?v=20261111-launch-candidate" />
@@ -219,11 +219,13 @@
               <div class="home-empty" data-home-empty hidden>
                 <img class="home-empty__icon" src="./assets/icons/book-open.svg" width="32" height="32" alt="" />
                 <h3>¡Bienvenido a Estudiemos!</h3>
-                <p>Arrancá con tu primera tarea o conectá Google Drive para tener tus apuntes a mano.</p>
+                <p>Horarios, tareas y fechas de tu cursada, en un solo lugar. Empezá con tu primera tarea o armá tu horario semanal sin registrarte.</p>
                 <div class="home-empty__actions">
                   <button type="button" class="home-start-primary" data-quick-note-open><img src="./assets/icons/plus.svg" width="18" height="18" alt="" />Crear mi primera tarea</button>
+                  <a href="/planificador" class="home-start-secondary"><img src="./assets/icons/calendar-days.svg" width="18" height="18" alt="" />Armar mi horario</a>
                   <button type="button" data-home-connect-drive><img src="./assets/icons/folder.svg" width="18" height="18" alt="" />Conectar Google Drive</button>
                 </div>
+                <p class="home-empty__help"><a href="/?tutorial=1" data-onboarding-replay>Tutorial</a><a href="/about">Acerca de Estudiemos</a></p>
               </div>
               <div class="dashboard-agenda__list" data-dashboard-agenda></div>
               <div class="home-suggestions" data-home-suggestions hidden>
@@ -274,6 +276,7 @@
       <footer class="footer">
         <span>© <span id="year"></span> Estudiemos</span>
         <nav class="footer__links" aria-label="Información de Estudiemos">
+          <a href="/about">Acerca de Estudiemos</a>
           <a href="/planificador">Planificador semanal</a>
           <a href="./instalar.html">Instalar</a>
           <a href="./about.html#privacidad">Privacidad</a>
@@ -285,10 +288,10 @@
     </main>
 
     <!-- DATA SIEMPRE PRIMERO -->
-    <script src="./scripts/onboarding.js?v=20261110-steady-tour"></script>
+    <script src="./scripts/onboarding.js?v=20261121-first-visit"></script>
     <script src="./data/data.js?v=20260804-quimica-completa"></script>
     <script src="./shared/study-goal.js?v=20261010-daily-goal"></script>
-    <script src="./scripts/global-search.js?v=20261111-sync-efficiency"></script>
+    <script src="./scripts/global-search.js?v=20261121-first-visit"></script>
 
     <script src="./shared/plans.js?v=20260827-real-plans"></script>
     <script src="./shared/drive-files.js?v=20261107-panel-ux"></script>
@@ -297,7 +300,7 @@
     <script src="./scripts/dashboard.js?v=20261111-launch-candidate"></script>
     <script type="module" src="./scripts/study-home.js?v=20261024-tour"></script>
     <script src="./scripts/home-customizer.js?v=20261110-stable-home"></script>
-    <script src="./scripts/home-start.js?v=20261027-light"></script>
+    <script src="./scripts/home-start.js?v=20261121-first-visit"></script>
     <script type="module" src="./scripts/cmp-preferences.js?v=20261113"></script>
 
     <script src="./scripts/page-shell.js?v=20260831-launch-audit"></script>

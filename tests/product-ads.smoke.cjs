@@ -7,7 +7,7 @@ const installMockTcf = require('./fixtures/ad-tcf.cjs');
 const origin = 'https://estudiemos.ar';
 const live = process.argv.includes('--live');
 const root = path.join(__dirname,'../dist-cloudflare');
-const mime = {'.html':'text/html','.css':'text/css','.svg':'image/svg+xml','.woff2':'font/woff2','.js':'text/javascript','.png':'image/png','.webp':'image/webp'};
+const mime = {'.html':'text/html','.css':'text/css','.svg':'image/svg+xml','.woff2':'font/woff2','.js':'text/javascript','.mjs':'text/javascript','.png':'image/png','.webp':'image/webp'};
 const key = 'sb-gxilgicgxhkdjmmyhrdd-auth-token';
 
 async function fixture(browser, width, {scripts=true, ad=false, pro=false, consent='granted', empty=false, member=false, native=false, adult=true}={}) {
@@ -100,6 +100,37 @@ async function planner(browser,width,name){
   console.log(`PASS ${name} ${width}: public HTML, weekly editor, conflicts, export, no network or ads`);
 }
 
+async function firstVisit(browser,width,name){
+  const f=await fixture(browser,width),{page}=f;
+  try{
+    await page.goto(origin+'/');
+    await page.waitForFunction(()=>window.EstudiemosAccount&&window.EstudiemosStudy&&window.EstudiemosOnboarding);
+    const welcome=page.locator('[data-home-empty]');
+    await welcome.waitFor({state:'visible'});
+    assert.equal(await page.locator('dialog[open]').count(),0,'Trying the tools must not require dismissing setup dialogs');
+    assert.equal(await page.evaluate(()=>EstudiemosOnboarding.pending()),false);
+    assert.equal(await welcome.getByRole('link',{name:'Armar mi horario'}).getAttribute('href'),'/planificador');
+    await welcome.getByRole('link',{name:'Tutorial',exact:true}).click();
+    const tour=page.locator('.onboarding-layer');
+    await tour.waitFor({state:'visible'});
+    await tour.getByRole('button',{name:'Omitir',exact:true}).click();
+    await tour.waitFor({state:'hidden'});
+    assert.equal(await page.locator('dialog[open]').count(),0,'The optional tutorial must not be followed by an automatic goal prompt');
+    await welcome.getByRole('button',{name:'Crear mi primera tarea'}).click();
+    const title=page.locator('[data-quick-panel=note] [name=title]');
+    await title.fill('Preparar el parcial');await title.press('Enter');
+    await welcome.waitFor({state:'hidden'});
+    assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('bandeja_agenda'))[0].title),'Preparar el parcial');
+    await page.reload();
+    await page.waitForFunction(()=>window.EstudiemosStudy&&window.EstudiemosOnboarding);
+    assert.equal(await page.locator('dialog[open]').count(),0);
+    assert.equal(await welcome.isVisible(),false);
+    assert.equal(f.ads(),0);
+    assert.deepEqual(f.errors,[]);
+  }finally{await f.context.close();}
+  console.log(`PASS ${name} ${width}: direct anonymous task creation, voluntary tutorial, persistence, no automatic prompts or ads`);
+}
+
 async function reports(browser,width){
   const f=await fixture(browser,width,{member:true});
   try{
@@ -157,7 +188,7 @@ async function adPolicy(browser){
 
 (async()=>{
   const chrome=await chromium.launch({channel:'chrome'});
-  try{await planner(chrome,1366,'chrome');await reports(chrome,1366);if(!live)await adPolicy(chrome);}finally{await chrome.close();}
+  try{await firstVisit(chrome,1366,'chrome');await planner(chrome,1366,'chrome');await reports(chrome,1366);if(!live)await adPolicy(chrome);}finally{await chrome.close();}
   const safari=await webkit.launch();
-  try{await planner(safari,390,'webkit');await planner(safari,320,'webkit');await reports(safari,390);}finally{await safari.close();}
+  try{await firstVisit(safari,390,'webkit');await planner(safari,390,'webkit');await planner(safari,320,'webkit');await reports(safari,390);}finally{await safari.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

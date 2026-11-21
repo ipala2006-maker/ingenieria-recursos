@@ -6,16 +6,16 @@ const path = require('node:path');
 const source = fs.readFileSync(path.join(__dirname, '../scripts/onboarding.js'), 'utf8');
 const key = 'estudiemos_onboarding_v1';
 
-function boot(initial = {}, url = 'https://estudiemos.example/') {
+function boot(initial = {}, url = 'https://estudiemos.example/', installed = true) {
   const values = new Map(Object.entries(initial)), events = [], timers = [];
   const window = {addEventListener(){}, dispatchEvent:event => events.push(event.type)};
   const context = {
-    window, URL, URLSearchParams, location:new URL(url), matchMedia:() => ({matches:false}),
+    window, URL, URLSearchParams, location:new URL(url), matchMedia:query => ({matches:installed && query === '(display-mode: standalone)'}),
     history:{state:null, replaceState(_state, _title, next) { context.location = new URL(next); }},
     localStorage:{getItem:name => values.get(name) ?? null, setItem:(name, value) => values.set(name, value)},
     document:{body:{classList:{contains:() => true}},currentScript:{src:'https://estudiemos.example/scripts/onboarding.js'},querySelector:() => null,addEventListener(){}},
     MutationObserver:class {observe(){} disconnect(){}},
-    setTimeout:fn => {timers.push(fn); return timers.length;}, clearTimeout(){}, Date
+    setTimeout:fn => {timers.push(fn); return timers.length;}, clearTimeout(){}, requestAnimationFrame(){}, Date
   };
   vm.runInNewContext(source, context);
   return {api:window.EstudiemosOnboarding, values, context, events};
@@ -26,6 +26,14 @@ test('a fresh local installation queues its tour before other first-use prompts'
   assert.equal(api.pending(), true);
   assert.equal(api.isActive(), false);
   assert.equal(values.has(key), false, 'Do not mark complete before showing it');
+});
+
+test('web visitors can try the app without a modal and still get their tour after installation', () => {
+  const web=boot({},'https://estudiemos.ar/',false);
+  assert.equal(web.api.pending(),false);
+  assert.equal(web.values.has(key),false,'Browsing is not completion or a dismissal of the installed tutorial');
+  assert.equal(boot(Object.fromEntries(web.values),'https://estudiemos.ar/',true).api.pending(),true);
+  assert.equal(boot({},'https://estudiemos.ar/?tutorial=1',false).api.pending(),true,'Manual tutorial still works in a browser');
 });
 
 test('completed and skipped tours do not repeat on subsequent launches', () => {

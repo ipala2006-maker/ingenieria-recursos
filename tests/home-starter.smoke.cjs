@@ -33,8 +33,8 @@ else (async()=>{
         window.EstudiemosAccount={getUser:()=>window.__user?{id:window.__user}:null,getSession:()=>null,getClient:()=>null,whenReady:async()=>({session:null}),isSynchronized:()=>window.__settled!==false,open:()=>{window.__loginOpened=true}};
       });
       await page.goto('http://127.0.0.1:'+server.address().port,{waitUntil:'networkidle'});
-      await page.locator('[data-study-goal-dialog]').waitFor({state:'visible'});
-      await page.locator('.study-goal-save').click();
+      await page.waitForFunction(()=>window.EstudiemosStudy);
+      assert.equal(await page.locator('[data-study-goal-dialog]').isVisible(),false,'Anonymous visitors are not interrupted by goal setup');
       await page.locator('[data-home-empty]').waitFor({state:'visible'});
       assert.deepEqual(await page.evaluate(()=>Object.entries(EstudiemosHomeLayout.read().visible).filter(([,value])=>value).map(([key])=>key)),['calendar','inbox']);
       if(mobile){
