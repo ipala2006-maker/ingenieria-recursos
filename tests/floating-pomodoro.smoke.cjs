@@ -4,6 +4,7 @@ const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 const root = path.resolve(__dirname, '..');
+const publicRoot = process.argv.includes('--built') ? path.join(root,'dist-cloudflare') : root;
 const output = path.join(root, 'tmp/floating-pomodoro');
 const headers = require('../vercel.json').headers.find(rule => rule.source === '/(.*)').headers;
 
@@ -11,8 +12,8 @@ const headers = require('../vercel.json').headers.find(rule => rule.source === '
   const server = http.createServer((req, res) => {
     const url = new URL(req.url, 'http://localhost');
     if (url.pathname.startsWith('/api/')) { res.setHeader('Content-Type','application/json'); res.end('{"enabled":false}'); return; }
-    const file = path.resolve(root, '.' + decodeURIComponent(url.pathname === '/' ? '/index.html' : url.pathname));
-    if (!file.startsWith(root + path.sep)) { res.writeHead(403).end(); return; }
+    const file = path.resolve(publicRoot, '.' + decodeURIComponent(url.pathname === '/' ? '/index.html' : url.pathname));
+    if (!file.startsWith(publicRoot + path.sep)) { res.writeHead(403).end(); return; }
     try {
       for (const {key,value} of headers) res.setHeader(key, key === 'Content-Security-Policy' ? value.replace(/;\s*upgrade-insecure-requests/, '') : value);
       res.setHeader('Content-Type', ({'.html':'text/html','.css':'text/css','.js':'text/javascript','.svg':'image/svg+xml','.woff2':'font/woff2'})[path.extname(file)] || 'application/octet-stream');
@@ -24,24 +25,36 @@ const headers = require('../vercel.json').headers.find(rule => rule.source === '
     fs.mkdirSync(output, {recursive:true});
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     const base = 'http://127.0.0.1:' + server.address().port;
-    browser = await chromium.launch({channel:'chrome'});
+    const origin = process.env.TEST_LEGACY_WINDOWS === '1' ? 'https://estudiemos.estudiemos-services.workers.dev' : base;
+    browser = await chromium.launch({channel:process.env.TEST_BROWSER_CHANNEL || 'chrome'});
     const context = await browser.newContext({viewport:{width:1280,height:720},timezoneId:'America/Argentina/Buenos_Aires',serviceWorkers:'block'});
-    await context.route('**/*', route => new URL(route.request().url()).origin === base ? route.continue() : route.abort());
-    await context.addInitScript(() => {
-      if (location.hostname !== '127.0.0.1') return;
+    await context.route('**/*', async route => {
+      const url=new URL(route.request().url());
+      if(url.origin!==origin)return route.abort();
+      if(origin===base)return route.continue();
+      return route.fulfill({response:await route.fetch({url:base+url.pathname+url.search})});
+    });
+    await context.addInitScript(origin => {
+      if (location.origin !== origin) return;
       localStorage.setItem('estudiemos_home_layout','{}');localStorage.setItem('estudiemos_onboarding_v1','{"status":"completed"}');
       localStorage.setItem('estudiemos_pomodoro_streak','{"days":{},"goal":{"minutes":25,"updatedAt":1}}');
       localStorage.setItem('estudiemos_pomodoro',JSON.stringify({config:{blocks:5,study:59,break:5},currentBlock:4,phase:'study',remaining:3300,running:false,autoStart:true,updatedAt:Date.now()}));
-    });
+    },origin);
     const page = await context.newPage(), errors = [];
     page.on('pageerror', error => errors.push(error.message));
-    await page.goto(base + '/');
+    await page.goto(origin + '/?windows-bundle=1&windows-app-links=1');
     await page.locator('[data-home-skip] svg').waitFor();
     await page.locator('[data-home-open="pomodoro"]').click();
     await page.locator('[data-pomodoro-popout]').click();
     await page.waitForFunction(()=>window.documentPictureInPicture?.window?.document.querySelector('[data-pip-dial]')?.getAttribute('aria-valuenow')==='55');
     const pip = context.pages().find(candidate => candidate !== page && candidate.url()==='about:blank');
     assert.ok(pip,'Chrome must open a real Document Picture-in-Picture page');
+    assert.equal(context.pages().length,2,'one click creates only the mini timer, never another Edge tab or login page');
+    assert.equal(new URL(page.url()).origin,origin,'the installed app retains its origin and session');
+    assert.equal(await page.evaluate(()=>document.querySelector('.windows-setup')?.open || document.querySelector('.account-shell')?.open || false),false,'no widget installation or account handoff');
+    await page.locator('[data-home-open="pomodoro"]').click();
+    await page.locator('[data-pomodoro-popout]').click();
+    assert.equal(context.pages().length,2,'a second click reuses the same window');
     pip.on('pageerror',error=>errors.push(error.message));
     await pip.waitForFunction(()=>[...document.fonts].some(face=>face.family.includes('Plus Jakarta Sans')&&face.status==='loaded'));
     assert.equal(await pip.locator('[data-pip-time]').evaluate(el=>getComputedStyle(el).fontWeight),'600');
@@ -137,7 +150,7 @@ const headers = require('../vercel.json').headers.find(rule => rule.source === '
     assert.deepEqual(reopened.snapshot.config,beforeClose.config);
     assert.equal(await page.evaluate(()=>window.EstudiemosStudy.snapshot().running),false,'closing and reopening must preserve pause and shared time');
     await page.evaluate(()=>documentPictureInPicture.window.close());
-    await page.goto(base+'/pages/bandeja.html');
+    await page.goto(origin+'/pages/bandeja.html');
     await page.locator('[data-pomodoro-open]').click();await page.locator('[data-pomodoro-popout]').click();
     await page.waitForFunction(()=>documentPictureInPicture.window?.document.querySelector('[data-pip-settings-toggle]'));
     assert.equal(await page.evaluate(()=>documentPictureInPicture.window.document.querySelectorAll('[data-pip-adjust]').length),2,'direct Inbox entry loads the same new floating controls');

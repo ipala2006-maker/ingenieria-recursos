@@ -359,7 +359,7 @@
     if (document.querySelector('script[src*="scripts/pomodoro.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/pomodoro.js?v=20261121-first-visit`;
+    script.src = `${rootPath}scripts/pomodoro.js?v=20261123-single-window`;
     script.defer = true;
     document.head.appendChild(script);
   }
