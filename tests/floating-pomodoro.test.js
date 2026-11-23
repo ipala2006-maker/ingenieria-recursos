@@ -42,23 +42,29 @@ test('closed floating windows do not render or touch detached controls',()=>{
 });
 
 function floatingOpening(requestWindow, origin='https://estudiemos.ar') {
-  let built=0;
+  let built=0,closedMenus=0;
   const opened=[];
+  const notes=[];
   const context={pipWindow:null,pipOpening:false,pipDial:null,pipDialPreview:null,
     supportsMobileFloating:()=>false,window:{location:{origin},open:(...args)=>opened.push(args),documentPictureInPicture:{requestWindow},EstudiemosCourseAppLinks:links},
-    prepareAudio:()=>{},buildFloatingTimer:()=>built++,closeMenu:()=>{},render:()=>{}};
+    prepareAudio:()=>{},buildFloatingTimer:()=>built++,closeMenu:()=>closedMenus++,render:()=>{},setPlatformNote:note=>notes.push(note)};
   vm.createContext(context);
   vm.runInContext(source.slice(source.indexOf('  async function openFloatingTimer()'),source.indexOf('  function buildFloatingTimer(')),context);
-  return {context,built:()=>built,opened};
+  return {context,built:()=>built,opened,notes,closedMenus:()=>closedMenus};
 }
 
-test('old production origins open the official timer without navigating or using their PiP window',async()=>{
-  for(const origin of ['https://estudiemos.estudiemos-services.workers.dev','https://estudiemos-candidate.estudiemos-services.workers.dev','https://estudiemos-app.vercel.app']){
-    let requested=false;
-    const t=floatingOpening(()=>{requested=true;},origin);
+test('official and old Windows origins open the same timer in one click without a browser tab or account handoff',async()=>{
+  for(const origin of ['https://estudiemos.ar','https://estudiemos.estudiemos-services.workers.dev','https://estudiemos-candidate.estudiemos-services.workers.dev','https://estudiemos-app.vercel.app']){
+    let requested=0;
+    const popup={closed:false,addEventListener(){}};
+    const t=floatingOpening(()=>{requested++;return Promise.resolve(popup);},origin);
     await t.context.openFloatingTimer();
-    assert.deepEqual(t.opened,[['https://estudiemos.ar/?pomodoro=1','_blank','noopener,noreferrer']]);
-    assert.equal(requested,false);
+    assert.deepEqual(t.opened,[]);
+    assert.equal(requested,1);
+    assert.equal(t.context.pipWindow,popup);
+    assert.equal(t.built(),1);
+    assert.equal(t.closedMenus(),1);
+    assert.equal(t.notes.at(-1),'');
   }
 });
 
@@ -78,4 +84,25 @@ test('double-clicking popout opens one window and delayed pagehide cannot erase 
 test('a rejected popout clears the opening latch so the user can retry',async()=>{
   const t=floatingOpening(()=>Promise.reject(new Error('no window')));
   await t.context.openFloatingTimer();assert.equal(t.context.pipOpening,false);assert.equal(t.context.pipWindow,null);
+  assert.deepEqual(t.opened,[]);
+  assert.match(t.notes.at(-1),/temporizador sigue en Estudiemos/);
+  t.context.window.documentPictureInPicture.requestWindow=()=>({addEventListener(){}});
+  await t.context.openFloatingTimer();assert.equal(t.built(),1);assert.equal(t.notes.at(-1),'');
+});
+
+test('opening the timer again focuses the existing small window without restarting it',async()=>{
+  let requests=0,focused=0;
+  const t=floatingOpening(()=>{requests++;});
+  t.context.pipWindow={closed:false,focus(){focused++;}};
+  await t.context.openFloatingTimer();
+  assert.equal(focused,1);assert.equal(requests,0);assert.equal(t.closedMenus(),1);assert.deepEqual(t.opened,[]);
+});
+
+test('a failed floating render closes its empty window instead of leaving a browser window behind',async()=>{
+  let closed=0;
+  const t=floatingOpening(()=>({addEventListener(){},close(){closed++;}}));
+  t.context.buildFloatingTimer=()=>{throw Error('render unavailable');};
+  await t.context.openFloatingTimer();
+  assert.equal(closed,1);assert.equal(t.context.pipWindow,null);assert.equal(t.context.pipOpening,false);
+  assert.deepEqual(t.opened,[]);assert.match(t.notes.at(-1),/Volvé a tocar/);
 });

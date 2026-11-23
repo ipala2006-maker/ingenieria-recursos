@@ -1029,13 +1029,10 @@
       return;
     }
     if (!("documentPictureInPicture" in window)) return;
-    // The browser takes the floating window's origin from its opener.
-    if (window.EstudiemosCourseAppLinks?.isLegacyOrigin?.(window.location.origin)) {
-      window.open("https://estudiemos.ar/?pomodoro=1", "_blank", "noopener,noreferrer");
-      return;
-    }
+    // Keep the timer in its opener, including older installed Windows shortcuts.
     if (pipWindow && !pipWindow.closed) {
       pipWindow.focus();
+      closeMenu();
       return;
     }
     if (pipOpening) return;
@@ -1054,10 +1051,14 @@
         if (pipWindow !== targetWindow) return;
         pipWindow = null; pipDial = null; pipDialPreview = null;
       }, { once: true });
+      setPlatformNote("");
       closeMenu();
       render();
     } catch (error) {
+      const failedWindow = pipWindow;
       pipWindow = null; pipDial = null; pipDialPreview = null;
+      try { failedWindow?.close(); } catch (_) {}
+      setPlatformNote("No pudimos abrir la ventana flotante. Volvé a tocar el botón; el temporizador sigue en Estudiemos.");
     } finally {
       pipOpening = false;
     }
