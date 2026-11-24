@@ -64,3 +64,37 @@ test('missing or corrupt remote state does not pause the running in-memory timer
   for(const incoming of [null,[],{updatedAt:'bad'},{updatedAt:0}])assert.equal(t.context.adoptTimerState(incoming),false);
   assert.equal(t.context.state.running,true);
 });
+
+test('new and legacy default timers continue automatically without changing their clock or credit',()=>{
+  const t=timer();
+  for(const saved of [{},{autoStart:false},{autoStart:true}]){
+    const loaded=t.context.loadState({...t.initial,running:true,endAt:1503000,studyCreditAt:3000,...saved});
+    assert.equal(loaded.autoStart,true);
+    assert.equal(loaded.autoStartConfigured,false);
+    assert.equal(loaded.running,true);assert.equal(loaded.endAt,1503000);assert.equal(loaded.studyCreditAt,3000);
+  }
+});
+
+test('an explicit manual continuation preference survives saving and another device',()=>{
+  const rules=require('../shared/pomodoro-sync');
+  const t=timer();
+  const manual={...t.initial,autoStart:false,autoStartConfigured:true};
+  t.context.state=t.context.loadState(manual);t.context.saveState();
+  assert.equal(t.stored().autoStart,false);assert.equal(t.stored().autoStartConfigured,true);
+  const shared=rules.normalize({...t.stored(),writer:'device-a'});
+  assert.equal(shared.autoStart,false);assert.equal(shared.autoStartConfigured,true);
+  const second=t.context.loadState(shared);
+  assert.equal(second.autoStart,false);assert.equal(second.autoStartConfigured,true);
+  assert.equal(rules.controls({...manual,autoStartConfigured:undefined}).autoStart,true,'old default false is not an explicit opt-out');
+  assert.equal(rules.normalize(shared).autoStart,false,'normalization is idempotent');
+});
+
+test('changing automatic continuation records an explicit preference for all timer views',()=>{
+  const t=timer();let saved=0;
+  t.context.adoptTimerState=()=>false;t.context.saveState=()=>saved++;
+  vm.runInNewContext(source.slice(source.indexOf('  function configureAlarm('),source.indexOf('  async function previewAlarm(')),t.context);
+  t.context.configureAlarm('auto',false);
+  assert.equal(t.context.state.autoStart,false);assert.equal(t.context.state.autoStartConfigured,true);
+  t.context.configureAlarm('auto',true);
+  assert.equal(t.context.state.autoStart,true);assert.equal(saved,2);
+});

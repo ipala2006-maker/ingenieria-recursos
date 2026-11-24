@@ -11,7 +11,8 @@
     if(!v||typeof v!=='object'||Array.isArray(v))return null;
     const config={blocks:integer(v.config?.blocks,1,100,4),study:integer(v.config?.study,0,59,25),break:integer(v.config?.break,0,59,5)};
     const phase=v.phase==='break'?'break':'study',running=v.running===true&&time(v.endAt)>0;
-    return {config,phase,currentBlock:integer(v.currentBlock,1,config.blocks,1),remaining:running?0:integer(v.remaining,0,3540,config[phase]*60),running,endAt:running?time(v.endAt):0,autoStart:v.autoStart===true};
+    const autoStartConfigured=v.autoStartConfigured===true;
+    return {config,phase,currentBlock:integer(v.currentBlock,1,config.blocks,1),remaining:running?0:integer(v.remaining,0,3540,config[phase]*60),running,endAt:running?time(v.endAt):0,autoStart:!autoStartConfigured||v.autoStart!==false,autoStartConfigured};
   }
   function normalize(value){
     const v=parse(value),c=controls(v);
