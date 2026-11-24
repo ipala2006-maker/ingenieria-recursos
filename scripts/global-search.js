@@ -10,7 +10,7 @@
   }
   if (!window.EstudiemosPomodoroSync) {
     const sync = document.createElement('script');
-    sync.src = rootPath + 'shared/pomodoro-sync.js?v=20261021';
+    sync.src = rootPath + 'shared/pomodoro-sync.js?v=20261124-auto-cycle';
     sync.onload = initialize;
     document.head.appendChild(sync);
     return;
@@ -359,7 +359,7 @@
     if (document.querySelector('script[src*="scripts/pomodoro.js"]')) return;
 
     const script = document.createElement("script");
-    script.src = `${rootPath}scripts/pomodoro.js?v=20261123-single-window`;
+    script.src = `${rootPath}scripts/pomodoro.js?v=20261124-auto-cycle`;
     script.defer = true;
     document.head.appendChild(script);
   }

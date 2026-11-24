@@ -210,3 +210,32 @@ test('a timely natural completion still starts the next phase when requested',()
   assert.equal(t.context.state.phase,'break');
   assert.equal(t.context.state.running,true);
 });
+
+test('completed study automatically starts the rest countdown and counts only finished study',()=>{
+  const t=skippableTimer({endAt:700000,studyCreditAt:640000,remaining:0});
+  let continuing;
+  t.context.notifyCompletion=(_phase,running)=>{continuing=running;};
+  t.context.advancePhase(true);
+  assert.equal(t.context.state.phase,'break');assert.equal(t.context.state.running,true);
+  assert.equal(t.context.state.endAt,1000000);assert.equal(t.context.state.studyCreditAt,0);
+  assert.equal(t.context.state.completedToday,1);assert.equal(t.credited(),60);
+  assert.equal(continuing,true);assert.equal(t.ticker(),true);
+});
+
+test('completed rest automatically starts the next study block without crediting rest',()=>{
+  const t=skippableTimer({phase:'break',endAt:700000,remaining:0});
+  t.context.advancePhase(true);
+  assert.equal(t.context.state.phase,'study');assert.equal(t.context.state.currentBlock,3);
+  assert.equal(t.context.state.running,true);assert.equal(t.context.state.endAt,2200000);
+  assert.equal(t.context.state.studyCreditAt,700000);assert.equal(t.credited(),0);
+  assert.equal(t.context.state.completedToday,0);assert.equal(t.ticker(),true);
+});
+
+test('opting out keeps the next phase paused and uses the existing completion alarm',()=>{
+  const t=skippableTimer({endAt:700000,remaining:0,autoStart:false});
+  let continuing;
+  t.context.notifyCompletion=(_phase,running)=>{continuing=running;};
+  t.context.advancePhase(true);
+  assert.equal(t.context.state.phase,'break');assert.equal(t.context.state.running,false);
+  assert.equal(t.context.state.endAt,0);assert.equal(t.ticker(),false);assert.equal(continuing,false);
+});

@@ -173,7 +173,10 @@
     adoptTimerState();
     if (key === "mode" && ["digital", "bell", "chime", "pulse"].includes(value)) state.alarmMode = value;
     else if (key === "volume") state.alarmVolume = Math.max(0.15, volumeNumber(value, state.alarmVolume, 2));
-    else if (key === "auto") state.autoStart = value === true;
+    else if (key === "auto") {
+      state.autoStart = value === true;
+      state.autoStartConfigured = true;
+    }
     else return;
     saveState();
     render();
@@ -742,8 +745,7 @@
     }
 
     if (event.target.matches("[data-pomodoro-auto]")) {
-      state.autoStart = event.target.checked;
-      saveState();
+      configureAlarm("auto", event.target.checked);
     }
   }
 
@@ -1227,9 +1229,7 @@
       return;
     }
     if (event.target.matches("[data-pip-auto]")) {
-      state.autoStart = event.target.checked;
-      saveState();
-      render();
+      configureAlarm("auto", event.target.checked);
       return;
     }
     if (event.target.matches("[data-pip-ambient-mode]")) {
@@ -1479,13 +1479,13 @@
     state.studyCreditAt = 0;
     state.remaining = durationSeconds(state.phase);
 
-    if (completed && shouldNotify) notifyCompletion(previousPhase);
     if ((automatic || continueRunning) && state.remaining > 0) {
       state.running = true;
       state.endAt = safeEndTime(state.remaining);
       state.studyCreditAt = state.phase === "study" ? Date.now() : 0;
       startTickerIfNeeded();
     }
+    if (completed && shouldNotify) notifyCompletion(previousPhase, state.running);
 
     saveState();
     syncWakeLock();
@@ -1753,8 +1753,14 @@
     }
   }
 
-  function notifyCompletion(previousPhase) {
-    startAlarm();
+  function notifyCompletion(previousPhase, continuing = false) {
+    if (continuing) {
+      stopAlarm();
+      const generation = alarmGeneration;
+      prepareAudio().then(context => {
+        if (generation === alarmGeneration && context?.state === "running") playAlarmPattern();
+      }).catch(() => {});
+    } else startAlarm();
     if ("vibrate" in navigator && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) {
       navigator.vibrate([120, 80, 120]);
     }
@@ -3046,7 +3052,9 @@
       remaining: nonNegativeNumber(saved.remaining, fallbackRemaining),
       running: Boolean(saved.running && Number(saved.endAt) > 0),
       endAt: Number(saved.endAt) || 0,
-      autoStart: Boolean(saved.autoStart),
+      // Older versions saved false by default, without an explicit preference.
+      autoStart: saved.autoStartConfigured !== true || saved.autoStart !== false,
+      autoStartConfigured: saved.autoStartConfigured === true,
       ambientMode: ["jazz", "jazzCafe", "jazzNight", "rain", "brown", "spotify", "random"].includes(saved.ambientMode) ? saved.ambientMode : "jazz",
       currentAmbient: ["jazz", "jazzCafe", "jazzNight", "rain", "brown", "spotify"].includes(saved.currentAmbient) ? saved.currentAmbient : "jazz",
       alarmMode: ["digital", "bell", "chime", "pulse"].includes(saved.alarmMode) ? saved.alarmMode : "digital",
